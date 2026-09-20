@@ -19,7 +19,7 @@
   <p class="ud-txt">
     الصفحة جاهزة ومربوطة بالسنة والشهر المحددين أعلاه — سنصممها معًا خطوة بخطوة.
   </p>
-  <p class="ud-txt">مجلد ملفات هذا القسم للشهر الحالي: <code>{{ folder_path }}</code></p>
+  {% if folder_path %}<p class="ud-txt">مجلد ملفات هذا القسم للشهر الحالي: <code>{{ folder_path }}</code></p>{% endif %}
   <div class="ud-hint">
     💡 قل لي ماذا تريد داخل صفحة «{{ section.name }}» — جداول؟ نماذج إدخال؟ تقارير؟ ملفات Excel/Word؟ وسنبنيها معًا.
   </div>

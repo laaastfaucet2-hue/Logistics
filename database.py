@@ -112,6 +112,11 @@ CREATE TABLE IF NOT EXISTS user_context (
     year INTEGER NOT NULL,
     month INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT DEFAULT ''
+);
 """
 
 
@@ -133,6 +138,19 @@ def init_db():
             "INSERT INTO users (username, password, full_name, role) VALUES (?,?,?,?)",
             ("mostafa", generate_password_hash("779"), "مصطفى", "admin"),
         )
+
+    # ---------- إعدادات الدباجة والتوقيعات الافتراضية ----------
+    defaults = {
+        "lh_1": "وزارة الداخلية",
+        "lh_2": "قطاع الأمن المركزي",
+        "lh_3": "منطقة وسط وجنوب سيناء",
+        "lh_4": "قطاع وسط سيناء",
+        "sig_right_rank": "", "sig_right_name": "",
+        "sig_left_rank": "", "sig_left_name": "",
+    }
+    for key, value in defaults.items():
+        cur.execute("INSERT OR IGNORE INTO app_settings (key, value) VALUES (?,?)",
+                    (key, value))
 
     conn.commit()
     conn.close()
@@ -207,6 +225,24 @@ def reset_context_year(deleted_year, fallback_year):
     conn = get_conn()
     conn.execute("UPDATE user_context SET year=? WHERE year=?",
                  (int(fallback_year), int(deleted_year)))
+    conn.commit()
+    conn.close()
+
+
+# ======================================================================
+# إعدادات عامة (الدباجة، التوقيعات الرسمية...) — مخزنة في system.db
+# ======================================================================
+def get_setting(key, default=""):
+    conn = get_conn()
+    row = conn.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+
+def set_setting(key, value):
+    conn = get_conn()
+    conn.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?,?)",
+                 (key, value or ""))
     conn.commit()
     conn.close()
 

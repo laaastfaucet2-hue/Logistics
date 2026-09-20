@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}توزيع المقررات على الجهات • {{ section_name }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}">
+{% endblock %}
+
+{% macro num(v) -%}
+{%- if v is none -%}—{%- else -%}{{ ((v|int) if v == v|int else v) | string | aindic | replace('.', '٫') }}{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="ctx-strip">
+  <span>🗓️ السنة النشطة:</span><span class="val">{{ year | aindic }}</span>
+  <span class="sep">•</span>
+  <span>الشهر النشط:</span><span class="val">{{ month | aindic }} - {{ month_names[month-1] }}</span>
+  <span class="sep">•</span>
+  <span class="dim">كل جهة بجدولها — وبتطلع شيت مستقل في ملف إكسل المتعهد 📗</span>
+</div>
+
+<div class="rt-tabs">
+  <a class="rt-tab" href="{{ url_for('rations.page', section=section) }}">📋 الجدول الرئيسي</a>
+  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}?tab=dist">🏢 توزيع المقررات على الجهات</a>
+</div>
+
+<div class="panel rt-toolbar">
+  <div class="rt-actions">
+    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}">📗 فتح الإكسل</a>
+    <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}">📂 فتح المجلد</a>
+    <a class="rt-btn dim" href="{{ url_for('rations.download_excel', section=section) }}">⬇ تنزيل</a>
+  </div>
+</div>
+
+<!-- إضافة جهة -->
+<div class="panel rt-formcard">
+  <div class="panel-head"><h3>➕ إضافة جهة جديدة</h3></div>
+  <form method="post" action="{{ url_for('rations.entity_add', section=section) }}" class="rt-form">
+    <div class="fld wide">
+      <label>اسم الجهة</label>
+      <input name="name" required placeholder="مثال: الإدارة، السرية الأولى، المعسكر...">
+    </div>
+    <div class="fld btns">
+      <button class="rt-btn gold" type="submit">➕ إضافة وسحب الأصناف</button>
+    </div>
+  </form>
+  <p class="rt-note">💡 عند الإضافة تُسحب تلقائيًا كل أصناف <strong>المقرر التموني المفعّل</strong> للجهة، وتقدر تعدّلها أو تحدد لكل صنف أيام توزيع مخصصة.</p>
+</div>
+
+<!-- الجهات -->
+{% for e in entities %}
+<div class="panel entity-panel">
+  <div class="panel-head">
+    <h3>🏢 {{ e.name }} <span class="dim-txt">— {{ e['items'] | length | aindic }} صنفًا</span></h3>
+    <form method="post" action="{{ url_for('rations.entity_delete', section=section, entity_id=e.id) }}"
+          class="inline-f js-del-ent">
+      <button class="mini-btn red" type="submit">🗑 حذف الجهة</button>
+    </form>
+  </div>
+
+  <form method="post"
+        action="{% if ee_item and ee_item.entity_id == e.id %}{{ url_for('rations.eitem_edit', section=section, item_id=ee_item.id) }}{% else %}{{ url_for('rations.eitem_add', section=section, entity_id=e.id) }}{% endif %}"
+        class="rt-form compact">
+    <div class="fld wide">
+      <input name="name" required placeholder="{{ 'تعديل: ' + ee_item.name if ee_item and ee_item.entity_id == e.id else 'إضافة صنف للجهة...' }}"
+             value="{{ ee_item.name if ee_item and ee_item.entity_id == e.id else '' }}">
+    </div>
+    <div class="fld">
+      <input name="unit" list="unitsList" placeholder="الوحدة"
+             value="{{ ee_item.unit if ee_item and ee_item.entity_id == e.id else '' }}">
+      <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
+    </div>
+    <div class="fld"><input name="breakfast" inputmode="decimal" placeholder="فطار"
+             value="{{ (ee_item.breakfast if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+    <div class="fld"><input name="lunch" inputmode="decimal" placeholder="غداء"
+             value="{{ (ee_item.lunch if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+    <div class="fld"><input name="dinner" inputmode="decimal" placeholder="عشاء"
+             value="{{ (ee_item.dinner if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+    <div class="fld btns">
+      <button class="rt-btn gold small" type="submit">{% if ee_item and ee_item.entity_id == e.id %}💾 حفظ{% else %}➕ إضافة{% endif %}</button>
+      {% if ee_item and ee_item.entity_id == e.id %}
+      <a class="rt-btn dim small" href="{{ url_for('rations.page', section=section) }}?tab=dist">إلغاء</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrap">
+    <table class="rt-table">
+      <thead>
+        <tr>
+          <th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th>
+          {% for d in days %}<th class="day-col">{{ d }}</th>{% endfor %}
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in e['items'] %}
+        <tr class="{% if it.is_custom %}custom-on{% endif %}">
+          <td class="num">{{ it.serial | aindic }}</td>
+          <td class="name">{{ it.name }}</td>
+          <td>{{ it.unit or '—' }}</td>
+          <td class="num">{{ num(it.breakfast) }}</td>
+          <td class="num">{{ num(it.lunch) }}</td>
+          <td class="num">{{ num(it.dinner) }}</td>
+          <td colspan="7" class="days-td">
+            <div class="days-state">
+              {% if it.is_custom %}<span class="badge-custom">📌 مخصص</span>{% else %}<span class="badge-daily">يوميًا</span>{% endif %}
+              <button type="button" class="mini-btn dist-toggle">تخصيص</button>
+            </div>
+            <form method="post" class="days-form" hidden
+                  action="{{ url_for('rations.eitem_days', section=section, item_id=it.id) }}">
+              <div class="days-row">
+                {% for di in range(7) %}
+                <label class="day-cb">
+                  <input type="checkbox" name="wd" value="{{ di }}" {% if di in it.days %}checked{% endif %}
+                         onchange="this.form.requestSubmit()">
+                  <span>{{ days[di] }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </form>
+          </td>
+          <td class="ops">
+            <a class="mini-btn" href="{{ url_for('rations.page', section=section) }}?tab=dist&ee={{ it.id }}">✏️</a>
+            <form method="post" class="inline-f js-del"
+                  action="{{ url_for('rations.eitem_delete', section=section, item_id=it.id) }}">
+              <button class="mini-btn red" type="submit">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="14" class="empty">لا أصناف — أضف من الأعلى</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="panel"><div class="empty big">لا توجد جهات بعد — أضف أول جهة من الأعلى 🏢</div></div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/rations.js') }}"></script>
+{% endblock %}

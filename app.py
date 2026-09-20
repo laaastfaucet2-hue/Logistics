@@ -10,7 +10,8 @@ from urllib.parse import quote
 import database as db
 import storage
 import arabic_numbers as arnum
-from config import MONTH_NAMES, SECTIONS, SECTION_MAP, month_folder, section_folder
+from config import (MONTH_NAMES, SECTIONS, SECTION_MAP, month_folder, section_folder,
+                    EXTRA_PAGES, EXTRA_MAP)
 
 app = Flask(__name__)
 app.secret_key = "rations-warehouse-2026-secret-key"
@@ -37,54 +38,8 @@ def normalize(text):
     return (text or "").translate(AR_DIGITS).strip()
 
 
-def current_session():
-    """يرجع (المستخدم، التوكن) — من الكوكي أو من sid في الرابط/الفورم."""
-    if "user" in session:
-        return session["user"], request.args.get("sid") or None
-    token = request.args.get("sid") or request.form.get("sid")
-    if token:
-        user = db.get_session_user(token)
-        if user:
-            return (
-                {"id": user["id"], "username": user["username"],
-                 "full_name": user["full_name"], "role": user["role"]},
-                token,
-            )
-    return None, None
-
-
-def login_required(view):
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        user, token = current_session()
-        if not user:
-            # لو كان معاه توكن لكنه منتهي/ملغي → علّم الصفحة عشان تمسح المحفوظ ومتعملش حلقة تحويل
-            if request.args.get("sid") or request.form.get("sid"):
-                return redirect(url_for("login", expired=1))
-            flash("من فضلك سجل الدخول أولاً", "error")
-            return redirect(url_for("login"))
-        g.user = user
-        g.sid = token
-        return view(*args, **kwargs)
-    return wrapper
-
-
-# ======================================================================
-# سياق السنة/الشهر النشط — محفوظ في قاعدة النظام ويظل ثابتًا بين الجلسات
-# ======================================================================
-def current_context(user_id):
-    """يرجع (year, month) الصحيحين لهذا المستخدم، ويصحّح أي قيمة باطلة."""
-    years = storage.list_years()
-    default_year = years[0] if years else datetime.now().year
-    ctx = db.get_user_context(user_id)
-    year = ctx["year"] if ctx else default_year
-    month = ctx["month"] if ctx else datetime.now().month
-    if year not in years:
-        year = default_year
-    month = max(1, min(12, int(month)))
-    if not ctx or ctx["year"] != year or ctx["month"] != month:
-        db.set_user_context(user_id, year, month)
-    return year, month
+# أدوات المصادقة والسياق منقولة إلى auth_core حتى تستخدمها الـBlueprints
+from auth_core import current_session, login_required, current_context  # noqa: E402
 
 
 @app.context_processor
@@ -96,6 +51,7 @@ def inject_auth():
         year, month = current_context(user["id"])
         ctx.update(
             sections=SECTIONS,
+            extra_pages=EXTRA_PAGES,
             years=storage.list_years(),
             months=list(enumerate(MONTH_NAMES, start=1)),
             ctx_year=year,
@@ -198,18 +154,31 @@ def dashboard():
 
 
 # ======================================================================
-# صفحات الأقسام الاثني عشر — حاليًا «قيد التطوير» وستُصمم واحدة تلو الأخرى
+# صفحات الأقسام — المبنية منها لها صفحاتها الخاصة، والباقي «قيد التطوير»
 # ======================================================================
+RATION_SECTION_REDIRECTS = {
+    "tamween_rations": "tamween",
+    "contractor_rations": "contractor",
+}
+
+
 @app.route("/sections/<key>")
 @login_required
 def section_page(key):
-    section = SECTION_MAP.get(key)
+    if key in RATION_SECTION_REDIRECTS:
+        params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+        return redirect(url_for("rations.page",
+                                section=RATION_SECTION_REDIRECTS[key], **params))
+    section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
     if not section:
         abort(404)
     year, month = current_context(g.user["id"])
-    index = SECTIONS.index(section) + 1
-    folder_path = "database/{}/{}/{}".format(
-        year, month_folder(month), section_folder(index, section["name"]))
+    if SECTION_MAP.get(key):
+        index = SECTIONS.index(section) + 1
+        folder_path = "database/{}/{}/{}".format(
+            year, month_folder(month), section_folder(index, section["name"]))
+    else:
+        folder_path = "database/الدباجة/" if key == "letterhead" else None
     return render_template(
         "section.html", section=section,
         month_name=MONTH_NAMES[month - 1],
@@ -280,6 +249,11 @@ def placeholder(page):
         return redirect(url_for("dashboard"))
     title, desc = PLACEHOLDERS[page]
     return render_template("placeholder.html", title=title, desc=desc, active=page)
+
+
+# تسجيل Blueprint صفحات المقررات — في نهاية الملف حتى تكتمل تعريفات app
+from routes.rations import rations_bp  # noqa: E402
+app.register_blueprint(rations_bp)
 
 
 if __name__ == "__main__":

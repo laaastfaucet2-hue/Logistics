@@ -63,6 +63,8 @@ def section_files_path(year, month, section_index):
 def ensure_initialized(current_year):
     """عند أول تشغيل يُنشئ مجلد البيانات والسنة الحالية افتراضيًا."""
     DATA_DIR.mkdir(exist_ok=True)
+    # مجلد صفحة الدباجة والتوقيعات الرسمية (اللوجو + ملف Word لاحقًا)
+    (DATA_DIR / "الدباجة").mkdir(exist_ok=True)
     if not list_years():
         create_year(current_year)
 

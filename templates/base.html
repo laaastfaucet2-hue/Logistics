@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Changa:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block head_extra %}{% endblock %}
 </head>
 <body>
 <div class="bg-fx"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="grid"></span></div>
@@ -47,11 +48,21 @@
 
       <div class="nav-title">أقسام المخازن</div>
       {% for s in sections or [] %}
-      <a href="{{ url_for('section_page', key=s.key) }}" class="nav-link {% if request.path == url_for('section_page', key=s.key) %}active{% endif %}">
+      <a href="{{ url_for('section_page', key=s.key) }}" class="nav-link {% if request.path == url_for('section_page', key=s.key) or request.path == {'tamween_rations': '/rations/tamween', 'contractor_rations': '/rations/contractor'}.get(s.key, '') %}active{% endif %}">
         <span class="nav-ico">{{ s.icon }}</span>
         {{ s.name }}
       </a>
       {% endfor %}
+
+      {% if extra_pages %}
+      <div class="nav-title">أدوات عامة</div>
+      {% for p in extra_pages %}
+      <a href="{{ url_for('section_page', key=p.key) }}" class="nav-link {% if request.path == url_for('section_page', key=p.key) %}active{% endif %}">
+        <span class="nav-ico">{{ p.icon }}</span>
+        {{ p.name }}
+      </a>
+      {% endfor %}
+      {% endif %}
     </nav>
 
     <div class="side-foot">
