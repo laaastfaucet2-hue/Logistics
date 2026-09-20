@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}منظومة مخازن التعيينات{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Changa:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="bg-fx"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="grid"></span></div>
+
+<div class="app">
+  <!-- ============ القائمة الجانبية ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M24 3 6 11v12c0 11 7.5 18.5 18 22 10.5-3.5 18-11 18-22V11L24 3z" fill="url(#g1)" opacity=".95"/>
+          <path d="M24 7 10 13.4V23c0 8.8 6 15 14 18 8-3 14-9.2 14-18V13.4L24 7z" fill="#0a1230"/>
+          <path d="M17 23.5l5 5 9-11" stroke="#e3b341" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs><linearGradient id="g1" x1="6" y1="3" x2="42" y2="45"><stop stop-color="#f6d47c"/><stop offset="1" stop-color="#b8860b"/></linearGradient></defs>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">مخازن التعيينات</div>
+        <div class="brand-sub">منظومة التموين • v1.0</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-title">القائمة الرئيسية</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        لوحة التحكم
+      </a>
+      <a href="{{ url_for('placeholder', page='items') }}" class="nav-link {% if active == 'items' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+        الأصناف
+      </a>
+      <a href="{{ url_for('placeholder', page='warehouses') }}" class="nav-link {% if active == 'warehouses' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9z"/><path d="M9 21v-6h6v6"/></svg>
+        المخازن
+      </a>
+      <a href="{{ url_for('placeholder', page='entities') }}" class="nav-link {% if active == 'entities' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4M8 7h2m4 0h2M8 11h2m4 0h2"/></svg>
+        الجهات المستفيدة
+      </a>
+      <div class="nav-title">الحركة المخزنية</div>
+      <a href="{{ url_for('placeholder', page='supply') }}" class="nav-link {% if active == 'supply' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        التوريد
+      </a>
+      <a href="{{ url_for('placeholder', page='disbursement') }}" class="nav-link {% if active == 'disbursement' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        الصرف
+      </a>
+      <div class="nav-title">النظام</div>
+      <a href="{{ url_for('placeholder', page='reports') }}" class="nav-link {% if active == 'reports' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>
+        التقارير
+      </a>
+      <a href="{{ url_for('placeholder', page='users') }}" class="nav-link {% if active == 'users' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 15.2c2.6.3 4.7 1.8 5.5 4.8"/></svg>
+        المستخدمون
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <a href="{{ url_for('logout') }}" class="logout-btn">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg>
+        تسجيل الخروج
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ المحتوى ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="القائمة">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="top-date">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg>
+        <span id="todayDate"></span>
+      </div>
+      <div class="top-user">
+        <div class="avatar">{{ current_user.full_name[:1] if current_user else 'م' }}</div>
+        <div>
+          <div class="u-name">{{ current_user.full_name if current_user else '' }}</div>
+          <div class="u-role">{% if current_user and current_user.role == 'admin' %}مدير النظام{% else %}أمين مخزن{% endif %}</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flashes">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">منظومة مخازن التعيينات © 2026 — جميع الحقوق محفوظة</footer>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

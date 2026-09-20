@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم • منظومة مخازن التعيينات{% endblock %}
+
+{% block content %}
+<!-- ترحيب -->
+<section class="welcome">
+  <div>
+    <h1>لوحة التحكم الرئيسية 📊</h1>
+    <p>نظرة شاملة على حركة المخازن والتعيينات — <span id="dashDate"></span></p>
+  </div>
+  <div class="welcome-actions">
+    <a href="{{ url_for('placeholder', page='supply') }}" class="btn-green">+ توريد جديد</a>
+    <a href="{{ url_for('placeholder', page='disbursement') }}" class="btn-gold">+ صرف جديد</a>
+  </div>
+</section>
+
+<!-- كروت الإحصائيات -->
+<section class="stats">
+  <div class="stat-card">
+    <div class="stat-icon gold">
+      <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+    </div>
+    <div>
+      <div class="stat-num">{{ stats.total_items | fmt }}</div>
+      <div class="stat-label">إجمالي الأصناف</div>
+    </div>
+    <div class="stat-foot">{{ stats.total_warehouses }} مخازن • {{ stats.total_entities }} جهات</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    </div>
+    <div>
+      <div class="stat-num">{{ stats.today_disb | fmt }}</div>
+      <div class="stat-label">أوامر صرف اليوم</div>
+    </div>
+    <div class="stat-foot">{{ stats.month_disb | fmt }} أمر صرف هذا الشهر</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon blue">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    </div>
+    <div>
+      <div class="stat-num">{{ stats.month_supp | fmt }}</div>
+      <div class="stat-label">توريدات هذا الشهر</div>
+    </div>
+    <div class="stat-foot">استلام من الموردين المعتمدين</div>
+  </div>
+
+  <div class="stat-card alert">
+    <div class="stat-icon red">
+      <svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+    </div>
+    <div>
+      <div class="stat-num">{{ stats.low_count | fmt }}</div>
+      <div class="stat-label">تنبيهات نقص المخزون</div>
+    </div>
+    <div class="stat-foot">أصناف وصلت لحد الطلب أو أقل</div>
+  </div>
+</section>
+
+<!-- الرسوم البيانية -->
+<section class="charts">
+  <div class="panel chart-panel">
+    <div class="panel-head">
+      <h3>حركة المخازن — آخر 7 أيام</h3>
+      <span class="panel-hint">عدد أوامر التوريد والصرف يومياً</span>
+    </div>
+    <div class="chart-box"><canvas id="chMove"></canvas></div>
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-head">
+      <h3>الأصناف الأكثر صرفاً</h3>
+      <span class="panel-hint">حسب إجمالي الكميات المنصرفة</span>
+    </div>
+    <div class="chart-box"><canvas id="chTop"></canvas></div>
+  </div>
+</section>
+
+<!-- تنبيهات + أحدث الحركات -->
+<section class="tables">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>⚠️ الأصناف قريبة النفاد</h3>
+      <a href="{{ url_for('placeholder', page='items') }}" class="link">عرض الأصناف ←</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الصنف</th><th>المخزن</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr></thead>
+        <tbody>
+          {% for r in stats.low_stock %}
+          <tr>
+            <td><strong>{{ r.item_name }}</strong><small>{{ r.code }}</small></td>
+            <td>{{ r.warehouse_name }}</td>
+            <td class="num">{{ r.quantity | fmt }} {{ r.unit }}</td>
+            <td class="num">{{ r.min_stock | fmt }}</td>
+            <td><span class="badge {{ 'b-danger' if r.level == 'حرج' else 'b-warn' }}">{{ r.level }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">لا توجد تنبيهات — المخزون بحالة جيدة ✅</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>🧾 أحدث الحركات المخزنية</h3>
+      <a href="{{ url_for('placeholder', page='reports') }}" class="link">كل التقارير ←</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>رقم الأمر</th><th>النوع</th><th>التاريخ</th><th>الجهة / المورد</th><th>الأصناف</th></tr></thead>
+        <tbody>
+          {% for t in stats.recent %}
+          <tr>
+            <td class="num"><strong>{{ t.number }}</strong><small>{{ t.warehouse_name }}</small></td>
+            <td>
+              {% if t.type == 'supply' %}
+                <span class="badge b-supply">توريد ⬇</span>
+              {% else %}
+                <span class="badge b-disb">صرف ⬆</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ t.date }}</td>
+            <td>{{ t.entity_name or t.supplier_name or '—' }}</td>
+            <td class="num">{{ t.items_count | fmt }} أصناف</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">لا توجد حركات مسجلة بعد</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DASH = {
+  days: {{ stats.chart7.labels | tojson }},
+  disb: {{ stats.chart7.disb | tojson }},
+  supp: {{ stats.chart7.supp | tojson }},
+  topLabels: {{ stats.top_items.labels | tojson }},
+  topData: {{ stats.top_items.data | tojson }}
+};
+</script>
+{% endblock %}

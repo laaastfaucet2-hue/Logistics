@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول • منظومة مخازن التعيينات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Changa:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+<div class="bg-fx"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span><span class="grid"></span></div>
+
+<div class="login-wrap">
+  <!-- جهة التعريف -->
+  <div class="login-hero">
+    <div class="hero-logo">
+      <svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 3 6 11v12c0 11 7.5 18.5 18 22 10.5-3.5 18-11 18-22V11L24 3z" fill="url(#lg1)" opacity=".95"/>
+        <path d="M24 7 10 13.4V23c0 8.8 6 15 14 18 8-3 14-9.2 14-18V13.4L24 7z" fill="#0a1230"/>
+        <path d="M17 23.5l5 5 9-11" stroke="#e3b341" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="lg1" x1="6" y1="3" x2="42" y2="45"><stop stop-color="#f6d47c"/><stop offset="1" stop-color="#b8860b"/></linearGradient></defs>
+      </svg>
+    </div>
+    <h1>منظومة مخازن التعيينات</h1>
+    <p class="hero-sub">إدارة التموين • صرف تعيينات الأكل والشرب</p>
+    <ul class="hero-feats">
+      <li><span class="dot"></span> إدارة الأصناف والمخازن والأرصدة لحظياً</li>
+      <li><span class="dot"></span> أوامر التوريد والصرف للجهات والوحدات</li>
+      <li><span class="dot"></span> تنبيهات النواقص والتقارير والكشوف</li>
+    </ul>
+  </div>
+
+  <!-- بطاقة الدخول -->
+  <div class="login-card">
+    <h2>تسجيل الدخول</h2>
+    <p class="login-sub">مرحباً بك، أدخل بياناتك للمتابعة</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <label class="field">
+        <span>اسم المستخدم</span>
+        <input type="text" name="username" placeholder="مثال: admin" required autofocus autocomplete="username">
+      </label>
+      <label class="field">
+        <span>كلمة المرور</span>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn-gold btn-block">دخول المنظومة</button>
+    </form>
+
+    <div class="demo-hint">
+      <span>بيانات الدخول التجريبية:</span>
+      <code>admin / admin123</code>
+    </div>
+  </div>
+</div>
+</body>
+</html>
