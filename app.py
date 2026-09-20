@@ -1,11 +1,21 @@
 """منظومة مخازن التعيينات - ملف التشغيل الرئيسي."""
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
 import database as db
 
 app = Flask(__name__)
 app.secret_key = "rations-warehouse-2026-secret-key"
+
+# إعدادات الجلسة عشان تشتغل داخل المعاينة (iframe) على HTTPS
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    PREFERRED_URL_SCHEME="https",
+)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_db()
 
