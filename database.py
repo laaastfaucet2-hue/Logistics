@@ -1,11 +1,24 @@
-"""قاعدة بيانات منظومة مخازن التعيينات (SQLite)."""
+"""قاعدة بيانات منظومة مخازن التعيينات (SQLite).
+
+ملف النظام system.db يعيش داخل مجلد database/ الذي يحتوي أيضًا
+على مجلدات السنوات والشهور والأقسام (انظر storage.py).
+"""
 import os
 import secrets
+import shutil
 import sqlite3
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rations.db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "database")
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "system.db")
+
+# ترحيل تلقائي لقاعدة البيانات القديمة من جذر المشروع إلى مجلد database
+_legacy_db = os.path.join(BASE_DIR, "rations.db")
+if os.path.exists(_legacy_db) and not os.path.exists(DB_PATH):
+    shutil.move(_legacy_db, DB_PATH)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -92,6 +105,12 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
     expires_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_context (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL DEFAULT 1
+);
 """
 
 
@@ -155,6 +174,38 @@ def delete_session(token):
         return
     conn = get_conn()
     conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+# ======================================================================
+# سياق السنة/الشهر المحدد لكل مستخدم (يظل محفوظًا بين الجلسات)
+# ======================================================================
+def get_user_context(user_id):
+    """يرجع {'year':…, 'month':…} للمستخدم أو None لو لم يُحدد بعد."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT year, month FROM user_context WHERE user_id=?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def set_user_context(user_id, year, month):
+    """يحفظ السنة والشهر النشطين للمستخدم."""
+    month = max(1, min(12, int(month)))
+    conn = get_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO user_context (user_id, year, month) VALUES (?,?,?)",
+        (user_id, int(year), month))
+    conn.commit()
+    conn.close()
+
+
+def reset_context_year(deleted_year, fallback_year):
+    """عند حذف سنة: كل مستخدم كان عليها ينتقل تلقائيًا لأحدث سنة متبقية."""
+    conn = get_conn()
+    conn.execute("UPDATE user_context SET year=? WHERE year=?",
+                 (int(fallback_year), int(deleted_year)))
     conn.commit()
     conn.close()
 

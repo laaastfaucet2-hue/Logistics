@@ -14,6 +14,11 @@
 <body>
 <div class="bg-fx"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="grid"></span></div>
 
+{% set ok_msg = request.args.get('ok') %}
+{% set err_msg = request.args.get('err') %}
+{% if ok_msg %}<div class="toast ok" id="appToast">✅ {{ ok_msg }}</div>{% endif %}
+{% if err_msg %}<div class="toast err" id="appToast">⚠️ {{ err_msg }}</div>{% endif %}
+
 <div class="app">
   <!-- ============ القائمة الجانبية ============ -->
   <aside class="sidebar" id="sidebar">
@@ -38,36 +43,14 @@
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         لوحة التحكم
       </a>
-      <a href="{{ url_for('placeholder', page='items') }}" class="nav-link {% if active == 'items' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
-        الأصناف
+
+      <div class="nav-title">أقسام المخازن</div>
+      {% for s in sections or [] %}
+      <a href="{{ url_for('section_page', key=s.key) }}" class="nav-link {% if request.path == url_for('section_page', key=s.key) %}active{% endif %}">
+        <span class="nav-ico">{{ s.icon }}</span>
+        {{ s.name }}
       </a>
-      <a href="{{ url_for('placeholder', page='warehouses') }}" class="nav-link {% if active == 'warehouses' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9z"/><path d="M9 21v-6h6v6"/></svg>
-        المخازن
-      </a>
-      <a href="{{ url_for('placeholder', page='entities') }}" class="nav-link {% if active == 'entities' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4M8 7h2m4 0h2M8 11h2m4 0h2"/></svg>
-        الجهات المستفيدة
-      </a>
-      <div class="nav-title">الحركة المخزنية</div>
-      <a href="{{ url_for('placeholder', page='supply') }}" class="nav-link {% if active == 'supply' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-        التوريد
-      </a>
-      <a href="{{ url_for('placeholder', page='disbursement') }}" class="nav-link {% if active == 'disbursement' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-        الصرف
-      </a>
-      <div class="nav-title">النظام</div>
-      <a href="{{ url_for('placeholder', page='reports') }}" class="nav-link {% if active == 'reports' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>
-        التقارير
-      </a>
-      <a href="{{ url_for('placeholder', page='users') }}" class="nav-link {% if active == 'users' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 15.2c2.6.3 4.7 1.8 5.5 4.8"/></svg>
-        المستخدمون
-      </a>
+      {% endfor %}
     </nav>
 
     <div class="side-foot">
@@ -99,6 +82,22 @@
           <div class="u-role">{% if current_user and current_user.role == 'admin' %}مدير النظام{% else %}أمين مخزن{% endif %}</div>
         </div>
       </div>
+
+      <!-- محدد السنة والشهر + إدارة السنوات (أعلى اليسار) -->
+      {% if ctx_year is defined %}
+      <div class="ctx" title="السنة والشهر النشطان في كل صفحات المنظومة">
+        <span class="ctx-label">السنة</span>
+        <select id="ctxYear" class="ctx-sel">
+          {% for y in years %}<option value="{{ y }}" {% if y == ctx_year %}selected{% endif %}>{{ y | aindic }}</option>{% endfor %}
+        </select>
+        <span class="ctx-label">الشهر</span>
+        <select id="ctxMonth" class="ctx-sel">
+          {% for num, name in months %}<option value="{{ num }}" {% if num == ctx_month %}selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+        <button class="ctx-btn add" id="addYearBtn" title="إنشاء سنة جديدة">➕</button>
+        <button class="ctx-btn danger" id="delYearBtn" title="حذف السنة المحددة نهائيًا">🗑</button>
+      </div>
+      {% endif %}
     </header>
 
     <main class="content">
@@ -150,6 +149,50 @@
       }
     }
   });
+})();
+</script>
+<script>
+/* محدد السنة/الشهر + إنشاء وحذف السنوات + إخفاء التنبيهات */
+(function () {
+  var next = encodeURIComponent({{ request.path | tojson }});
+  var yearSel = document.getElementById("ctxYear");
+  var monthSel = document.getElementById("ctxMonth");
+
+  function getSid() {
+    try { var s = localStorage.getItem("rations_sid"); if (s) return s; } catch (e) {}
+    var m = location.search.match(/[?&]sid=([^&]+)/);
+    return m ? m[1] : "";
+  }
+  function navTo(url) {
+    var s = getSid();
+    if (s) url += (url.indexOf("?") === -1 ? "?" : "&") + "sid=" + encodeURIComponent(s);
+    window.location.href = url;
+  }
+
+  if (yearSel && monthSel) {
+    var apply = function () {
+      navTo("/context/set?year=" + yearSel.value + "&month=" + monthSel.value + "&next=" + next);
+    };
+    yearSel.addEventListener("change", apply);
+    monthSel.addEventListener("change", apply);
+  }
+
+  var addBtn = document.getElementById("addYearBtn");
+  if (addBtn) addBtn.addEventListener("click", function () {
+    var y = prompt("أدخل السنة الجديدة — يمكنك الكتابة بالأرقام العربية (مثال: ٢٠٢٧):", "");
+    if (y && y.trim()) navTo("/years/create?year=" + encodeURIComponent(y.trim()) + "&next=" + next);
+  });
+
+  var delBtn = document.getElementById("delYearBtn");
+  if (delBtn) delBtn.addEventListener("click", function () {
+    var label = yearSel ? yearSel.options[yearSel.selectedIndex].text : "";
+    if (confirm("⚠️ تحذير: سيتم حذف سنة " + label + " وكل محتوياتها نهائيًا ولا يمكن التراجع عن ذلك!\n\nهل أنت متأكد من الحذف؟")) {
+      navTo("/years/delete?year=" + yearSel.value + "&next=" + next);
+    }
+  });
+
+  var toast = document.getElementById("appToast");
+  if (toast) setTimeout(function () { toast.classList.add("hide"); }, 4500);
 })();
 </script>
 {% block scripts %}{% endblock %}
