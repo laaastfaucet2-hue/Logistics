@@ -102,7 +102,7 @@ def init_db():
     if not cur.execute("SELECT 1 FROM users WHERE username='mostafa'").fetchone():
         cur.execute(
             "INSERT INTO users (username, password, full_name, role) VALUES (?,?,?,?)",
-            ("mostafa", generate_password_hash("admin123"), "مصطفى", "admin"),
+            ("mostafa", generate_password_hash("779"), "مصطفى", "admin"),
         )
 
     # ---------- المخازن ----------
