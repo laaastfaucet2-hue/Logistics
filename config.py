@@ -10,20 +10,21 @@ MONTH_NAMES = [
     "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
 ]
 
-# الأقسام الاثنا عشر — ترتيبها ثابت، وتُرقَّم مجلداتها بنفس الترتيب
+# الأقسام الاثنا عشر — الأسماء حرفيًا كما أُمليت، وبنفس الترتيب،
+# وتُرقَّم مجلداتها داخل كل شهر بنفس الترتيب (01-... حتى 12-...)
 SECTIONS = [
-    {"key": "tamween",   "name": "التموين",   "icon": "🍞"},
-    {"key": "malabes",   "name": "الملابس",   "icon": "👕"},
-    {"key": "waqoud",    "name": "الوقود",     "icon": "⛽"},
-    {"key": "tameedat",  "name": "التاميدات",  "icon": "⚖️"},
-    {"key": "tarfea",    "name": "الترفية",    "icon": "🎖️"},
-    {"key": "takyeef",   "name": "التكييف",    "icon": "❄️"},
-    {"key": "raghebeen", "name": "الراغبين",   "icon": "🙋"},
-    {"key": "adawat",    "name": "الأدوات",    "icon": "🔧"},
-    {"key": "ohad",      "name": "العُهد",     "icon": "📋"},
-    {"key": "nadafa",    "name": "النظافة",    "icon": "🧼"},
-    {"key": "inshaat",   "name": "الإنشاءات",  "icon": "🏗️"},
-    {"key": "sayarat",   "name": "السيارات",   "icon": "🚗"},
+    {"key": "supply_records",      "name": "سجلات الامداد",        "icon": "🚚"},
+    {"key": "contractor_records",  "name": "سجلات المتعهد",        "icon": "🗂️"},
+    {"key": "raghebeen",           "name": "قسم الراغبين",         "icon": "🙋"},
+    {"key": "tamween_rations",     "name": "المقررات التمونيية",   "icon": "🍞"},
+    {"key": "contractor_rations",  "name": "مقررات المتعهد",       "icon": "📋"},
+    {"key": "warehouses_records",  "name": "مستودعات وسجلات",      "icon": "🏪"},
+    {"key": "tameedat",            "name": "التاميدات",            "icon": "⚖️"},
+    {"key": "mojandeen",           "name": "المجندين",             "icon": "🪖"},
+    {"key": "statistics",          "name": "الاحصائيات",           "icon": "📊"},
+    {"key": "cold_stores",         "name": "المخازن والثلاجات",    "icon": "🧊"},
+    {"key": "tarfea",              "name": "الترفية",              "icon": "🎖️"},
+    {"key": "contractor_invoices", "name": "فواتير المتعهد",       "icon": "🧾"},
 ]
 
 SECTION_MAP = {s["key"]: s for s in SECTIONS}
@@ -35,5 +36,5 @@ def month_folder(number):
 
 
 def section_folder(number, section_name):
-    """اسم مجلد القسم داخل الشهر: 01-التموين ... 12-السيارات"""
+    """اسم مجلد القسم داخل الشهر: 01-سجلات الامداد ... 12-فواتير المتعهد"""
     return f"{number:02d}-{section_name}"

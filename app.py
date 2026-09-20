@@ -25,6 +25,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_db()
 storage.ensure_initialized(datetime.now().year)
+storage.sync_section_folders()
 
 
 # تحويل الأرقام العربية/الفارسية إلى إنجليزية + إزالة المسافات الزيادة

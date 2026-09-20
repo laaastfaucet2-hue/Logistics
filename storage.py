@@ -64,3 +64,30 @@ def ensure_initialized(current_year):
     DATA_DIR.mkdir(exist_ok=True)
     if not list_years():
         create_year(current_year)
+
+
+SECTION_DIR_RE = re.compile(r"^(\d{2})-")
+
+
+def sync_section_folders():
+    """يوائم مجلدات الأقسام داخل كل سنة/شهر مع الأسماء المعتمدة في config.
+
+    - مجلد قسم قديم بنفس الرقم لكن باسم مختلف → يُعاد تسميته (محتواه محفوظ).
+    - مجلد قسم ناقص → يُنشأ.
+    """
+    for year in list_years():
+        for month in range(1, 13):
+            month_dir = year_path(year) / month_folder(month)
+            month_dir.mkdir(parents=True, exist_ok=True)
+            existing = {}
+            for p in month_dir.iterdir():
+                m = SECTION_DIR_RE.match(p.name)
+                if p.is_dir() and m:
+                    existing[int(m.group(1))] = p
+            for index, section in enumerate(SECTIONS, start=1):
+                want = section_folder(index, section["name"])
+                cur = existing.get(index)
+                if cur is None:
+                    (month_dir / want).mkdir(exist_ok=True)
+                elif cur.name != want and not (month_dir / want).exists():
+                    cur.rename(month_dir / want)
