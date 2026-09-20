@@ -139,6 +139,14 @@ body {
 .btn-block { width: 100%; margin-top: 8px; }
 .link { color: var(--gold-light); text-decoration: none; font-weight: 700; font-size: .88rem; }
 .link:hover { text-decoration: underline; }
+.remember { display: flex; align-items: center; gap: 10px; margin: 4px 0 6px; cursor: pointer;
+  font-weight: 700; font-size: .88rem; color: #c6cfe6; }
+.remember input { width: 18px; height: 18px; accent-color: #e3b341; cursor: pointer; }
+.logout-top { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 10px;
+  font-family: "Cairo"; font-weight: 800; font-size: .85rem; text-decoration: none; white-space: nowrap;
+  color: #fca5a5; border: 1px solid rgba(248,113,113,.4); background: rgba(248,113,113,.08); transition: all .25s; }
+.logout-top svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.logout-top:hover { background: rgba(248,113,113,.18); box-shadow: 0 4px 16px rgba(248,113,113,.25); }
 
 /* ---------- كروت الإحصائيات ---------- */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }

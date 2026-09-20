@@ -49,6 +49,9 @@ def login_required(view):
     def wrapper(*args, **kwargs):
         user, token = current_session()
         if not user:
+            # لو كان معاه توكن لكنه منتهي/ملغي → علّم الصفحة عشان تمسح المحفوظ ومتعملش حلقة تحويل
+            if request.args.get("sid") or request.form.get("sid"):
+                return redirect(url_for("login", expired=1))
             flash("من فضلك سجل الدخول أولاً", "error")
             return redirect(url_for("login"))
         g.user = user
@@ -101,7 +104,8 @@ def login():
                 "full_name": user["full_name"],
                 "role": user["role"],
             }
-            token = db.create_session(user["id"])
+            remember = request.form.get("remember")
+            token = db.create_session(user["id"], hours=(24 * 30 if remember else 12))
             flash(f"مرحباً {user['full_name']} 👋", "success")
             return redirect(url_for("dashboard", sid=token))
         flash("اسم المستخدم أو كلمة المرور غير صحيحة", "error")

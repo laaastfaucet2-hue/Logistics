@@ -38,6 +38,8 @@
     <h2>تسجيل الدخول</h2>
     <p class="login-sub">مرحباً بك، أدخل بياناتك للمتابعة</p>
 
+    <div class="flash flash-error" id="expiredMsg" style="display:none">انتهت الجلسة المحفوظة — سجل الدخول مرة أخرى</div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -49,11 +51,18 @@
     <form method="post">
       <label class="field">
         <span>اسم المستخدم</span>
-        <input type="text" name="username" placeholder="مثال: admin" required autofocus autocomplete="username">
+        <input type="text" name="username" value="mostafa" placeholder="مثال: mostafa" required autofocus autocomplete="username">
       </label>
       <label class="field">
         <span>كلمة المرور</span>
-        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+        <div class="pw-wrap">
+          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+          <button type="button" class="pw-toggle" onclick="togglePw()" title="إظهار/إخفاء">👁</button>
+        </div>
+      </label>
+      <label class="remember">
+        <input type="checkbox" name="remember" checked>
+        <span>تذكرني دائماً (دخول تلقائي لمدة 30 يوم)</span>
       </label>
       <button type="submit" class="btn-gold btn-block">دخول المنظومة</button>
     </form>
@@ -66,6 +75,19 @@
 </div>
 <script>
 function togglePw(){var i=document.getElementById('password');i.type=(i.type==='password')?'text':'password';}
+/* دخول تلقائي: لو فيه جلسة محفوظة ادخل بيها مباشرة */
+(function(){
+  try{
+    var params = new URLSearchParams(location.search);
+    if(params.get('expired')==='1'){
+      localStorage.removeItem('rations_sid');
+      document.getElementById('expiredMsg').style.display='block';
+      return;
+    }
+    var sid = localStorage.getItem('rations_sid');
+    if(sid){ location.replace('/dashboard?sid='+encodeURIComponent(sid)); }
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
