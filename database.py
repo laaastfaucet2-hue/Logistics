@@ -99,10 +99,10 @@ def init_db():
     cur.executescript(SCHEMA)
 
     # ---------- المستخدم الافتراضي ----------
-    if not cur.execute("SELECT 1 FROM users WHERE username='admin'").fetchone():
+    if not cur.execute("SELECT 1 FROM users WHERE username='mostafa'").fetchone():
         cur.execute(
             "INSERT INTO users (username, password, full_name, role) VALUES (?,?,?,?)",
-            ("admin", generate_password_hash("admin123"), "مدير النظام", "admin"),
+            ("mostafa", generate_password_hash("admin123"), "مصطفى", "admin"),
         )
 
     # ---------- المخازن ----------
