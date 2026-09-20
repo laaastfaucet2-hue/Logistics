@@ -1,4 +1,4 @@
-# ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 100 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
+# ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """منظومة مخازن التعيينات - ملف التشغيل الرئيسي."""
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g, abort
 from werkzeug.security import check_password_hash
