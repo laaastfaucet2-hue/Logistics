@@ -102,166 +102,20 @@ def get_conn():
 
 
 def init_db():
+    """ينشئ الجداول + حساب المدير فقط (بدون أي بيانات تجريبية)."""
     conn = get_conn()
     cur = conn.cursor()
     cur.executescript(SCHEMA)
 
-    # ---------- المستخدم الافتراضي ----------
+    # ---------- حساب المدير فقط ----------
     if not cur.execute("SELECT 1 FROM users WHERE username='mostafa'").fetchone():
         cur.execute(
             "INSERT INTO users (username, password, full_name, role) VALUES (?,?,?,?)",
             ("mostafa", generate_password_hash("779"), "مصطفى", "admin"),
         )
 
-    # ---------- المخازن ----------
-    if cur.execute("SELECT COUNT(*) c FROM warehouses").fetchone()["c"] == 0:
-        warehouses = [
-            ("WH-01", "مخزن التعيينات الرئيسي", "القاهرة - مجمع المخازن", "أمين مخزن أول", "01001234567"),
-            ("WH-02", "المخزن الفرعي", "الجيزة - منطقة التموين", "أمين مخزن", "01007654321"),
-            ("WH-03", "مخزن الطوارئ", "القاهرة - الاحتياطي الاستراتيجي", "أمين مخزن", "01009876543"),
-        ]
-        cur.executemany(
-            "INSERT INTO warehouses (code, name, location, keeper_name, phone) VALUES (?,?,?,?,?)",
-            warehouses,
-        )
-
-    # ---------- الجهات المستفيدة ----------
-    if cur.execute("SELECT COUNT(*) c FROM entities").fetchone()["c"] == 0:
-        entities = [
-            ("ENT-01", "معسكر الأمن المركزي - القاهرة", "معسكر", "مسؤول التموين", "01001111111"),
-            ("ENT-02", "إدارة قوات الأمن - الجيزة", "إدارة", "مسؤول التموين", "01002222222"),
-            ("ENT-03", "معسكر التدريب والتأهيل", "معسكر", "مسؤول التموين", "01003333333"),
-            ("ENT-04", "الإدارة العامة للمرور", "إدارة", "مسؤول التموين", "01004444444"),
-            ("ENT-05", "قطاع الحماية المجتمعية", "قطاع", "مسؤول التموين", "01005555555"),
-        ]
-        cur.executemany(
-            "INSERT INTO entities (code, name, type, contact_name, phone) VALUES (?,?,?,?,?)",
-            entities,
-        )
-
-    # ---------- التصنيفات والأصناف ----------
-    if cur.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0:
-        cats = ["حبوب وبقوليات", "معلبات", "زيوت وسمن", "مشروبات",
-                "لحوم ودواجن", "خضروات وفاكهة", "توابل وبهارات"]
-        cur.executemany("INSERT INTO categories (name) VALUES (?)", [(c,) for c in cats])
-        cat_id = {r["name"]: r["id"] for r in cur.execute("SELECT id, name FROM categories")}
-
-        items = [
-            ("R-001", "أرز أبيض فاخر", "حبوب وبقوليات", "كجم", 500),
-            ("R-002", "مكرونة", "حبوب وبقوليات", "كرتونة", 100),
-            ("R-003", "سكر أبيض", "حبوب وبقوليات", "كجم", 400),
-            ("R-004", "فول بلدي", "حبوب وبقوليات", "كجم", 300),
-            ("R-005", "عدس أصفر", "حبوب وبقوليات", "كجم", 200),
-            ("R-006", "فول مدمس معلب", "معلبات", "علبة", 500),
-            ("R-007", "صلصة طماطم", "معلبات", "علبة", 400),
-            ("R-008", "تونة معلبة", "معلبات", "علبة", 300),
-            ("R-009", "زيت طعام", "زيوت وسمن", "لتر", 300),
-            ("R-010", "سمن نباتي", "زيوت وسمن", "علبة", 150),
-            ("R-011", "شاي", "مشروبات", "علبة", 100),
-            ("R-012", "لحوم مجمدة", "لحوم ودواجن", "كجم", 200),
-            ("R-013", "دجاج مجمد", "لحوم ودواجن", "كجم", 200),
-            ("R-014", "بطاطس", "خضروات وفاكهة", "كجم", 150),
-            ("R-015", "بصل", "خضروات وفاكهة", "كجم", 100),
-            ("R-016", "ملح طعام", "توابل وبهارات", "كيس", 80),
-        ]
-        for code, name, cat, unit, minimum in items:
-            cur.execute(
-                "INSERT INTO items (code, name, category_id, unit, min_stock) VALUES (?,?,?,?,?)",
-                (code, name, cat_id[cat], unit, minimum),
-            )
-
-    conn.commit()
-
-    # ---------- الأرصدة الافتتاحية + حركات تجريبية ----------
-    if cur.execute("SELECT COUNT(*) c FROM transactions").fetchone()["c"] == 0:
-        _seed_demo_data(conn)
-
     conn.commit()
     conn.close()
-
-
-def _seed_demo_data(conn):
-    cur = conn.cursor()
-    item_id = {r["code"]: r["id"] for r in cur.execute("SELECT id, code FROM items")}
-    wh_id = {r["code"]: r["id"] for r in cur.execute("SELECT id, code FROM warehouses")}
-    ent_id = {r["code"]: r["id"] for r in cur.execute("SELECT id, code FROM entities")}
-
-    # أرصدة افتتاحية
-    opening = {
-        "WH-01": {"R-001": 5200, "R-002": 640, "R-003": 4100, "R-004": 2200,
-                  "R-005": 120, "R-006": 3800, "R-007": 2900, "R-008": 1500,
-                  "R-009": 2400, "R-010": 900, "R-011": 60, "R-012": 1600,
-                  "R-013": 1900, "R-014": 800, "R-015": 500, "R-016": 700},
-        "WH-02": {"R-001": 1200, "R-003": 900, "R-006": 800, "R-009": 500, "R-013": 400},
-        "WH-03": {"R-001": 3000, "R-003": 2000, "R-009": 1000, "R-012": 800},
-    }
-    for wcode, stocks in opening.items():
-        for icode, qty in stocks.items():
-            cur.execute("INSERT INTO stock (warehouse_id, item_id, quantity) VALUES (?,?,?)",
-                        (wh_id[wcode], item_id[icode], qty))
-
-    def add_tx(ttype, number, date, wcode, items_list, ecode=None, supplier="", notes=""):
-        cur.execute(
-            """INSERT INTO transactions (type, number, date, warehouse_id, entity_id,
-                                        supplier_name, notes, created_by)
-               VALUES (?,?,?,?,?,?,?,1)""",
-            (ttype, number, date, wh_id[wcode],
-             ent_id[ecode] if ecode else None, supplier, notes),
-        )
-        tid = cur.lastrowid
-        for icode, qty in items_list:
-            cur.execute(
-                "INSERT INTO transaction_items (transaction_id, item_id, quantity) VALUES (?,?,?)",
-                (tid, item_id[icode], qty),
-            )
-            delta = qty if ttype == "supply" else -qty
-            cur.execute(
-                "UPDATE stock SET quantity = quantity + ? WHERE warehouse_id=? AND item_id=?",
-                (delta, wh_id[wcode], item_id[icode]),
-            )
-
-    today = datetime.now().date()
-    d = lambda days_ago: (today - timedelta(days=days_ago)).isoformat()
-
-    # توريدات سابقة
-    add_tx("supply", "SUP-2026-0001", d(9), "WH-01",
-           [("R-001", 2000), ("R-003", 1500), ("R-009", 800)],
-           supplier="الشركة العامة للسلع التموينية", notes="توريد شهري معتمد")
-    add_tx("supply", "SUP-2026-0002", d(6), "WH-01",
-           [("R-006", 1000), ("R-007", 800), ("R-011", 200)],
-           supplier="شركة الأغذية المتحدة", notes="استكمال نواقص المعلبات")
-    add_tx("supply", "SUP-2026-0003", d(3), "WH-01",
-           [("R-012", 500), ("R-013", 600)],
-           supplier="شركة اللحوم والدواجن", notes="توريد لحوم ودواجن مجمدة")
-    add_tx("supply", "SUP-2026-0004", d(1), "WH-02",
-           [("R-001", 500), ("R-009", 200)],
-           supplier="الشركة العامة للسلع التموينية", notes="دعم المخزن الفرعي")
-
-    # صرفيات على مدار الأسبوع (عشان الرسوم البيانية تبقى حية)
-    add_tx("disbursement", "DIS-2026-0001", d(6), "WH-01",
-           [("R-001", 400), ("R-003", 250), ("R-009", 150)], ecode="ENT-01",
-           notes="تعيينات أسبوعية - الدفعة الأولى")
-    add_tx("disbursement", "DIS-2026-0002", d(5), "WH-01",
-           [("R-006", 300), ("R-007", 200), ("R-011", 40)], ecode="ENT-02",
-           notes="صرف معلبات ومشروبات")
-    add_tx("disbursement", "DIS-2026-0003", d(4), "WH-01",
-           [("R-001", 350), ("R-004", 150), ("R-013", 120)], ecode="ENT-03",
-           notes="تعيينات معسكر التدريب")
-    add_tx("disbursement", "DIS-2026-0004", d(3), "WH-01",
-           [("R-003", 200), ("R-009", 100), ("R-012", 90)], ecode="ENT-01",
-           notes="استكمال صرف")
-    add_tx("disbursement", "DIS-2026-0005", d(2), "WH-02",
-           [("R-001", 150), ("R-009", 60)], ecode="ENT-04",
-           notes="صرف من المخزن الفرعي")
-    add_tx("disbursement", "DIS-2026-0006", d(1), "WH-01",
-           [("R-002", 80), ("R-006", 250), ("R-008", 120)], ecode="ENT-05",
-           notes="تعيينات القطاع")
-    add_tx("disbursement", "DIS-2026-0007", d(0), "WH-01",
-           [("R-001", 300), ("R-003", 180), ("R-007", 150)], ecode="ENT-02",
-           notes="صرف اليوم")
-    add_tx("disbursement", "DIS-2026-0008", d(0), "WH-01",
-           [("R-013", 100), ("R-009", 80), ("R-011", 25)], ecode="ENT-03",
-           notes="صرف اليوم - مسائي")
 
 
 # ======================================================================
