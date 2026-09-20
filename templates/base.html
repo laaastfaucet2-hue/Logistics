@@ -115,6 +115,33 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+/* تمرير توكن الجلسة (sid) في كل الروابط والفورمات — بديل الكوكيز داخل المعاينة */
+(function () {
+  var sid = {{ sid | tojson }};
+  if (!sid) return;
+  document.querySelectorAll('a[href^="/"]').forEach(function (a) {
+    var href = a.getAttribute("href");
+    if (!href || href.indexOf("sid=") !== -1) return;
+    a.setAttribute("href", href + (href.indexOf("?") === -1 ? "?sid=" : "&sid=") + encodeURIComponent(sid));
+  });
+  document.querySelectorAll("form").forEach(function (f) {
+    var method = (f.getAttribute("method") || "get").toLowerCase();
+    if (method === "post") {
+      if (!f.querySelector('input[name="sid"]')) {
+        var inp = document.createElement("input");
+        inp.type = "hidden"; inp.name = "sid"; inp.value = sid;
+        f.appendChild(inp);
+      }
+    } else {
+      var act = f.getAttribute("action") || location.pathname;
+      if (act.indexOf("sid=") === -1) {
+        f.setAttribute("action", act + (act.indexOf("?") === -1 ? "?sid=" : "&sid=") + encodeURIComponent(sid));
+      }
+    }
+  });
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

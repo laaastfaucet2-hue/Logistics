@@ -1,5 +1,6 @@
 """قاعدة بيانات منظومة مخازن التعيينات (SQLite)."""
 import os
+import secrets
 import sqlite3
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
@@ -83,6 +84,13 @@ CREATE TABLE IF NOT EXISTS transaction_items (
     item_id INTEGER NOT NULL REFERENCES items(id),
     quantity REAL NOT NULL,
     notes TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    expires_at TEXT NOT NULL
 );
 """
 
@@ -254,6 +262,47 @@ def _seed_demo_data(conn):
     add_tx("disbursement", "DIS-2026-0008", d(0), "WH-01",
            [("R-013", 100), ("R-009", 80), ("R-011", 25)], ecode="ENT-03",
            notes="صرف اليوم - مسائي")
+
+
+# ======================================================================
+# جلسات الدخول بالتوكن (بديل الكوكيز — يعمل داخل المعاينة مهما كان إعداد المتصفح)
+# ======================================================================
+def create_session(user_id, hours=12):
+    """ينشئ توكن جلسة جديد للمستخدم ويرجعه."""
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now() + timedelta(hours=hours)).isoformat(sep=" ", timespec="seconds")
+    conn = get_conn()
+    conn.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)",
+                 (token, user_id, expires))
+    conn.execute("DELETE FROM sessions WHERE expires_at <= datetime('now','localtime')")
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_session_user(token):
+    """يرجع بيانات المستخدم صاحب التوكن لو ساري، وإلا None."""
+    if not token:
+        return None
+    conn = get_conn()
+    row = conn.execute(
+        """SELECT u.id, u.username, u.full_name, u.role FROM sessions s
+           JOIN users u ON u.id = s.user_id
+           WHERE s.token = ? AND s.expires_at > datetime('now','localtime') AND u.is_active = 1""",
+        (token,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def delete_session(token):
+    """يحذف توكن الجلسة (تسجيل الخروج)."""
+    if not token:
+        return
+    conn = get_conn()
+    conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
 
 
 # ======================================================================

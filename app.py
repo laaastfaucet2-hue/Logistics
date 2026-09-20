@@ -1,5 +1,5 @@
 """منظومة مخازن التعيينات - ملف التشغيل الرئيسي."""
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from werkzeug.security import check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
@@ -28,19 +28,40 @@ def normalize(text):
     return (text or "").translate(AR_DIGITS).strip()
 
 
+def current_session():
+    """يرجع (المستخدم، التوكن) — من الكوكي أو من sid في الرابط/الفورم."""
+    if "user" in session:
+        return session["user"], request.args.get("sid") or None
+    token = request.args.get("sid") or request.form.get("sid")
+    if token:
+        user = db.get_session_user(token)
+        if user:
+            return (
+                {"id": user["id"], "username": user["username"],
+                 "full_name": user["full_name"], "role": user["role"]},
+                token,
+            )
+    return None, None
+
+
 def login_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
-        if "user" not in session:
+        user, token = current_session()
+        if not user:
             flash("من فضلك سجل الدخول أولاً", "error")
             return redirect(url_for("login"))
+        g.user = user
+        g.sid = token
         return view(*args, **kwargs)
     return wrapper
 
 
 @app.context_processor
-def inject_user():
-    return {"current_user": session.get("user")}
+def inject_auth():
+    user = getattr(g, "user", None) or session.get("user")
+    sid = getattr(g, "sid", None) or request.args.get("sid") or ""
+    return {"current_user": user, "sid": sid}
 
 
 @app.template_filter("fmt")
@@ -54,12 +75,20 @@ def fmt_number(value):
 
 @app.route("/")
 def index():
-    return redirect(url_for("dashboard" if "user" in session else "login"))
+    user, token = current_session()
+    if user:
+        if token:
+            return redirect(url_for("dashboard", sid=token))
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if "user" in session:
+    user, token = current_session()
+    if user:
+        if token:
+            return redirect(url_for("dashboard", sid=token))
         return redirect(url_for("dashboard"))
     if request.method == "POST":
         username = normalize(request.form.get("username", "")).lower()
@@ -72,14 +101,18 @@ def login():
                 "full_name": user["full_name"],
                 "role": user["role"],
             }
+            token = db.create_session(user["id"])
             flash(f"مرحباً {user['full_name']} 👋", "success")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("dashboard", sid=token))
         flash("اسم المستخدم أو كلمة المرور غير صحيحة", "error")
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
+    token = request.args.get("sid") or request.form.get("sid")
+    if token:
+        db.delete_session(token)
     session.pop("user", None)
     flash("تم تسجيل الخروج بنجاح", "success")
     return redirect(url_for("login"))
