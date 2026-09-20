@@ -234,6 +234,11 @@ td.empty { text-align: center; color: var(--muted); padding: 30px; font-weight: 
   transition: all .25s; outline: none; }
 .field input:focus { border-color: var(--gold); background: rgba(227,179,65,.06); box-shadow: 0 0 0 4px rgba(227,179,65,.15); }
 .field input::placeholder { color: #5b6685; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-left: 52px; }
+.pw-toggle { position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: 1.15rem; opacity: .7; transition: opacity .2s; }
+.pw-toggle:hover { opacity: 1; }
 .demo-hint { margin-top: 24px; padding: 13px 16px; border-radius: 12px; text-align: center;
   background: rgba(96,165,250,.07); border: 1px dashed rgba(96,165,250,.35);
   font-size: .83rem; color: var(--muted); font-weight: 600; }

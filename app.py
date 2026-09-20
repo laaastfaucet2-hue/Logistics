@@ -10,6 +10,14 @@ app.secret_key = "rations-warehouse-2026-secret-key"
 db.init_db()
 
 
+# تحويل الأرقام العربية/الفارسية إلى إنجليزية + إزالة المسافات الزيادة
+AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
+
+
+def normalize(text):
+    return (text or "").translate(AR_DIGITS).strip()
+
+
 def login_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
@@ -44,8 +52,8 @@ def login():
     if "user" in session:
         return redirect(url_for("dashboard"))
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        username = normalize(request.form.get("username", "")).lower()
+        password = normalize(request.form.get("password", ""))
         user = db.get_user(username)
         if user and check_password_hash(user["password"], password):
             session["user"] = {
