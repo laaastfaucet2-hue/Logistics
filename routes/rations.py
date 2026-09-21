@@ -111,6 +111,9 @@ def item_add(section):
     kind = request.form.get("kind", RATION_KINDS[0][0])
     if not name:
         return _rb(section, kind=kind, err="اكتب اسم الصنف أولًا")
+    if dr.item_exists(year, month, section, kind, name):
+        return _rb(section, kind=kind,
+                   err=f"«{name}» موجود بالفعل في هذا المقرر — عدّله من زر ✏️")
     dr.add_item(year, month, section, kind, name,
                 (request.form.get("unit") or "").strip(),
                 arnum.parse_float(request.form.get("breakfast")),
@@ -219,10 +222,25 @@ def entity_add(section):
     name = (request.form.get("name") or "").strip()
     if not name:
         return _rb(section, tab="dist", err="اكتب اسم الجهة أولًا")
-    n = de.add_entity(year, month, name)
+    n, kind = de.add_entity(year, month, section, name)
     xlsx_rations.rebuild(year, month, section)
+    kl = RATION_KIND_MAP[kind]["name"]
     return _rb(section, tab="dist",
-               ok=f"أُضيفت «{name}» بجدولها وسُحب لها {arnum.to_arabic_indic(n)} صنفًا")
+               ok=f"أُضيفت «{name}» وسُحبت لها {arnum.to_arabic_indic(n)} صنفًا "
+                  f"بأرقامها من المقرر {kl} النشط في هذا القسم")
+
+
+@rations_bp.route("/<section>/entities/resync/<int:entity_id>", methods=["POST"])
+@login_required
+def entity_resync(section, entity_id):
+    SECTION_CFG.get(section) or abort(404)
+    year, month = _ctx_month()
+    n, kind = de.resync_entity(year, month, entity_id, section)
+    xlsx_rations.rebuild(year, month, section)
+    kl = RATION_KIND_MAP[kind]["name"]
+    return _rb(section, tab="dist",
+               ok=f"🔄 أُعيد سحب {arnum.to_arabic_indic(n)} صنفًا "
+                  f"من المقرر {kl} النشط — وتحديث الإكسل")
 
 
 @rations_bp.route("/<section>/entities/delete/<int:entity_id>", methods=["POST"])
@@ -243,6 +261,9 @@ def eitem_add(section, entity_id):
     name = (request.form.get("name") or "").strip()
     if not name:
         return _rb(section, tab="dist", err="اكتب اسم الصنف أولًا")
+    if de.entity_item_exists(year, month, entity_id, name):
+        return _rb(section, tab="dist",
+                   err=f"«{name}» موجود بالفعل في جدول هذه الجهة — عدّله من زر ✏️")
     de.add_entity_item(year, month, entity_id, name,
                        (request.form.get("unit") or "").strip(),
                        arnum.parse_float(request.form.get("breakfast")),
@@ -287,11 +308,16 @@ def eitem_delete(section, item_id):
 def eitem_days(section, item_id):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
-    days = [int(x) for x in request.form.getlist("wd") if x.isdigit()]
-    de.set_days(year, month, item_id, days)
+    # حفظ دفعة واحدة: كل يوم محدد + مقرره الخاص (فارغ = رقم الوجبات العام)
+    day_qty = {}
+    for d in range(7):
+        if request.form.get(f"wd_{d}") is not None:
+            day_qty[d] = arnum.parse_float(request.form.get(f"qty_{d}", ""))
+    de.set_days(year, month, item_id, day_qty)
     xlsx_rations.rebuild(year, month, section)
-    msg = "صُرف مخصص للأيام المحددة ✓" if days else "عاد الصنف للصرف اليومي"
-    return _rb(section, tab="dist", ok=msg + " — تم تحديث الإكسل")
+    msg = (f"حُفظ تخصيص {arnum.to_arabic_indic(len(day_qty))} يومًا بمقرراتها ✓"
+           if day_qty else "عاد الصنف للصرف اليومي")
+    return _rb(section, tab="dist", ok=msg + " — وتحديث الإكسل")
 
 
 # ======================================================================

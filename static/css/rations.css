@@ -129,3 +129,28 @@ tr.custom-on .name { color: #c4b5fd; }
   .rt-form { grid-template-columns: 1fr 1fr; }
   .days-td { min-width: 260px; }
 }
+
+/* ======== بطاقات أيام التوزيع + مقرر كل يوم (صفحة الجهات) ======== */
+.dist-col { min-width: 470px; }
+.day-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.day-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); cursor: pointer;
+  transition: all .15s; }
+.day-card.on { border-color: #c4b5fd; background: rgba(196,181,253,.08);
+  box-shadow: 0 0 0 3px rgba(196,181,253,.12); }
+.dc-top { display: flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 800;
+  color: #c6cfe6; }
+.dc-top input { accent-color: #c4b5fd; width: 14px; height: 14px; cursor: pointer; }
+.dc-qty { width: 100%; padding: 6px 8px; border-radius: 8px; font-family: "Cairo";
+  font-size: .8rem; font-weight: 700; color: var(--text); background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14); outline: none; transition: all .15s; }
+.dc-qty:disabled { opacity: .35; cursor: not-allowed; }
+.dc-qty:focus { border-color: #c4b5fd; box-shadow: 0 0 0 3px rgba(196,181,253,.15); }
+.days-hint { font-size: .72rem; color: var(--muted); font-weight: 600; margin: 8px 2px; }
+.mini-btn.gold { background: rgba(227,179,65,.14); color: var(--gold-light);
+  border: 1px solid rgba(227,179,65,.42); }
+.mini-btn.gold:hover { background: rgba(227,179,65,.28); }
+.badge-custom .dq { color: #e9d5ff; }
+@media (max-width: 1100px) {
+  .day-cards { grid-template-columns: repeat(2, 1fr); }
+}

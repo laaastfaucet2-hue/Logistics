@@ -118,3 +118,13 @@ def copy_kind(year, month, section, kind, to_year, to_month):
     target.commit()
     target.close()
     return len(rows)
+
+
+def item_exists(year, month, section, kind, name):
+    """منع تكرار اسم الصنف داخل نفس القسم ونفس نوع المقرر."""
+    conn = months.get_db(year, month)
+    row = conn.execute(
+        "SELECT 1 FROM ration_items WHERE section=? AND kind=? AND TRIM(name)=TRIM(?)",
+        (section, kind, name)).fetchone()
+    conn.close()
+    return row is not None

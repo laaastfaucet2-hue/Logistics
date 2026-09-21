@@ -42,7 +42,8 @@
       <button class="rt-btn gold" type="submit">➕ إضافة وسحب الأصناف</button>
     </div>
   </form>
-  <p class="rt-note">💡 عند الإضافة تُسحب تلقائيًا كل أصناف <strong>المقرر التموني المفعّل</strong> للجهة، وتقدر تعدّلها أو تحدد لكل صنف أيام توزيع مخصصة.</p>
+  <p class="rt-note">💡 عند الإضافة تُسحب تلقائيًا كل أصناف <strong>المقرر النشط في هذا القسم (مقررات المتعهد)</strong>
+  بأرقامها كاملة — وبعدين تحدّد أيام الصرف وتكتب مقرر كل يوم من زر «تخصيص» وتضغط حفظ مرة واحدة.</p>
 </div>
 
 <!-- الجهات -->
@@ -50,10 +51,16 @@
 <div class="panel entity-panel">
   <div class="panel-head">
     <h3>🏢 {{ e.name }} <span class="dim-txt">— {{ e['items'] | length | aindic }} صنفًا</span></h3>
-    <form method="post" action="{{ url_for('rations.entity_delete', section=section, entity_id=e.id) }}"
-          class="inline-f js-del-ent">
-      <button class="mini-btn red" type="submit">🗑 حذف الجهة</button>
-    </form>
+    <div class="head-ops">
+      <form method="post" action="{{ url_for('rations.entity_resync', section=section, entity_id=e.id) }}"
+            class="inline-f js-resync">
+        <button class="mini-btn gold" type="submit">🔄 تحديث من المقرر النشط</button>
+      </form>
+      <form method="post" action="{{ url_for('rations.entity_delete', section=section, entity_id=e.id) }}"
+            class="inline-f js-del-ent">
+        <button class="mini-btn red" type="submit">🗑 حذف الجهة</button>
+      </form>
+    </div>
   </div>
 
   <form method="post"
@@ -87,7 +94,7 @@
       <thead>
         <tr>
           <th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th>
-          {% for d in days %}<th class="day-col">{{ d }}</th>{% endfor %}
+          <th class="dist-col">أيام الصرف + مقرر كل يوم</th>
           <th>إجراءات</th>
         </tr>
       </thead>
@@ -100,22 +107,38 @@
           <td class="num">{{ num(it.breakfast) }}</td>
           <td class="num">{{ num(it.lunch) }}</td>
           <td class="num">{{ num(it.dinner) }}</td>
-          <td colspan="7" class="days-td">
+          <td class="days-td">
             <div class="days-state">
-              {% if it.is_custom %}<span class="badge-custom">📌 مخصص</span>{% else %}<span class="badge-daily">يوميًا</span>{% endif %}
+              {% if it.is_custom %}
+              <span class="badge-custom">📌 مخصص:
+                {%- for di in it.days -%}
+                  {{ days[di] }}{% if it.day_qty.get(di) is not none %} <span class="dq">{{ num(it.day_qty.get(di)) }}</span>{% endif %}{{ ' • ' if not loop.last }}
+                {%- endfor -%}
+              </span>
+              {% else %}
+              <span class="badge-daily">يوميًا — يُصرف كل أيام الأسبوع</span>
+              {% endif %}
               <button type="button" class="mini-btn dist-toggle">تخصيص</button>
             </div>
             <form method="post" class="days-form" hidden
                   action="{{ url_for('rations.eitem_days', section=section, item_id=it.id) }}">
-              <div class="days-row">
+              <div class="day-cards">
                 {% for di in range(7) %}
-                <label class="day-cb">
-                  <input type="checkbox" name="wd" value="{{ di }}" {% if di in it.days %}checked{% endif %}
-                         onchange="this.form.requestSubmit()">
-                  <span>{{ days[di] }}</span>
+                <label class="day-card {% if di in it.days %}on{% endif %}">
+                  <span class="dc-top">
+                    <input type="checkbox" name="wd_{{ di }}" {% if di in it.days %}checked{% endif %}>
+                    {{ days[di] }}
+                  </span>
+                  <input class="dc-qty" name="qty_{{ di }}" inputmode="decimal"
+                         placeholder="مقرر {{ days[di] }}"
+                         value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) is not none else '' }}"
+                         {% if di not in it.days %}disabled{% endif %}>
                 </label>
                 {% endfor %}
               </div>
+              <p class="days-hint">✔ حدّد الأيام واكتب مقرر كل يوم (سِبْه فاضي = ياخد رقم الوجبات العام)
+                 — كل التغييرات بتتحفظ مرة واحدة بزر الحفظ، من غير أي ريفرش للصفحة.</p>
+              <button class="rt-btn gold small" type="submit">💾 حفظ الأيام والمقررات</button>
             </form>
           </td>
           <td class="ops">
@@ -127,7 +150,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="14" class="empty">لا أصناف — أضف من الأعلى</td></tr>
+        <tr><td colspan="8" class="empty">لا أصناف — أضف من الأعلى أو اسحب من المقرر النشط بزر 🔄</td></tr>
         {% endfor %}
       </tbody>
     </table>

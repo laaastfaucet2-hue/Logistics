@@ -131,7 +131,15 @@ def _entity_sheet(wb, entity, year, month):
     _header(ws, 2, headers)
     rows = []
     for it in entity["items"]:
-        days = ["✓" if d in it["days"] else "" for d in range(7)]
+        dq = it.get("day_qty", {})
+        days = []
+        for d in range(7):
+            if d not in it["days"]:
+                days.append("")
+            elif dq.get(d) is None:
+                days.append("✓")
+            else:
+                days.append(_num(dq[d]))
         rows.append([arnum.to_arabic_indic(it["serial"]), it["name"], it["unit"],
                      _num(it["breakfast"]), _num(it["lunch"]), _num(it["dinner"])] + days)
     next_row = _rows(ws, 3, rows) + 2

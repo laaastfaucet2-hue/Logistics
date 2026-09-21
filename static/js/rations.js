@@ -70,4 +70,25 @@
       }
     });
   });
+
+  // تفعيل حقل مقرر اليوم عند تحديده — والحفظ دفعة واحدة بزر الحفظ (بدون تريقة)
+  document.querySelectorAll(".days-form input[type=checkbox]").forEach(function (cb) {
+    cb.addEventListener("change", function () {
+      var card = cb.closest(".day-card");
+      var qty = card ? card.querySelector(".dc-qty") : null;
+      if (!qty) return;
+      qty.disabled = !cb.checked;
+      card.classList.toggle("on", cb.checked);
+      if (cb.checked) qty.focus();
+    });
+  });
+
+  // تأكيد إعادة السحب من المقرر النشط
+  document.querySelectorAll("form.js-resync").forEach(function (f) {
+    f.addEventListener("submit", function (e) {
+      if (!confirm("🔄 هيتم مسح أصناف الجهة الحالية وإعادة سحبها من المقرر النشط — متابعة؟")) {
+        e.preventDefault();
+      }
+    });
+  });
 })();
