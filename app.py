@@ -1,4 +1,5 @@
 """Application factory and route wiring only. See CONTRIBUTING.md."""
+import mimetypes
 import os
 import secrets
 from flask import Flask
@@ -7,6 +8,9 @@ from core.paths import RESOURCE_DIR, APP_VERSION
 
 
 def create_app():
+    # Windows registry MIME associations can override Python's font/woff2 default.
+    # Keep bundled font responses identical across preview and installed WebView2.
+    mimetypes.add_type("font/woff2", ".woff2")
     from services.bootstrap import initialize
     from data_access import database as db
     initialize()

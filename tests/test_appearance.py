@@ -15,8 +15,8 @@ def test_complete_offline_font_files(weight):
     font = FONT_DIR / f"IBMPlexSansArabic-{weight}.woff2"
     assert font.read_bytes().startswith(b"wOF2")
     assert font.stat().st_size > 60_000  # Full Arabic/Latin family, not a Latin-only subset.
-    assert font.name in (ROOT / "static/css/fonts.css").read_text()
-    assert "SIL OPEN FONT LICENSE" in (FONT_DIR / "IBM-Plex-OFL.txt").read_text()
+    assert font.name in (ROOT / "static/css/fonts.css").read_text(encoding="utf-8")
+    assert "SIL OPEN FONT LICENSE" in (FONT_DIR / "IBM-Plex-OFL.txt").read_text(encoding="utf-8")
 
 
 def test_welcome_uses_same_fonts_and_palette_without_network():
@@ -33,7 +33,7 @@ def test_welcome_uses_same_fonts_and_palette_without_network():
 
 
 def test_palette_has_accessible_black_on_yellow_and_white_on_red():
-    css = (ROOT / "static/css/theme.css").read_text()
+    css = (ROOT / "static/css/theme.css").read_text(encoding="utf-8")
     def token(name):
         return re.search(r"--" + name + r":\s*(#[0-9a-f]{6});", css).group(1)
     def luminance(hex_color):
@@ -71,7 +71,7 @@ def test_ui_no_longer_requests_old_typefaces():
         for file in (ROOT / folder).rglob(pattern):
             source = file.read_text(encoding="utf-8")
             assert "Cairo" not in source and "Changa" not in source, file
-    assert "theme.fontFamily" in (ROOT / "static/js/app.js").read_text()
+    assert "theme.fontFamily" in (ROOT / "static/js/app.js").read_text(encoding="utf-8")
     assert not (FONT_DIR / "cairo.ttf").exists()
     assert not (FONT_DIR / "changa.ttf").exists()
 
@@ -81,3 +81,16 @@ def test_installer_versions_match_application():
                  "scripts/build-installer.ps1", "scripts/test-installer.ps1",
                  ".github/workflows/windows-installer.yml"):
         assert APP_VERSION in (ROOT / name).read_text(encoding="utf-8"), name
+
+
+def test_windows_registry_cannot_mislabel_bundled_fonts(app, monkeypatch):
+    import mimetypes
+    from app import create_app
+    mimetypes.init()
+    monkeypatch.setitem(mimetypes.types_map, ".woff2", "application/octet-stream")
+    # app fixture already redirects every data module to its temporary directory.
+    fresh = create_app()
+    response = fresh.test_client().get("/static/fonts/IBMPlexSansArabic-Regular.woff2")
+    assert response.status_code == 200
+    assert response.mimetype == "font/woff2"
+    assert response.data.startswith(b"wOF2")
