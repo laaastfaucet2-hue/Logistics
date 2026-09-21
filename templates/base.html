@@ -57,7 +57,7 @@
       {% if extra_pages %}
       <div class="nav-title">أدوات عامة</div>
       {% for p in extra_pages %}
-      <a href="{{ url_for('section_page', key=p.key) }}" class="nav-link {% if request.path == url_for('section_page', key=p.key) %}active{% endif %}">
+      <a href="{{ url_for('section_page', key=p.key) }}" class="nav-link {% if request.path == url_for('section_page', key=p.key) or request.path == {'letterhead': '/letterhead'}.get(p.key, '') %}active{% endif %}">
         <span class="nav-ico">{{ p.icon }}</span>
         {{ p.name }}
       </a>

@@ -75,6 +75,12 @@ def aindic_number(value):
     return arnum.to_arabic_indic(value)
 
 
+@app.template_filter("qty3")
+def qty3_number(value):
+    """كمية بثلاثة أرقام عشرية عربية دائمًا: 0.12 → ٠٫١٢٠ و75 → ٧٥٫٠٠٠"""
+    return arnum.fmt_qty(value if value != "" else None)
+
+
 def _back(ok=None, err=None):
     """يرجع للصفحة السابقة مع الحفاظ على التوكن + رسالة نجاح/خطأ اختيارية."""
     target = request.args.get("next", "")
@@ -169,6 +175,9 @@ def section_page(key):
         params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
         return redirect(url_for("rations.page",
                                 section=RATION_SECTION_REDIRECTS[key], **params))
+    if key == "letterhead":
+        params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+        return redirect(url_for("letterhead.page", **params))
     section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
     if not section:
         abort(404)
@@ -251,9 +260,11 @@ def placeholder(page):
     return render_template("placeholder.html", title=title, desc=desc, active=page)
 
 
-# تسجيل Blueprint صفحات المقررات — في نهاية الملف حتى تكتمل تعريفات app
+# تسجيل Blueprints — في نهاية الملف حتى تكتمل تعريفات app
 from routes.rations import rations_bp  # noqa: E402
+from routes.letterhead import letterhead_bp  # noqa: E402
 app.register_blueprint(rations_bp)
+app.register_blueprint(letterhead_bp)
 
 
 if __name__ == "__main__":

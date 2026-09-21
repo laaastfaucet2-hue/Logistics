@@ -49,3 +49,17 @@ def parse_float(text, default=None):
         return float(cleaned)
     except ValueError:
         return default
+
+
+def fmt_qty(value):
+    """قاعدة العرض الموحدة للكميات: ثلاثة أرقام عشرية دائمًا بالعربية المشرقية.
+
+    0.12 → «٠٫١٢٠»   |   75 → «٧٥٫٠٠٠»   |   None/فاضي → «»
+    """
+    if value is None or value == "":
+        return ""
+    try:
+        f = float(to_western(value))
+    except (TypeError, ValueError):
+        return str(value)
+    return to_arabic_indic(f"{f:.3f}").replace(".", "٫")

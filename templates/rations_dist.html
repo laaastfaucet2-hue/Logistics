@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none -%}—{%- else -%}{{ ((v|int) if v == v|int else v) | string | aindic | replace('.', '٫') }}{%- endif -%}
+{%- if v is none -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
 {%- endmacro %}
 
 {% block content %}

@@ -69,6 +69,13 @@ def ensure_initialized(current_year):
         create_year(current_year)
 
 
+def letterhead_dir():
+    """مجلد الدباجة والتوقيعات الرسمية: اللوجو + ملف Word الدباجة."""
+    path = DATA_DIR / "الدباجة"
+    path.mkdir(exist_ok=True)
+    return path
+
+
 SECTION_DIR_RE = re.compile(r"^(\d{2})-")
 
 

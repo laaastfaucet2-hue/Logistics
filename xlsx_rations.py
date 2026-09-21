@@ -35,11 +35,8 @@ def _section_info(short):
 
 
 def _num(v):
-    """رقم للعرض بالعربية المشرقية (٥٠ / ٠٫٥) أو فاضي."""
-    if v is None:
-        return ""
-    s = str(int(v)) if float(v) == int(v) else f"{float(v):g}"
-    return arnum.to_arabic_indic(s).replace(".", "٫")
+    """كمية بثلاثة أرقام عشرية عربية دائمًا (٠٫١٢٠ / ٧٥٫٠٠٠) أو فاضي."""
+    return arnum.fmt_qty(v)
 
 
 def _title(ws, text, ncols):
@@ -108,7 +105,7 @@ def _kind_sheet(wb, name, year, month, short, section_name, kind_key):
            len(headers))
     _header(ws, 2, headers)
     items, custom = dr.get_items(year, month, short, kind_key)
-    rows = [[_num(it["serial"]), it["name"], it["unit"],
+    rows = [[arnum.to_arabic_indic(it["serial"]), it["name"], it["unit"],
              _num(it["breakfast"]), _num(it["lunch"]), _num(it["dinner"]),
              _custom_text(custom.get(it["id"], []))] for it in items]
     next_row = _rows(ws, 3, rows) + 2
@@ -135,7 +132,7 @@ def _entity_sheet(wb, entity, year, month):
     rows = []
     for it in entity["items"]:
         days = ["✓" if d in it["days"] else "" for d in range(7)]
-        rows.append([_num(it["serial"]), it["name"], it["unit"],
+        rows.append([arnum.to_arabic_indic(it["serial"]), it["name"], it["unit"],
                      _num(it["breakfast"]), _num(it["lunch"]), _num(it["dinner"])] + days)
     next_row = _rows(ws, 3, rows) + 2
     _signatures(ws, next_row, len(headers))
@@ -173,3 +170,20 @@ def ensure(year, month, short):
     if not path.exists():
         rebuild(year, month, short)
     return path
+
+
+def rebuild_all():
+    """يعيد بناء كل ملفات إكسل المقررات الموجودة (بعد تغيير التوقيعات مثلًا).
+
+    يرجع عدد الملفات التي أُعيد بناؤها. يتجاهل الشهور التي لا بيانات لها.
+    """
+    import months as _months
+    count = 0
+    for year in storage.list_years():
+        for month in range(1, 13):
+            if not _months.month_db_path(year, month).exists():
+                continue
+            for short in SHORT:
+                rebuild(year, month, short)
+                count += 1
+    return count
