@@ -1,0 +1,14 @@
+{# شريط تبويبات صفحة المجندين — يُضمَّن في كل تبويبات الوحدة #}
+<div class="ctx-strip">
+  <span>🪖 المجندين بوحدة التعيينات</span><span class="sep">•</span>
+  <span class="dim">السياق: <strong>{{ month_name }} {{ year | aindic }}</strong></span>
+  <span class="sep">•</span>
+  <span class="dim">اليوم الحقيقي: <strong>{{ today_ar }}</strong> — <span class="ltr" id="rc-clock">{{ time_now }}</span></span>
+</div>
+<nav class="rc-tabs">
+  {% for key, name, icon in tabs %}
+  <a class="rc-tab {{ 'on' if tab == key }}" href="{{ url_for('recruits.page') }}?tab={{ key }}{% if sid %}&sid={{ sid }}{% endif %}">
+    <span>{{ icon }}</span>{{ name }}
+  </a>
+  {% endfor %}
+</nav>
