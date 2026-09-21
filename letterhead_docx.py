@@ -34,13 +34,14 @@ def _line(doc, text, size, bold=True, color=NAVY):
 
 
 def _sig_cell(cell, rank, name):
+    """كتلة التوقيع: قيمة الرتبة سطر، وقيمة الاسم سطر تحته — بدون تسميات."""
     cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for label, value in (("الرتبة", rank), ("الاسم", name)):
+    for value in (rank, name):
         p = cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(f"{label}: {value or '........................'}")
+        run = p.add_run(value or "........................")
         run.font.bold = True
-        run.font.size = Pt(12)
+        run.font.size = Pt(13)
         run.font.name = "Cairo"
 
 

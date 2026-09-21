@@ -79,13 +79,14 @@ def _signatures(ws, row, ncols):
     left_name = db.get_setting("sig_left_name")
     blocks = [(1, right_rank, right_name), (ncols - 1, left_rank, left_name)]
     for col, rank, name in blocks:
+        # قيمة الرتبة سطر وقيمة الاسم سطر تحته — بدون تسميات «الرتبة/الاسم»
         ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=col + 1)
-        c = ws.cell(row, col, "الرتبة: " + (rank or "........................"))
-        c.font = Font(bold=True, size=11, name="Cairo")
+        c = ws.cell(row, col, rank or "........................")
+        c.font = Font(bold=True, size=12, name="Cairo")
         c.alignment = CENTER
         ws.merge_cells(start_row=row + 1, start_column=col, end_row=row + 1, end_column=col + 1)
-        c2 = ws.cell(row + 1, col, "الاسم: " + (name or "........................"))
-        c2.font = Font(bold=True, size=11, name="Cairo")
+        c2 = ws.cell(row + 1, col, name or "........................")
+        c2.font = Font(bold=True, size=12, name="Cairo")
         c2.alignment = CENTER
 
 

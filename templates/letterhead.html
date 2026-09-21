@@ -68,7 +68,7 @@
     <div class="panel-head"><h3>✍️ التوقيع شمال الصفحة</h3></div>
     <div class="lh-sig-form">
       <label>الرتبة</label>
-      <input name="sig_left_rank" value="{{ sig_left_rank }}" placeholder="مثال: عميد — يعتمد">
+      <input name="sig_left_rank" value="{{ sig_left_rank }}" placeholder="مثال: عميد">
       <label>الاسم</label>
       <input name="sig_left_name" value="{{ sig_left_name }}" placeholder="مثال: محمد عبد الله">
     </div>
@@ -110,16 +110,12 @@
     <div class="a4-body">نص المستند الرسمي يُكتب هنا...<br>(مذكرة / خطاب / محضر)</div>
     <div class="a4-sigs">
       <div class="a4-sig right">
-        <div class="sig-lab">التوقيع يمين الصفحة</div>
-        <div>الرتبة: {{ sig_right_rank or '............' }}</div>
-        <div>الاسم: {{ sig_right_name or '............' }}</div>
-        <div class="sig-line">التوقيع: ______________</div>
+        <div>{{ sig_right_rank or '............' }}</div>
+        <div>{{ sig_right_name or '............' }}</div>
       </div>
       <div class="a4-sig left">
-        <div class="sig-lab">التوقيع شمال الصفحة</div>
-        <div>الرتبة: {{ sig_left_rank or '............' }}</div>
-        <div>الاسم: {{ sig_left_name or '............' }}</div>
-        <div class="sig-line">التوقيع: ______________</div>
+        <div>{{ sig_left_rank or '............' }}</div>
+        <div>{{ sig_left_name or '............' }}</div>
       </div>
     </div>
   </div>
@@ -150,12 +146,12 @@
     </table>
     <div class="a4-sigs">
       <div class="a4-sig right">
-        <div>الرتبة: {{ sig_right_rank or '............' }}</div>
-        <div>الاسم: {{ sig_right_name or '............' }}</div>
+        <div>{{ sig_right_rank or '............' }}</div>
+        <div>{{ sig_right_name or '............' }}</div>
       </div>
       <div class="a4-sig left">
-        <div>الرتبة: {{ sig_left_rank or '............' }}</div>
-        <div>الاسم: {{ sig_left_name or '............' }}</div>
+        <div>{{ sig_left_rank or '............' }}</div>
+        <div>{{ sig_left_name or '............' }}</div>
       </div>
     </div>
   </div>

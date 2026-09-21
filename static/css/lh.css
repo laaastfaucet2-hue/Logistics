@@ -63,12 +63,12 @@
 .a4-tag.green { background: #1e7f4f; color: #d1fae5; }
 
 .a4-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.a4-lh { display: flex; flex-direction: column; gap: 5px; }
-.a4-lh-box { padding: 6px 14px; border-radius: 8px; font-weight: 900; text-align: center;
-  border: 1.5px solid #0a1230; background: #fff; min-width: 210px; }
+.a4-lh { display: flex; flex-direction: column; gap: 4px; }
+.a4-lh-box { padding: 2px 0; font-weight: 900; text-align: right; min-width: 210px;
+  color: #0a1230; }  /* سطور الدباجة بدون مربعات — نص حر مثل ملف الوورد بالظبط */
 .a4-lh-box.l1 { color: #b8860b; font-size: .95rem; }
-.a4-lh-box.l2 { color: #0a1230; font-size: .88rem; }
-.a4-lh-box.l3, .a4-lh-box.l4 { color: #334; font-size: .8rem; }
+.a4-lh-box.l2 { font-size: .88rem; }
+.a4-lh-box.l3, .a4-lh-box.l4 { font-size: .8rem; color: #334; }
 .a4-logo { display: grid; place-items: center; width: 86px; height: 86px; flex-shrink: 0;
   border: 1.5px dashed #9aa6c7; border-radius: 10px; color: #9aa6c7; font-size: .68rem;
   font-weight: 800; text-align: center; overflow: hidden; background: #fff; }
@@ -87,7 +87,7 @@
 .xl-mock td:nth-child(2) { font-weight: 800; color: #0a1230; }
 
 .a4-sigs { display: flex; justify-content: space-between; gap: 12px; margin-top: auto; }
-.a4-sig { text-align: center; font-weight: 800; font-size: .7rem; color: #334;
+.a4-sig { text-align: center; font-weight: 800; font-size: .82rem; color: #1a2033;
   display: flex; flex-direction: column; gap: 3px; min-width: 42%; }
 .sig-lab { font-size: .6rem; color: #b8860b; font-weight: 900; margin-bottom: 3px; }
 .sig-line { color: #8a93ad; font-weight: 600; }
