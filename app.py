@@ -26,6 +26,11 @@ app.config.update(
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_db()
+# 🛡️ حماية البيانات: فحص السلامة عند التشغيل + نسخة يومية تلقائية
+import dataguard  # noqa: E402
+for _ev in dataguard.startup_guard():
+    print(_ev)
+dataguard.auto_backup("boot", min_minutes=720)
 storage.ensure_initialized(datetime.now().year)
 storage.sync_section_folders()
 
@@ -187,6 +192,9 @@ def section_page(key):
     if key == "letterhead":
         params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
         return redirect(url_for("letterhead.page", **params))
+    if key == "backups":
+        params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+        return redirect(url_for("backups.page", **params))
     section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
     if not section:
         abort(404)
@@ -272,8 +280,10 @@ def placeholder(page):
 # تسجيل Blueprints — في نهاية الملف حتى تكتمل تعريفات app
 from routes.rations import rations_bp  # noqa: E402
 from routes.letterhead import letterhead_bp  # noqa: E402
+from routes.backups import backups_bp  # noqa: E402
 app.register_blueprint(rations_bp)
 app.register_blueprint(letterhead_bp)
+app.register_blueprint(backups_bp)
 
 
 if __name__ == "__main__":

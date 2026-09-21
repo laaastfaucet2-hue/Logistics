@@ -346,3 +346,17 @@ td.empty { text-align: center; color: var(--muted); padding: 30px; font-weight: 
 .combo-item:hover, .combo-item.hover { background: rgba(227,179,65,.16); color: #f6d47c; }
 .combo-item.sel { background: linear-gradient(135deg, #2b5fd9, #1d44b8); color: #fff; }
 .combo-empty { padding: 10px 14px; color: var(--muted); font-size: .8rem; font-weight: 700; }
+
+/* ======== أزرار الأيقونات الاحترافية — معيار عام إلزامي (قاعدة ١٢) ======== */
+.icon-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; min-width: 34px;
+  border-radius: 10px; border: 1px solid rgba(227,179,65,.28); background: rgba(255,255,255,.045);
+  color: #cbd5e1; cursor: pointer; text-decoration: none; transition: .18s; padding: 0; }
+.icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn:hover { transform: translateY(-2px); }
+.icon-btn.edit:hover { color: #93c5fd; border-color: rgba(96,165,250,.55); }
+.icon-btn.del:hover { color: #f87171; border-color: rgba(239,68,68,.55); }
+.icon-btn.print:hover { color: #f6d47c; border-color: rgba(227,179,65,.55); }
+.icon-btn.save { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
+.icon-btn.save:hover { color: #34d399; background: rgba(52,211,153,.13); }
+.icon-btn.sync:hover { color: #c4b5fd; border-color: rgba(196,181,253,.55); }

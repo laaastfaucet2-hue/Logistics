@@ -76,8 +76,11 @@ def _migrate(conn):
 def get_db(year, month):
     path = month_db_path(year, month)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), timeout=10)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")      # تحمي من التلف عند انقطاع الكهرباء/التشغيل
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA busy_timeout = 8000")     # انتظار بدل التصادم لو اتنين كتبوا معًا
     conn.execute("PRAGMA foreign_keys = ON")
     _migrate(conn)
     return conn

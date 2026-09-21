@@ -5,6 +5,7 @@
 المحتوى: مربعات أسطر الدباجة (يمين أعلى المستند) + اللوجو (شمال أعلى المستند)
 + توقيعان (رتبة/اسم) يمين وشمال أسفل المستند + معاينة حية لشكل الوورد والإكسل.
 """
+import dataguard
 import os
 import sys
 import subprocess
@@ -72,7 +73,8 @@ def save():
             return _rb(err="صيغة اللوجو غير مدعومة — المسموح: PNG / JPG / WEBP")
         for old in storage.letterhead_dir().glob("logo.*"):
             old.unlink()
-        file.save(str(storage.letterhead_dir() / f"logo.{ext}"))
+        dataguard.atomic_save(file.save,
+                              storage.letterhead_dir() / f"logo.{ext}", zip_check=False)
         db.set_setting("logo_file", f"logo.{ext}")
 
     letterhead_docx.rebuild()

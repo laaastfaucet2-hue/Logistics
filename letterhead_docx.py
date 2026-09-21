@@ -6,6 +6,7 @@
 الشكل: أسطر الدباجة يمين أعلى الصفحة + اللوجو شمال أعلى الصفحة
        + توقيع (رتبة/اسم) يمين أسفل الصفحة وآخر شمال أسفلها.
 """
+import dataguard
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -71,7 +72,7 @@ def rebuild():
               db.get_setting("sig_right_name"))
 
     path = docx_path()
-    doc.save(str(path))
+    dataguard.atomic_save(doc.save, path)
     return path
 
 

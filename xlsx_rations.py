@@ -7,6 +7,7 @@
 - الأرقام داخل الإكسل بالأرقام العربية المشرقية، والاتجاه من اليمين لليسار.
 """
 import re
+import dataguard
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -171,7 +172,8 @@ def rebuild(year, month, short):
         for entity in de.list_entities(year, month):
             _entity_sheet(wb, entity, year, month)
     path, _ = xlsx_path(year, month, short)
-    wb.save(str(path))
+    dataguard.atomic_save(wb.save, path)          # كتابة ذرّية + فحص سلامة
+    dataguard.auto_backup("write", min_minutes=20)  # نسخة تلقائية (مخنوقة كل ٢٠ دقيقة)
     return path
 
 
