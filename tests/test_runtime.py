@@ -98,3 +98,14 @@ def test_rule_code_line_limit_and_no_db_in_installer():
     spec=(root/'scripts/installer/Logistics.spec').read_text()
     assert "root / 'database'" not in spec
     assert 'PrivilegesRequired=lowest' in (root/'scripts/installer/Logistics.iss').read_text()
+
+
+def test_notifications_do_not_recreate_an_absent_year(app):
+    from core import egtime
+    from services import notifications
+    year = egtime.today().year
+    if year == 2031:
+        return
+    storage.delete_year(year)
+    assert notifications.build_groups(1) == []
+    assert year not in storage.list_years()

@@ -11,7 +11,7 @@ if ($Process.ExitCode -ne 0 -or -not (Test-Path $Report) -or (Get-Content $Repor
 $UIReport = Join-Path $Root 'runtime\ui-smoke.txt'
 $Process = Start-Process (Join-Path $TestDir 'Logistics.exe') -ArgumentList ('--ui-smoke-test "' + $UIReport + '"') -PassThru
 if (-not $Process.WaitForExit(120000)) { Stop-Process -Id $Process.Id -Force; throw 'Native window timed out.' }
-if ($Process.ExitCode -ne 0 -or -not (Test-Path $UIReport) -or (Get-Content $UIReport -Raw) -ne 'UI_SMOKE_OK') { throw 'Real WebView2 window/login/control test failed. See runtime/ui-smoke.txt and desktop.log.' }
+if ($Process.ExitCode -ne 0 -or -not (Test-Path $UIReport) -or (Get-Content $UIReport -Raw) -ne 'UI_SMOKE_OK') { if (Test-Path $UIReport) { Write-Host ('::error::' + (Get-Content $UIReport -Raw)) }; throw 'Real WebView2 window/login/control test failed. See runtime/ui-smoke.txt and desktop.log.' }
 $UserData = Join-Path $env:LOCALAPPDATA 'Logistics\database'
 New-Item -ItemType Directory -Force $UserData | Out-Null
 Set-Content (Join-Path $UserData 'preservation-sentinel.txt') 'must survive update and uninstall'

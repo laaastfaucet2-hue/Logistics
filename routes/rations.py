@@ -34,20 +34,9 @@ SECTION_CFG = {
 
 def _rb(section, kind=None, tab=None, ok=None, err=None):
     """يرجع لصفحة القسم مع الحفاظ على التوكن ورسالة اختيارية."""
-    params = []
-    if kind:
-        params.append("kind=" + quote(kind))
-    if tab:
-        params.append("tab=" + quote(tab))
     _, token = current_session()
-    if token:
-        params.append("sid=" + quote(token))
-    if ok:
-        params.append("ok=" + quote(ok))
-    if err:
-        params.append("err=" + quote(err))
-    target = url_for("rations.page", section=section)
-    return redirect(target + ("&" + "&".join(params) if params else ""))
+    return redirect(url_for("rations.page", section=section, kind=kind, tab=tab,
+                            sid=token, ok=ok, err=err))
 
 
 def _ctx_month():

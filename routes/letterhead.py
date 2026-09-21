@@ -37,14 +37,7 @@ SETTING_KEYS = ["lh_1", "lh_2", "lh_3", "lh_4",
 def _rb(ok=None, err=None):
     _, token = current_session()
     year, month = _ctx()
-    params = [f"year={year}", f"month={month}"]
-    if token:
-        params.append("sid=" + quote(token))
-    if ok:
-        params.append("ok=" + quote(ok))
-    if err:
-        params.append("err=" + quote(err))
-    return redirect(url_for("letterhead.page") + ("&" + "&".join(params) if params else ""))
+    return redirect(url_for("letterhead.page", year=year, month=month, sid=token, ok=ok, err=err))
 
 
 def _ctx():

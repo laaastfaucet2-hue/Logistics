@@ -16,7 +16,7 @@
         </div>
         {% endfor %}
         {% if bell_count == 0 %}<div class="bell-empty">✔ كل شيء منضبط — لا إشعارات الآن</div>{% endif %}
-        <a class="bell-all" href="{{ url_for('recruits.page') }}&tab=stats{% if sid %}&sid={{ sid }}{% endif %}">كل الإحصائيات والإشعارات ‹</a>
+        <a class="bell-all" href="{{ url_for('recruits.page') }}&tab=stats">كل الإحصائيات والإشعارات ‹</a>
       </div>
     </div>
     <button class="bell-toggle" id="bellToggle" title="طي الجرس">−</button>

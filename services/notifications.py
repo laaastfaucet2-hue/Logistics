@@ -3,7 +3,7 @@
 """محرك إشعارات الجرس 🔔 — العناصر «الحارة» تُحسب بتاريخ القاهرة الحقيقي دائمًا:
 نسيان اليومية · إجازات مرتقبة · شهادات صحية · غياب متواصل · خدمة تنتهي قريبًا.
 """
-from data_access import database as db
+from data_access import database as db, storage
 from data_access import db_attendance as da
 from data_access import db_recruits as dr
 from core import egtime
@@ -18,6 +18,8 @@ def build_groups(user_id, sid=""):
     try:
         today = egtime.today()
         y, m, d = today.year, today.month, today.day
+        if y not in storage.list_years():
+            return []  # Reading notifications must not re-create a deleted/absent year.
         recruits = {r["id"]: r for r in dr.list_recruits(y, m)}
         matrix = da.month_matrix(y, m)
         q = _sid_qs(sid)

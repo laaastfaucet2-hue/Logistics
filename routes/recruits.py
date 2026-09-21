@@ -42,15 +42,8 @@ def _ctx():
 def _rb(ok=None, err=None, **params):
     _, token = current_session()
     year, month = _ctx()
-    qs = [f"year={year}", f"month={month}"]
-    if token:
-        qs.append(f"sid={quote(token)}")
-    if ok:
-        qs.append("ok=" + quote(ok))
-    if err:
-        qs.append("err=" + quote(err))
-    qs += ["{}={}".format(k, quote(str(v))) for k, v in params.items() if v not in (None, "")]
-    return redirect(url_for("recruits.page") + ("&" + "&".join(qs) if qs else ""))
+    values = {"sid": token, "year": year, "month": month, "ok": ok, "err": err, **params}
+    return redirect(url_for("recruits.page", **{k: v for k, v in values.items() if v not in (None, "")}))
 
 
 def _lh_vars():
