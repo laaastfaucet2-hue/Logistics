@@ -2,9 +2,13 @@
 
 ## نسخة المثبّت
 
-عندما ينجح مسار **Windows desktop installer** في GitHub Actions، نزّل ملف
-`Logistics-Setup-2.0.0.exe` من الأثر `Logistics-Windows-x64-2.0.0`.
-ملف SHA256 معه للتحقق من اكتمال التنزيل. الأثر متاح لمدة ١٤ يومًا.
+**تم بناء واختبار إصدار ٢٫٠٫٠ على Windows بتاريخ ٢١ سبتمبر ٢٠٢٦.**
+
+**[تحميل حزمة التثبيت](https://github.com/laaastfaucet2-hue/Logistics/actions/runs/35618779013/artifacts/10647078612)** — حوالي ٢٣٤ ميجابايت.
+الحزمة ZIP؛ فك الضغط وشغّل `Logistics-Setup-2.0.0.exe`.
+تضم أيضًا `SHA256.txt`. قد يطلب GitHub تسجيل الدخول لتنزيلها.
+الرابط متاح حتى **٥ أكتوبر ٢٠٢٦**؛ احتفظ بالحزمة على جهازك.
+[سجل البناء والاختبارات الناجح](https://github.com/laaastfaucet2-hue/Logistics/actions/runs/35618779013).
 
 المثبّت يضم البرنامج وPython والمكتبات، ومثبّت Microsoft WebView2 الكامل؛
 لا يحتاج تحميل مكتبات عند تشغيل النسخة المثبتة. بناء المثبّت نفسه يحتاج الإنترنت.

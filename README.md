@@ -10,6 +10,9 @@
 
 ## نسخة التثبيت
 
+**[تحميل مثبّت Windows ٢٫٠٫٠](https://github.com/laaastfaucet2-hue/Logistics/actions/runs/35618779013/artifacts/10647078612)** — بناء Windows ناجح، بتاريخ ٢١ سبتمبر ٢٠٢٦.
+فك ZIP ثم شغّل `Logistics-Setup-2.0.0.exe`. الرابط متاح حتى ٥ أكتوبر ٢٠٢٦.
+
 مسار **Windows desktop installer** على فرع `arena/01a0c425-logistics` يبني
 `Logistics-Setup-2.0.0.exe` ويختبر النسخة المجمّعة والتثبيت والتحديث وإلغاء التثبيت.
 بعد نجاحه تُتاح حزمة Windows في Artifacts لمدة ١٤ يومًا.
