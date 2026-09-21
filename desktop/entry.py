@@ -35,7 +35,13 @@ def main():
         return
     if "--smoke-test" in sys.argv:
         index = sys.argv.index("--smoke-test")
-        smoke(sys.argv[index + 1])
+        output = sys.argv[index + 1]
+        try:
+            smoke(output)
+        except Exception:
+            import traceback
+            Path(output).write_text("SMOKE_FAILED\n" + traceback.format_exc(), encoding="utf-8")
+            raise SystemExit(1)
         return
     if sys.platform != "win32":
         raise SystemExit("Desktop builds target Windows 10/11 x64. Use python app.py for the web preview.")
