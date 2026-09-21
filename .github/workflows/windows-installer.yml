@@ -35,6 +35,13 @@ jobs:
             dist/SHA256.txt
           retention-days: 14
           if-no-files-found: error
+      - name: Collect native diagnostics in the workspace
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force runtime | Out-Null
+          $log = Join-Path $env:LOCALAPPDATA 'Logistics\logs\desktop.log'
+          if (Test-Path $log) { Copy-Item $log runtime/desktop.log -Force }
       - name: Upload native screenshot and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,6 +50,6 @@ jobs:
           path: |
             runtime/ui-smoke.txt
             runtime/ui-smoke.png
-            ~/AppData/Local/Logistics/logs/*.log
+            runtime/desktop.log
           if-no-files-found: ignore
           retention-days: 7
