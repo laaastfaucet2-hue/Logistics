@@ -50,8 +50,12 @@ def attach(application, api, output):
             except Exception as exc:
                 logging.exception("Native typography/theme check failed")
                 finish(exc)
-        # pywebview resolves promises through callbacks, not the synchronous return value.
-        window.evaluate_js(THEME_CHECK, callback=checked)
+        # EdgeChromium dispatches promise callbacks on the UI thread. Never call
+        # synchronous GUI methods there: evaluate_js would deadlock that thread.
+        def queued(result):
+            threading.Thread(target=checked, args=(result,),
+                             name="Logistics-ui-smoke", daemon=True).start()
+        window.evaluate_js(THEME_CHECK, callback=queued)
 
     def verify_desktop():
         result = window.evaluate_js("({desktop:document.body.dataset.desktop,"

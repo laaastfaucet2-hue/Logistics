@@ -101,6 +101,14 @@ async function actualFont(page, selector) {
       await page.goto(`${base}/recruits/?${period}&tab=${tab}`);
       await theme(page);
       assert.equal(await page.locator('.rc-tab').count(), 7);
+      if (tab === 'journal') {
+        const day = page.locator('.rc-daybox.on');
+        for (const state of ['locked', 'missing']) {
+          await day.evaluate((el, value) => el.classList.add(value), state);
+          assert.equal(await day.evaluate(el => getComputedStyle(el).color), 'rgb(0, 0, 0)');
+          await day.evaluate((el, value) => el.classList.remove(value), state);
+        }
+      }
     }
 
     await page.goto(base + '/rations/tamween?' + period);

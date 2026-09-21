@@ -30,6 +30,8 @@
   border-color: var(--brand-yellow); color: var(--on-yellow); }
 .rc-daybox.locked { border-color: rgba(23,99,63,.5); color: var(--green); }
 .rc-daybox.missing { border-color: rgba(218,41,28,.55); color: var(--red); animation: rc-pulse 1.8s infinite; }
+/* Selected dates keep black text on yellow even when they carry a status. */
+.rc-daybox.on.locked, .rc-daybox.on.missing { color: var(--on-yellow); }
 .rc-daybox.today { outline: 2px solid rgba(255,199,44,.7); outline-offset: 1px; }
 .rc-lock { position: absolute; bottom: 2px; inset-inline-end: 3px; }
 .rc-lock svg { width: 9px; height: 9px; stroke: var(--green); fill: none; stroke-width: 2.4; }

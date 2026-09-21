@@ -94,3 +94,40 @@ def test_windows_registry_cannot_mislabel_bundled_fonts(app, monkeypatch):
     assert response.status_code == 200
     assert response.mimetype == "font/woff2"
     assert response.data.startswith(b"wOF2")
+
+
+def test_native_font_callback_never_blocks_the_gui_thread(tmp_path):
+    import threading
+    from types import SimpleNamespace
+    from desktop.ui_smoke import attach
+    caller = threading.current_thread()
+    recorded = []
+    closed = threading.Event()
+
+    class Event:
+        def __iadd__(self, callback):
+            self.callback = callback
+            return self
+
+    class Window:
+        events = SimpleNamespace(loaded=Event())
+        def evaluate_js(self, script, callback=None):
+            # Mimic WebView2 invoking the promise callback on its GUI thread.
+            callback({"family": "IBM Plex Sans Arabic", "fonts": True,
+                      "red": "rgb(218, 41, 28)", "yellow": "rgb(255, 199, 44)",
+                      "text": "rgb(0, 0, 0)"})
+        def destroy(self):
+            closed.set()
+
+    def begin():
+        recorded.append(threading.current_thread())
+        # Finish this isolated stub test and cancel the real smoke watchdog.
+        raise RuntimeError("end isolated threading check")
+
+    window = Window()
+    report = tmp_path / "native-check.txt"
+    attach(SimpleNamespace(window=window), SimpleNamespace(_origin=None, begin_new=begin), report)
+    window.events.loaded.callback()
+    assert closed.wait(5), "Native callback blocked its caller"
+    assert recorded and recorded[0] is not caller
+    assert "end isolated threading check" in report.read_text(encoding="utf-8")

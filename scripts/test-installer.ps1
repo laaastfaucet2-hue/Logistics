@@ -1,17 +1,29 @@
 $ErrorActionPreference = 'Stop'
+$Stage = 'install'
+trap {
+    $Details = "Stage: " + $Stage + ". " + $_.Exception.Message
+    if ($UIReport -and (Test-Path $UIReport)) { $Details += "`n" + (Get-Content $UIReport -Raw) }
+    if ($Report -and (Test-Path $Report)) { $Details += "`n" + (Get-Content $Report -Raw) }
+    $Details = $Details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+    Write-Host "::error title=Windows acceptance::$Details"
+    exit 1
+}
 $Root = Split-Path $PSScriptRoot -Parent
 $TestDir = Join-Path $env:RUNNER_TEMP 'Logistics test install'
 $Setup = Join-Path $Root 'dist\Logistics-Setup-2.1.0.exe'
 $Arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $TestDir + '"'
 $Process = Start-Process $Setup -ArgumentList $Arguments -Wait -PassThru
 if ($Process.ExitCode -ne 0) { throw "Install failed: $($Process.ExitCode)" }
+$Stage = 'installed executable smoke test'
 $Report = Join-Path $env:RUNNER_TEMP 'installed-smoke.txt'
 $Process = Start-Process (Join-Path $TestDir 'Logistics.exe') -ArgumentList ('--smoke-test "' + $Report + '"') -Wait -PassThru
 if ($Process.ExitCode -ne 0 -or -not (Test-Path $Report) -or (Get-Content $Report -Raw) -ne 'SMOKE_OK') { throw 'Installed program smoke test failed.' }
+$Stage = 'real native window, fonts and controls'
 $UIReport = Join-Path $Root 'runtime\ui-smoke.txt'
 $Process = Start-Process (Join-Path $TestDir 'Logistics.exe') -ArgumentList ('--ui-smoke-test "' + $UIReport + '"') -PassThru
 if (-not $Process.WaitForExit(120000)) { Stop-Process -Id $Process.Id -Force; throw 'Native window timed out.' }
 if ($Process.ExitCode -ne 0 -or -not (Test-Path $UIReport) -or (Get-Content $UIReport -Raw) -ne 'UI_SMOKE_OK') { if (Test-Path $UIReport) { Write-Host ('::error::' + (Get-Content $UIReport -Raw)) }; throw 'Real WebView2 window/login/control test failed. See runtime/ui-smoke.txt and desktop.log.' }
+$Stage = 'update and uninstall data preservation'
 $UserData = Join-Path $env:LOCALAPPDATA 'Logistics\database'
 New-Item -ItemType Directory -Force $UserData | Out-Null
 Set-Content (Join-Path $UserData 'preservation-sentinel.txt') 'must survive update and uninstall'
