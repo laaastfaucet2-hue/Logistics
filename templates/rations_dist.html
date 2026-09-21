@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}توزيع المقررات على الجهات • {{ section_name }}{% endblock %}
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 {% endblock %}
 
 {% macro num(v) -%}
@@ -162,5 +162,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/rations.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

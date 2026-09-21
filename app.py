@@ -11,7 +11,7 @@ import database as db
 import storage
 import arabic_numbers as arnum
 from config import (MONTH_NAMES, SECTIONS, SECTION_MAP, month_folder, section_folder,
-                    EXTRA_PAGES, EXTRA_MAP)
+                    EXTRA_PAGES, EXTRA_MAP, STATIC_VER)
 
 app = Flask(__name__)
 app.secret_key = "rations-warehouse-2026-secret-key"
@@ -52,6 +52,7 @@ def inject_auth():
         ctx.update(
             sections=SECTIONS,
             extra_pages=EXTRA_PAGES,
+            static_ver=STATIC_VER,
             years=storage.list_years(),
             months=list(enumerate(MONTH_NAMES, start=1)),
             ctx_year=year,

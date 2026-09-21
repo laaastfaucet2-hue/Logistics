@@ -64,3 +64,7 @@ def month_folder(number):
 def section_folder(number, section_name):
     """اسم مجلد القسم داخل الشهر: 01-سجلات الامداد ... 12-فواتير المتعهد"""
     return f"{number:02d}-{section_name}"
+
+
+# إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
+STATIC_VER = 4

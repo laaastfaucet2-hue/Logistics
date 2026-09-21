@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}الدباجة والتوقيعات الرسمية • منظومة مخازن التعيينات{% endblock %}
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/lh.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lh.css') }}?v={{ static_ver }}">
 {% endblock %}
 
 {% block content %}
