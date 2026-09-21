@@ -114,7 +114,7 @@
               {% if it.is_custom %}
               <span class="badge-custom">📌 مخصص:
                 {%- for di in it.days -%}
-                  {{ days[di] }}{% if it.day_qty.get(di) is not none %} <span class="dq">{{ num(it.day_qty.get(di)) }}</span>{% endif %}{{ ' • ' if not loop.last }}
+                  {{ days[di] }}{% if it.day_qty.get(di) is not none %} <span class="dq">{{ num(it.day_qty.get(di)) }}{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</span>{% endif %}{{ ' • ' if not loop.last }}
                 {%- endfor -%}
               </span>
               {% else %}
@@ -131,10 +131,13 @@
                     <input type="checkbox" name="wd_{{ di }}" {% if di in it.days %}checked{% endif %}>
                     {{ days[di] }}
                   </span>
-                  <input class="dc-qty" name="qty_{{ di }}" inputmode="decimal"
-                         placeholder="مقرر {{ days[di] }}"
-                         value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) is not none else '' }}"
-                         {% if di not in it.days %}disabled{% endif %}>
+                  <span class="dc-field">
+                    <input class="dc-qty" name="qty_{{ di }}" inputmode="decimal"
+                           placeholder="مقرر {{ days[di] }}"
+                           value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) is not none else '' }}"
+                           {% if di not in it.days %}disabled{% endif %}>
+                    {% if it.unit %}<span class="dc-unit">{{ it.unit }}</span>{% endif %}
+                  </span>
                 </label>
                 {% endfor %}
               </div>

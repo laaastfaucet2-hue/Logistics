@@ -167,3 +167,13 @@ tr.custom-on .name { color: #c4b5fd; }
 .rt-table td.num { min-width: 68px; font-weight: 700; }
 .rt-table td.ops { white-space: nowrap; min-width: 84px; }
 .day-cards { grid-template-columns: repeat(4, minmax(96px, 1fr)); }
+
+/* الوحدة (المعيار) جنب قيمة المقرر — داخل بطاقة اليوم والبادج */
+.badge-custom .dq small { font-size: .68rem; color: #e9d5ff; opacity: .85; }
+.dc-field { position: relative; display: flex; align-items: stretch; width: 100%; }
+.dc-field .dc-qty { flex: 1; padding-left: 56px; }
+.dc-unit { position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+  font-size: .66rem; font-weight: 900; color: #f6d47c; background: rgba(227,179,65,.14);
+  border: 1px solid rgba(227,179,65,.3); border-radius: 6px; padding: 1px 7px;
+  pointer-events: none; white-space: nowrap; }
+.dc-qty:disabled + .dc-unit { opacity: .4; }
