@@ -26,7 +26,7 @@
 
 <div class="rt-tabs">
   <a class="rt-tab" href="{{ url_for('rations.page', section=section) }}">📋 الجدول الرئيسي</a>
-  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}?tab=dist">🏢 توزيع المقررات على الجهات</a>
+  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}&tab=dist">🏢 توزيع المقررات على الجهات</a>
 </div>
 
 <div class="panel rt-toolbar">
@@ -100,7 +100,7 @@
     <div class="fld btns">
       <button class="rt-btn gold small" type="submit">{% if ee_item and ee_item.entity_id == e.id %}💾 حفظ{% else %}➕ إضافة{% endif %}</button>
       {% if ee_item and ee_item.entity_id == e.id %}
-      <a class="rt-btn dim small" href="{{ url_for('rations.page', section=section) }}?tab=dist">إلغاء</a>
+      <a class="rt-btn dim small" href="{{ url_for('rations.page', section=section) }}&tab=dist">إلغاء</a>
       {% endif %}
     </div>
   </form>
@@ -154,7 +154,7 @@
               <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
             </button>
             <a class="icon-btn edit" title="تعديل الصنف"
-               href="{{ url_for('rations.page', section=section) }}?tab=dist&ee={{ it.id }}">
+               href="{{ url_for('rations.page', section=section) }}&tab=dist&ee={{ it.id }}">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </a>
             <form method="post" class="inline-f js-del"

@@ -20,8 +20,8 @@
 
 {% if cfg.has_dist %}
 <div class="rt-tabs">
-  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}?kind={{ kind }}">📋 الجدول الرئيسي</a>
-  <a class="rt-tab" href="{{ url_for('rations.page', section=section) }}?tab=dist">🏢 توزيع المقررات على الجهات</a>
+  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}">📋 الجدول الرئيسي</a>
+  <a class="rt-tab" href="{{ url_for('rations.page', section=section) }}&tab=dist">🏢 توزيع المقررات على الجهات</a>
 </div>
 {% endif %}
 
@@ -29,7 +29,7 @@
 <div class="panel rt-toolbar">
   <div class="rt-kinds">
     {% for k, label, icon in kinds %}
-    <a class="rt-kind {% if k == kind %}on{% endif %}" href="{{ url_for('rations.page', section=section) }}?kind={{ k }}">
+    <a class="rt-kind {% if k == kind %}on{% endif %}" href="{{ url_for('rations.page', section=section) }}&kind={{ k }}">
       {{ icon }} {{ label }}
       {% if k == active_kind %}<span class="rt-live">مفعّل ✔</span>{% endif %}
     </a>
@@ -98,7 +98,7 @@
     </div>
     <div class="fld btns">
       <button class="rt-btn gold" type="submit">{% if edit_item %}💾 حفظ التعديل{% else %}➕ إضافة{% endif %}</button>
-      {% if edit_item %}<a class="rt-btn dim" href="{{ url_for('rations.page', section=section) }}?kind={{ kind }}">إلغاء</a>{% endif %}
+      {% if edit_item %}<a class="rt-btn dim" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}">إلغاء</a>{% endif %}
     </div>
   </form>
 </div>
@@ -145,7 +145,7 @@
             <button type="button" class="mini-btn custom-btn"
                     data-id="{{ it.id }}" data-name="{{ it.name }}"
                     data-custom="{{ custom.get(it.id, []) | tojson }}">🗓️ مخصص</button>
-            <a class="icon-btn edit" title="تعديل الصنف" href="{{ url_for('rations.page', section=section) }}?kind={{ kind }}&edit={{ it.id }}">
+            <a class="icon-btn edit" title="تعديل الصنف" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}&edit={{ it.id }}">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </a>
             <form method="post" action="{{ url_for('rations.item_delete', section=section, item_id=it.id) }}"

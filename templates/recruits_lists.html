@@ -24,7 +24,7 @@
     <h3>✅ حاضرو يوم {{ day | aindic }} <span class="panel-hint">{{ rows | length | aindic }} من {{ recruits | length | aindic }}</span></h3>
     <div class="rt-actions">
       <a class="icon-btn print" title="طباعة كشف اليومية كاملًا" target="_blank"
-         href="{{ url_for('recruits.print_doc', what='day') }}?day={{ day }}{% if sid %}&sid={{ sid }}{% endif %}">
+         href="{{ url_for('recruits.print_doc', what='day') }}&day={{ day }}{% if sid %}&sid={{ sid }}{% endif %}">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
       </a>
     </div>
@@ -53,11 +53,11 @@
     <h3>🏖️ إجازات شهر {{ month_name }}</h3>
     <div class="rt-actions">
       {% if sheet_leaves %}<a class="icon-btn down" title="تنزيل كشف الإجازات وورد"
-         href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
+         href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}{% if sid %}&sid={{ sid }}{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       </a>{% endif %}
       <a class="icon-btn print" title="طباعة كشف الإجازات" target="_blank"
-         href="{{ url_for('recruits.print_doc', what='month-leaves') }}{% if sid %}?sid={{ sid }}{% endif %}">
+         href="{{ url_for('recruits.print_doc', what='month-leaves') }}{% if sid %}&sid={{ sid }}{% endif %}">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
       </a>
     </div>
@@ -75,7 +75,7 @@
         <td class="num">{{ (t - f + 1) | aindic }} يومًا</td>
         <td class="ops">
           <a class="icon-btn print" title="تصريح إجازة (طباعة+وورد)" target="_blank"
-             href="{{ url_for('recruits.print_doc', what='permit') }}?rid={{ rid }}&from={{ f }}&to={{ t }}{% if sid %}&sid={{ sid }}{% endif %}">
+             href="{{ url_for('recruits.print_doc', what='permit') }}&rid={{ rid }}&from={{ f }}&to={{ t }}{% if sid %}&sid={{ sid }}{% endif %}">
             <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           </a>
         </td>
@@ -101,7 +101,7 @@
     <tbody>{% for r, d in rows %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ d | aindic }}</td>
       <td class="ops"><a class="icon-btn print" title="كشف حالة المجند" target="_blank"
-        href="{{ url_for('recruits.print_doc', what='recruit') }}?rid={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
+        href="{{ url_for('recruits.print_doc', what='recruit') }}&rid={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a></td>
     </tr>{% endfor %}</tbody>
   </table></div>

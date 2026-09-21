@@ -2,7 +2,7 @@
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """صفحة المجندين العاملين بوحدة التعيينات — أدوات عامة.
 تبويبات: أصل القوة · اليومية العامة · الحضور · الإجازات · الغياب · أخرى · الإحصائيات.
-سجل المجندين عالمي (recruits.db) واليومية شهرية معزولة داخل قاعدة الشهر (قاعدة العزل).
+سجل المجندين واليومية والدباجة معزولة داخل قاعدة الشهر.
 """
 import re
 from datetime import date
@@ -11,21 +11,21 @@ from urllib.parse import quote
 from flask import (Blueprint, abort, redirect, render_template, request,
                    send_file, url_for)
 
-import arabic_numbers as arnum
-import database as db
-import dataguard
-import db_attendance as da
-import db_recruits as dr
-import docx_recruits
-import egtime
-import notifications
-import storage
-from auth_core import current_context, current_session, login_required
+from core import arabic_numbers as arnum
+from data_access import database as db
+from data_access import dataguard
+from data_access import db_attendance as da
+from data_access import db_recruits as dr
+from documents import docx_recruits
+from core import egtime
+from services import notifications
+from data_access import storage, db_letterhead as lh
+from services import legacy_months
+from core.auth_core import current_context, current_session, login_required
 
 recruits_bp = Blueprint("recruits", __name__, url_prefix="/recruits")
 
-MONTH_NAMES = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-               "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+from core.config import MONTH_NAMES
 TABS = [("registry", "أصل القوة", "👥"), ("journal", "اليومية العامة", "📝"),
         ("present", "الحضور", "✅"), ("leaves", "الإجازات", "🏖️"),
         ("absent", "الغياب", "🚫"), ("other", "أخرى", "🧭"),
@@ -40,28 +40,25 @@ def _ctx():
 
 def _rb(ok=None, err=None, **params):
     _, token = current_session()
-    qs = [f"sid={quote(token)}"] if token else []
+    year, month = _ctx()
+    qs = [f"year={year}", f"month={month}"]
+    if token:
+        qs.append(f"sid={quote(token)}")
     if ok:
         qs.append("ok=" + quote(ok))
     if err:
         qs.append("err=" + quote(err))
     qs += ["{}={}".format(k, quote(str(v))) for k, v in params.items() if v not in (None, "")]
-    return redirect(url_for("recruits.page") + ("?" + "&".join(qs) if qs else ""))
+    return redirect(url_for("recruits.page") + ("&" + "&".join(qs) if qs else ""))
 
 
 def _lh_vars():
-    v = {"lh": [db.get_setting(f"lh_{i}") or "" for i in range(1, 5)],
-         "sig_right": (db.get_setting("sig_right_rank"), db.get_setting("sig_right_name")),
-         "sig_left": (db.get_setting("sig_left_rank"), db.get_setting("sig_left_name"))}
-    logo = db.get_setting("logo_file")
-    v["has_logo"] = bool(logo and (storage.letterhead_dir() / logo).exists())
-    return v
+    year, month = _ctx()
+    return lh.template_vars(year, month)
 
 
 def _files_dir():
-    p = storage.DATA_DIR / "المجندون" / "ملفات"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    return storage.recruits_dir(*_ctx())
 
 
 def _today_info(year, month, day):
@@ -80,8 +77,9 @@ def _base_vars(tab):
         "tab": tab, "tabs": TABS, "year": year, "month": month,
         "month_name": MONTH_NAMES[month - 1], "eom": egtime.days_in_month(year, month),
         "today_ar": egtime.fmt_ar(today), "time_now": egtime.now().strftime("%H:%M:%S"),
-        "statuses": da.STATUSES, "recruits": dr.list_recruits(),
-        "govs": dr.vocab("gov"), "cities": dr.vocab("city"),
+        "legacy_registry": legacy_months.registry_available() if not legacy_months.imported("registry", year, month) else 0,
+        "statuses": da.STATUSES, "recruits": dr.list_recruits(*_ctx()),
+        "govs": dr.vocab(*_ctx(), "gov"), "cities": dr.vocab(*_ctx(), "city"),
         **_lh_vars(),
     }
 
@@ -114,7 +112,7 @@ def page():
 def _registry(v):
     today = egtime.today()
     edit_id = arnum.parse_int(request.args.get("edit"))
-    v["edit_item"] = dr.get_recruit(edit_id) if edit_id else None
+    v["edit_item"] = dr.get_recruit(*_ctx(), edit_id) if edit_id else None
     v["badges"] = {r["id"]: _cert_badge(r, today) for r in v["recruits"]}
     v["discharge"] = {r["id"]: dr.days_to_discharge(r, today) for r in v["recruits"]}
     return render_template("recruits_registry.html", **v)
@@ -137,14 +135,17 @@ def _save_upload(field, prefix):
 @login_required
 def save():
     rid = arnum.parse_int(request.form.get("id"))
-    old = dr.get_recruit(rid) if rid else {}
+    old = dr.get_recruit(*_ctx(), rid) if rid else {}
+    if rid and not old:
+        abort(404)
     data = {k: (request.form.get(k) or "").strip() for k in
             ("name", "mil_no", "service_start", "service_end", "governorate",
              "city", "address", "cert_date", "cert_expiry")}
+    data["mil_no"] = arnum.to_western(data["mil_no"])
     data["has_cert"] = 1 if request.form.get("has_cert") else 0
     if not data["name"] or not data["mil_no"]:
         return _rb(err="الاسم والرقم العسكري إلزاميان", tab="registry")
-    twin = dr.find_by(mil_no=data["mil_no"])
+    twin = dr.find_by(*_ctx(), mil_no=data["mil_no"])
     if twin and (not rid or twin["id"] != rid):
         return _rb(err="الرقم العسكري «{}» مسجل بالفعل لمجند آخر".format(data["mil_no"]), tab="registry")
     data["photo"] = old.get("photo", "")
@@ -155,11 +156,13 @@ def save():
     up = _save_upload("cert_photo", "cert")
     if up:
         data["cert_photo"] = up
+    if not data["has_cert"]:
+        data.update(cert_date="", cert_expiry="", cert_photo="")
     if rid:
-        dr.update_recruit(rid, data)
+        dr.update_recruit(*_ctx(), rid, data)
         msg = "تم حفظ تعديل «{}» ✔".format(data["name"])
     else:
-        rid = dr.add_recruit(data)
+        rid = dr.add_recruit(*_ctx(), data)
         msg = "تم تسجيل المجند «{}» في أصل القوة ✔".format(data["name"])
     dataguard.auto_backup("write", min_minutes=20)
     return _rb(ok=msg, tab="registry")
@@ -168,12 +171,15 @@ def save():
 @recruits_bp.route("/delete/<int:rid>", methods=["POST"])
 @login_required
 def delete(rid):
-    r = dr.get_recruit(rid)
+    r = dr.get_recruit(*_ctx(), rid)
     if not r:
         abort(404)
-    dr.delete_recruit(rid)
+    try:
+        dr.delete_recruit(*_ctx(), rid)
+    except ValueError as exc:
+        return _rb(err=str(exc))
     dataguard.auto_backup("write", min_minutes=20)
-    return _rb(ok="حُذف «{}» من أصل القوة (سجلات يوميته السابقة محفوظة في شهورها)".format(r["name"]),
+    return _rb(ok="حُذف «{}» من أصل القوة من الشهر الحالي فقط".format(r["name"]),
                tab="registry")
 
 
@@ -210,7 +216,7 @@ def _journal(v):
 
 
 def _locked_days(year, month):
-    import months
+    from data_access import months
     conn = months.get_db(year, month)
     da.ensure_tables(conn)
     rows = conn.execute("SELECT day FROM journal_meta WHERE locked=1").fetchall()
@@ -223,14 +229,14 @@ def _locked_days(year, month):
 def journal_save():
     year, month = _ctx()
     day = arnum.parse_int(request.form.get("day"))
-    if not day or not (1 <= day <= 31):
+    if not day or not (1 <= day <= egtime.days_in_month(year, month)):
         return _rb(err="يوم غير صالح", tab="journal")
     meta = da.get_meta(year, month, day)
     if meta["locked"]:
         return _rb(err="يومية يوم {} مُثبَّتة ومقفولة — اطلب «تعديلً رغم التثبيت» أولًا".format(day),
                    tab="journal", day=day)
     entries = []
-    for r in dr.list_recruits():
+    for r in dr.list_recruits(*_ctx()):
         st = request.form.get("st_{}".format(r["id"]))
         note = (request.form.get("note_{}".format(r["id"])) or "").strip()
         if st in da.STATUSES:
@@ -282,9 +288,9 @@ def journal_range():
 def _resolve_recruit(ref):
     if " — " in ref:
         name, mil = ref.rsplit(" — ", 1)
-        r = dr.find_by(mil_no=mil.strip()) or dr.find_by(name=name.strip())
+        r = dr.find_by(*_ctx(), mil_no=mil.strip()) or dr.find_by(*_ctx(), name=name.strip())
     else:
-        r = dr.find_by(mil_no=ref) or dr.find_by(name=ref)
+        r = dr.find_by(*_ctx(), mil_no=ref) or dr.find_by(*_ctx(), name=ref)
     return r
 
 
@@ -398,7 +404,7 @@ def print_doc(what):
         rid = arnum.parse_int(request.args.get("rid"))
         f = arnum.parse_int(request.args.get("from"))
         t = arnum.parse_int(request.args.get("to"))
-        r = dr.get_recruit(rid)
+        r = dr.get_recruit(*_ctx(), rid)
         if not r or not f or not t or f > t:
             abort(404)
         v["recruit"] = r
@@ -423,7 +429,7 @@ def print_doc(what):
         v["title"] = "كشف موقف الشهادات الصحية"
     elif what == "recruit":
         rid = arnum.parse_int(request.args.get("rid"))
-        r = dr.get_recruit(rid)
+        r = dr.get_recruit(*_ctx(), rid)
         if not r:
             abort(404)
         v["recruit"] = r
@@ -440,7 +446,7 @@ def print_doc(what):
 def docx_download(name):
     if not re.match(r"^(كشف-(الحالات|الإجازات)-\d{4}-\d{2}|تصريح-.*-\d{4}-\d{2}-\d{2})\.docx$", name):
         abort(404)
-    base = docx_recruits.docs_dir()
+    base = docx_recruits.docs_dir(*_ctx())
     path = base / name
     if not path.exists():
         path = base / "تصاريح" / name

@@ -6,14 +6,17 @@
 {% endblock %}
 {% block content %}
 {% include "recruits_tabs.html" %}
+{% set copy_kind = "registry" %}
+{% include "partials/legacy_notice.html" %}
+{% include "partials/month_copy.html" %}
 
 <div class="rc-grid">
   <!-- بطاقة التسجيل/التعديل -->
-  <form method="post" action="{{ url_for('recruits.save') }}{% if sid %}?sid={{ sid }}{% endif %}"
+  <form method="post" action="{{ url_for('recruits.save') }}{% if sid %}&sid={{ sid }}{% endif %}"
         enctype="multipart/form-data" autocomplete="off" class="panel rc-form">
     <div class="panel-head">
       <h3>{{ '✏️ تعديل بيانات مجند' if edit_item else '➕ تسجيل مجند جديد' }}</h3>
-      {% if edit_item %}<a class="rt-btn dim" href="{{ url_for('recruits.page') }}?tab=registry{% if sid %}&sid={{ sid }}{% endif %}">إلغاء</a>{% endif %}
+      {% if edit_item %}<a class="rt-btn dim" href="{{ url_for('recruits.page') }}&tab=registry{% if sid %}&sid={{ sid }}{% endif %}">إلغاء</a>{% endif %}
     </div>
     <input type="hidden" name="id" value="{{ edit_item.id if edit_item else '' }}">
 
@@ -84,12 +87,13 @@
     <div class="table-wrap">
       <table class="rt-table">
         <thead><tr>
-          <th>م</th><th>الصورة</th><th>الاسم</th><th>الرقم العسكري</th><th>الخدمة</th>
+          <th title="تحديد للنسخ">نسخ</th><th>م</th><th>الصورة</th><th>الاسم</th><th>الرقم العسكري</th><th>الخدمة</th>
           <th>المحافظة / المدينة</th><th>الشهادة الصحية</th><th>إجراءات</th>
         </tr></thead>
         <tbody>
           {% for r in recruits %}
           <tr>
+            <td><input type="checkbox" form="monthCopyForm" name="recruit_ids" value="{{ r.id }}" aria-label="تحديد {{ r.name }} للنسخ"></td>
             <td class="num">{{ loop.index | aindic }}</td>
             <td>{% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% else %}<span class="rc-avatar ph">؟</span>{% endif %}</td>
             <td><b>{{ r.name }}</b>{% if discharge[r.id] is not none and discharge[r.id] <= 60 %}
@@ -101,17 +105,17 @@
               {% if r.cert_expiry %}<div class="dim rc-mini">{{ r.cert_expiry | aindic }}</div>{% endif %}</td>
             <td class="ops">
               <a class="icon-btn edit" title="تعديل البيانات"
-                 href="{{ url_for('recruits.page') }}?tab=registry&edit={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
+                 href="{{ url_for('recruits.page') }}&tab=registry&edit={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </a>
-              <form method="post" class="inline-f" action="{{ url_for('recruits.delete', rid=r.id) }}{% if sid %}?sid={{ sid }}{% endif %}"
-                    onsubmit="return confirm('حذف «{{ r.name }}» من أصل القوة نهائيًا؟ (سجلات يوميته السابقة تبقى في شهورها)')">
+              <form method="post" class="inline-f" action="{{ url_for('recruits.delete', rid=r.id) }}{% if sid %}&sid={{ sid }}{% endif %}"
+                    onsubmit="return confirm('حذف «{{ r.name }}» من أصل القوة نهائيًا؟ من هذا الشهر فقط، ولن تتأثر الشهور الأخرى')">
                 <button class="icon-btn del" type="submit" title="حذف المجند">
                   <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
               </form>
               <a class="icon-btn print" title="طباعة كشف حالة المجند لهذا الشهر" target="_blank"
-                 href="{{ url_for('recruits.print_doc', what='recruit') }}?rid={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
+                 href="{{ url_for('recruits.print_doc', what='recruit') }}&rid={{ r.id }}{% if sid %}&sid={{ sid }}{% endif %}">
                 <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
               </a>
             </td>

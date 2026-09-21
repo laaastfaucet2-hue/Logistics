@@ -6,12 +6,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="ctx-strip">
-  <span>📜 صفحة عامة</span><span class="sep">•</span>
-  <span class="dim">تُطبَّق تلقائيًا على <strong>كل</strong> ملفات الإكسل والوورد الرسمية في كل السنوات والشهور</span>
-  <span class="sep">•</span>
-  <span class="dim">المجلد: <code class="ltr">database/الدباجة/</code></span>
-</div>
+<div class="ctx-strip"><span>دباجة {{ month_name }} {{ ctx_year | aindic }}</span><span class="sep">•</span><span class="dim">مستقلة لهذا الشهر، وتُطبَّق على مستنداته الرسمية فقط</span><code class="ltr">{{ folder_path }}</code></div>
+{% set copy_kind = "letterhead" %}
+{% include "partials/legacy_notice.html" %}
+{% include "partials/month_copy.html" %}
 
 <div class="panel rt-toolbar">
   <div class="rt-actions">
@@ -53,7 +51,7 @@
       <div class="lh-logo-empty">لا يوجد لوجو بعد 📷</div>
       {% endif %}
       <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp" class="lh-file">
-      <p class="lh-hint">PNG / JPG / WEBP — يُحفظ في مجلد الدباجة ويظهر في كل الملفات الرسمية</p>
+      <p class="lh-hint">PNG / JPG / WEBP — يُحفظ في مجلد الدباجة ويظهر في ملفات هذا الشهر الرسمية</p>
     </div>
   </div>
 
@@ -80,7 +78,7 @@
 
 <div class="lh-savebar">
   <button class="rt-btn gold big" type="submit">💾 حفظ الدباجة والتوقيعات</button>
-  <span class="lh-hint">بالحفظ: يُعاد بناء <strong>ملف Word الدباجة</strong> وتتحدث التوقيعات في <strong>كل ملفات الإكسل الموجودة</strong> لحظيًا</span>
+  <span class="lh-hint">بالحفظ: يُعاد بناء <strong>ملف Word الدباجة</strong> وتتحدث الدباجة واللوجو والتوقيعات في <strong>إكسل هذا الشهر فقط</strong> لحظيًا</span>
 </div>
 </form>
 
@@ -138,7 +136,7 @@
         {% else %}<span>📷<br>اللوجو</span>{% endif %}
       </div>
     </div>
-    <div class="xl-title">المقررات التمونيية — مقرر صيفي — يناير {{ ctx_year | aindic }}</div>
+    <div class="xl-title">المقررات التمونيية — مقرر صيفي — {{ month_name }} {{ ctx_year | aindic }}</div>
     <table class="xl-mock">
       <thead><tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th></tr></thead>
       <tbody>
@@ -163,6 +161,6 @@
 <div class="panel lh-decide">
   💡 <strong>قرار ليك:</strong> بص على المعاينة دي وقولّي لو حابب تغيّر مكان أي عنصر
   (مثلًا: الدباجة تبقى في النص فوق، اللوجو أكبر/أصغر، التوقيعات أعلى/أسفل، كلمة "يعتمد" فوق توقيع الشمال...)
-  والتعديل هيتعمم على كل ملفات الإكسل والوورد في كل المجلدات الرسمية تلقائيًا. 🎯
+  التعديل يُطبّق على ملفات الشهر المحدد فقط، ولا يغيّر أي شهر آخر.
 </div>
 {% endblock %}

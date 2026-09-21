@@ -14,7 +14,7 @@
     <div class="rc-days">
       {% for d in range(1, eom + 1) %}
       <a class="rc-daybox {{ 'locked' if d in locked_days }} {{ 'today' if d == info.real_day }} {{ 'missing' if info.real_day and d < info.real_day and d not in locked_days }} {{ 'on' if d == day }}"
-         href="{{ url_for('recruits.page') }}?tab=journal&day={{ d }}{% if sid %}&sid={{ sid }}{% endif %}"
+         href="{{ url_for('recruits.page') }}&tab=journal&day={{ d }}{% if sid %}&sid={{ sid }}{% endif %}"
          title="{% if d in locked_days %}مثبتة ✔{% elif info.real_day and d < info.real_day %}بلا يومية!{% else %}افتح يوم {{ d }}{% endif %}">
         {{ d | aindic }}{% if d in locked_days %}<span class="rc-lock">
           <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>{% endif %}
@@ -34,7 +34,7 @@
     <div class="rc-banner draft">📋 مسودة مرحّلة تلقائيًا من يومية يوم {{ carried_from | aindic }} المثبتة — راجعها ثم «ثبّت اليومية»، ولن تنتقل بعدها ليوم آخر.</div>
     {% elif meta.locked %}
     <div class="rc-banner locked">🔒 يومية يوم {{ day | aindic }} مثبتة ومقفولة{% if meta.source_day %} (مصدرها يوم {{ meta.source_day | aindic }}){% endif %}.
-      <form method="post" class="inline-f" action="{{ url_for('recruits.journal_unlock') }}{% if sid %}?sid={{ sid }}{% endif %}"
+      <form method="post" class="inline-f" action="{{ url_for('recruits.journal_unlock') }}{% if sid %}&sid={{ sid }}{% endif %}"
             onsubmit="return confirm('⚠️ تأكيد قوي: فتح يومية يوم {{ day | aindic }} المثبتة للتعديل؟')">
         <input type="hidden" name="day" value="{{ day }}">
         <button class="rc-mini-btn" type="submit">تعديل رغم التثبيت</button>
@@ -47,14 +47,14 @@
         <h3>📝 يومية يوم {{ day | aindic }} — {{ info.cur_weekday }} {% if day == info.real_day %}<span class="rc-mini gold">(اليوم الحالي)</span>{% endif %}</h3>
         <div class="rt-actions">
           <a class="icon-btn print" title="طباعة كشف اليومية بالدباجة والتوقيعين" target="_blank"
-             href="{{ url_for('recruits.print_doc', what='day') }}?day={{ day }}{% if sid %}&sid={{ sid }}{% endif %}">
+             href="{{ url_for('recruits.print_doc', what='day') }}&day={{ day }}{% if sid %}&sid={{ sid }}{% endif %}">
             <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           </a>
         </div>
       </div>
 
       {% if recruits %}
-      <form method="post" action="{{ url_for('recruits.journal_save') }}{% if sid %}?sid={{ sid }}{% endif %}">
+      <form method="post" action="{{ url_for('recruits.journal_save') }}{% if sid %}&sid={{ sid }}{% endif %}">
         <input type="hidden" name="day" value="{{ day }}">
         <input type="hidden" name="source_day" value="{{ meta.source_day or carried_from | default(0) }}">
         <div class="table-wrap">
@@ -103,7 +103,7 @@
     <!-- إسناد حالة بمدى -->
     <div class="panel">
       <div class="panel-head"><h3>📆 إسناد حالة بمدى <span class="panel-hint">مثال: إجازة من يوم ٣ إلى ٧ — تُسجَّل دفعة واحدة</span></h3></div>
-      <form method="post" action="{{ url_for('recruits.journal_range') }}{% if sid %}?sid={{ sid }}{% endif %}" autocomplete="off" class="rc-range">
+      <form method="post" action="{{ url_for('recruits.journal_range') }}{% if sid %}&sid={{ sid }}{% endif %}" autocomplete="off" class="rc-range">
         <input name="recruit_ref" data-combo="rcList" autocomplete="off" required
                placeholder="اكتب اسم المجند أو رقمه العسكري..." class="rc-ref">
         <datalist id="rcList">{% for r in recruits %}<option value="{{ r.name }} — {{ r.mil_no }}">{% endfor %}</datalist>

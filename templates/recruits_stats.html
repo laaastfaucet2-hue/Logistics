@@ -30,14 +30,14 @@
 <div class="panel rt-toolbar">
   <div class="rt-actions">
     {% if sheet_matrix %}
-    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_matrix.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
+    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_matrix.name) }}{% if sid %}&sid={{ sid }}{% endif %}">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       تنزيل كشف حالات الشهر (وورد)</a>{% endif %}
     {% if sheet_leaves %}
-    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
+    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}{% if sid %}&sid={{ sid }}{% endif %}">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       تنزيل كشف إجازات الشهر (وورد)</a>{% endif %}
-    <form method="post" class="inline-f" action="{{ url_for('recruits.docx_rebuild') }}{% if sid %}?sid={{ sid }}{% endif %}">
+    <form method="post" class="inline-f" action="{{ url_for('recruits.docx_rebuild') }}{% if sid %}&sid={{ sid }}{% endif %}">
       <button class="icon-btn sync" type="submit" title="إعادة بناء كشوف الوورد الآن">
         <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
       </button>
@@ -66,7 +66,7 @@
   <div class="panel">
     <div class="panel-head"><h3>📋 موقف الشهادات الصحية</h3>
       <a class="icon-btn print" title="طباعة كشف الشهادات" target="_blank"
-         href="{{ url_for('recruits.print_doc', what='certs') }}{% if sid %}?sid={{ sid }}{% endif %}">
+         href="{{ url_for('recruits.print_doc', what='certs') }}{% if sid %}&sid={{ sid }}{% endif %}">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
     </div>
     {% if certs.expired %}<div class="rc-banner danger slim">🔴 منتهية:

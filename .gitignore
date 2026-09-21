@@ -4,3 +4,15 @@ database/
 *.pyc
 __pycache__/
 .venv/
+
+# Local runtime, tests, build output and installer artifacts (never user data in Git)
+runtime/
+logs/
+.arena/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+*.log
+*.spec.bak

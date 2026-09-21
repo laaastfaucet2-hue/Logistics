@@ -9,8 +9,8 @@ from urllib.parse import quote
 
 from flask import Blueprint, render_template, request, redirect, url_for, abort, send_file
 
-import dataguard
-from auth_core import login_required, current_session
+from data_access import dataguard
+from core.auth_core import login_required, current_session
 
 backups_bp = Blueprint("backups", __name__, url_prefix="/backups")
 

@@ -12,16 +12,16 @@ from urllib.parse import quote
 from flask import (Blueprint, render_template, request, redirect,
                    url_for, g, abort, send_file)
 
-from auth_core import login_required, current_context, current_session
-from config import (SECTIONS, RATION_KINDS, RATION_KIND_MAP, MEALS, DAYS, UNITS,
+from core.auth_core import login_required, current_context, current_session
+from core.config import (SECTIONS, RATION_KINDS, RATION_KIND_MAP, MEALS, DAYS, UNITS,
                     MONTH_NAMES)
-import arabic_numbers as arnum
-import months
-import db_rations as dr
-import db_entities as de
-import xlsx_rations
-import dataguard
-import database as db
+from core import arabic_numbers as arnum
+from data_access import months
+from data_access import db_rations as dr
+from data_access import db_entities as de
+from documents import xlsx_rations
+from data_access import dataguard
+from data_access import db_letterhead as db
 
 rations_bp = Blueprint("rations", __name__, url_prefix="/rations")
 
@@ -46,7 +46,7 @@ def _rb(section, kind=None, tab=None, ok=None, err=None):
     if err:
         params.append("err=" + quote(err))
     target = url_for("rations.page", section=section)
-    return redirect(target + ("?" + "&".join(params) if params else ""))
+    return redirect(target + ("&" + "&".join(params) if params else ""))
 
 
 def _ctx_month():
@@ -56,7 +56,7 @@ def _ctx_month():
 
 
 def _page_vars(section, kind):
-    import storage
+    from data_access import storage
     year, month = current_context(g.user["id"])
     return {
         "section": section,
@@ -77,10 +77,10 @@ def _page_vars(section, kind):
         "edit_id": arnum.parse_int(request.args.get("edit")),
         "known_names": dr.known_item_names(year, month, section),
         # بيانات الدباجة والتوقيعات — لكتل الطباعة الرسمية
-        "lh": [db.get_setting(f"lh_{i}") for i in range(1, 5)],
-        "sig_right": (db.get_setting("sig_right_rank"), db.get_setting("sig_right_name")),
-        "sig_left": (db.get_setting("sig_left_rank"), db.get_setting("sig_left_name")),
-        "has_logo": bool(db.get_setting("logo_file")),
+        "lh": [db.get_setting(year, month, f"lh_{i}") for i in range(1, 5)],
+        "sig_right": (db.get_setting(year, month, "sig_right_rank"), db.get_setting(year, month, "sig_right_name")),
+        "sig_left": (db.get_setting(year, month, "sig_left_rank"), db.get_setting(year, month, "sig_left_name")),
+        "has_logo": bool(db.get_setting(year, month, "logo_file")),
     }
 
 
@@ -203,7 +203,7 @@ def activate(section):
 @rations_bp.route("/<section>/copy", methods=["POST"])
 @login_required
 def copy_kind(section):
-    import storage
+    from data_access import storage
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
     kind = request.form.get("kind", RATION_KINDS[0][0])

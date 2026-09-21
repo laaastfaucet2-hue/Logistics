@@ -5,6 +5,8 @@
   "use strict";
 
   function build(input) {
+    if (input.dataset.comboReady) return;
+    input.dataset.comboReady = "1";
     var srcId = input.getAttribute("data-combo");
     var src = document.getElementById(srcId);
     if (!src) return;
@@ -30,6 +32,7 @@
 
     function render() {
       var q = input.value.trim();
+      if (input.id === "ctxYear" || input.id === "ctxMonth") q = "";
       list.innerHTML = "";
       items = options()
         .filter(function (v) { return !q || v.indexOf(q) !== -1; })
@@ -41,6 +44,7 @@
             e.preventDefault();           // قبل blur — عشان القيمة تتحط الأول
             input.value = v;
             close();
+            input.dispatchEvent(new Event("change", {bubbles:true}));
           });
           list.appendChild(d);
           return d;
@@ -79,6 +83,7 @@
         e.preventDefault();
         input.value = items[active].textContent;
         close();
+        input.dispatchEvent(new Event("change", {bubbles:true}));
       }
     });
   }

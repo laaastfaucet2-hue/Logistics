@@ -1,94 +1,13 @@
-<!DOCTYPE html>
-<!-- ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md -->
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>تسجيل الدخول • منظومة مخازن التعيينات</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Changa:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
-</head>
-<body class="login-body">
-<div class="bg-fx"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span><span class="grid"></span></div>
-
-<div class="login-wrap">
-  <!-- جهة التعريف -->
-  <div class="login-hero">
-    <div class="hero-logo">
-      <svg viewBox="0 0 48 48" fill="none">
-        <path d="M24 3 6 11v12c0 11 7.5 18.5 18 22 10.5-3.5 18-11 18-22V11L24 3z" fill="url(#lg1)" opacity=".95"/>
-        <path d="M24 7 10 13.4V23c0 8.8 6 15 14 18 8-3 14-9.2 14-18V13.4L24 7z" fill="#0a1230"/>
-        <path d="M17 23.5l5 5 9-11" stroke="#e3b341" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <defs><linearGradient id="lg1" x1="6" y1="3" x2="42" y2="45"><stop stop-color="#f6d47c"/><stop offset="1" stop-color="#b8860b"/></linearGradient></defs>
-      </svg>
-    </div>
-    <h1>منظومة مخازن التعيينات</h1>
-    <p class="hero-sub">إدارة التموين</p>
-    <ul class="hero-feats">
-      <li><span class="dot"></span> إدارة الأصناف والمخازن والأرصدة لحظياً</li>
-      <li><span class="dot"></span> أوامر التوريد والصرف للجهات والوحدات</li>
-      <li><span class="dot"></span> تنبيهات النواقص والتقارير والكشوف</li>
-    </ul>
-  </div>
-
-  <!-- بطاقة الدخول -->
-  <div class="login-card">
-    <h2>تسجيل الدخول</h2>
-    <p class="login-sub">مرحباً بك، أدخل بياناتك للمتابعة</p>
-
-    <div class="flash flash-error" id="expiredMsg" style="display:none">انتهت الجلسة المحفوظة — سجل الدخول مرة أخرى</div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <form method="post">
-      <label class="field">
-        <span>اسم المستخدم</span>
-        <input type="text" name="username" value="mostafa" placeholder="مثال: mostafa" required autofocus autocomplete="username">
-      </label>
-      <label class="field">
-        <span>كلمة المرور</span>
-        <div class="pw-wrap">
-          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
-          <button type="button" class="pw-toggle" onclick="togglePw()" title="إظهار/إخفاء">👁</button>
-        </div>
-      </label>
-      <label class="remember">
-        <input type="checkbox" name="remember" checked>
-        <span>تذكرني دائماً (دخول تلقائي لمدة 30 يوم)</span>
-      </label>
-      <button type="submit" class="btn-gold btn-block">دخول المنظومة</button>
-    </form>
-
-    <div class="demo-hint">
-      <span>بيانات الدخول التجريبية:</span>
-      <code>mostafa / 779</code>
-    </div>
-  </div>
-</div>
-<script>
-function togglePw(){var i=document.getElementById('password');i.type=(i.type==='password')?'text':'password';}
-/* دخول تلقائي: لو فيه جلسة محفوظة ادخل بيها مباشرة */
-(function(){
-  try{
-    var params = new URLSearchParams(location.search);
-    if(params.get('expired')==='1'){
-      localStorage.removeItem('rations_sid');
-      document.getElementById('expiredMsg').style.display='block';
-      return;
-    }
-    var sid = localStorage.getItem('rations_sid');
-    if(sid){ location.replace('/dashboard?sid='+encodeURIComponent(sid)); }
-  }catch(e){}
-})();
-</script>
-</body>
-</html>
+{% from 'partials/icons.html' import icon %}
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تسجيل الدخول • مخازن التعيينات</title><link rel="icon" href="{{ url_for('static',filename='img/mark.svg') }}">
+{% for css in ['fonts','style','workspace','login'] %}<link rel="stylesheet" href="{{ url_for('static',filename='css/'+css+'.css') }}?v={{ static_ver }}">{% endfor %}
+</head><body class="login-body" data-desktop="{{ '1' if desktop_mode else '0' }}">
+{% include 'partials/windowbar.html' %}
+<div class="login-wrap"><section class="login-hero"><div class="login-identity"><img src="{{ url_for('static',filename='img/mark.svg') }}" alt="شعار المنظومة"><div><strong>مخازن التعيينات</strong><small>LOGISTICS WORKSPACE</small></div></div><h1>كل التفاصيل.<br><span>تحت إدارتك.</span></h1><p>مساحة واحدة لتنظيم المقررات، إدارة أصل القوة، وتجهيز مستنداتك الرسمية. ببساطة ووضوح.</p><div class="login-art">{% include 'partials/warehouse_art.html' %}</div></section>
+<section class="login-card"><span class="eyebrow">مساحة العمل / دخول آمن</span><h2>أهلًا بعودتك.</h2><p class="login-sub">أدخل بيانات حسابك للمتابعة إلى المنظومة.</p>
+<div class="flash flash-error login-session" id="expiredMsg">انتهت الجلسة المحفوظة. سجّل الدخول من جديد.</div>
+{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash flash-{{ category }}" role="alert">{{ message }}</div>{% endfor %}{% endwith %}
+<form method="post"><label class="field"><span>اسم المستخدم</span><input name="username" placeholder="اسم المستخدم" required autofocus autocomplete="username"></label><label class="field"><span>كلمة المرور</span><div class="pw-wrap"><input type="password" id="password" name="password" required placeholder="أدخل كلمة المرور" autocomplete="current-password"><button type="button" id="togglePassword" class="pw-toggle" title="إظهار أو إخفاء كلمة المرور">إظهار</button></div></label><label class="remember"><input type="checkbox" name="remember" checked><span>تذكّر دخولي على هذا الجهاز</span></label><button type="submit" class="btn-gold btn-block">دخول مساحة العمل {{ icon('arrow') }}</button></form>
+<div class="login-security">{{ icon('shield') }}{{ 'ملفاتك وبياناتك محفوظة محليًا على جهازك' if desktop_mode else 'معاينة الويب — بياناتها ليست بديلًا لنسختك المحلية' }}</div></section></div>
+<footer class="login-foot"><span>منظومة مخازن التعيينات · إدارة التموين</span><span dir="ltr">WORKSPACE / {{ app_version }}</span></footer>
+<script src="{{ url_for('static',filename='js/login.js') }}?v={{ static_ver }}"></script><script src="{{ url_for('static',filename='js/desktop.js') }}?v={{ static_ver }}"></script></body></html>
