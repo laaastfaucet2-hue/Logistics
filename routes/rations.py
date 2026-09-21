@@ -72,6 +72,7 @@ def _page_vars(section, kind):
         "year": year,
         "month": month,
         "edit_id": arnum.parse_int(request.args.get("edit")),
+        "known_names": dr.known_item_names(year, month, section),
     }
 
 

@@ -128,3 +128,16 @@ def item_exists(year, month, section, kind, name):
         (section, kind, name)).fetchone()
     conn.close()
     return row is not None
+
+
+def known_item_names(year, month, section):
+    """أسماء أصناف هذا القسم نفسه في هذا الشهر (كل الأنواع) — لاقتراحات الإدخال الذكية.
+
+    فصل تام: صفحة المتعهد تقترح أصناف المتعهد فقط، والتمونيية أصناف التمونيية فقط.
+    """
+    conn = months.get_db(year, month)
+    rows = conn.execute(
+        "SELECT DISTINCT name FROM ration_items WHERE section=? ORDER BY name",
+        (section,)).fetchall()
+    conn.close()
+    return [r["name"] for r in rows]

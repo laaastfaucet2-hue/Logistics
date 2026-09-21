@@ -60,12 +60,14 @@
   <div class="panel-head"><h3>{% if edit_item %}✏️ تعديل الصنف رقم {{ edit_item.serial | aindic }}{% else %}➕ إضافة صنف جديد — مقرر {{ kmap[kind].name }}{% endif %}</h3></div>
   <form method="post"
         action="{% if edit_item %}{{ url_for('rations.item_edit', section=section, item_id=edit_item.id) }}{% else %}{{ url_for('rations.item_add', section=section) }}{% endif %}"
-        class="rt-form">
+        class="rt-form" autocomplete="off">
     <input type="hidden" name="kind" value="{{ kind }}">
     <div class="fld wide">
       <label>اسم الصنف</label>
       <input name="name" required placeholder="مثال: أرز بلدي، سكر، شاي..."
+             list="sectionNames" autocomplete="off"
              value="{{ edit_item.name if edit_item else '' }}">
+      <datalist id="sectionNames">{% for n in known_names %}<option value="{{ n }}">{% endfor %}</datalist>
     </div>
     <div class="fld">
       <label>الوحدة</label>
@@ -161,7 +163,7 @@
       <button class="modal-x" type="button" id="customClose">✕</button>
     </div>
     <p class="modal-hint">اكتب الكمية في اليوم والوجبة اللي يتوزع فيها الصنف (فاضي = لا يُصرف) ثم احفظ.</p>
-    <form method="post" id="customForm" action="{{ url_for('rations.custom_save', section=section, item_id=0) }}"
+    <form method="post" id="customForm" autocomplete="off" action="{{ url_for('rations.custom_save', section=section, item_id=0) }}"
           data-template="{{ url_for('rations.custom_save', section=section, item_id=0) }}">
       <input type="hidden" name="kind" value="{{ kind }}">
       <table class="grid-days">

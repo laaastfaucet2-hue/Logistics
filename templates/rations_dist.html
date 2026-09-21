@@ -33,7 +33,7 @@
 <!-- إضافة جهة -->
 <div class="panel rt-formcard">
   <div class="panel-head"><h3>➕ إضافة جهة جديدة</h3></div>
-  <form method="post" action="{{ url_for('rations.entity_add', section=section) }}" class="rt-form">
+  <form method="post" action="{{ url_for('rations.entity_add', section=section) }}" class="rt-form" autocomplete="off">
     <div class="fld wide">
       <label>اسم الجهة</label>
       <input name="name" required placeholder="مثال: الإدارة، السرية الأولى، المعسكر...">
@@ -65,10 +65,12 @@
 
   <form method="post"
         action="{% if ee_item and ee_item.entity_id == e.id %}{{ url_for('rations.eitem_edit', section=section, item_id=ee_item.id) }}{% else %}{{ url_for('rations.eitem_add', section=section, entity_id=e.id) }}{% endif %}"
-        class="rt-form compact">
+        class="rt-form compact" autocomplete="off">
     <div class="fld wide">
       <input name="name" required placeholder="{{ 'تعديل: ' + ee_item.name if ee_item and ee_item.entity_id == e.id else 'إضافة صنف للجهة...' }}"
+             list="sectionNames" autocomplete="off"
              value="{{ ee_item.name if ee_item and ee_item.entity_id == e.id else '' }}">
+      <datalist id="sectionNames">{% for n in known_names %}<option value="{{ n }}">{% endfor %}</datalist>
     </div>
     <div class="fld">
       <input name="unit" list="unitsList" placeholder="الوحدة"
@@ -120,7 +122,7 @@
               {% endif %}
               <button type="button" class="mini-btn dist-toggle">تخصيص</button>
             </div>
-            <form method="post" class="days-form" hidden
+            <form method="post" class="days-form" autocomplete="off" hidden
                   action="{{ url_for('rations.eitem_days', section=section, item_id=it.id) }}">
               <div class="day-cards">
                 {% for di in range(7) %}
