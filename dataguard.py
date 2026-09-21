@@ -268,3 +268,23 @@ def startup_guard():
             events.append("⚠️ «{}» تالف ({}) ولا نسخة تحويه — حُجز جانبًا باسم «{}»."
                           .format(rel, err, quarantine.name))
     return events
+
+# ==================== أرشيف مجلد مؤقت للتنزيل ====================
+def zip_folder_tmp(folder, prefix="folder"):
+    """يضغط مجلدًا كاملًا في ZIP مؤقت (لإرساله تنزيلًا) ويرجع مساره.
+    الملف يُحذف بعد الإرسال بواسطة الطبقة المستدعية."""
+    import tempfile
+    folder = Path(folder)
+    if not folder.is_dir():
+        raise FileNotFoundError("المجلد غير موجود: {}".format(folder))
+    target = Path(tempfile.gettempdir()) / "{}-{}-{}.zip".format(
+        prefix, os.getpid(), int(time.time() * 1000))
+
+    def _write(tmp_name):
+        with zipfile.ZipFile(tmp_name, "w", zipfile.ZIP_DEFLATED) as zf:
+            for p in sorted(folder.rglob("*")):
+                if p.is_file():
+                    zf.write(str(p), p.relative_to(folder).as_posix())
+
+    atomic_save(_write, target)
+    return target

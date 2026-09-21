@@ -86,7 +86,7 @@ def download(name):
     path = dataguard.backup_dir() / name
     if not path.exists():
         abort(404)
-    return send_file(str(path), as_attachment=True, download_name=name)
+    return send_file(str(path), as_attachment=True, download_name=name, conditional=False, max_age=0)
 
 
 # ======================================================================

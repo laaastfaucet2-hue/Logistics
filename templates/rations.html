@@ -45,9 +45,12 @@
       </form>
       {% endif %}
     {% endfor %}
-    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح شيت الإكسل مباشرة">📗 فتح الإكسل</a>
-    <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}" title="فتح مجلد القسم">📂 فتح المجلد</a>
-    <a class="rt-btn dim" href="{{ url_for('rations.download_excel', section=section) }}" title="تنزيل نسخة">⬇ تنزيل</a>
+    {% if can_open %}
+    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح شيت الإكسل مباشرة على هذا الجهاز">📗 فتح الإكسل</a>
+    <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}" title="فتح مجلد القسم على هذا الجهاز">📂 فتح المجلد</a>
+    {% endif %}
+    <a class="rt-btn navy" href="{{ url_for('rations.download_excel', section=section) }}" title="تنزيل ملف الإكسل على جهازك — يعمل من أي متصفح">⬇ تنزيل الإكسل</a>
+    <a class="rt-btn dim" href="{{ url_for('rations.download_zip', section=section) }}" title="تنزيل كل ملفات القسم لهذا الشهر أرشيف ZIP">📦 تنزيل المجلد ZIP</a>
     <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة الجدول بالدباجة والتوقيعات">
       <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
     </button>

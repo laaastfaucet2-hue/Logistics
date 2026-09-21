@@ -15,9 +15,12 @@
 
 <div class="panel rt-toolbar">
   <div class="rt-actions">
-    <a class="rt-btn navy" href="{{ url_for('letterhead.open_docx') }}">📄 فتح ملف الوورد</a>
-    <a class="rt-btn navy" href="{{ url_for('letterhead.open_folder') }}">📂 فتح مجلد الدباجة</a>
-    <a class="rt-btn dim" href="{{ url_for('letterhead.download_docx') }}">⬇ تنزيل الوورد</a>
+    {% if can_open %}
+    <a class="rt-btn navy" href="{{ url_for('letterhead.open_docx') }}" title="فتح على هذا الجهاز">📄 فتح ملف الوورد</a>
+    <a class="rt-btn navy" href="{{ url_for('letterhead.open_folder') }}" title="فتح على هذا الجهاز">📂 فتح مجلد الدباجة</a>
+    {% endif %}
+    <a class="rt-btn navy" href="{{ url_for('letterhead.download_docx') }}" title="تنزيل ملف الوورد على جهازك — يعمل من أي متصفح">⬇ تنزيل الوورد</a>
+    <a class="rt-btn dim" href="{{ url_for('letterhead.download_zip') }}" title="تنزيل مجلد الدباجة كاملًا أرشيف ZIP">📦 تنزيل مجلد الدباجة ZIP</a>
   </div>
 </div>
 

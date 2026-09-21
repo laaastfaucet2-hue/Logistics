@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 import database as db
 import storage
+import xlsx_rations
 import arabic_numbers as arnum
 from config import (MONTH_NAMES, SECTIONS, SECTION_MAP, month_folder, section_folder,
                     EXTRA_PAGES, EXTRA_MAP, STATIC_VER)
@@ -31,6 +32,24 @@ import dataguard  # noqa: E402
 for _ev in dataguard.startup_guard():
     print(_ev)
 dataguard.auto_backup("boot", min_minutes=720)
+
+
+def bootstrap_year_files(year):
+    """يبني قاعدة شهر وإكسل كل قسم لكل شهور السنة — مرة واحدة لكل سنة.
+    هكذا بمجرد تشغيل البرنامج تجد database/السنة/كل الشهور جاهزة ومرتبطة."""
+    if db.get_setting("bootstrapped_{}".format(year)) == "1":
+        return
+    import months  # noqa: PLC0415
+    for m in range(1, 13):
+        months.init_month(year, m)
+        for short in ("tamween", "contractor"):
+            xlsx_rations.ensure(year, m, short)
+    db.set_setting("bootstrapped_{}".format(year), "1")
+    print("📅 جهّزت كل شهور وملفات سنة {} (١٢ شهرًا × قسمَي المقررات)".format(year))
+
+
+for _y in storage.list_years():
+    bootstrap_year_files(_y)
 storage.ensure_initialized(datetime.now().year)
 storage.sync_section_folders()
 
@@ -238,7 +257,8 @@ def year_create():
     ctx = db.get_user_context(g.user["id"])
     keep_month = ctx["month"] if ctx else datetime.now().month
     db.set_user_context(g.user["id"], year, keep_month)
-    return _back(ok=f"تم إنشاء سنة {arnum.to_arabic_indic(year)} ومجلداتها (12 شهرًا × 12 قسمًا) بنجاح")
+    bootstrap_year_files(year)
+    return _back(ok=f"تم إنشاء سنة {arnum.to_arabic_indic(year)} ومجلداتها وملفاتها (12 شهرًا × 12 قسمًا) بنجاح")
 
 
 @app.route("/years/delete")

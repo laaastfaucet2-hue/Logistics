@@ -20,6 +20,7 @@ import months
 import db_rations as dr
 import db_entities as de
 import xlsx_rations
+import dataguard
 import database as db
 
 rations_bp = Blueprint("rations", __name__, url_prefix="/rations")
@@ -69,6 +70,7 @@ def _page_vars(section, kind):
         "days": DAYS,
         "units": UNITS,
         "years": storage.list_years(),
+        "can_open": os.name == "nt",   # «فتح مباشر» يعمل على ويندوز المحلي فقط
         "month_names": MONTH_NAMES,
         "year": year,
         "month": month,
@@ -373,4 +375,19 @@ def download_excel(section):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
     path = xlsx_rations.ensure(year, month, section)
-    return send_file(str(path), as_attachment=True, download_name=path.name)
+    return send_file(str(path), as_attachment=True, download_name=path.name, conditional=False, max_age=0)
+
+
+@rations_bp.route("/<section>/download-zip")
+@login_required
+def download_zip(section):
+    """تنزيل كل ملفات القسم لهذا الشهر أرشيف ZIP — يعمل من أي متصفح."""
+    SECTION_CFG.get(section) or abort(404)
+    year, month = _ctx_month()
+    path = xlsx_rations.ensure(year, month, section)
+    zip_path = dataguard.zip_folder_tmp(path.parent, prefix="rations-{}".format(section))
+    resp = send_file(str(zip_path), as_attachment=True,
+                     download_name="{}-{}-{:02d}.zip".format(section, year, month),
+                     conditional=False, max_age=0)
+    resp.call_on_close(lambda: os.path.exists(zip_path) and os.remove(str(zip_path)))
+    return resp

@@ -44,6 +44,7 @@ def _page_vars():
     v = {k: db.get_setting(k) for k in SETTING_KEYS}
     logo = db.get_setting("logo_file")
     v["has_logo"] = bool(logo and (storage.letterhead_dir() / logo).exists())
+    v["can_open"] = os.name == "nt"
     return v
 
 
@@ -131,7 +132,18 @@ def _open_path(path):
 @login_required
 def download_docx():
     path = letterhead_docx.ensure()
-    return send_file(str(path), as_attachment=True, download_name=path.name)
+    return send_file(str(path), as_attachment=True, download_name=path.name, conditional=False, max_age=0)
+
+
+@letterhead_bp.route("/download-zip")
+@login_required
+def download_zip():
+    """تنزيل مجلد الدباجة كاملًا (الوورد + اللوجو) أرشيف ZIP — يعمل من أي متصفح."""
+    letterhead_docx.ensure()
+    zip_path = dataguard.zip_folder_tmp(storage.letterhead_dir(), prefix="letterhead")
+    resp = send_file(str(zip_path), as_attachment=True, download_name="letterhead.zip", conditional=False, max_age=0)
+    resp.call_on_close(lambda: os.path.exists(zip_path) and os.remove(str(zip_path)))
+    return resp
 
 
 @letterhead_bp.route("/open-docx")
