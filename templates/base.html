@@ -15,13 +15,13 @@
 <div class="app"><aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}" alt="شعار المنظومة"></div><div><div class="brand-name">مخازن التعيينات</div><div class="brand-sub">منظومة التموين والإدارة</div></div></div>
   <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
-    <a href="{{ url_for('dashboard') }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
+    <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
     <div class="nav-title">الأقسام الشهرية</div>
     {% set active_paths = {'tamween_rations':'/rations/tamween', 'contractor_rations':'/rations/contractor', 'mojandeen':'/recruits'} %}
-    {% for s in sections %}<a href="{{ url_for('section_page', key=s.key) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=s.key), active_paths.get(s.key, '')] }}">{{ icon(s.key) }}{{ s.name }}</a>{% endfor %}
+    {% for s in sections %}<a href="{{ url_for('section_page', key=s.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=s.key), active_paths.get(s.key, '')] }}">{{ icon(s.key) }}{{ s.name }}</a>{% endfor %}
     <div class="nav-title">أدوات المنظومة</div>
     {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups'} %}
-    {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
+    {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
   </nav>
   <div class="side-foot"><div class="sidebar-status"><i class="status-dot"></i>{{ 'تعمل محليًا على جهازك' if desktop_mode else 'بيئة المعاينة' }}</div><a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a></div>
 </aside>

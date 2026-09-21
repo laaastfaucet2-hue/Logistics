@@ -9,6 +9,7 @@ import sys
 import subprocess
 from urllib.parse import quote
 
+from core.downloads import attachment
 from flask import (Blueprint, render_template, request, redirect,
                    url_for, g, abort, send_file)
 
@@ -375,7 +376,7 @@ def download_excel(section):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
     path = xlsx_rations.ensure(year, month, section)
-    return send_file(str(path), as_attachment=True, download_name=path.name, conditional=False, max_age=0)
+    return attachment(path, f"{section}-{year}-{month:02d}.xlsx")
 
 
 @rations_bp.route("/<section>/download-zip")

@@ -92,6 +92,7 @@ def test_legacy_import_preserves_ids_daily_links_and_original(app):
 
 
 def test_certificate_uncheck_is_enforced_server_side(client):
+    assert "js/recruits.js" in client.get("/recruits/").text
     response=client.post('/recruits/save?year=2031&month=9',data={"name":"تجربة","mil_no":"١٥",
         "cert_date":"2030-01-01","cert_expiry":"2033-01-01"},follow_redirects=True)
     assert response.status_code==200

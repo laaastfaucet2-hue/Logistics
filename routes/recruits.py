@@ -8,6 +8,7 @@ import re
 from datetime import date
 from urllib.parse import quote
 
+from core.downloads import attachment
 from flask import (Blueprint, abort, redirect, render_template, request,
                    send_file, url_for)
 
@@ -452,8 +453,7 @@ def docx_download(name):
         path = base / "تصاريح" / name
     if not path.exists():
         abort(404)
-    return send_file(str(path), as_attachment=True, download_name=name,
-                     conditional=False, max_age=0)
+    return attachment(path, "recruits-report.docx")
 
 
 @recruits_bp.route("/docx/rebuild", methods=["POST"])

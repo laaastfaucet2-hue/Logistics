@@ -20,6 +20,13 @@ def smoke(output):
 
 
 def main():
+    if "--ui-smoke-test" in sys.argv:
+        index = sys.argv.index("--ui-smoke-test")
+        with tempfile.TemporaryDirectory(prefix="logistics-ui-", ignore_cleanup_errors=True) as folder:
+            os.environ["LOGISTICS_DATA_DIR"] = str(Path(folder) / "database")
+            from desktop.launcher import run
+            run(ui_smoke=sys.argv[index + 1])
+        return
     if "--smoke-test" in sys.argv:
         index = sys.argv.index("--smoke-test")
         smoke(sys.argv[index + 1])

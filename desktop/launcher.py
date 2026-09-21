@@ -51,7 +51,7 @@ def configure_logging():
         sys.stderr = sys.stdout
 
 
-def run():
+def run(ui_smoke=None):
     os.environ["LOGISTICS_DESKTOP"] = "1"
     os.environ.pop("LOGISTICS_PREVIEW", None)
     configure_logging()
@@ -77,14 +77,22 @@ def run():
         application.window = webview.create_window("مخازن التعيينات", html=html,
             width=width, height=height, min_size=(980, 640), frameless=True, easy_drag=False,
             resizable=True, shadow=True, background_color="#0b131b", text_select=True,
-            confirm_close=True, localization={"global.quitConfirmation": "إغلاق منظومة مخازن التعيينات؟"})
+            confirm_close=not bool(ui_smoke), localization={"global.quitConfirmation": "إغلاق منظومة مخازن التعيينات؟"})
         api = NativeApi(application.window, DATA_DIR, application.start_server)
         application.window.expose(api.window_action, api.begin_new, api.choose_old_data)
-        (RUNTIME_DIR / "webview").mkdir(parents=True, exist_ok=True)
-        webview.start(gui="edgechromium", private_mode=False, storage_path=str(RUNTIME_DIR / "webview"),
+        if ui_smoke:
+            from desktop.ui_smoke import attach
+            attach(application, api, ui_smoke)
+        profile = DATA_DIR.parent / "ui-profile" if ui_smoke else RUNTIME_DIR / "webview"
+        profile.mkdir(parents=True, exist_ok=True)
+        webview.start(gui="edgechromium", private_mode=bool(ui_smoke), storage_path=str(profile),
                       icon=str(RESOURCE_DIR / "static" / "img" / "app.ico"))
     except Exception:
         logging.exception("Native window failed")
+        if ui_smoke:
+            from pathlib import Path
+            Path(ui_smoke).write_text("UI_SMOKE_FAILED: see desktop.log", encoding="utf-8")
+            raise
         ctypes.windll.user32.MessageBoxW(None,
             "تعذّر فتح النافذة. أعد تشغيل المثبّت لإصلاح WebView2.\nسجل الخطأ: " + str(LOG_DIR / "desktop.log"),
             "مخازن التعيينات", 16)

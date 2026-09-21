@@ -10,8 +10,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -35,3 +35,14 @@ jobs:
             dist/SHA256.txt
           retention-days: 14
           if-no-files-found: error
+      - name: Upload native screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-native-validation
+          path: |
+            runtime/ui-smoke.txt
+            runtime/ui-smoke.png
+            ~/AppData/Local/Logistics/logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -7,6 +7,7 @@
 """
 from data_access import dataguard
 from flask import g
+from core.downloads import attachment
 import os
 import sys
 import subprocess
@@ -138,7 +139,7 @@ def _open_path(path):
 @login_required
 def download_docx():
     path = letterhead_docx.ensure(*_ctx())
-    return send_file(str(path), as_attachment=True, download_name=path.name, conditional=False, max_age=0)
+    return attachment(path, "letterhead.docx")
 
 
 @letterhead_bp.route("/download-zip")
