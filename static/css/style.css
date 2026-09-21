@@ -330,3 +330,19 @@ td.empty { text-align: center; color: var(--muted); padding: 30px; font-weight: 
   .ctx-label { display: none; }
   .top-date { display: none; }
 }
+
+/* ======== القائمة المنسدلة المخصوصة (Combo) — بثيم قائمة الشهور ======== */
+.combo-wrap { position: relative; width: 100%; }
+.combo-wrap > input { width: 100%; }
+.combo-list { position: absolute; top: calc(100% + 8px); right: 0; left: 0; z-index: 80;
+  background: linear-gradient(180deg, #101a38, #0b1430);
+  border: 1px solid rgba(227,179,65,.35); border-radius: 14px;
+  box-shadow: 0 22px 55px rgba(0,0,0,.6), 0 0 0 1px rgba(10,18,48,.4);
+  padding: 6px; max-height: 260px; overflow-y: auto; }
+.combo-list::-webkit-scrollbar { width: 8px; }
+.combo-list::-webkit-scrollbar-thumb { background: rgba(227,179,65,.35); border-radius: 8px; }
+.combo-item { padding: 10px 14px; border-radius: 9px; font-weight: 800; font-size: .9rem;
+  color: #e7ecf9; cursor: pointer; transition: background .12s, color .12s; }
+.combo-item:hover, .combo-item.hover { background: rgba(227,179,65,.16); color: #f6d47c; }
+.combo-item.sel { background: linear-gradient(135deg, #2b5fd9, #1d44b8); color: #fff; }
+.combo-empty { padding: 10px 14px; color: var(--muted); font-size: .8rem; font-weight: 700; }

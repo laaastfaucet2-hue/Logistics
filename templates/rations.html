@@ -65,13 +65,13 @@
     <div class="fld wide">
       <label>اسم الصنف</label>
       <input name="name" required placeholder="مثال: أرز بلدي، سكر، شاي..."
-             list="sectionNames" autocomplete="off"
+             data-combo="sectionNames" autocomplete="off"
              value="{{ edit_item.name if edit_item else '' }}">
       <datalist id="sectionNames">{% for n in known_names %}<option value="{{ n }}">{% endfor %}</datalist>
     </div>
     <div class="fld">
       <label>الوحدة</label>
-      <input name="unit" list="unitsList" placeholder="كجم، لتر..."
+      <input name="unit" data-combo="unitsList" placeholder="كجم، لتر..."
              value="{{ edit_item.unit if edit_item else '' }}">
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
     </div>
@@ -189,5 +189,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

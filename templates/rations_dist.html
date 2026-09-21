@@ -68,12 +68,12 @@
         class="rt-form compact" autocomplete="off">
     <div class="fld wide">
       <input name="name" required placeholder="{{ 'تعديل: ' + ee_item.name if ee_item and ee_item.entity_id == e.id else 'إضافة صنف للجهة...' }}"
-             list="sectionNames" autocomplete="off"
+             data-combo="sectionNames" autocomplete="off"
              value="{{ ee_item.name if ee_item and ee_item.entity_id == e.id else '' }}">
       <datalist id="sectionNames">{% for n in known_names %}<option value="{{ n }}">{% endfor %}</datalist>
     </div>
     <div class="fld">
-      <input name="unit" list="unitsList" placeholder="الوحدة"
+      <input name="unit" data-combo="unitsList" placeholder="الوحدة"
              value="{{ ee_item.unit if ee_item and ee_item.entity_id == e.id else '' }}">
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
     </div>
@@ -164,5 +164,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
 {% endblock %}
