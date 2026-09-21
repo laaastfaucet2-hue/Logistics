@@ -52,7 +52,7 @@
       <button class="rt-btn navy" type="submit">💾 إنشاء نسخة احتياطية الآن</button>
     </form>
     {% if newest %}
-    <a class="rt-btn dim" href="{{ url_for('backups.download', name=newest.name) }}{% if sid %}?sid={{ sid }}{% endif %}">⬇ تنزيل أحدث نسخة</a>
+    <a class="rt-btn dim" href="{{ url_for('backups.download', name=newest.name) }}{% if sid %}?sid={{ sid }}{% endif %}"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>تنزيل أحدث نسخة</a>
     {% endif %}
   </div>
   <span class="panel-hint">نسخ تلقائية: عند التشغيل (يوميًا) + بعد أي تعديل على المقررات (كل ٢٠ دقيقة كحد أدنى)</span>
@@ -76,7 +76,7 @@
           <td class="num">{{ b.size_h | aindic }}</td>
           <td class="num">{{ b.time_h | aindic }}</td>
           <td class="ops">
-            <a class="icon-btn" title="تنزيل النسخة ZIP"
+            <a class="icon-btn down" title="تنزيل النسخة ZIP"
                href="{{ url_for('backups.download', name=b.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
               <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             </a>

@@ -360,3 +360,8 @@ td.empty { text-align: center; color: var(--muted); padding: 30px; font-weight: 
 .icon-btn.save { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
 .icon-btn.save:hover { color: #34d399; background: rgba(52,211,153,.13); }
 .icon-btn.sync:hover { color: #c4b5fd; border-color: rgba(196,181,253,.55); }
+
+.icon-btn.down:hover { color: #93c5fd; border-color: rgba(96,165,250,.55); background: rgba(96,165,250,.12); }
+.icon-btn.zip:hover { color: #c4b5fd; border-color: rgba(196,181,253,.55); background: rgba(196,181,253,.12); }
+.rt-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; margin-inline-end: 5px; }

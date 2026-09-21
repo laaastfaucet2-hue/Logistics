@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}المجندون — الإحصائيات والإشعارات • منظومة مخازن التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+{% include "recruits_tabs.html" %}
+
+<!-- عدادات القوة واليوم -->
+<div class="panel bk-status">
+  <div class="bk-chip"><span class="bk-ico">👥</span>
+    <div><b>{{ recruits | length | aindic }} مجندًا</b><small>إجمالي أصل القوة</small></div></div>
+  {% if info.is_real_month %}
+  <div class="bk-chip good"><span class="bk-ico">✅</span>
+    <div><b>{{ counts_today['حضور'] | aindic }} حاضر اليوم</b><small>يومية اليوم {{ info.real_day | aindic }}</small></div></div>
+  <div class="bk-chip"><span class="bk-ico">🏖️</span>
+    <div><b>{{ counts_today['إجازة'] | aindic }} إجازة</b><small>اليوم</small></div></div>
+  <div class="bk-chip {{ 'bad' if counts_today['غياب'] else '' }}"><span class="bk-ico">🚫</span>
+    <div><b>{{ counts_today['غياب'] | aindic }} غائب</b><small>اليوم</small></div></div>
+  {% else %}
+  <div class="bk-chip"><span class="bk-ico">📅</span>
+    <div><b>شهر أرشيفي</b><small>عدّادات «اليوم» تظهر للشهر الجاري فقط</small></div></div>
+  {% endif %}
+  {% if missing %}<div class="bk-chip bad"><span class="bk-ico">📝</span>
+    <div><b>{{ missing | length | aindic }} يومية ناقصة</b><small>اضغط تبويب اليومية لاستكمالها</small></div></div>{% endif %}
+</div>
+
+<!-- كشوف الوورد اللحظية -->
+<div class="panel rt-toolbar">
+  <div class="rt-actions">
+    {% if sheet_matrix %}
+    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_matrix.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      تنزيل كشف حالات الشهر (وورد)</a>{% endif %}
+    {% if sheet_leaves %}
+    <a class="rt-btn navy" href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}{% if sid %}?sid={{ sid }}{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      تنزيل كشف إجازات الشهر (وورد)</a>{% endif %}
+    <form method="post" class="inline-f" action="{{ url_for('recruits.docx_rebuild') }}{% if sid %}?sid={{ sid }}{% endif %}">
+      <button class="icon-btn sync" type="submit" title="إعادة بناء كشوف الوورد الآن">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+      </button>
+    </form>
+  </div>
+  <span class="panel-hint">تُحدَّث الكشوف تلقائيًا بعد كل تعديل — وتُحفظ في database/المجندون/كشوف</span>
+</div>
+
+<!-- مجموعات الإشعارات (نفس محرك الجرس) -->
+<div class="panel">
+  <div class="panel-head"><h3>🔔 الإشعارات — بتاريخ القاهرة الحقيقي</h3></div>
+  {% if notif_groups %}
+  <div class="rc-notif-groups">
+    {% for g in notif_groups %}
+    <div class="rc-notif {{ g.level }}">
+      <b>{{ g.icon }} {{ g.title }} <span class="rc-mini">{{ g.entries | length | aindic }}</span></b>
+      <ul>{% for it in g.entries %}<li><a href="{{ it.href }}">{{ it.text }}</a></li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:14px 0">✔ لا شيء يستحق انتباهك الآن — كل شيء منضبط.</p>{% endif %}
+</div>
+
+<div class="rc-grid-2">
+  <!-- أقرب الشهادات الصحية -->
+  <div class="panel">
+    <div class="panel-head"><h3>📋 موقف الشهادات الصحية</h3>
+      <a class="icon-btn print" title="طباعة كشف الشهادات" target="_blank"
+         href="{{ url_for('recruits.print_doc', what='certs') }}{% if sid %}?sid={{ sid }}{% endif %}">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
+    </div>
+    {% if certs.expired %}<div class="rc-banner danger slim">🔴 منتهية:
+      {% for r in certs.expired %}<span class="rc-chip">{{ r.name }}</span>{% endfor %}</div>{% endif %}
+    {% if certs.soon %}<div class="rc-banner warn slim">🟠 تنتهي خلال ٣٠ يومًا:
+      {% for r in certs.soon %}<span class="rc-chip">{{ r.name }} ({{ r.cert_expiry | aindic }})</span>{% endfor %}</div>{% endif %}
+    {% if not certs.expired and not certs.soon %}<p class="panel-hint" style="text-align:center;padding:10px 0">كل الشهادات سارية ✔</p>{% endif %}
+  </div>
+
+  <!-- من تنتهي خدمته قريبًا -->
+  <div class="panel">
+    <div class="panel-head"><h3>⏳ خدمة تنتهي خلال ٦٠ يومًا</h3></div>
+    {% if discharging %}
+    <div class="table-wrap"><table class="rt-table">
+      <thead><tr><th>المجند</th><th>المتبقي</th><th>التسريح</th></tr></thead>
+      <tbody>{% for r, n in discharging %}<tr>
+        <td><b>{{ r.name }}</b></td><td class="num">{{ n | aindic }} يومًا</td><td class="num">{{ r.service_end | aindic }}</td>
+      </tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="panel-hint" style="text-align:center;padding:10px 0">لا أحد يقترب تسريحه.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

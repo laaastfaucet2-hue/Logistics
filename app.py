@@ -15,6 +15,7 @@ from config import (MONTH_NAMES, SECTIONS, SECTION_MAP, month_folder, section_fo
                     EXTRA_PAGES, EXTRA_MAP, STATIC_VER)
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True  # تحديث القوالب لحظيًا دون إعادة تشغيل
 app.secret_key = "rations-warehouse-2026-secret-key"
 
 # إعدادات الجلسة عشان تشتغل داخل المعاينة (iframe) على HTTPS
@@ -50,6 +51,10 @@ def bootstrap_year_files(year):
 
 for _y in storage.list_years():
     bootstrap_year_files(_y)
+
+# 👮 سجل المجندين (قاعدة عالمية + قواميس المحافظات/المدن)
+import db_recruits  # noqa: E402
+db_recruits.init_db()
 storage.ensure_initialized(datetime.now().year)
 storage.sync_section_folders()
 
@@ -64,6 +69,21 @@ def normalize(text):
 
 # أدوات المصادقة والسياق منقولة إلى auth_core حتى تستخدمها الـBlueprints
 from auth_core import current_session, login_required, current_context  # noqa: E402
+
+
+@app.context_processor
+def inject_bell():
+    """🔔 مجموعات إشعارات الجرس لكل الصفحات — بتاريخ القاهرة الحقيقي دائمًا."""
+    user = getattr(g, "user", None) or session.get("user")
+    if not user:
+        return {}
+    try:
+        import notifications
+        sid = getattr(g, "sid", None) or request.args.get("sid") or ""
+        groups, count = notifications.summarize(user["id"], sid)
+        return {"bell_groups": groups, "bell_count": count}
+    except Exception:  # noqa: BLE001 — الجرس لا يسقط أي صفحة
+        return {"bell_groups": [], "bell_count": 0}
 
 
 @app.context_processor
@@ -214,6 +234,9 @@ def section_page(key):
     if key == "backups":
         params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
         return redirect(url_for("backups.page", **params))
+    if key == "recruits":
+        params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+        return redirect(url_for("recruits.page", **params))
     section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
     if not section:
         abort(404)
@@ -301,9 +324,11 @@ def placeholder(page):
 from routes.rations import rations_bp  # noqa: E402
 from routes.letterhead import letterhead_bp  # noqa: E402
 from routes.backups import backups_bp  # noqa: E402
+from routes.recruits import recruits_bp  # noqa: E402
 app.register_blueprint(rations_bp)
 app.register_blueprint(letterhead_bp)
 app.register_blueprint(backups_bp)
+app.register_blueprint(recruits_bp)
 
 
 if __name__ == "__main__":

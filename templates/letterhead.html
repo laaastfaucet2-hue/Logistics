@@ -19,8 +19,8 @@
     <a class="rt-btn navy" href="{{ url_for('letterhead.open_docx') }}" title="فتح على هذا الجهاز">📄 فتح ملف الوورد</a>
     <a class="rt-btn navy" href="{{ url_for('letterhead.open_folder') }}" title="فتح على هذا الجهاز">📂 فتح مجلد الدباجة</a>
     {% endif %}
-    <a class="rt-btn navy" href="{{ url_for('letterhead.download_docx') }}" title="تنزيل ملف الوورد على جهازك — يعمل من أي متصفح">⬇ تنزيل الوورد</a>
-    <a class="rt-btn dim" href="{{ url_for('letterhead.download_zip') }}" title="تنزيل مجلد الدباجة كاملًا أرشيف ZIP">📦 تنزيل مجلد الدباجة ZIP</a>
+    <a class="rt-btn navy" href="{{ url_for('letterhead.download_docx') }}" title="تنزيل ملف الوورد مباشرة على جهازك"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>تنزيل الوورد مباشرة</a>
+    <a class="icon-btn zip" href="{{ url_for('letterhead.download_zip') }}" title="تنزيل مجلد الدباجة كاملًا مضغوطًا (ZIP)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="12" y1="4" x2="12" y2="13"></line><polyline points="8.5 9.5 12 13 15.5 9.5"></polyline></svg></a>
   </div>
 </div>
 
