@@ -82,6 +82,14 @@ def qty3_number(value):
     return arnum.fmt_qty(value if value != "" else None)
 
 
+@app.template_filter("oval")
+def oval_value(value):
+    """قيمة داخل حقل إدخال: اللاشيء = ٠ (بدل طباعة كلمة None)، وغيره بثلاث خانات عربية."""
+    if value is None or value == "":
+        return "٠"
+    return arnum.fmt_qty(value)
+
+
 def _back(ok=None, err=None):
     """يرجع للصفحة السابقة مع الحفاظ على التوكن + رسالة نجاح/خطأ اختيارية."""
     target = request.args.get("next", "")

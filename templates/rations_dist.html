@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
 {%- endmacro %}
 
 {% block content %}
@@ -78,11 +78,11 @@
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
     </div>
     <div class="fld"><input name="breakfast" inputmode="decimal" placeholder="فطار"
-             value="{{ (ee_item.breakfast if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+             value="{{ ee_item.breakfast|oval if ee_item and ee_item.entity_id == e.id else '' }}"></div>
     <div class="fld"><input name="lunch" inputmode="decimal" placeholder="غداء"
-             value="{{ (ee_item.lunch if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+             value="{{ ee_item.lunch|oval if ee_item and ee_item.entity_id == e.id else '' }}"></div>
     <div class="fld"><input name="dinner" inputmode="decimal" placeholder="عشاء"
-             value="{{ (ee_item.dinner if ee_item and ee_item.entity_id == e.id else '') if ee_item else '' }}"></div>
+             value="{{ ee_item.dinner|oval if ee_item and ee_item.entity_id == e.id else '' }}"></div>
     <div class="fld btns">
       <button class="rt-btn gold small" type="submit">{% if ee_item and ee_item.entity_id == e.id %}💾 حفظ{% else %}➕ إضافة{% endif %}</button>
       {% if ee_item and ee_item.entity_id == e.id %}

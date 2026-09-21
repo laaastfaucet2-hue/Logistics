@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
 {%- endmacro %}
 {% set MEAL_LABEL = {'breakfast':'فطار','lunch':'غداء','dinner':'عشاء'} %}
 
@@ -78,17 +78,17 @@
     <div class="fld">
       <label>فطار</label>
       <input name="breakfast" inputmode="decimal" placeholder="٠"
-             value="{{ (edit_item.breakfast if edit_item else '') if edit_item else '' }}">
+             value="{{ edit_item.breakfast|oval if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>غداء</label>
       <input name="lunch" inputmode="decimal" placeholder="٠"
-             value="{{ (edit_item.lunch if edit_item else '') if edit_item else '' }}">
+             value="{{ edit_item.lunch|oval if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>عشاء</label>
       <input name="dinner" inputmode="decimal" placeholder="٠"
-             value="{{ (edit_item.dinner if edit_item else '') if edit_item else '' }}">
+             value="{{ edit_item.dinner|oval if edit_item else '' }}">
     </div>
     <div class="fld btns">
       <button class="rt-btn gold" type="submit">{% if edit_item %}💾 حفظ التعديل{% else %}➕ إضافة{% endif %}</button>

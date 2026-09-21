@@ -154,3 +154,16 @@ tr.custom-on .name { color: #c4b5fd; }
 @media (max-width: 1100px) {
   .day-cards { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ======== إصلاح تنسيق نماذج الجداول والتوزيع ======== */
+.table-wrap { overflow-x: auto; }
+.rt-form, .rt-form.compact { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+.rt-form .fld.wide { grid-column: span 2; }
+.rt-form .fld.btns { align-self: end; }
+.entity-panel .rt-table { min-width: 1180px; }
+.rt-table td { vertical-align: middle; padding: 12px 10px; }
+.rt-table td.days-td { vertical-align: top; min-width: 500px; }
+.rt-table td.name { min-width: 140px; }
+.rt-table td.num { min-width: 68px; font-weight: 700; }
+.rt-table td.ops { white-space: nowrap; min-width: 84px; }
+.day-cards { grid-template-columns: repeat(4, minmax(96px, 1fr)); }
