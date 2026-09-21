@@ -1,5 +1,5 @@
 <div class="windowbar {{ 'is-native' if desktop_mode else '' }}">
-  <div class="window-brand pywebview-drag-region"><img src="{{ url_for('static', filename='img/mark.svg') }}" alt=""><span>مخازن التعيينات</span><i></i><small>LOGISTICS WORKSPACE</small></div>
+  <div class="window-brand pywebview-drag-region"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt=""><span>مخازن التعيينات</span><i></i><small>LOGISTICS WORKSPACE</small></div>
   <span class="window-edition">{{ 'تطبيق سطح المكتب' if desktop_mode else 'معاينة الويب' }} <b dir="ltr">{{ app_version }}</b></span>
   {% if desktop_mode %}<div class="window-controls" dir="ltr">
     <button type="button" data-window="minimize" title="تصغير" aria-label="تصغير"><svg viewBox="0 0 16 16"><path d="M3 11h10"/></svg></button>

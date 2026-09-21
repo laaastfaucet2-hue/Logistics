@@ -1,7 +1,7 @@
 #ifndef SourceRoot
   #define SourceRoot "..\.."
 #endif
-#define AppVersion "2.0.0"
+#define AppVersion "2.1.0"
 [Setup]
 AppId={{87CCF3A0-93D8-43E1-9D27-4CF124BD5A80}
 AppName=مخازن التعيينات

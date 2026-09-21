@@ -29,9 +29,9 @@ jobs:
       - name: Upload installer and checksum (not user data)
         uses: actions/upload-artifact@v4
         with:
-          name: Logistics-Windows-x64-2.0.0
+          name: Logistics-Windows-x64-2.1.0
           path: |
-            dist/Logistics-Setup-2.0.0.exe
+            dist/Logistics-Setup-2.1.0.exe
             dist/SHA256.txt
           retention-days: 14
           if-no-files-found: error

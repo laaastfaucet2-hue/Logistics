@@ -37,11 +37,16 @@
   });
 
   // الرسوم البيانية
+  document.fonts.ready.then(function () {
   if (window.DASH && typeof Chart !== "undefined") {
-    Chart.defaults.font.family = "'Cairo', sans-serif";
-    Chart.defaults.color = "#9aa6c7";
+    var theme = getComputedStyle(document.body);
+    var red = theme.getPropertyValue("--brand-red").trim();
+    var yellow = theme.getPropertyValue("--brand-yellow").trim();
+    Chart.defaults.font.family = theme.fontFamily;
+    Chart.defaults.font.size = 14;
+    Chart.defaults.color = theme.color;
 
-    var gridColor = "rgba(255,255,255,.06)";
+    var gridColor = "rgba(22,22,22,.1)";
 
     // حركة آخر 7 أيام
     var chMove = document.getElementById("chMove");
@@ -51,17 +56,17 @@
         data: {
           labels: window.DASH.days,
           datasets: [
-            { label: "صرف", data: window.DASH.disb, backgroundColor: "rgba(251,146,60,.75)",
-              hoverBackgroundColor: "#fb923c", borderRadius: 8, borderSkipped: false },
-            { label: "توريد", data: window.DASH.supp, backgroundColor: "rgba(52,211,153,.7)",
-              hoverBackgroundColor: "#34d399", borderRadius: 8, borderSkipped: false }
+            { label: "صرف", data: window.DASH.disb, backgroundColor: red,
+              hoverBackgroundColor: red, borderRadius: 8, borderSkipped: false },
+            { label: "توريد", data: window.DASH.supp, backgroundColor: yellow,
+              hoverBackgroundColor: yellow, borderRadius: 8, borderSkipped: false }
           ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: "top", labels: { boxWidth: 14, padding: 18, font: { weight: "700" } } } },
+          plugins: { legend: { position: "top", labels: { boxWidth: 14, padding: 18, font: { weight: "500" } } } },
           scales: {
-            x: { grid: { color: gridColor }, ticks: { font: { weight: "700" } } },
+            x: { grid: { color: gridColor }, ticks: { font: { weight: "500" } } },
             y: { beginAtZero: true, grid: { color: gridColor }, ticks: { stepSize: 1 } }
           }
         }
@@ -77,15 +82,16 @@
           labels: window.DASH.topLabels,
           datasets: [{
             data: window.DASH.topData,
-            backgroundColor: ["#e3b341", "#34d399", "#60a5fa", "#f87171", "#a78bfa"],
-            borderColor: "#0a1230", borderWidth: 4, hoverOffset: 10
+            backgroundColor: [red, yellow, "#161616", "#69695f", "#deded6"],
+            borderColor: "#ffffff", borderWidth: 4, hoverOffset: 10
           }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, cutout: "62%",
-          plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 14, font: { weight: "700" } } } }
+          plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 14, font: { weight: "500" } } } }
         }
       });
     }
   }
+  });
 })();

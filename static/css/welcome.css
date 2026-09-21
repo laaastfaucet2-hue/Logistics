@@ -1,0 +1,27 @@
+/* Native bootstrap screen: shared fonts, tokens and buttons, no external resources. */
+body { margin: 0; min-height: 100vh; }
+.bar { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  background: var(--brand-red); color: var(--on-red); font-size: 13px; }
+.bar span { flex: 1; align-self: stretch; display: flex; align-items: center; }
+.bar button { width: 42px; height: 40px; margin-left: -16px; background: none; border: 0; color: var(--on-red); }
+.bar button:hover { background: var(--brand-yellow); color: var(--on-yellow); }
+.bar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.stage { min-height: calc(100vh - 40px); display: grid; place-items: center; text-align: center; padding: 35px; }
+.card { max-width: 620px; width: 100%; padding: 40px; background: var(--card);
+  border: 1px solid var(--card-border); border-top: 5px solid var(--brand-yellow);
+  border-radius: 15px; box-shadow: var(--shadow); }
+.mark { width: 76px; height: 76px; margin: 0 auto 20px; }
+.mark svg { width: 100%; height: 100%; }
+h1 { font-size: 32px; margin: 12px 0; }
+p { color: var(--muted); line-height: 2; font-size: 16px; }
+.eyebrow { font-size: 12px; letter-spacing: 2px; color: var(--brand-red-hover); }
+.buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 26px 0; }
+.note { font-size: 13px; }
+.loading { height: 4px; width: 190px; background: var(--surface-soft); margin: 28px auto;
+  overflow: hidden; border-radius: 3px; border: 1px solid var(--card-border); }
+.loading::after { content: ""; display: block; width: 45%; height: 100%;
+  background: var(--brand-red); animation: progress 1.2s ease-in-out infinite alternate; }
+@keyframes progress { to { transform: translateX(-130%); } }
+#error { background: var(--surface-red); color: var(--red); border: 1px solid #dd9c94;
+  border-radius: 9px; padding: 15px; margin-bottom: 16px; font-size: 14px;
+  line-height: 1.9; white-space: pre-wrap; text-align: right; }

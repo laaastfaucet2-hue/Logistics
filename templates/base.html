@@ -2,8 +2,9 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}مخازن التعيينات{% endblock %}</title>
-<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}">
+<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
 {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
@@ -13,7 +14,7 @@
 {% if request.args.get('ok') %}<div class="toast ok" id="appToast" role="status">{{ request.args.get('ok') }}</div>{% endif %}
 {% if request.args.get('err') %}<div class="toast err" id="appToast" role="alert">{{ request.args.get('err') }}</div>{% endif %}
 <div class="app"><aside class="sidebar" id="sidebar">
-  <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}" alt="شعار المنظومة"></div><div><div class="brand-name">مخازن التعيينات</div><div class="brand-sub">منظومة التموين والإدارة</div></div></div>
+  <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار المنظومة"></div><div><div class="brand-name">مخازن التعيينات</div><div class="brand-sub">منظومة التموين والإدارة</div></div></div>
   <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
     <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
     <div class="nav-title">الأقسام الشهرية</div>

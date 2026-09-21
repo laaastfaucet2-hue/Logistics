@@ -10,4 +10,4 @@ _default_data = USER_HOME / "database" if FROZEN else RESOURCE_DIR / "database"
 DATA_DIR = Path(os.environ.get("LOGISTICS_DATA_DIR", _default_data)).expanduser().resolve()
 RUNTIME_DIR = USER_HOME if FROZEN else RESOURCE_DIR / "runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"

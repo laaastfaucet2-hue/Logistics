@@ -12,41 +12,41 @@
 .lh-boxes { display: flex; flex-direction: column; gap: 12px; }
 .lh-box { display: flex; align-items: center; gap: 10px; }
 .lh-num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
-  background: linear-gradient(135deg, #f6d47c, #e3b341); color: #0a1230; font-weight: 900;
+  background: var(--brand-yellow); color: var(--on-yellow); font-weight: 600;
   font-size: .85rem; flex-shrink: 0; }
-.lh-box input { flex: 1; padding: 13px 16px; border-radius: 12px; font-family: "Cairo";
-  font-size: 1rem; font-weight: 800; color: var(--text); background: rgba(255,255,255,.05);
-  border: 1px solid rgba(227,179,65,.3); outline: none; transition: all .2s; }
-.lh-box input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(227,179,65,.14);
-  background: rgba(227,179,65,.05); }
+.lh-box input { flex: 1; padding: 13px 16px; border-radius: 12px; font-family: var(--font-ui);
+  font-size: 1rem; font-weight: 500; color: var(--text); background: var(--card);
+  border: 1px solid var(--field-border); outline: none; transition: all .2s; }
+.lh-box input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(255,199,44,.14);
+  background: rgba(255,199,44,.05); }
 
 /* اللوجو */
 .lh-logo-zone { display: flex; flex-direction: column; gap: 12px; align-items: center;
   padding: 8px 0 4px; }
 .lh-logo-img { width: 110px; height: 110px; object-fit: contain; border-radius: 14px;
-  background: #fff; padding: 8px; box-shadow: 0 8px 22px rgba(0,0,0,.35); }
+  background: #fff; padding: 8px; box-shadow: var(--shadow); }
 .lh-logo-empty { display: grid; place-items: center; width: 110px; height: 110px;
-  border-radius: 14px; border: 2px dashed rgba(255,255,255,.2); color: var(--muted);
-  font-weight: 700; font-size: .82rem; }
-.lh-file { width: 100%; padding: 11px 14px; border-radius: 11px; font-family: "Cairo";
-  font-weight: 700; font-size: .85rem; color: #c6cfe6; background: rgba(255,255,255,.05);
-  border: 1px dashed rgba(96,165,250,.4); cursor: pointer; }
+  border-radius: 14px; border: 2px dashed var(--card-border); color: var(--muted);
+  font-weight: 500; font-size: .82rem; }
+.lh-file { width: 100%; padding: 11px 14px; border-radius: 11px; font-family: var(--font-ui);
+  font-weight: 500; font-size: .85rem; color: var(--text); background: var(--card);
+  border: 1px dashed rgba(67,84,93,.4); cursor: pointer; }
 .lh-file::file-selector-button { margin-left: 10px; padding: 7px 14px; border-radius: 8px;
-  border: none; background: rgba(96,165,250,.2); color: #93c5fd; font-family: "Cairo";
-  font-weight: 800; cursor: pointer; }
+  border: none; background: rgba(67,84,93,.2); color: var(--blue); font-family: var(--font-ui);
+  font-weight: 600; cursor: pointer; }
 .lh-hint { color: var(--muted); font-size: .78rem; font-weight: 600; text-align: center; }
 
 /* التوقيعان */
 .lh-sig-form { display: flex; flex-direction: column; gap: 9px; }
-.lh-sig-form label { font-size: .8rem; font-weight: 800; color: var(--gold-light); }
-.lh-sig-form input { padding: 12px 16px; border-radius: 11px; font-family: "Cairo";
-  font-size: .95rem; font-weight: 700; color: var(--text); background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.14); outline: none; transition: all .2s; }
-.lh-sig-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(227,179,65,.14); }
+.lh-sig-form label { font-size: .8rem; font-weight: 600; color: var(--gold-light); }
+.lh-sig-form input { padding: 12px 16px; border-radius: 11px; font-family: var(--font-ui);
+  font-size: .95rem; font-weight: 500; color: var(--text); background: var(--card);
+  border: 1px solid var(--field-border); outline: none; transition: all .2s; }
+.lh-sig-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(255,199,44,.14); }
 
 .lh-savebar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   margin: 14px 0 8px; padding: 16px 20px; border-radius: 14px;
-  background: rgba(227,179,65,.06); border: 1px solid rgba(227,179,65,.25); }
+  background: rgba(255,199,44,.06); border: 1px solid rgba(255,199,44,.25); }
 .rt-btn.big { padding: 14px 34px; font-size: 1rem; }
 .lh-del-form { margin-bottom: 20px; }
 
@@ -56,7 +56,7 @@
 .lh-previews { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
 .a4 { background: #fdfdff; color: #1a2033; border-radius: 14px; padding: 26px 24px 20px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(227,179,65,.25);
+  box-shadow: var(--shadow); border: 1px solid var(--card-border);
   display: flex; flex-direction: column; gap: 14px; font-size: .8rem; line-height: 1.7; }
 .a4-tag { align-self: flex-start; padding: 5px 16px; border-radius: 999px; font-weight: 900;
   font-size: .75rem; background: #0a1230; color: #f6d47c; }
@@ -92,9 +92,19 @@
 .sig-lab { font-size: .6rem; color: #b8860b; font-weight: 900; margin-bottom: 3px; }
 .sig-line { color: #8a93ad; font-weight: 600; }
 
-.lh-decide { margin-top: 20px; font-weight: 600; color: #c6cfe6; line-height: 2; }
+.lh-decide { margin-top: 20px; font-weight: 600; color: var(--text); line-height: 2; }
 .lh-decide strong { color: var(--gold-light); }
 
 @media (max-width: 1150px) {
   .lh-grid, .lh-previews { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .lh-box input { min-width: 0; width: 100%; }
+  .a4 { padding: 20px 16px; min-width: 0; }
+  .a4-lh { min-width: 0; flex: 1; }
+  .a4-lh-box { min-width: 0; overflow-wrap: anywhere; }
+  .a4-logo { width: 64px; height: 64px; }
+  .xl-mock th { white-space: normal; }
+  .lh-grid, .lh-previews { grid-template-columns: minmax(0, 1fr); }
 }

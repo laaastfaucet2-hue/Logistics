@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 $TestDir = Join-Path $env:RUNNER_TEMP 'Logistics test install'
-$Setup = Join-Path $Root 'dist\Logistics-Setup-2.0.0.exe'
+$Setup = Join-Path $Root 'dist\Logistics-Setup-2.1.0.exe'
 $Arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $TestDir + '"'
 $Process = Start-Process $Setup -ArgumentList $Arguments -Wait -PassThru
 if ($Process.ExitCode -ne 0) { throw "Install failed: $($Process.ExitCode)" }

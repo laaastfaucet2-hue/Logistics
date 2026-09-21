@@ -13,6 +13,12 @@ def smoke(output):
         client = app.test_client()
         assert client.get("/health").status_code == 200
         assert client.get("/login").status_code == 200
+        from desktop.appearance import welcome_html
+        assert "data:font/woff2;base64," in welcome_html(False)
+        for weight in ("Regular", "Medium", "SemiBold", "Bold"):
+            font = client.get(f"/static/fonts/IBMPlexSansArabic-{weight}.woff2")
+            assert font.status_code == 200 and font.data.startswith(b"wOF2")
+        assert b"#ffc72c" in client.get("/static/css/theme.css").data
         assert client.post("/login", data={"username": "mostafa", "password": "779"}, follow_redirects=True).status_code == 200
         for path in ("/recruits/", "/letterhead/", "/rations/tamween/download-excel"):
             assert client.get(path).status_code == 200, path

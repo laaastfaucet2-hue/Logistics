@@ -1,48 +1,43 @@
-/* جرس الإشعارات — أسفل يسار كل الشاشات (قاعدة ١٢) */
-.bell-wrap { position: fixed; bottom: 18px; inset-inline-start: 18px; z-index: 900; }
+/* Notification center: consistent red / yellow controls, readable dark text. */
+.bell-wrap { position: fixed; bottom: 50px; left: 18px; z-index: 900; }
 .bell-inner { display: flex; align-items: center; gap: 6px; }
-
-.bell-toggle { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(248,113,113,.55);
-  background: rgba(248,113,113,.14); color: #fca5a5; font-weight: 900; font-size: 13px;
+.bell-toggle { width: 25px; height: 25px; border-radius: 7px; border: 1px solid var(--field-border);
+  background: var(--card); color: var(--text); font-weight: 600; font-size: 15px;
   cursor: pointer; display: grid; place-items: center; line-height: 1; order: -1; }
-.bell-toggle:hover { background: rgba(248,113,113,.3); }
-
-.bell-btn { position: relative; width: 46px; height: 46px; border-radius: 14px; cursor: pointer;
-  border: 1px solid rgba(227,179,65,.4); background: linear-gradient(150deg, #101a3a, #0a1230);
-  color: #f6d47c; display: grid; place-items: center; transition: .18s; box-shadow: 0 6px 22px rgba(0,0,0,.45); }
-.bell-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.bell-btn:hover { transform: translateY(-3px); border-color: #e3b341; box-shadow: 0 10px 26px rgba(227,179,65,.22); }
-.bell-badge { position: absolute; top: -7px; inset-inline-end: -7px; min-width: 21px; height: 21px; padding: 0 5px;
-  border-radius: 999px; background: #dc2626; color: #fff; font-size: .68rem; font-weight: 900;
-  display: grid; place-items: center; border: 2px solid #0a1230; }
+.bell-toggle:hover { background: var(--surface-yellow); }
+.bell-btn { position: relative; width: 48px; height: 48px; border-radius: 14px; cursor: pointer;
+  border: 1px solid #b38910; background: var(--brand-yellow); color: var(--on-yellow);
+  display: grid; place-items: center; transition: .15s; box-shadow: 0 6px 20px #16161618; }
+.bell-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bell-btn:hover { background: var(--brand-yellow-hover); transform: translateY(-2px); }
+.bell-badge { position: absolute; top: -7px; inset-inline-end: -7px; min-width: 24px; height: 24px;
+  padding: 0 5px; border-radius: 999px; background: var(--brand-red); color: var(--on-red);
+  font-size: 12px; font-weight: 600; display: grid; place-items: center; border: 2px solid var(--card); }
 .bell-badge.zero { display: none; }
-
 .bell-wrap.collapsed .bell-main { display: none; }
-.bell-wrap.collapsed .bell-toggle { width: 30px; height: 30px; font-size: 17px; border-radius: 9px; }
-.bell-wrap.collapsed .bell-toggle::after { content: "🔔"; position: absolute; opacity: 0; } /* احتياط */
-
-.bell-panel { position: absolute; bottom: 56px; inset-inline-start: 0; width: 340px; max-height: 62vh; overflow-y: auto;
-  background: linear-gradient(170deg, #101a3a, #060b22); border: 1px solid rgba(227,179,65,.35);
-  border-radius: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.55); padding: 14px; display: none; }
-.bell-panel.open { display: block; animation: bell-pop .22s ease; }
-@keyframes bell-pop { from { opacity: 0; transform: translateY(12px) scale(.97); } }
-.bell-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px;
-  border-bottom: 1px solid rgba(227,179,65,.25); margin-bottom: 10px; }
-.bell-head b { color: #f6d47c; }
-.bell-head .bell-count { background: rgba(248,113,113,.2); color: #fca5a5; border: 1px solid rgba(248,113,113,.5);
-  border-radius: 999px; padding: 2px 10px; font-size: .72rem; font-weight: 900; }
-
-.bell-grp { margin-bottom: 12px; }
-.bell-grp > b { display: block; font-size: .8rem; margin-bottom: 6px; }
-.bell-grp.danger > b { color: #fca5a5; } .bell-grp.warn > b { color: #f6d47c; } .bell-grp.info > b { color: #93c5fd; }
-.bell-grp ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.bell-grp li a { display: block; padding: 8px 10px; border-radius: 10px; font-size: .78rem; color: #e2e8f0;
-  text-decoration: none; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); transition: .15s; }
-.bell-grp li a:hover { background: rgba(227,179,65,.12); border-color: rgba(227,179,65,.4); transform: translateX(-2px); }
-
-.bell-empty { text-align: center; color: #6ee7b7; font-weight: 800; padding: 22px 8px; font-size: .84rem; }
-.bell-all { display: block; text-align: center; padding: 9px; margin-top: 8px; border-radius: 10px;
-  border: 1px solid rgba(227,179,65,.4); color: #f6d47c; text-decoration: none; font-weight: 800; font-size: .78rem; }
-.bell-all:hover { background: rgba(227,179,65,.14); }
-
+.bell-wrap.collapsed .bell-toggle { width: 30px; height: 30px; font-size: 18px; border-radius: 9px; }
+.bell-panel { position: absolute; bottom: 58px; left: 0; width: min(360px, calc(100vw - 36px));
+  max-height: 65vh; overflow-y: auto; background: var(--card); border: 1px solid var(--card-border);
+  border-top: 3px solid var(--brand-red); border-radius: 13px; box-shadow: 0 15px 45px #16161625;
+  padding: 16px; display: none; }
+.bell-panel.open { display: block; }
+.bell-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 11px;
+  border-bottom: 1px solid var(--card-border); margin-bottom: 11px; font-size: 16px; }
+.bell-head b { color: var(--text); }
+.bell-head .bell-count { background: var(--brand-yellow); color: var(--on-yellow);
+  border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.bell-grp { margin-bottom: 14px; }
+.bell-grp > b { display: block; font-size: 14px; margin-bottom: 7px; }
+.bell-grp.danger > b { color: var(--red); }
+.bell-grp.warn > b, .bell-grp.info > b { color: var(--text); }
+.bell-grp ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.bell-grp li a { display: block; padding: 10px; border-radius: 8px; font-size: 14px;
+  color: var(--text); text-decoration: none; background: var(--surface-soft); border: 1px solid var(--card-border); }
+.bell-grp li a:hover { background: var(--surface-yellow); border-color: #b38910; }
+.bell-empty { text-align: center; color: var(--green); font-weight: 500; padding: 22px 8px; font-size: 14px; }
+.bell-all { display: block; text-align: center; padding: 10px; margin-top: 8px; border-radius: 8px;
+  border: 1px solid #b38910; background: var(--brand-yellow); color: var(--on-yellow);
+  text-decoration: none; font-weight: 500; font-size: 14px; }
+.bell-all:hover { background: var(--brand-yellow-hover); }
 @media print { .bell-wrap { display: none !important; } }

@@ -72,11 +72,11 @@ def run(ui_smoke=None):
         width = min(1440, max(980, int(ctypes.windll.user32.GetSystemMetrics(0) * .94)))
         height = min(950, max(650, int(ctypes.windll.user32.GetSystemMetrics(1) * .90)))
         existing = (DATA_DIR / "system.db").is_file()
-        html = (RESOURCE_DIR / "desktop" / "welcome.html").read_text(encoding="utf-8")
-        html = html.replace("__VERSION__", APP_VERSION).replace("__EXISTING__", "true" if existing else "false")
+        from desktop.appearance import welcome_html
+        html = welcome_html(existing)
         application.window = webview.create_window("مخازن التعيينات", html=html,
             width=width, height=height, min_size=(980, 640), frameless=True, easy_drag=False,
-            resizable=True, shadow=True, background_color="#0b131b", text_select=True,
+            resizable=True, shadow=True, background_color="#f5f5f1", text_select=True,
             confirm_close=not bool(ui_smoke), localization={"global.quitConfirmation": "إغلاق منظومة مخازن التعيينات؟"})
         api = NativeApi(application.window, DATA_DIR, application.start_server)
         application.window.expose(api.window_action, api.begin_new, api.choose_old_data)

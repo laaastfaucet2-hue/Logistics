@@ -27,6 +27,6 @@ $Process = Start-Process -FilePath (Join-Path $Root 'dist\Logistics\Logistics.ex
 if ($Process.ExitCode -ne 0 -or -not (Test-Path $Smoke) -or (Get-Content $Smoke -Raw) -ne 'SMOKE_OK') { throw 'The packaged executable failed its smoke test.' }
 & $Compiler "/DSourceRoot=$Root" (Join-Path $Root 'scripts\installer\Logistics.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
-$Setup = Join-Path $Root 'dist\Logistics-Setup-2.0.0.exe'
+$Setup = Join-Path $Root 'dist\Logistics-Setup-2.1.0.exe'
 Get-FileHash $Setup -Algorithm SHA256 | Format-List | Out-File (Join-Path $Root 'dist\SHA256.txt')
 Write-Host "Installer ready: $Setup" -ForegroundColor Green
