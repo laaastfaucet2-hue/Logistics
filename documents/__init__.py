@@ -1,0 +1,1 @@
+"""documents: isolated application layer."""

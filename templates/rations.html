@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ section_name }} • منظومة مخازن التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% macro num(v) -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- endmacro %}
+{% set MEAL_LABEL = {'breakfast':'فطار','lunch':'غداء','dinner':'عشاء'} %}
+
+{% block content %}
+<div class="ctx-strip">
+  <span>🗓️ السنة النشطة:</span><span class="val">{{ year | aindic }}</span>
+  <span class="sep">•</span>
+  <span>الشهر النشط:</span><span class="val">{{ month | aindic }} - {{ month_names[month-1] }}</span>
+  <span class="sep">•</span>
+  <span class="dim">بيانات هذا الشهر منعزلة — الإكسل يتحدث لحظيًا 📗</span>
+</div>
+
+{% if cfg.has_dist %}
+<div class="rt-tabs">
+  <a class="rt-tab active" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}">📋 الجدول الرئيسي</a>
+  <a class="rt-tab" href="{{ url_for('rations.page', section=section) }}&tab=dist">🏢 توزيع المقررات على الجهات</a>
+</div>
+{% endif %}
+
+<!-- شريط الأدوات: الأنواع + التفعيل + الإكسل -->
+<div class="panel rt-toolbar">
+  <div class="rt-kinds">
+    {% for k, label, icon in kinds %}
+    <a class="rt-kind {% if k == kind %}on{% endif %}" href="{{ url_for('rations.page', section=section) }}&kind={{ k }}">
+      {{ icon }} {{ label }}
+      {% if k == active_kind %}<span class="rt-live">مفعّل ✔</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="rt-actions">
+    {% for k, label, icon in kinds %}
+      {% if k == kind and k != active_kind %}
+      <form method="post" action="{{ url_for('rations.activate', section=section) }}" class="inline-f">
+        <input type="hidden" name="kind" value="{{ k }}">
+        <button class="rt-btn green" type="submit">⚡ تفعيل المقرر {{ label }}</button>
+      </form>
+      {% endif %}
+    {% endfor %}
+    {% if can_open %}
+    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح شيت الإكسل مباشرة على هذا الجهاز">📗 فتح الإكسل</a>
+    <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}" title="فتح مجلد القسم على هذا الجهاز">📂 فتح المجلد</a>
+    {% endif %}
+    <a class="rt-btn navy" href="{{ url_for('rations.download_excel', section=section) }}" title="تنزيل ملف الإكسل مباشرة على جهازك"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>تنزيل الإكسل مباشرة</a>
+    <a class="icon-btn zip" href="{{ url_for('rations.download_zip', section=section) }}" title="تنزيل مجلد القسم كاملًا مضغوطًا (ZIP)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="12" y1="4" x2="12" y2="13"></line><polyline points="8.5 9.5 12 13 15.5 9.5"></polyline></svg></a>
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة الجدول بالدباجة والتوقيعات">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </button>
+  </div>
+</div>
+<div class="rt-note">
+  💡 التفعيل مقرر واحد فقط — <strong>{% if active_kind %}النشط الآن: {{ kmap[active_kind].name }} ✔{% else %}لا يوجد مقرر مفعّل بعد{% endif %}</strong>
+  والمقرر المفعّل هو الذي ستستخدمه «آلة حاسبة 2 مخازن» 🧮
+</div>
+
+<!-- نموذج إضافة/تعديل صنف -->
+<div class="panel rt-formcard">
+  <div class="panel-head"><h3>{% if edit_item %}✏️ تعديل الصنف رقم {{ edit_item.serial | aindic }}{% else %}➕ إضافة صنف جديد — مقرر {{ kmap[kind].name }}{% endif %}</h3></div>
+  <form method="post"
+        action="{% if edit_item %}{{ url_for('rations.item_edit', section=section, item_id=edit_item.id) }}{% else %}{{ url_for('rations.item_add', section=section) }}{% endif %}"
+        class="rt-form" autocomplete="off">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <div class="fld wide">
+      <label>اسم الصنف</label>
+      <input name="name" required placeholder="مثال: أرز بلدي، سكر، شاي..."
+             data-combo="sectionNames" autocomplete="off"
+             value="{{ edit_item.name if edit_item else '' }}">
+      <datalist id="sectionNames">{% for n in known_names %}<option value="{{ n }}">{% endfor %}</datalist>
+    </div>
+    <div class="fld">
+      <label>الوحدة</label>
+      <input name="unit" data-combo="unitsList" placeholder="كجم، لتر..."
+             value="{{ edit_item.unit if edit_item else '' }}">
+      <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
+    </div>
+    <div class="fld">
+      <label>فطار</label>
+      <input name="breakfast" inputmode="decimal" placeholder="٠"
+             value="{{ edit_item.breakfast|oval if edit_item else '' }}">
+    </div>
+    <div class="fld">
+      <label>غداء</label>
+      <input name="lunch" inputmode="decimal" placeholder="٠"
+             value="{{ edit_item.lunch|oval if edit_item else '' }}">
+    </div>
+    <div class="fld">
+      <label>عشاء</label>
+      <input name="dinner" inputmode="decimal" placeholder="٠"
+             value="{{ edit_item.dinner|oval if edit_item else '' }}">
+    </div>
+    <div class="fld btns">
+      <button class="rt-btn gold" type="submit">{% if edit_item %}💾 حفظ التعديل{% else %}➕ إضافة{% endif %}</button>
+      {% if edit_item %}<a class="rt-btn dim" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}">إلغاء</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- الجدول -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>📋 أصناف مقرر {{ kmap[kind].name }} — {{ items | length | aindic }} صنفًا</h3>
+    <form method="post" action="{{ url_for('rations.copy_kind', section=section) }}" class="rt-copy inline-f"
+          onsubmit="return confirm('سيُستبدل مقرر {{ kmap[kind].name }} في الشهر المحدد — متابعة؟');">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <select name="to_year">
+        {% for y in years %}<option value="{{ y }}" {% if y != year %}selected{% endif %}>{{ y | aindic }}</option>{% endfor %}
+      </select>
+      <select name="to_month">
+        {% for m in range(1, 13) %}<option value="{{ m }}" {% if m != month %}selected{% endif %}>{{ month_names[m-1] }}</option>{% endfor %}
+      </select>
+      <button class="rt-btn dim" type="submit">📑 نسخ المقرر إلى الشهر المحدد</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table class="rt-table">
+      <thead>
+        <tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th><th class="ops">إجراءات</th></tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td class="num">{{ it.serial | aindic }}</td>
+          <td class="name">{{ it.name }}</td>
+          <td>{{ it.unit or '—' }}</td>
+          <td class="num">{{ num(it.breakfast) }}</td>
+          <td class="num">{{ num(it.lunch) }}</td>
+          <td class="num">{{ num(it.dinner) }}</td>
+          <td class="custom-cell">
+            {% set ents = custom.get(it.id, []) %}
+            {% if ents %}
+              {% for e in ents %}<span class="day-chip">{{ days[e.weekday] }} {{ MEAL_LABEL[e.meal] }} {{ num(e.qty) }}</span>{% endfor %}
+            {% else %}
+              <span class="dim-txt">يوميًا</span>
+            {% endif %}
+          </td>
+          <td class="ops">
+            <button type="button" class="mini-btn custom-btn"
+                    data-id="{{ it.id }}" data-name="{{ it.name }}"
+                    data-custom="{{ custom.get(it.id, []) | tojson }}">🗓️ مخصص</button>
+            <a class="icon-btn edit" title="تعديل الصنف" href="{{ url_for('rations.page', section=section) }}&kind={{ kind }}&edit={{ it.id }}">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </a>
+            <form method="post" action="{{ url_for('rations.item_delete', section=section, item_id=it.id) }}"
+                  class="inline-f js-del">
+              <input type="hidden" name="kind" value="{{ kind }}">
+              <button class="icon-btn del" type="submit" title="حذف الصنف نهائيًا">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty">لا توجد أصناف بعد في هذا المقرر — أضف أول صنف من الأعلى ➕</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- نافذة المقرر المخصص -->
+<div class="modal" id="customModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🗓️ مقرر مخصص: <span id="customItemName"></span></h3>
+      <button class="modal-x" type="button" id="customClose">✕</button>
+    </div>
+    <p class="modal-hint">اكتب الكمية في اليوم والوجبة اللي يتوزع فيها الصنف (فاضي = لا يُصرف) ثم احفظ.</p>
+    <form method="post" id="customForm" autocomplete="off" action="{{ url_for('rations.custom_save', section=section, item_id=0) }}"
+          data-template="{{ url_for('rations.custom_save', section=section, item_id=0) }}">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <table class="grid-days">
+        <thead><tr><th>اليوم</th>{% for m, label in meals %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for d in range(7) %}
+          <tr>
+            <td class="dname">{{ days[d] }}</td>
+            {% for m, label in meals %}
+            <td><input name="c_{{ d }}_{{ m }}" inputmode="decimal" placeholder="٠"></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="modal-foot">
+        <button class="rt-btn gold" type="submit">💾 حفظ التخصيص</button>
+        <button class="rt-btn dim" type="button" id="customCancel">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ترويسة وتوقيعات الطباعة (تظهر عند الطباعة فقط) -->
+<div class="print-doc print-only">
+  <div class="pd-head">
+    <div class="pd-lh">
+      {% for i in range(4) %}<div class="l{{ i+1 }}">{{ lh[i] }}</div>{% endfor %}
+    </div>
+    {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+  </div>
+  <div class="pd-title">{{ section_name }} — مقرر {{ kmap[kind].name }} — {{ month_names[month-1] }} {{ year | aindic }}</div>
+</div>
+<div class="print-sigs print-only">
+  <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+  <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

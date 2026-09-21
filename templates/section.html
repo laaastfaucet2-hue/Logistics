@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ section.name }} • منظومة مخازن التعيينات{% endblock %}
+
+{% block content %}
+<!-- شريط السياق: السنة والشهر النشطان -->
+<div class="ctx-strip">
+  <span>🗓️ السنة النشطة:</span><span class="val">{{ ctx_year | aindic }}</span>
+  <span class="sep">•</span>
+  <span>الشهر النشط:</span><span class="val">{{ ctx_month | aindic }} - {{ month_name }}</span>
+  <span class="sep">•</span>
+  <span class="dim">بيانات كل شهر منعزلة تمامًا عن باقي الشهور</span>
+</div>
+
+<!-- صفحة قيد التطوير -->
+<div class="panel under-dev">
+  <div class="ud-icon">{{ section.icon }}</div>
+  <span class="ud-badge">🚧 قيد التطوير</span>
+  <h2 class="ud-name">صفحة قسم {{ section.name }}</h2>
+  <p class="ud-txt">
+    الصفحة جاهزة ومربوطة بالسنة والشهر المحددين أعلاه — سنصممها معًا خطوة بخطوة.
+  </p>
+  {% if folder_path %}<p class="ud-txt">مجلد ملفات هذا القسم للشهر الحالي: <code>{{ folder_path }}</code></p>{% endif %}
+  <div class="ud-hint">
+    💡 قل لي ماذا تريد داخل صفحة «{{ section.name }}» — جداول؟ نماذج إدخال؟ تقارير؟ ملفات Excel/Word؟ وسنبنيها معًا.
+  </div>
+</div>
+{% endblock %}

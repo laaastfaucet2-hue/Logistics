@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} • طباعة رسمية{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ مستند رسمي جاهز للطباعة</span><span class="sep">•</span>
+  <span class="dim">اضغط زر الطباعة — ويمكنك اختيار «حفظ PDF» من نافذة الطباعة</span>
+</div>
+<div class="panel rt-toolbar no-print">
+  <div class="rt-actions">
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة المستند">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </button>
+    {% if docx_name %}<a class="icon-btn down" title="تنزيل نسخة الوورد المحفوظة"
+       href="{{ url_for('recruits.docx_download', name=docx_name) }}">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    </a>{% endif %}
+  </div>
+</div>
+
+<!-- المستند -->
+<div class="panel rc-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i+1 }}">{{ lh[i] }}</div>{% endfor %}</div>
+      {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <div class="pd-title">{{ title }}</div>
+  </div>
+
+  {% if print_kind == 'permit' %}
+  <div class="rc-permit">
+    <p>صرّحت وحدة التعيينات للمجند / <b>{{ recruit.name }}</b></p>
+    <p>رقم عسكري / <b>{{ recruit.mil_no | aindic }}</b> —
+       محافظة / {{ recruit.governorate or '—' }} — المدينة / {{ recruit.city or '—' }}</p>
+    <p>بإجازة اعتيادية من يوم <b>{{ from_day | aindic }}</b> شهر {{ month_name }} {{ year | aindic }}
+       وحتى يوم <b>{{ to_day | aindic }}</b> من ذات الشهر (مدة {{ (to_day - from_day + 1) | aindic }} يومًا).</p>
+    <p>وعلى المجند المذكور العودة إلى وحدة التعيينات فور انتهاء إجازته،</p>
+    <p>وقد حُرِّر له هذا التصريح لتقديمه لمن يهمه الأمر.</p>
+    <p class="dim">حُرِّر في {{ today_ar }}</p>
+  </div>
+
+  {% elif print_kind == 'day' %}
+  <div class="rc-stat-chips" style="margin-bottom:10px">
+    {% for st, n in counts.items() %}<span class="rc-chip st-{{ st }}">{{ st }} <b>{{ n | aindic }}</b></span>{% endfor %}
+  </div>
+  <table class="rt-table rc-print-table">
+    <thead><tr><th>م</th><th>اسم المجند</th><th>الرقم العسكري</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+    <tbody>
+      {% for r, st in rows %}<tr>
+        <td class="num">{{ loop.index | aindic }}</td><td>{{ r.name }}</td>
+        <td class="num">{{ r.mil_no | aindic }}</td><td><b>{{ st.status }}</b></td><td>{{ st.note or '—' }}</td>
+      </tr>{% else %}<tr><td colspan="5" style="text-align:center">لا يومية مسجلة لهذا اليوم</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif print_kind == 'month-leaves' %}
+  <table class="rt-table rc-print-table">
+    <thead><tr><th>م</th><th>اسم المجند</th><th>الرقم العسكري</th><th>من يوم — إلى يوم</th><th>المدة</th></tr></thead>
+    <tbody>
+      {% set ns = namespace(i=1) %}
+      {% for rid, rs in ranges.items() %}{% for f, t in rs %}<tr>
+        <td class="num">{{ ns.i | aindic }}</td>{% set ns.i = ns.i + 1 %}
+        <td>{{ by_id[rid].name }}</td><td class="num">{{ by_id[rid].mil_no | aindic }}</td>
+        <td class="num">{{ f | aindic }} — {{ t | aindic }}</td><td class="num">{{ (t - f + 1) | aindic }} يومًا</td>
+      </tr>{% endfor %}{% else %}<tr><td colspan="5" style="text-align:center">لا إجازات مسجلة هذا الشهر</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif print_kind == 'certs' %}
+  <table class="rt-table rc-print-table">
+    <thead><tr><th>م</th><th>اسم المجند</th><th>الرقم العسكري</th><th>تاريخ الشهادة</th><th>الانتهاء</th><th>الموقف</th></tr></thead>
+    <tbody>
+      {% for r, st in rows %}<tr>
+        <td class="num">{{ loop.index | aindic }}</td><td>{{ r.name }}</td><td class="num">{{ r.mil_no | aindic }}</td>
+        <td class="num">{{ (r.cert_date if r.has_cert else '') | aindic or '—' }}</td>
+        <td class="num">{{ (r.cert_expiry if r.has_cert else '') | aindic or '—' }}</td>
+        <td>{{ {'ok':'🟢 سارية','soon':'🟠 تنتهي قريبًا','expired':'🔴 منتهية','none':'⚪ لا توجد'}[st] }}</td>
+      </tr>{% else %}<tr><td colspan="6" style="text-align:center">لا مجندون مسجلون</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif print_kind == 'recruit' %}
+  <div class="rc-permit">
+    <p>المجند / <b>{{ recruit.name }}</b> — رقم عسكري / <b>{{ recruit.mil_no | aindic }}</b></p>
+    <p>محافظة / {{ recruit.governorate or '—' }} — المدينة / {{ recruit.city or '—' }} — {{ recruit.address or '' }}</p>
+    <p>الخدمة من {{ recruit.service_start | aindic or '—' }} إلى {{ recruit.service_end | aindic or '—' }}</p>
+  </div>
+  <table class="rt-table rc-print-table">
+    <thead><tr><th>اليوم</th><th>الحالة</th></tr></thead>
+    <tbody>
+      {% for d, st in rows %}<tr><td class="num">{{ d | aindic }}</td><td><b>{{ st }}</b></td></tr>
+      {% else %}<tr><td colspan="2" style="text-align:center">لا حالات مسجلة لهذا الشهر</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="print-sigs">
+    <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+    <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+  </div>
+</div>
+{% endblock %}

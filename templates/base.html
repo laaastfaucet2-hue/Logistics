@@ -1,0 +1,49 @@
+{% from "partials/icons.html" import icon %}
+<!DOCTYPE html><html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}مخازن التعيينات{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
+{% block head_extra %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
+</head><body data-sid="{{ sid }}" data-year="{{ ctx_year }}" data-month="{{ ctx_month }}" data-desktop="{{ '1' if desktop_mode else '0' }}">
+{% include 'partials/windowbar.html' %}
+<div class="bg-fx" aria-hidden="true"></div>
+{% if request.args.get('ok') %}<div class="toast ok" id="appToast" role="status">{{ request.args.get('ok') }}</div>{% endif %}
+{% if request.args.get('err') %}<div class="toast err" id="appToast" role="alert">{{ request.args.get('err') }}</div>{% endif %}
+<div class="app"><aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار المنظومة"></div><div><div class="brand-name">مخازن التعيينات</div><div class="brand-sub">منظومة التموين والإدارة</div></div></div>
+  <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
+    <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
+    <div class="nav-title">الأقسام الشهرية</div>
+    {% set active_paths = {'tamween_rations':'/rations/tamween', 'contractor_rations':'/rations/contractor', 'mojandeen':'/recruits'} %}
+    {% for s in sections %}<a href="{{ url_for('section_page', key=s.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=s.key), active_paths.get(s.key, '')] }}">{{ icon(s.key) }}{{ s.name }}</a>{% endfor %}
+    <div class="nav-title">أدوات المنظومة</div>
+    {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups'} %}
+    {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
+  </nav>
+  <div class="side-foot"><div class="sidebar-status"><i class="status-dot"></i>{{ 'تعمل محليًا على جهازك' if desktop_mode else 'بيئة المعاينة' }}</div><a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a></div>
+</aside>
+<div class="main"><header class="topbar">
+  <button class="menu-btn" id="menuBtn" type="button" aria-label="القائمة"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="top-date">{{ icon('calendar') }}<span id="todayDate"></span></div>
+  <div class="top-user"><div class="avatar">{{ current_user.full_name[:1] }}</div><div><div class="u-name">{{ current_user.full_name }}</div><div class="u-role">{{ 'مدير النظام' if current_user.role == 'admin' else 'أمين مخزن' }}</div></div></div>
+  <div class="ctx" title="السنة والشهر النشطان"><label class="ctx-label" for="ctxYear">السنة</label><input id="ctxYear" class="ctx-sel" data-combo="contextYears" value="{{ ctx_year | aindic }}" autocomplete="off" aria-label="السنة النشطة">
+    <label class="ctx-label" for="ctxMonth">الشهر</label><input id="ctxMonth" class="ctx-sel" data-combo="contextMonths" value="{{ months[ctx_month-1][1] }}" autocomplete="off" aria-label="الشهر النشط">
+    <datalist id="contextYears">{% for y in years %}<option value="{{ y | aindic }}">{% endfor %}</datalist><datalist id="contextMonths">{% for n, label in months %}<option value="{{ label }}" data-month="{{ n }}">{% endfor %}</datalist>
+    <button class="ctx-btn add" id="addYearBtn" title="إنشاء سنة جديدة" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg></button><button class="ctx-btn danger" id="delYearBtn" title="حذف السنة المحددة" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg></button>
+  </div>
+</header>
+<main class="content">{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}{% block content %}{% endblock %}</main>
+<footer class="footer"><span>مخازن التعيينات <span dir="ltr">/ {{ app_version }}</span> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>معاينة ويب · احتفظ بنسختك الاحتياطية</span>{% endif %}</footer>
+</div></div>
+{% include 'partials/notifications.html' %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/session.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/context.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/desktop.js') }}?v={{ static_ver }}"></script>
+{% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_ver }}"></script>
+</body></html>

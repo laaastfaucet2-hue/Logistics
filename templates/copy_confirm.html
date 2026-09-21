@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}تأكيد النسخ بين الشهور • مخازن التعيينات{% endblock %}
+{% block content %}
+<section class="copy-review panel">
+  <span class="eyebrow">مراجعة قبل الحفظ</span>
+  <h1>نسخة جديدة، شهر مستقل.</h1>
+  <p>نسخ {{ 'أصل القوة ومرفقاته' if kind == 'registry' else 'الدباجة واللوجو والتوقيعات' }} من <b>{{ source_label }}</b> إلى <b>{{ target_label }}</b>.</p>
+  <div class="review-counts"><div><strong>{{ plan.added | aindic }}</strong><span>سيُنسخ</span></div><div><strong>{{ plan.skipped | aindic }}</strong><span>موجود ويُترك دون تعديل</span></div></div>
+  <p class="copy-note">لن تُنسخ اليومية أو الحضور أو الإجازات. المصدر لا يتغير. تُحفظ نسخة احتياطية قبل التنفيذ.</p>
+  <form method="post" action="{{ url_for('month_copy.copy', kind=kind) }}">
+    <input type="hidden" name="year" value="{{ source[0] }}"><input type="hidden" name="month" value="{{ source[1] }}">
+    <input type="hidden" name="target_year" value="{{ target[0] }}"><input type="hidden" name="target_month" value="{{ target[1] }}">
+    <input type="hidden" name="confirmed" value="1"><input type="hidden" name="fingerprint" value="{{ plan.fingerprint }}">
+    {% if ids is not none %}<input type="hidden" name="scope" value="selected">{% for rid in ids %}<input type="hidden" name="recruit_ids" value="{{ rid }}">{% endfor %}{% endif %}
+    {% if plan.replace %}<label class="replace-warning"><input type="checkbox" name="replace" value="1" required> الوجهة تحتوي على دباجة. أوافق على استبدال أسطرها ولوجوها وتوقيعاتها.</label>{% endif %}
+    <div class="review-actions"><button class="btn-gold" type="submit">تأكيد النسخ</button>
+    <a class="btn-ghost" href="{{ url_for('recruits.page' if kind == 'registry' else 'letterhead.page', year=source[0], month=source[1]) }}">إلغاء والعودة</a></div>
+  </form>
+</section>
+{% endblock %}

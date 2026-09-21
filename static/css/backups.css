@@ -1,0 +1,30 @@
+/* صفحة النسخ الاحتياطي والحماية — ثيم النظام (قاعدة ١٢/١٣) */
+.bk-status { display: flex; gap: 14px; flex-wrap: wrap; padding: 16px 18px; margin-bottom: 16px; }
+.bk-chip { display: flex; align-items: center; gap: 10px; flex: 1 1 200px;
+  background: var(--card); border: 1px solid rgba(255,199,44,.22);
+  border-radius: 12px; padding: 12px 14px; }
+.bk-chip.good { border-color: rgba(23,99,63,.45); }
+.bk-chip.bad { border-color: rgba(218,41,28,.65); animation: pulse-bad 1.6s infinite; }
+.bk-chip .bk-ico { font-size: 1.35rem; }
+.bk-chip b { display: block; font-size: .95rem; }
+.bk-chip small { color: var(--muted); font-size: .8125rem; }
+@keyframes pulse-bad { 50% { box-shadow: 0 0 0 4px rgba(218,41,28,.15); } }
+
+.bk-alert { border-color: rgba(218,41,28,.55); background: rgba(218,41,28,.07);
+  padding: 14px 18px; margin-bottom: 16px; }
+.bk-alert ul { margin: 8px 0; padding-inline-start: 20px; }
+.bk-alert small { color: var(--muted); }
+
+.bk-name { font-size: .8rem; }
+.bk-badge { display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: .8125rem; font-weight: 600; border: 1px solid transparent; }
+.bk-badge.manual { color: var(--blue); border-color: rgba(67,84,93,.4); background: rgba(67,84,93,.1); }
+.bk-badge.write { color: var(--green); border-color: rgba(23,99,63,.4); background: rgba(23,99,63,.1); }
+.bk-badge.boot { color: var(--text); border-color: rgba(255,199,44,.4); background: rgba(255,199,44,.1); }
+.bk-badge.pre-restore { color: var(--status-other); border-color: rgba(94,75,120,.4); background: rgba(94,75,120,.1); }
+
+.bk-layers { margin: 0; padding-inline-start: 6px; list-style: none; }
+.bk-layers li { padding: 7px 0; border-bottom: 1px dashed var(--card-border); line-height: 1.9; }
+.bk-layers li:last-child { border-bottom: 0; }
+.rt-table td.ops { white-space: nowrap; }
+.inline-f { display: inline; }

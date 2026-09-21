@@ -1,0 +1,36 @@
+/* Approved red / yellow identity. Shared by the web and native welcome screen.
+   Keep brand accents separate from semantic status colors and official documents. */
+:root {
+  color-scheme: light;
+  --font-ui: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --brand-red: #da291c;
+  --brand-red-hover: #b51e14;
+  --brand-yellow: #ffc72c;
+  --brand-yellow-hover: #ffd65e;
+  --on-yellow: #000000;
+  --on-red: #ffffff;
+  --text: #161616;
+  --muted: #5f5f57;
+  --bg0: #f5f5f1;
+  --bg1: #ffffff;
+  --card: #ffffff;
+  --card-border: #deded6;
+  --field-border: #8d8d83;
+  --surface-soft: #f8f8f4;
+  --surface-yellow: #fff5d5;
+  --surface-red: #fff0ed;
+  --green: #17633f;
+  --blue: #43545d;
+  --status-other: #5e4b78;
+  --red: #ba2015;
+  --orange: #805000;
+  --success-soft: #edf7f0;
+  --shadow: 0 8px 28px #16161608;
+  --focus-ring: 0 0 0 3px #ffc72c66;
+  --radius: 14px;
+  --window-h: 40px;
+  /* Compatibility names for existing controls; text accents stay dark on light surfaces. */
+  --gold: var(--brand-yellow);
+  --gold-light: var(--text);
+  --gold-dark: var(--brand-red);
+}

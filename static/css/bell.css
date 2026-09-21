@@ -1,0 +1,43 @@
+/* Notification center: consistent red / yellow controls, readable dark text. */
+.bell-wrap { position: fixed; bottom: 50px; left: 18px; z-index: 900; }
+.bell-inner { display: flex; align-items: center; gap: 6px; }
+.bell-toggle { width: 25px; height: 25px; border-radius: 7px; border: 1px solid var(--field-border);
+  background: var(--card); color: var(--text); font-weight: 600; font-size: 15px;
+  cursor: pointer; display: grid; place-items: center; line-height: 1; order: -1; }
+.bell-toggle:hover { background: var(--surface-yellow); }
+.bell-btn { position: relative; width: 48px; height: 48px; border-radius: 14px; cursor: pointer;
+  border: 1px solid #b38910; background: var(--brand-yellow); color: var(--on-yellow);
+  display: grid; place-items: center; transition: .15s; box-shadow: 0 6px 20px #16161618; }
+.bell-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bell-btn:hover { background: var(--brand-yellow-hover); transform: translateY(-2px); }
+.bell-badge { position: absolute; top: -7px; inset-inline-end: -7px; min-width: 24px; height: 24px;
+  padding: 0 5px; border-radius: 999px; background: var(--brand-red); color: var(--on-red);
+  font-size: 12px; font-weight: 600; display: grid; place-items: center; border: 2px solid var(--card); }
+.bell-badge.zero { display: none; }
+.bell-wrap.collapsed .bell-main { display: none; }
+.bell-wrap.collapsed .bell-toggle { width: 30px; height: 30px; font-size: 18px; border-radius: 9px; }
+.bell-panel { position: absolute; bottom: 58px; left: 0; width: min(360px, calc(100vw - 36px));
+  max-height: 65vh; overflow-y: auto; background: var(--card); border: 1px solid var(--card-border);
+  border-top: 3px solid var(--brand-red); border-radius: 13px; box-shadow: 0 15px 45px #16161625;
+  padding: 16px; display: none; }
+.bell-panel.open { display: block; }
+.bell-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 11px;
+  border-bottom: 1px solid var(--card-border); margin-bottom: 11px; font-size: 16px; }
+.bell-head b { color: var(--text); }
+.bell-head .bell-count { background: var(--brand-yellow); color: var(--on-yellow);
+  border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.bell-grp { margin-bottom: 14px; }
+.bell-grp > b { display: block; font-size: 14px; margin-bottom: 7px; }
+.bell-grp.danger > b { color: var(--red); }
+.bell-grp.warn > b, .bell-grp.info > b { color: var(--text); }
+.bell-grp ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.bell-grp li a { display: block; padding: 10px; border-radius: 8px; font-size: 14px;
+  color: var(--text); text-decoration: none; background: var(--surface-soft); border: 1px solid var(--card-border); }
+.bell-grp li a:hover { background: var(--surface-yellow); border-color: #b38910; }
+.bell-empty { text-align: center; color: var(--green); font-weight: 500; padding: 22px 8px; font-size: 14px; }
+.bell-all { display: block; text-align: center; padding: 10px; margin-top: 8px; border-radius: 8px;
+  border: 1px solid #b38910; background: var(--brand-yellow); color: var(--on-yellow);
+  text-decoration: none; font-weight: 500; font-size: 14px; }
+.bell-all:hover { background: var(--brand-yellow-hover); }
+@media print { .bell-wrap { display: none !important; } }

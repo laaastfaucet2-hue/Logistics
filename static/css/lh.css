@@ -1,0 +1,110 @@
+/* ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md */
+/* =====================================================
+   صفحة الدباجة والتوقيعات الرسمية + المعاينة الحية (A4)
+   ===================================================== */
+
+.ltr { direction: ltr; unicode-bidi: embed; display: inline-block; }
+.lh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+.lh-panel { margin-bottom: 0; }
+.lh-loc { color: var(--muted); font-size: .78rem; font-weight: 600; }
+
+/* مربعات الدباجة */
+.lh-boxes { display: flex; flex-direction: column; gap: 12px; }
+.lh-box { display: flex; align-items: center; gap: 10px; }
+.lh-num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+  background: var(--brand-yellow); color: var(--on-yellow); font-weight: 600;
+  font-size: .85rem; flex-shrink: 0; }
+.lh-box input { flex: 1; padding: 13px 16px; border-radius: 12px; font-family: var(--font-ui);
+  font-size: 1rem; font-weight: 500; color: var(--text); background: var(--card);
+  border: 1px solid var(--field-border); outline: none; transition: all .2s; }
+.lh-box input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(255,199,44,.14);
+  background: rgba(255,199,44,.05); }
+
+/* اللوجو */
+.lh-logo-zone { display: flex; flex-direction: column; gap: 12px; align-items: center;
+  padding: 8px 0 4px; }
+.lh-logo-img { width: 110px; height: 110px; object-fit: contain; border-radius: 14px;
+  background: #fff; padding: 8px; box-shadow: var(--shadow); }
+.lh-logo-empty { display: grid; place-items: center; width: 110px; height: 110px;
+  border-radius: 14px; border: 2px dashed var(--card-border); color: var(--muted);
+  font-weight: 500; font-size: .82rem; }
+.lh-file { width: 100%; padding: 11px 14px; border-radius: 11px; font-family: var(--font-ui);
+  font-weight: 500; font-size: .85rem; color: var(--text); background: var(--card);
+  border: 1px dashed rgba(67,84,93,.4); cursor: pointer; }
+.lh-file::file-selector-button { margin-left: 10px; padding: 7px 14px; border-radius: 8px;
+  border: none; background: rgba(67,84,93,.2); color: var(--blue); font-family: var(--font-ui);
+  font-weight: 600; cursor: pointer; }
+.lh-hint { color: var(--muted); font-size: .78rem; font-weight: 600; text-align: center; }
+
+/* التوقيعان */
+.lh-sig-form { display: flex; flex-direction: column; gap: 9px; }
+.lh-sig-form label { font-size: .8rem; font-weight: 600; color: var(--gold-light); }
+.lh-sig-form input { padding: 12px 16px; border-radius: 11px; font-family: var(--font-ui);
+  font-size: .95rem; font-weight: 500; color: var(--text); background: var(--card);
+  border: 1px solid var(--field-border); outline: none; transition: all .2s; }
+.lh-sig-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(255,199,44,.14); }
+
+.lh-savebar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 14px 0 8px; padding: 16px 20px; border-radius: 14px;
+  background: rgba(255,199,44,.06); border: 1px solid rgba(255,199,44,.25); }
+.rt-btn.big { padding: 14px 34px; font-size: 1rem; }
+.lh-del-form { margin-bottom: 20px; }
+
+/* ======== المعاينة الحية (صفحات A4) ======== */
+.lh-prev-title { font-size: 1.2rem; font-weight: 900; margin: 26px 4px 14px;
+  color: var(--gold-light); }
+.lh-previews { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+.a4 { background: #fdfdff; color: #1a2033; border-radius: 14px; padding: 26px 24px 20px;
+  box-shadow: var(--shadow); border: 1px solid var(--card-border);
+  display: flex; flex-direction: column; gap: 14px; font-size: .8rem; line-height: 1.7; }
+.a4-tag { align-self: flex-start; padding: 5px 16px; border-radius: 999px; font-weight: 900;
+  font-size: .75rem; background: #0a1230; color: #f6d47c; }
+.a4-tag.green { background: #1e7f4f; color: #d1fae5; }
+
+.a4-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.a4-lh { display: flex; flex-direction: column; gap: 4px; }
+.a4-lh-box { padding: 2px 0; font-weight: 900; text-align: right; min-width: 210px;
+  color: #0a1230; }  /* سطور الدباجة بدون مربعات — نص حر مثل ملف الوورد بالظبط */
+.a4-lh-box.l1 { color: #b8860b; font-size: .95rem; }
+.a4-lh-box.l2 { font-size: .88rem; }
+.a4-lh-box.l3, .a4-lh-box.l4 { font-size: .8rem; color: #334; }
+.a4-logo { display: grid; place-items: center; width: 86px; height: 86px; flex-shrink: 0;
+  border: 1.5px dashed #9aa6c7; border-radius: 10px; color: #9aa6c7; font-size: .68rem;
+  font-weight: 800; text-align: center; overflow: hidden; background: #fff; }
+.a4-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+.a4-body { flex: 1; display: grid; place-items: center; color: #8a93ad; text-align: center;
+  border: 1px dashed #d8dcea; border-radius: 10px; padding: 26px; font-weight: 600; }
+
+.xl-title { text-align: center; font-weight: 900; font-size: .82rem; color: #f6d47c;
+  background: #0a1230; border-radius: 8px; padding: 9px; }
+.xl-mock { width: 100%; border-collapse: collapse; direction: rtl; }
+.xl-mock th { background: #b8860b; color: #fff; font-size: .66rem; padding: 7px 4px;
+  border: 1px solid #99720a; font-weight: 800; }
+.xl-mock td { border: 1px solid #d8dcea; padding: 6px 4px; text-align: center;
+  font-size: .66rem; font-weight: 600; color: #334; }
+.xl-mock td:nth-child(2) { font-weight: 800; color: #0a1230; }
+
+.a4-sigs { display: flex; justify-content: space-between; gap: 12px; margin-top: auto; }
+.a4-sig { text-align: center; font-weight: 800; font-size: .82rem; color: #1a2033;
+  display: flex; flex-direction: column; gap: 3px; min-width: 42%; }
+.sig-lab { font-size: .6rem; color: #b8860b; font-weight: 900; margin-bottom: 3px; }
+.sig-line { color: #8a93ad; font-weight: 600; }
+
+.lh-decide { margin-top: 20px; font-weight: 600; color: var(--text); line-height: 2; }
+.lh-decide strong { color: var(--gold-light); }
+
+@media (max-width: 1150px) {
+  .lh-grid, .lh-previews { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .lh-box input { min-width: 0; width: 100%; }
+  .a4 { padding: 20px 16px; min-width: 0; }
+  .a4-lh { min-width: 0; flex: 1; }
+  .a4-lh-box { min-width: 0; overflow-wrap: anywhere; }
+  .a4-logo { width: 64px; height: 64px; }
+  .xl-mock th { white-space: normal; }
+  .lh-grid, .lh-previews { grid-template-columns: minmax(0, 1fr); }
+}

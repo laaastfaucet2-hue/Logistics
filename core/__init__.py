@@ -1,0 +1,1 @@
+"""core: isolated application layer."""
