@@ -1,5 +1,5 @@
 // ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-/* سكربتات صفحات المقررات: نافذة المخصص + تأكيدات الحذف + تخصيص أيام الجهات */
+/* سكربتات صفحات المقررات: نافذة المخصص + تأكيدات الحذف + أعمدة أيام التوزيع */
 (function () {
   "use strict";
 
@@ -22,7 +22,6 @@
         try { entries = JSON.parse(btn.getAttribute("data-custom") || "[]"); } catch (e) {}
 
         nameSpan.textContent = name;
-        // الوجبات بترتيب الأعمدة في الجدول
         var meals = ["breakfast", "lunch", "dinner"];
         for (var d = 0; d < 7; d++) {
           meals.forEach(function (m) {
@@ -34,7 +33,6 @@
           var inp = form.querySelector('input[name="c_' + en.weekday + '_' + en.meal + '"]');
           if (inp) inp.value = en.qty;
         });
-        // ضبط رابط الحفظ على الصنف المطلوب
         var tpl = form.getAttribute("data-template");
         form.setAttribute("action", tpl.replace(/\/0$/, "/" + id));
         modal.classList.add("show");
@@ -42,7 +40,7 @@
     });
   }
 
-  // ---------- تأكيد الحذف ----------
+  // ---------- تأكيدات الحذف ----------
   document.querySelectorAll("form.js-del").forEach(function (f) {
     f.addEventListener("submit", function (e) {
       if (!confirm("تأكيد حذف الصنف نهائيًا؟")) e.preventDefault();
@@ -54,40 +52,40 @@
     });
   });
 
-  // ---------- تخصيص أيام التوزيع (صفحة الجهات) ----------
-  document.querySelectorAll(".dist-toggle").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var td = btn.closest(".days-td");
-      var form = td ? td.querySelector(".days-form") : null;
-      if (!form) return;
-      var open = !form.hasAttribute("hidden");
-      if (open) {
-        form.setAttribute("hidden", "");
-        btn.textContent = "تخصيص";
-      } else {
-        form.removeAttribute("hidden");
-        btn.textContent = "إغلاق";
-      }
-    });
-  });
-
-  // تفعيل حقل مقرر اليوم عند تحديده — والحفظ دفعة واحدة بزر الحفظ (بدون تريقة)
-  document.querySelectorAll(".days-form input[type=checkbox]").forEach(function (cb) {
-    cb.addEventListener("change", function () {
-      var card = cb.closest(".day-card");
-      var qty = card ? card.querySelector(".dc-qty") : null;
-      if (!qty) return;
-      qty.disabled = !cb.checked;
-      card.classList.toggle("on", cb.checked);
-      if (cb.checked) qty.focus();
-    });
-  });
-
   // تأكيد إعادة السحب من المقرر النشط
   document.querySelectorAll("form.js-resync").forEach(function (f) {
     f.addEventListener("submit", function (e) {
       if (!confirm("🔄 هيتم مسح أصناف الجهة الحالية وإعادة سحبها من المقرر النشط — متابعة؟")) {
         e.preventDefault();
+      }
+    });
+  });
+
+  // ---------- أعمدة أيام التوزيع: الشيك يفعّل حقل الكمية — والحفظ دفعة واحدة بزر 💾 ----------
+  function syncCell(cell) {
+    var ck = cell.querySelector(".ck");
+    var dq = cell.querySelector(".dq");
+    if (!ck || !dq) return;
+    var row = cell.closest("tr");
+    var anyChecked = row.querySelectorAll(".daycell .ck:checked").length > 0;
+    cell.classList.toggle("on", ck.checked);
+    if (ck.checked) {
+      dq.disabled = false;
+      if (!dq.value) dq.value = dq.dataset.gen || "";
+    } else {
+      dq.disabled = true;
+      // لو الصف رجع «يوميًا» (ولا يوم محدد) نعرض القيمة العامة تحت كل يوم
+      dq.value = anyChecked ? "" : (dq.dataset.gen || "");
+    }
+  }
+
+  document.querySelectorAll(".daycell .ck").forEach(function (ck) {
+    ck.addEventListener("change", function () {
+      var cell = ck.closest(".daycell");
+      ck.closest("tr").querySelectorAll(".daycell").forEach(syncCell);
+      if (ck.checked && cell) {
+        var dq = cell.querySelector(".dq");
+        if (dq) dq.focus();
       }
     });
   });

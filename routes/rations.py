@@ -20,6 +20,7 @@ import months
 import db_rations as dr
 import db_entities as de
 import xlsx_rations
+import database as db
 
 rations_bp = Blueprint("rations", __name__, url_prefix="/rations")
 
@@ -73,6 +74,11 @@ def _page_vars(section, kind):
         "month": month,
         "edit_id": arnum.parse_int(request.args.get("edit")),
         "known_names": dr.known_item_names(year, month, section),
+        # بيانات الدباجة والتوقيعات — لكتل الطباعة الرسمية
+        "lh": [db.get_setting(f"lh_{i}") for i in range(1, 5)],
+        "sig_right": (db.get_setting("sig_right_rank"), db.get_setting("sig_right_name")),
+        "sig_left": (db.get_setting("sig_left_rank"), db.get_setting("sig_left_name")),
+        "has_logo": bool(db.get_setting("logo_file")),
     }
 
 

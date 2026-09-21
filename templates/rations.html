@@ -48,6 +48,9 @@
     <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح شيت الإكسل مباشرة">📗 فتح الإكسل</a>
     <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}" title="فتح مجلد القسم">📂 فتح المجلد</a>
     <a class="rt-btn dim" href="{{ url_for('rations.download_excel', section=section) }}" title="تنزيل نسخة">⬇ تنزيل</a>
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة الجدول بالدباجة والتوقيعات">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </button>
   </div>
 </div>
 <div class="rt-note">
@@ -116,7 +119,7 @@
   <div class="table-wrap">
     <table class="rt-table">
       <thead>
-        <tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th><th>إجراءات</th></tr>
+        <tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th><th class="ops">إجراءات</th></tr>
       </thead>
       <tbody>
         {% for it in items %}
@@ -139,11 +142,15 @@
             <button type="button" class="mini-btn custom-btn"
                     data-id="{{ it.id }}" data-name="{{ it.name }}"
                     data-custom="{{ custom.get(it.id, []) | tojson }}">🗓️ مخصص</button>
-            <a class="mini-btn" href="{{ url_for('rations.page', section=section) }}?kind={{ kind }}&edit={{ it.id }}">✏️</a>
+            <a class="icon-btn edit" title="تعديل الصنف" href="{{ url_for('rations.page', section=section) }}?kind={{ kind }}&edit={{ it.id }}">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </a>
             <form method="post" action="{{ url_for('rations.item_delete', section=section, item_id=it.id) }}"
                   class="inline-f js-del">
               <input type="hidden" name="kind" value="{{ kind }}">
-              <button class="mini-btn red" type="submit">🗑</button>
+              <button class="icon-btn del" type="submit" title="حذف الصنف نهائيًا">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
             </form>
           </td>
         </tr>
@@ -185,6 +192,21 @@
       </div>
     </form>
   </div>
+</div>
+
+<!-- ترويسة وتوقيعات الطباعة (تظهر عند الطباعة فقط) -->
+<div class="print-doc print-only">
+  <div class="pd-head">
+    <div class="pd-lh">
+      {% for i in range(4) %}<div class="l{{ i+1 }}">{{ lh[i] }}</div>{% endfor %}
+    </div>
+    {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+  </div>
+  <div class="pd-title">{{ section_name }} — مقرر {{ kmap[kind].name }} — {{ month_names[month-1] }} {{ year | aindic }}</div>
+</div>
+<div class="print-sigs print-only">
+  <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+  <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
 </div>
 {% endblock %}
 

@@ -177,3 +177,84 @@ tr.custom-on .name { color: #c4b5fd; }
   border: 1px solid rgba(227,179,65,.3); border-radius: 6px; padding: 1px 7px;
   pointer-events: none; white-space: nowrap; }
 .dc-qty:disabled + .dc-unit { opacity: .4; }
+
+/* ======== أزرار الأيقونات الاحترافية — المعيار الإلزامي (قاعدة ١٢) ======== */
+.icon-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; min-width: 34px;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05);
+  color: #aab6d6; cursor: pointer; transition: all .18s; padding: 0; text-decoration: none;
+  vertical-align: middle; }
+.icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn:hover { transform: translateY(-2px); }
+.icon-btn.edit:hover { color: #93c5fd; border-color: rgba(96,165,250,.55);
+  background: rgba(96,165,250,.13); box-shadow: 0 8px 18px rgba(96,165,250,.22); }
+.icon-btn.del:hover { color: #f87171; border-color: rgba(239,68,68,.55);
+  background: rgba(239,68,68,.13); box-shadow: 0 8px 18px rgba(239,68,68,.26); }
+.icon-btn.print:hover { color: #f6d47c; border-color: rgba(227,179,65,.55);
+  background: rgba(227,179,65,.13); box-shadow: 0 8px 18px rgba(227,179,65,.22); }
+.icon-btn.save { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
+.icon-btn.save:hover { color: #34d399; background: rgba(52,211,153,.13);
+  box-shadow: 0 8px 18px rgba(52,211,153,.25); }
+.icon-btn.sync:hover { color: #c4b5fd; border-color: rgba(196,181,253,.55);
+  background: rgba(196,181,253,.13); box-shadow: 0 8px 18px rgba(196,181,253,.22); }
+
+/* ======== أعمدة أيام التوزيع — كل يوم وتحته كمية الفرد ======== */
+.rt-table th.dayh { min-width: 96px; text-align: center; }
+.daycell { min-width: 96px; text-align: center; }
+.daycell .ck { accent-color: #c4b5fd; width: 14px; height: 14px; cursor: pointer;
+  display: block; margin: 0 auto 5px; }
+.daycell .qwrap { position: relative; display: block; width: 88px; margin: 0 auto; }
+.daycell .dq { width: 100%; padding: 6px 8px 6px 30px; border-radius: 8px; font-family: "Cairo";
+  font-size: .78rem; font-weight: 700; text-align: center; color: var(--text);
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14);
+  outline: none; transition: all .15s; }
+.daycell .dq:focus { border-color: #c4b5fd; box-shadow: 0 0 0 3px rgba(196,181,253,.16); }
+.daycell .dq:disabled { opacity: .45; }
+.daycell .du { position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+  font-size: .6rem; font-weight: 900; color: #f6d47c; background: rgba(227,179,65,.15);
+  border: 1px solid rgba(227,179,65,.3); border-radius: 5px; padding: 1px 4px;
+  pointer-events: none; white-space: nowrap; }
+.daycell.on { background: rgba(196,181,253,.05); }
+.state-pill { display: inline-block; margin-top: 5px; font-size: .68rem; font-weight: 800;
+  padding: 2px 10px; border-radius: 999px; }
+.state-pill.daily { color: #6ee7b7; background: rgba(110,231,183,.1);
+  border: 1px solid rgba(110,231,183,.3); }
+.state-pill.custom { color: #c4b5fd; background: rgba(196,181,253,.1);
+  border: 1px solid rgba(196,181,253,.3); }
+.head-ops { display: flex; gap: 8px; align-items: center; }
+
+/* ======== الطباعة الاحترافية: دباجة + عنوان رسمي + توقيعات ======== */
+.print-only { display: none; }
+@media print {
+  .sidebar, .topbar, .ctx-strip, .rt-tabs, .rt-toolbar, .rt-formcard, form,
+  .ops, .state-pill, .ck, .du, .head-ops { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: #fff !important; }
+  .panel { background: #fff !important; border: none !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 0 14px !important; }
+  .panel-head { border: none !important; box-shadow: none !important; padding: 4px 0 !important; }
+  .panel-head h3 { color: #0a1230 !important; font-size: 1rem !important; }
+  .table-wrap { overflow: visible !important; }
+  .rt-table { min-width: 0 !important; width: 100%; }
+  .rt-table th { background: #b8860b !important; color: #fff !important;
+    border: 1px solid #8f6b0a !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rt-table td { color: #1a2033 !important; border: 1px solid #aab0c0 !important;
+    background: #fff !important; }
+  .rt-table td.name { color: #0a1230 !important; }
+  .daycell { min-width: 0 !important; }
+  .daycell .qwrap { width: auto; }
+  .daycell .dq { border: none !important; background: transparent !important; color: #1a2033 !important;
+    padding: 0; text-align: center; font-weight: 700; pointer-events: none; opacity: 1 !important; }
+  .pd-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .pd-lh div { font-weight: 900; text-align: right; color: #0a1230; line-height: 1.9; }
+  .pd-lh .l1 { color: #b8860b; font-size: 1rem; }
+  .pd-logo { width: 64px; height: 64px; object-fit: contain; }
+  .pd-title { text-align: center; font-weight: 900; font-size: .92rem; color: #f6d47c;
+    background: #0a1230; border-radius: 8px; padding: 8px 10px; margin: 10px 0 6px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-sigs { display: flex; justify-content: space-between; margin-top: 18px;
+    font-weight: 900; color: #1a2033; }
+  .print-sigs .ps { display: flex; flex-direction: column; gap: 3px; min-width: 40%;
+    text-align: center; line-height: 1.8; }
+}

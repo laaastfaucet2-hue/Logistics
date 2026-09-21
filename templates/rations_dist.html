@@ -8,6 +8,13 @@
 {%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
 {%- endmacro %}
 
+{% macro gen(it) -%}
+{%- if it.lunch not in [none, 0] -%}{{ num(it.lunch) }}
+{%- elif it.breakfast not in [none, 0] -%}{{ num(it.breakfast) }}
+{%- elif it.dinner not in [none, 0] -%}{{ num(it.dinner) }}
+{%- endif -%}
+{%- endmacro %}
+
 {% block content %}
 <div class="ctx-strip">
   <span>🗓️ السنة النشطة:</span><span class="val">{{ year | aindic }}</span>
@@ -27,6 +34,9 @@
     <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}">📗 فتح الإكسل</a>
     <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}">📂 فتح المجلد</a>
     <a class="rt-btn dim" href="{{ url_for('rations.download_excel', section=section) }}">⬇ تنزيل</a>
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة الجداول بالدباجة والتوقيعات">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </button>
   </div>
 </div>
 
@@ -43,7 +53,7 @@
     </div>
   </form>
   <p class="rt-note">💡 عند الإضافة تُسحب تلقائيًا كل أصناف <strong>المقرر النشط في هذا القسم (مقررات المتعهد)</strong>
-  بأرقامها كاملة — وبعدين تحدّد أيام الصرف وتكتب مقرر كل يوم من زر «تخصيص» وتضغط حفظ مرة واحدة.</p>
+  بأرقامها كاملة — وبعدها حدّد أيام الصرف واكتب مقرر كل يوم مباشرة في أعمدة الأيام واضغط رفع الحفظ 💾 مرة واحدة.</p>
 </div>
 
 <!-- الجهات -->
@@ -54,18 +64,22 @@
     <div class="head-ops">
       <form method="post" action="{{ url_for('rations.entity_resync', section=section, entity_id=e.id) }}"
             class="inline-f js-resync">
-        <button class="mini-btn gold" type="submit">🔄 تحديث من المقرر النشط</button>
+        <button class="icon-btn sync" type="submit" title="تحديث من المقرر النشط">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </button>
       </form>
       <form method="post" action="{{ url_for('rations.entity_delete', section=section, entity_id=e.id) }}"
             class="inline-f js-del-ent">
-        <button class="mini-btn red" type="submit">🗑 حذف الجهة</button>
+        <button class="icon-btn del" type="submit" title="حذف الجهة وجدولها نهائيًا">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </button>
       </form>
     </div>
   </div>
 
-  <form method="post"
+  <form method="post" autocomplete="off"
         action="{% if ee_item and ee_item.entity_id == e.id %}{{ url_for('rations.eitem_edit', section=section, item_id=ee_item.id) }}{% else %}{{ url_for('rations.eitem_add', section=section, entity_id=e.id) }}{% endif %}"
-        class="rt-form compact" autocomplete="off">
+        class="rt-form compact">
     <div class="fld wide">
       <input name="name" required placeholder="{{ 'تعديل: ' + ee_item.name if ee_item and ee_item.entity_id == e.id else 'إضافة صنف للجهة...' }}"
              data-combo="sectionNames" autocomplete="off"
@@ -96,66 +110,63 @@
       <thead>
         <tr>
           <th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th>
-          <th class="dist-col">أيام الصرف + مقرر كل يوم</th>
-          <th>إجراءات</th>
+          {% for d in days %}<th class="dayh">{{ d }}</th>{% endfor %}
+          <th class="ops">إجراءات</th>
         </tr>
       </thead>
       <tbody>
         {% for it in e['items'] %}
         <tr class="{% if it.is_custom %}custom-on{% endif %}">
           <td class="num">{{ it.serial | aindic }}</td>
-          <td class="name">{{ it.name }}</td>
+          <td class="name">{{ it.name }}
+            <div>
+              {% if it.is_custom %}
+              <span class="state-pill custom">📌 {{ it.days | length | aindic }} يوم مخصص</span>
+              {% else %}
+              <span class="state-pill daily">يوميًا — كل الأسبوع</span>
+              {% endif %}
+            </div>
+          </td>
           <td>{{ it.unit or '—' }}</td>
           <td class="num">{{ num(it.breakfast) }}</td>
           <td class="num">{{ num(it.lunch) }}</td>
           <td class="num">{{ num(it.dinner) }}</td>
-          <td class="days-td">
-            <div class="days-state">
-              {% if it.is_custom %}
-              <span class="badge-custom">📌 مخصص:
-                {%- for di in it.days -%}
-                  {{ days[di] }}{% if it.day_qty.get(di) is not none %} <span class="dq">{{ num(it.day_qty.get(di)) }}{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</span>{% endif %}{{ ' • ' if not loop.last }}
-                {%- endfor -%}
-              </span>
-              {% else %}
-              <span class="badge-daily">يوميًا — يُصرف كل أيام الأسبوع</span>
-              {% endif %}
-              <button type="button" class="mini-btn dist-toggle">تخصيص</button>
-            </div>
-            <form method="post" class="days-form" autocomplete="off" hidden
-                  action="{{ url_for('rations.eitem_days', section=section, item_id=it.id) }}">
-              <div class="day-cards">
-                {% for di in range(7) %}
-                <label class="day-card {% if di in it.days %}on{% endif %}">
-                  <span class="dc-top">
-                    <input type="checkbox" name="wd_{{ di }}" {% if di in it.days %}checked{% endif %}>
-                    {{ days[di] }}
-                  </span>
-                  <span class="dc-field">
-                    <input class="dc-qty" name="qty_{{ di }}" inputmode="decimal"
-                           placeholder="مقرر {{ days[di] }}"
-                           value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) is not none else '' }}"
-                           {% if di not in it.days %}disabled{% endif %}>
-                    {% if it.unit %}<span class="dc-unit">{{ it.unit }}</span>{% endif %}
-                  </span>
-                </label>
-                {% endfor %}
-              </div>
-              <p class="days-hint">✔ حدّد الأيام واكتب مقرر كل يوم (سِبْه فاضي = ياخد رقم الوجبات العام)
-                 — كل التغييرات بتتحفظ مرة واحدة بزر الحفظ، من غير أي ريفرش للصفحة.</p>
-              <button class="rt-btn gold small" type="submit">💾 حفظ الأيام والمقررات</button>
-            </form>
+          {% for di in range(7) %}
+          <td class="daycell {% if di in it.days %}on{% endif %}">
+            <input type="checkbox" class="ck" name="wd_{{ di }}" form="df-{{ it.id }}"
+                   aria-label="تخصيص يوم {{ days[di] }}" {% if di in it.days %}checked{% endif %}>
+            <span class="qwrap">
+              <input class="dq" name="qty_{{ di }}" form="df-{{ it.id }}" inputmode="decimal"
+                     data-gen="{{ gen(it) }}"
+                     {% if di in it.days %}
+                     value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) not in [none, 0] else gen(it) }}"
+                     {% else %}
+                     value="{% if it.is_custom %}{% else %}{{ gen(it) }}{% endif %}" disabled
+                     {% endif %} placeholder="٠">
+              {% if it.unit %}<span class="du">{{ it.unit }}</span>{% endif %}
+            </span>
           </td>
+          {% endfor %}
           <td class="ops">
-            <a class="mini-btn" href="{{ url_for('rations.page', section=section) }}?tab=dist&ee={{ it.id }}">✏️</a>
+            <form id="df-{{ it.id }}" method="post"
+                  action="{{ url_for('rations.eitem_days', section=section, item_id=it.id) }}"></form>
+            <button class="icon-btn save" type="submit" form="df-{{ it.id }}" title="حفظ الأيام والمقررات دفعة واحدة">
+              <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
+            </button>
+            <a class="icon-btn edit" title="تعديل الصنف"
+               href="{{ url_for('rations.page', section=section) }}?tab=dist&ee={{ it.id }}">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </a>
             <form method="post" class="inline-f js-del"
                   action="{{ url_for('rations.eitem_delete', section=section, item_id=it.id) }}">
-              <button class="mini-btn red" type="submit">🗑</button>
+              <button class="icon-btn del" type="submit" title="حذف الصنف نهائيًا">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
             </form>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="empty">لا أصناف — أضف من الأعلى أو اسحب من المقرر النشط بزر 🔄</td></tr>
+        <tr><td colspan="14" class="empty">لا أصناف — أضف من الأعلى أو اسحب من المقرر النشط بزر 🔄</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -164,6 +175,21 @@
 {% else %}
 <div class="panel"><div class="empty big">لا توجد جهات بعد — أضف أول جهة من الأعلى 🏢</div></div>
 {% endfor %}
+
+<!-- ترويسة وتوقيعات الطباعة (تظهر عند الطباعة فقط) -->
+<div class="print-doc print-only">
+  <div class="pd-head">
+    <div class="pd-lh">
+      {% for i in range(4) %}<div class="l{{ i+1 }}">{{ lh[i] }}</div>{% endfor %}
+    </div>
+    {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+  </div>
+  <div class="pd-title">{{ section_name }} — توزيع المقررات على الجهات — {{ month_names[month-1] }} {{ year | aindic }}</div>
+</div>
+<div class="print-sigs print-only">
+  <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+  <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+</div>
 {% endblock %}
 
 {% block scripts %}
