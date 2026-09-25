@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_field, date_text, period_text %}
+{% block title %}{{ cycle_name }} • مستودعات وسجلات{% endblock %}
+{% block print_doc_title %}مستودعات وسجلات — {{ cycle_name }} — {{ sub_name }} — {{ month_name }} {{ year | aindic }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<!-- الترويسة الرسمية للقسم -->
+<header class="wh-hero">
+  <div class="wh-hero-lines">
+    <b class="wh-l1">🏪 مستودعات وسجلات — الدورة المخزنية</b>
+    <b class="wh-l2">من ١ مخازن (إذن الإضافة) حتى ٧ مخازن — دورتان منفصلتان تمامًا وبنفس الشاشات</b>
+  </div>
+  <div class="wh-hero-meta">
+    <span class="wh-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
+    <span class="wh-chip dim">{{ cycle_icon }} {{ cycle_name }} — بياناته منفصلة كليًا عن الدورة الأخرى</span>
+  </div>
+</header>
+
+<!-- الدورتان: سجل الإمداد / سجل المتعهد -->
+<nav class="wh-cycles no-print" aria-label="دورتا المخزن">
+  {% for c in cycles %}
+  <a class="wh-cycle {{ 'on' if c.key == cycle_key }}"
+     href="{{ url_for('warehouses.page', cycle=c.key, sub='wh1') }}">
+    <span class="wh-cycle-ic">{{ c.icon }}</span>
+    <span class="wh-cycle-txt"><b>{{ c.name }}</b><small>دورة مخزنية كاملة ١ ← ٧ مخازن</small></span>
+  </a>
+  {% endfor %}
+</nav>
+
+<!-- تويبات الدورة -->
+<nav class="wh-tabs no-print" aria-label="تويبات الدورة المخزنية">
+  {% for key, name, ic in subs %}
+  <a class="wh-tab {{ 'on' if sub == key }}" href="{{ url_for('warehouses.page', cycle=cycle_key, sub=key) }}">
+    {{ ic }} <span>{{ name }}</span>
+    {% if counts.get(key) %}<b class="wh-count">{{ counts[key] | aindic }}</b>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
+<!-- زرّا الملفات الملزمان + التنزيل (قاعدة أزرار الملفات) -->
+<div class="wh-fsbar no-print">
+  <a class="rt-btn dim" href="{{ url_for('warehouses.open_folder', cycle=cycle_key, sub=sub) }}">📂 فتح مجلد «{{ sub_name }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('warehouses.open_file', cycle=cycle_key, sub=sub) }}">📗 فتح ملف «{{ tab_file }}»</a>
+  <a class="icon-btn down" title="تنزيل ملف «{{ tab_file }}» إكسل"
+     href="{{ url_for('warehouses.download', cycle=cycle_key, sub=sub) }}">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+  </a>
+</div>
+
+{% if sub == 'suppliers' %}
+  {% include "warehouses/tab_suppliers.html" %}
+{% elif sub == 'wh1' %}
+  {% include "warehouses/tab_wh1.html" %}
+{% elif sub == 'wh2' %}
+  {% include "warehouses/tab_wh2.html" %}
+{% else %}
+  {% include "warehouses/tab_wh3.html" %}
+{% endif %}
+
+<!-- قوائم البيانات الخفية — يقرؤها الكومبو المتمثّم (قاعدة القوائم) -->
+<datalist id="whUnitsList">{% for u in units %}<option value="{{ u }}"></option>{% endfor %}</datalist>
+<datalist id="whSuppliersList">{% for n in supplier_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whProducersList">{% for n in producers %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whItemsList">{% for n in items_data %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
+<datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
+<script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
+<script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
+<script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>
+<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month} | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/warehouses.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

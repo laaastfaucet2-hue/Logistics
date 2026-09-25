@@ -1,0 +1,116 @@
+<!-- تبويب «قاموس ودليل الجهات» — قاموس شهري يبدأ فارغًا كل شهر -->
+
+<!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21) -->
+<div class="tm-openbar">
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='dict') }}"
+    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «قاموس ودليل الجهات»</a>
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='dict') }}"
+    title="يفتح ملف الإكسل المحلي للتبويب على جهازك">📗 فتح ملف «قاموس الجهات.xlsx» (Excel)</a>
+  {% include "partials/print_btn.html" %}
+</div>
+
+<div class="tm-dict-stack">
+  <section class="panel">
+    <div class="panel-head">
+      <h3>{% if dict_edit %}✏️ تعديل جهة «{{ dict_edit.name }}»{% else %}➕ إضافة جهة إلى قاموس {{ month_name }} {{ year | aindic }}{% endif %}</h3>
+      {% if dict_edit %}<a class="tm-link" href="{{ url_for('tameedat.page') }}&tab=dict">إلغاء التعديل</a>{% endif %}
+    </div>
+    <p class="tm-hint" style="margin-bottom:14px">القاموس شهري ويبدأ فارغًا — الجهة الجديدة من شاشة التأميدات تُضاف هنا تلقائيًا بعد تنبيهك، <b>وكذلك أي جهة ملحقة جديدة</b>. جدول القاموس يعرض لكل جهة: <b>متوسط الضباط/الأفراد/المجندين</b> و<b>عدد التأميدات</b> وزرًا يفتح <b>كل تواريخها (من – إلى)</b> مع بيان ما إن كانت <b>ملحقة</b> على جهة أخرى وعلى مَن وكم مرة. أرقام الراغبين اختيارية وتُستخدم لتنبيه التجاوز فقط (الضباط والأفراد — لا تشمل المجندين).</p>
+    <form method="post" autocomplete="off"
+          action="{% if dict_edit %}{{ url_for('tameedat.entity_edit', entity_id=dict_edit.id) }}{% else %}{{ url_for('tameedat.entity_add') }}{% endif %}">
+      <div class="tm-frow">
+        <div class="fld wide"><label>اسم الجهة</label>
+          <input name="name" required placeholder="مثال: كمين …، وحدة …" value="{{ dict_edit.name if dict_edit else '' }}"></div>
+      </div>
+      <fieldset class="tm-types">
+        <legend>نوع الجهة</legend>
+        {% set cur_type = dict_edit.entity_type if dict_edit else 'شرطية' %}
+        <label><input type="radio" name="type_choice" value="شرطية" {{ 'checked' if cur_type == 'شرطية' }}> شرطية</label>
+        <label><input type="radio" name="type_choice" value="حربية" {{ 'checked' if cur_type == 'حربية' }}> حربية</label>
+        <label><input type="radio" name="type_choice" value="أخرى" {{ 'checked' if cur_type not in ['شرطية','حربية'] }}> أخرى</label>
+        <input name="type_other" class="tm-type-other" placeholder="اكتب نوع الجهة…" autocomplete="off"
+               value="{{ cur_type if cur_type not in ['شرطية','حربية'] else '' }}" {{ '' if cur_type not in ['شرطية','حربية'] else 'hidden' }}>
+      </fieldset>
+      <div class="tm-frow nums">
+        <div class="fld"><label>راغبين ضباط (اختياري)</label>
+          <input name="rag_officers" inputmode="numeric" placeholder="—" value="{{ dict_edit.rag_officers | aindic if dict_edit and dict_edit.rag_officers is not none else '' }}"></div>
+        <div class="fld"><label>راغبين أفراد (اختياري)</label>
+          <input name="rag_individuals" inputmode="numeric" placeholder="—" value="{{ dict_edit.rag_individuals | aindic if dict_edit and dict_edit.rag_individuals is not none else '' }}"></div>
+        <div class="fld wide"><label>ملاحظات</label>
+          <input name="notes" placeholder="اختياري…" value="{{ dict_edit.notes if dict_edit else '' }}"></div>
+      </div>
+      <button class="rt-btn gold" type="submit">{% if dict_edit %}💾 حفظ التعديل في البيانات المحلية{% else %}💾 حفظ الجهة في البيانات المحلية{% endif %}</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h3>📖 قاموس {{ month_name }} {{ year | aindic }} — {{ entities | length | aindic }} جهة</h3>
+      <div class="tm-search">
+        <input id="tmDictSearch" placeholder="بحث في القاموس…" autocomplete="off">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="rt-table tm-table" id="tmDictTable">
+        <thead>
+          <tr><th>م</th><th>الجهة</th><th>النوع</th><th>متوسط ضباط</th><th>متوسط أفراد</th><th>متوسط مجندين</th><th>عدد التأميدات</th><th>تواريخ التأميدات (من – إلى)</th><th>ملحقة؟</th><th>ملاحظات</th><th class="ops">إجراءات</th></tr>
+        </thead>
+        <tbody>
+          {% for e in entities %}
+          {% set st = dict_stats.get(e.id, {}) %}
+          <tr>
+            <td class="num">{{ e.serial | aindic }}</td>
+            <td class="name"><b>{{ e.name }}</b></td>
+            <td><span class="tm-type t-{{ 'base' if e.entity_type in ['شرطية','حربية'] else 'other' }}">{{ e.entity_type }}</span></td>
+            <td class="num avg">{{ st.own.avg_officers | qty3 if st.own else '—' }}</td>
+            <td class="num avg">{{ st.own.avg_individuals | qty3 if st.own else '—' }}</td>
+            <td class="num avg">{{ st.own.avg_recruits | qty3 if st.own else '—' }}</td>
+            <td class="num"><b>{{ (st.records_total or 0) | aindic }}</b></td>
+            <td class="num days">
+              {% if st.records_total %}
+              <button type="button" class="tm-days-open"
+                      data-days-src="tmDictDays{{ e.id }}" data-days-name="{{ e.name }}"
+                      title="قائمة منبثقة بكل تأميدة وتاريخها الدقيق (من – إلى) — وهل كانت ملحقة وعلى مَن">📅 افتح التواريخ</button>
+              <template id="tmDictDays{{ e.id }}">
+                {% for p in st.parts %}
+                <li>
+                  <span class="d-line">
+                    <b>تأميدة رقم {{ p.record_id | aindic }}</b> —
+                    {% if p.range_days > 1 %}
+                      من <b>يوم {{ p.day | aindic }}</b> إلى <b>يوم {{ p.day_to | aindic }}</b> ({{ p.range_days | aindic }} أيام)
+                    {% else %}
+                      يوم <b>{{ p.day | aindic }}</b> (يوم واحد)
+                    {% endif %}
+                    {% if p.get('attachment') %}<em>— ملحقة على تأميدة «{{ p.parent_name }}»</em>{% else %}<em>— مشاركة رئيسية</em>{% endif %}
+                  </span>
+                  <a class="tm-print-mini" href="{{ url_for('tameedat.print_one', record_id=p.record_id) }}" target="_blank">🖨 طباعة</a>
+                </li>
+                {% endfor %}
+              </template>
+              {% else %}<span class="tm-hint">لا تأميدات بعد</span>{% endif %}
+            </td>
+            <td>
+              {% if st.att_count %}<span class="tm-att-badge" title="ملحقة على: {{ st.att_parents | join('، ') }}">ملحقة ×{{ st.att_count | aindic }}</span>{% else %}—{% endif %}
+            </td>
+            <td>{{ e.notes or '—' }}</td>
+            <td class="ops">
+              <a class="icon-btn edit" title="تعديل الجهة" href="{{ url_for('tameedat.page') }}&tab=dict&dedit={{ e.id }}">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82.33l.06.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0-1 1.51V21"/></svg>
+              </a>
+              <form method="post" class="inline-f js-del-dict"
+                    data-name="{{ e.name }}" data-count="{{ dict_counts.get(e.id, 0) }}"
+                    action="{{ url_for('tameedat.entity_delete', entity_id=e.id) }}">
+                <button class="icon-btn del" type="submit" title="حذف الجهة من قاموس هذا الشهر (+ تأميداتها به)">
+                  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="empty">القاموس فارغ في {{ month_name }} {{ year | aindic }} — يمتلئ تلقائيًا مع أول تسجيل، أو أضف جهة يدويًا من النموذج.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

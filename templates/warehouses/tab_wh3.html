@@ -1,0 +1,151 @@
+{# ٣ مخازن — كتالوج الأصناف ودفتر الحركة: كارت لكل صنف
+   (مسلسل/اليوم بالاسم/التاريخ/رقم إذن/مضاف/منصرف/رصيد)
+   رصيد أول المدة إدخال حقيقي بكل بياناته — والمنصرف يجي تلقائي من إذون ٢ مخازن #}
+<div class="wh-ledger-grid">
+  <aside class="panel wh-items-col no-print">
+    <div class="panel-head"><h3>📒 أصناف الدورة</h3>
+      <span class="panel-hint">وحدة التعامل والرصيد — اضغط الصنف لفتح كارته</span></div>
+    <div class="wh-items-list">
+      {% for it in items %}
+      <a class="wh-item {{ 'on' if card and card.item.id == it.id }}"
+         href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh3', item=it.id) }}">
+        <b>{{ it.name }}</b>
+        <small>{{ it.handle_unit }} — الرصيد: {{ it.balance | qty3 }}</small>
+      </a>
+      {% else %}
+      <p class="empty">الكتالوج فاضي — أول إذن إضافة من ١ مخازن يفتح كارت الصنف هنا تلقائيًا.</p>
+      {% endfor %}
+    </div>
+    {% if catalog_missing %}
+    <div class="wh-missing">
+      <b>أصناف المقرر غير المضافة بعد:</b>
+      {% for c in catalog_missing %}
+      <a class="wh-missing-item" title="افتح نموذج إذن إضافة لهذا الصنف"
+         href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1', item_name=c.name) }}">
+        {{ c.name }} <small>{% if c.unit %}({{ c.unit }}){% endif %} — لم تُضف بعد</small>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+
+  <section class="panel wh-card">
+    {% if card %}
+    <div class="panel-head">
+      <h3>كارت الصنف: <b class="wh-card-name">{{ card.item.name }}</b></h3>
+      <span class="wh-chip dim">وحدة التعامل: <b>{{ card.item.handle_unit }}</b>
+        {% if card.item.ration_unit and card.item.ration_unit != card.item.handle_unit %}
+        — وحدة المقرر: {{ card.item.ration_unit }}{% endif %}</span>
+    </div>
+    <form class="wh-inline-form no-print" method="post"
+          action="{{ url_for('warehouses.wh3_unit', cycle=cycle_key) }}">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="item_id" value="{{ card.item.id }}">
+      <label>تغيير وحدة التعامل (تُطبق على الحركات الجديدة)
+        <input name="handle_unit" data-combo="whUnitsList" autocomplete="off"
+               value="{{ card.item.handle_unit }}"></label>
+      <button class="icon-btn save" type="submit" title="حفظ وحدة التعامل">
+        <svg viewBox="0 0 24 24"><path d="M4 3h12l4 4v14H4ZM8 3v6h8V3M8 21v-8h8v8"></path></svg>
+      </button>
+      <span class="wh-badge-dev">الحالة الكلية للصنف — قيد التطوير</span>
+    </form>
+
+    {% if not card.has_opener %}
+    <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته -->
+    <form class="wh-opener no-print" method="post"
+          action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="item_id" value="{{ card.item.id }}">
+      <b class="wh-opener-title">🧾 رصيد أول المدة — «{{ card.item.name }}»</b>
+      <div class="wh-grid">
+        <label class="wh-f">الكمية {{ '(' + card.item.handle_unit + ')' if card.item.handle_unit }} <i>*</i>
+          <input name="qty" required inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
+        <label class="wh-f">اليوم
+          <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}">
+          <span class="wh-hintline wh-day-hint"></span></label>
+        <label class="wh-f">الشركة المنتجة
+          <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
+        <label class="wh-f">الشركة الموردة
+          <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
+        <label class="wh-f">نوع التغليف <small>(اختياري — والكمية تُحسب تلقائيًا)</small>
+          <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off"></label>
+        <label class="wh-f">عدد العبوات
+          <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off"></label>
+        <label class="wh-f">سعة العبوة
+          <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+        <label class="wh-f">كمية سائبة
+          <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+        <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
+        <label class="wh-f wh-f-wide">ملاحظات
+          <textarea name="notes" rows="2"></textarea></label>
+      </div>
+      <div class="wh-form-actions">
+        <button class="rt-btn gold" type="submit">💾 تسجيل رصيد أول المدة</button>
+      </div>
+    </form>
+    {% endif %}
+
+    <div class="wh-scroll">
+    <table class="rt-table wh-table wh-ledger">
+      <thead><tr>
+        <th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th>
+      </tr></thead>
+      <tbody>
+        {% if card.opener_row %}
+        <tr class="wh-opener-row">
+          <td class="num">—</td>
+          <td>{{ card.opener_row.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ card.opener_row.date_iso | datefmt }}</bdi></td>
+          <td class="num">—</td>
+          <td>رصيد أول المدة</td>
+          <td class="num">{{ card.opener_row.added | qty3 }}</td>
+          <td class="num">٠٫٠٠٠</td>
+          <td class="num"><b>{{ card.opener_row.balance | qty3 }}</b></td>
+          <td>{{ card.opener_row.notes or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr class="wh-opener-row">
+          <td class="num">—</td><td colspan="3" class="name">رصيد أول المدة</td>
+          <td>لم يُسجَّل بعد — أدخله من النموذج فوق بكل بياناته</td>
+          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td>
+        </tr>
+        {% endif %}
+        {% set n = namespace(i=0) %}
+        {% for row in card.rows if row.kind != 'opener' %}
+        {% set n.i = n.i + 1 %}
+        <tr {% if row.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
+          <td class="num">{{ n.i | aindic }}</td>
+          <td>{{ row.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{% if row.permit_no %}{{ row.permit_no | aindic }}{% else %}—{% endif %}</td>
+          <td>{{ row.label or '—' }}</td>
+          <td class="num">{{ row.added | qty3 }}</td>
+          <td class="num {% if row.kind == 'issue2' %}wh-issued{% endif %}">{{ row.issued | qty3 }}</td>
+          <td class="num"><b>{{ row.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td>{{ row.notes or '—' }}</td>
+        </tr>
+        {% else %}
+        {% if card.has_opener %}
+        <tr><td colspan="9" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">الإجماليات</td>
+          <td class="num">{{ card.total_added | qty3 }}</td>
+          <td class="num">{{ card.total_issued | qty3 }}</td>
+          <td class="num"><b>{{ card.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="panel-head"><h3>📒 دفتر ٣ مخازن</h3></div>
+    <p class="empty">اختر صنفًا من القائمة ليفتح كارته: مسلسل الحركة، اليوم، التاريخ، رقم الإذن،
+      المضاف، المنصرف، والرصيد — بالوحدة التعاملية للصنف.</p>
+    {% endif %}
+  </section>
+</div>

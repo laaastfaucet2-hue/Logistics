@@ -1,0 +1,65 @@
+<div class="tm-modal" id="tmRationsModal" hidden role="dialog" aria-modal="true"
+     aria-labelledby="tmRationsTitle">
+  <div class="tm-modal-card tm-rat-card">
+    <div class="tm-rat-head">
+      <span class="tm-rat-head-ico" aria-hidden="true">⚙️</span>
+      <div class="tm-rat-head-txt">
+        <b id="tmRationsTitle">المقررات والتخصيص التفاعلي للمتعهد والتموين للجهة الحالية</b>
+        <small>لقطة لهذه التأميدة فقط — لا تغيّر جداول المقررات الأصلية</small>
+      </div>
+      <button type="button" class="tm-modal-x on-amber" id="tmRationsClose" aria-label="إغلاق">✕</button>
+    </div>
+    <div class="tm-rat-bar">
+      <div class="tm-rat-combos">
+        <label>الجهة
+          <input id="tmRatEntity" data-combo="tmRatEntities" autocomplete="off" placeholder="الجهة الرئيسية أو الملحقة">
+        </label>
+        <label>المقرر
+          <input id="tmRatSection" data-combo="tmRatSections" autocomplete="off" value="المقررات التموينية">
+        </label>
+      </div>
+      <datalist id="tmRatEntities"></datalist>
+      <datalist id="tmRatSections">
+        <option value="المقررات التموينية">
+        <option value="مقررات المتعهد">
+      </datalist>
+      <div class="tm-rat-tabs" role="tablist" aria-label="نوع المقرر">
+        <button type="button" class="tm-rat-tab on" data-sec="tamween">🍞 المقررات التموينية</button>
+        <button type="button" class="tm-rat-tab" data-sec="contractor">📋 مقررات المتعهد</button>
+      </div>
+      <div class="tm-rat-tabs" role="tablist" aria-label="الجهة داخل التأميدة">
+        <button type="button" class="tm-rat-tab on" data-tgt="main" id="tmRatMainTab">الجهة الرئيسية</button>
+        <button type="button" class="tm-rat-tab" data-tgt="att" id="tmRatAttTab">الجهات التابعة (٠)</button>
+      </div>
+    </div>
+    <p class="tm-hint tm-rat-hint">اضغط يوم الصنف لإلغائه من هذه التأميدة، أو عدّل الكمية — الحفظ هنا للتأميدة الحالية فقط.</p>
+    <div class="tm-rat-cols" aria-hidden="true">
+      <span>اليوم</span><span>الصنف</span><span>الكمية</span>
+    </div>
+    <div class="tm-rat-list" id="tmRatList"></div>
+    <div class="tm-modal-foot">
+      <button type="button" class="rt-btn gold tm-rat-save" id="tmRationsSave">💾 حفظ المقررات المخصصة</button>
+    </div>
+  </div>
+</div>
+
+<div class="tm-modal" id="tmRagNamesModal" hidden role="dialog" aria-modal="true"
+     aria-labelledby="tmRagNamesTitle">
+  <div class="tm-modal-card tm-soon-card">
+    <div class="tm-rat-head">
+      <span class="tm-rat-head-ico" aria-hidden="true">👮</span>
+      <div class="tm-rat-head-txt">
+        <b id="tmRagNamesTitle">تسجيل أسماء الضباط والأفراد الراغبين للجهة الحالية</b>
+        <small>للجهة المحددة في نموذج التأميدة</small>
+      </div>
+      <button type="button" class="tm-modal-x on-amber" id="tmRagNamesClose" aria-label="إغلاق">✕</button>
+    </div>
+    <div class="tm-soon-body">
+      <span class="tm-soon-badge">قيد التطوير</span>
+      <p>تسجيل أسماء الضباط والأفراد الراغبين سيُفتح من هنا لاحقًا — الزر ظاهر حتى يبقى مكانه ثابتًا في النموذج.</p>
+    </div>
+    <div class="tm-modal-foot">
+      <button type="button" class="rt-btn gold" id="tmRagNamesOk">حسنًا</button>
+    </div>
+  </div>
+</div>

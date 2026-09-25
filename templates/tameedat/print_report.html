@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block body_class %}own-letterhead{% endblock %}
+{% block official_print_head %}{% endblock %}
+{% block official_print_foot %}{% endblock %}
+{% block title %}التقرير الشامل للتأميدات — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ التقرير الشامل جاهز — تفصيل يومي + ملخص شهري بالدباجة والتوقيعات</span><span class="sep">•</span>
+  <span class="dim">للحصول على PDF اختر «حفظ PDF» من نافذة الطباعة</span>
+</div>
+<div class="panel rt-toolbar no-print">
+  <div class="rt-actions">
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة التقرير">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+    <a class="rt-btn dim" href="{{ url_for('tameedat.page') }}&tab=report">↩ عودة لطباعة التقرير الشامل</a>
+    <a class="rt-btn gold" href="{{ url_for('tameedat.report_build', fmt='xlsx') }}">📗 تنزيل Excel بالدباجة واللوجو</a>
+    <a class="rt-btn dim" href="{{ url_for('tameedat.report_build', fmt='docx') }}">📘 تنزيل Word</a>
+  </div>
+</div>
+
+<div class="panel rc-doc tm-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ lh[i] }}</div>{% endfor %}</div>
+      {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <div class="pd-title">التقرير الشامل للتأميدات — {{ month_name }} {{ year | aindic }}</div>
+    <div class="tm-stamp">حُرِّر بتوقيت القاهرة: <bdi dir="ltr" class="date-display">{{ build_stamp }}</bdi></div>
+  </div>
+
+  <h4 class="tm-part">أولًا: التفصيل اليومي للتأميدات</h4>
+  <table class="rt-table rc-print-table tm-print-table">
+    <thead>
+      <tr><th>اليوم</th><th>التاريخ</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td class="num">{{ r.day | aindic }}</td>
+        <td class="num"><bdi dir="ltr" class="date-display">{{ '%04d-%02d-%02d' | format(year, month, r.day) | datefmt }}</bdi></td>
+        <td><b>{{ r.entity_name }}</b></td>
+        <td>{{ r.entity_type }}</td>
+        <td class="num">{{ r.officers | aindic }}</td>
+        <td class="num">{{ r.individuals | aindic }}</td>
+        <td class="num">{{ r.recruits | aindic }}</td>
+        <td class="num"><b>{{ r.total | aindic }}</b></td>
+      </tr>
+      {% for a in r.attachments %}
+      <tr>
+        <td></td><td></td>
+        <td>ملحقة: {{ a.name }}{% if a.entity_type %} <small>({{ a.entity_type }})</small>{% endif %}</td>
+        <td>{{ a.entity_type or '—' }}</td>
+        <td class="num">{{ a.officers | aindic }}</td>
+        <td class="num">{{ a.individuals | aindic }}</td>
+        <td class="num">{{ a.recruits | aindic }}</td>
+        <td class="num">{{ (a.officers + a.individuals + a.recruits) | aindic }}</td>
+      </tr>
+      {% endfor %}
+      {% if r.attachments %}
+      <tr class="tm-totalrow">
+        <td></td><td></td><td><b>إجمالي تأميدة «{{ r.entity_name }}» مع الملحقات</b></td><td></td>
+        <td class="num"><b>{{ (r.officers + r.attachments | sum(attribute='officers')) | aindic }}</b></td>
+        <td class="num"><b>{{ (r.individuals + r.attachments | sum(attribute='individuals')) | aindic }}</b></td>
+        <td class="num"><b>{{ (r.recruits + r.attachments | sum(attribute='recruits')) | aindic }}</b></td>
+        <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
+      </tr>
+      {% endif %}
+      {% else %}
+      <tr><td colspan="8" style="text-align:center">لا توجد تأميدات مسجلة في {{ month_name }} {{ year | aindic }} بعد</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h4 class="tm-part">ثانيًا: الملخص الشهري — الجهات المومدة</h4>
+  <table class="rt-table rc-print-table tm-print-table">
+    <thead>
+      <tr><th>م</th><th>الجهة</th><th>النوع</th><th>أيام التميد</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+    </thead>
+    <tbody>
+      {% for r in summary %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td><b>{{ r.name }}</b></td>
+        <td>{{ r.entity_type }}</td>
+        <td class="num">{{ r.active_days | aindic }}</td>
+        <td class="num">{{ r.total_officers | aindic }}</td>
+        <td class="num">{{ r.total_individuals | aindic }}</td>
+        <td class="num">{{ r.total_recruits | aindic }}</td>
+        <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center">لا جهات مومدة هذا الشهر</td></tr>
+      {% endfor %}
+      {% if summary %}
+      <tr class="tm-totalrow">
+        <td></td><td><b>إجمالي القوة</b></td><td></td>
+        <td class="num">{{ totals.active_days | aindic }}</td>
+        <td class="num">{{ totals.officers | aindic }}</td>
+        <td class="num">{{ totals.individuals | aindic }}</td>
+        <td class="num">{{ totals.recruits | aindic }}</td>
+        <td class="num"><b>{{ totals.grand | aindic }}</b></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="print-sigs">
+    <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+    <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+  </div>
+</div>
+{% endblock %}

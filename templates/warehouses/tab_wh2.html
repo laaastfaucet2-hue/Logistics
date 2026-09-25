@@ -1,0 +1,69 @@
+{# دفتر ٢ مخازن — إذون صرف آلة الحاسبة المرتبطة بهذا الشهر (عرض) #}
+<div class="panel">
+  <div class="panel-head">
+    <h3>📤 دفتر ٢ مخازن — إذون صرف آلة الحاسبة</h3>
+    <span class="panel-hint">دورة {{ cycle_name }} فقط — أصناف الدورة الأخرى لا تظهر هنا إطلاقًا</span>
+  </div>
+  <p class="wh-note">هذا الدفتر يجمع كل إذن صرف محفوظ من «آلة حاسبة ٢ مخازن» وأصناف دورة
+    <b>{{ cycle_name }}</b> داخل كل إذن. الخصم التلقائي في دفاتر ٣ مخازن (٤ و٥ و٦ مخازن)
+    <b>قيد التطوير</b> ويُبنى مع مراحل الدورة القادمة.</p>
+  {% for p in permits %}
+  <div class="wh-permit">
+    <div class="wh-permit-head">
+      <b class="wh-permit-no">إذن صرف ٢ مخازن رقم {{ p.number | aindic }}</b>
+      <span class="wh-chip dim">السنة المالية {{ p.fiscal_year | aindic }} (١/٧ — ٣٠/٦)</span>
+      <span class="wh-chip">{{ p.entity_label or 'إذن مجمع' }}</span>
+    </div>
+    <div class="wh-permit-meta">
+      <span>من يوم {{ p.date_from | aindic }}{% if p.date_to != p.date_from %} إلى يوم {{ p.date_to | aindic }}{% endif %}</span>
+      <span>• أيام الصرف: {{ p.issue_days | aindic }}</span>
+      <span>• القوة: ضباط {{ p.officers | aindic }} / أفراد {{ p.individuals | aindic }} / مجندين {{ p.recruits | aindic }}</span>
+    </div>
+    {% if p.cycle_items %}
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>الكمية الفعلية</th><th>الوحدة</th></tr></thead>
+      <tbody>
+        {% for it in p.cycle_items %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ it.name }}</b></td>
+          <td class="num">{{ it.qty | qty3 }}</td>
+          <td>{{ it.unit or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% set trows = tafreeda_by_permit.get(p.number, []) %}
+    {% if trows %}
+    <b class="wh-taf-title">🧾 التفريدة التلقائية من المخازن — الأقرب صلاحية أولًا، وعند التساوي الأقدم إضافةً</b>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>المخزن</th><th>الدفعة (إذن إضافة)</th>
+        <th>الصلاحية</th><th>الكمية المنصرفة</th><th>الوحدة</th><th>تغليف الدفعة</th></tr></thead>
+      <tbody>
+        {% for t in trows %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ t.item }}</b></td>
+          <td>{{ t.store_name }}</td>
+          <td class="num">{% if t.receipt_serial %}{{ t.receipt_serial | aindic }}{% else %}رصيد أول المدة{% endif %}</td>
+          <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td class="num wh-issued">{{ t.qty | qty3 }}</td>
+          <td>{{ t.unit }}</td>
+          <td>{{ t.pack_label or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="wh-note dim">لا أصناف لدورة {{ cycle_name }} في هذا الإذن.</p>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="empty">لا إذون صرف محفوظة بعد — اعمل إذنًا من «آلة حاسبة ٢ مخازن» وسيظهر هنا تلقائيًا.</p>
+  {% endfor %}
+</div>

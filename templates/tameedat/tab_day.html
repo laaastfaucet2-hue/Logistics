@@ -1,0 +1,304 @@
+<!-- تبويب «تأميدات اليوم المحدد» — تقويم الشهر + سجلات اليوم + نموذج التسجيل -->
+
+<!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21) -->
+<div class="tm-openbar">
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='day') }}"
+    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «تأميدات اليوم المحدد»</a>
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='day') }}"
+    title="يفتح ملف الإكسل المحلي للتبويب على جهازك">📗 فتح ملف «سجلات التأميدات.xlsx» (Excel)</a>
+  {% include "partials/print_btn.html" %}
+</div>
+
+{% if copy_record_obj %}
+<div class="tm-copybar">
+  <span>📋 نُسخت تأميدة <b>«{{ copy_record_obj.entity_name }}»</b> يوم
+    {{ date_text('%04d-%02d-%02d' | format(year, month, copy_record_obj.day)) }}.
+    اختر يومًا آخر من نفس الشهر في التقويم ثم اضغط «لصق».</span>
+  <a class="tm-link" href="{{ url_for('tameedat.page') }}&tab=day&day={{ sel_date_iso }}">إلغاء النسخ</a>
+</div>
+{% endif %}
+
+<div class="tm-daygrid">
+  <!-- التقويم الشهري -->
+  <section class="panel tm-calpanel">
+    <div class="panel-head"><h3>🗓️ تقويم {{ month_name }} {{ year | aindic }}</h3>
+      <span class="panel-hint">أي يوم داخل الشهر متاح للتسجيل — العلامة 🟠 تعني يومًا به تأميدات</span></div>
+    <div class="tm-cal" role="grid" aria-label="تقويم الشهر">
+      {% for wd in weekdays %}<span class="tm-wd">{{ wd }}</span>{% endfor %}
+      {% for week in weeks %}
+        {% for cell in week %}
+          {% if cell.empty %}<span class="tm-cell empty"></span>
+          {% else %}
+          <a class="tm-cell {{ 'sel' if cell.selected }} {{ 'today' if cell.is_today }} {{ 'has' if cell.count }} {{ 'issued' if cell.issued }}"
+             href="{{ url_for('tameedat.page') }}&tab=day&day={{ '%04d-%02d-%02d' | format(year, month, cell.day) }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q }}{{ '&copy=' ~ copy_record_obj.id if copy_record_obj else '' }}"
+             aria-label="يوم {{ cell.day }} {{ 'به ' ~ cell.count ~ ' تأميدة' if cell.count else 'بدون تأميدات' }}">
+            <b>{{ cell.day | aindic }}</b>
+            {% if cell.count %}<i class="tm-dot">{{ cell.count | aindic }}</i>{% endif %}
+          </a>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+
+    {% if copy_record_obj %}
+    <div class="tm-pastebox">
+      {% if sel_day != copy_record_obj.day %}
+      <form method="post" action="{{ url_for('tameedat.record_paste', record_id=copy_record_obj.id) }}">
+        <input type="hidden" name="to_day" value="{{ sel_day }}">
+        <button class="rt-btn gold tm-paste" type="submit">📥 لصق هنا يوم {{ date_text(sel_date_iso) }} كسجل منفصل</button>
+      </form>
+      {% else %}
+      <p class="tm-hint">اليوم المحدد هو يوم التأميدة الأصلية — اختر يومًا آخر من التقويم للصق نسخة منفصلة.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- فلاتر النوع + البحث -->
+    <form class="tm-filters" method="get" action="{{ url_for('tameedat.page') }}">
+      <input type="hidden" name="tab" value="day">
+      <input type="hidden" name="day" value="{{ sel_date_iso }}">
+      {% if copy_record_obj %}<input type="hidden" name="copy" value="{{ copy_record_obj.id }}">{% endif %}
+      <div class="tm-chips">
+        {% for key, label in type_filters %}
+        <a class="tm-chip {{ 'on' if f == key }}" href="{{ url_for('tameedat.page') }}&tab=day&day={{ sel_date_iso }}{{ '&f=' + key if key != 'all' }}{{ '&q=' + q if q }}{{ '&copy=' ~ copy_record_obj.id if copy_record_obj }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      <div class="tm-search">
+        <input name="q" value="{{ q }}" placeholder="بحث باسم الجهة…" autocomplete="off">
+        <button class="icon-btn" type="submit" title="بحث"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+      </div>
+    </form>
+  </section>
+
+  <div class="tm-formcol">
+  <!-- زرّ «إضافة تأميدة جديدة لهذا اليوم» — يفتح نموذج التسجيل ويقفله (طلب المستخدم) -->
+  <button type="button" class="tm-newbtn" id="tmNewToggle" aria-controls="tmFormCard"
+          aria-expanded="{{ 'true' if edit_record else 'false' }}"
+          title="يفتح نموذج تسجيل تأميدة جديدة ويغلقه">
+    <span class="tm-newbtn-plus" aria-hidden="true">＋</span>
+    <span>إضافة تأميدة جديدة لهذا اليوم — {{ date_text(sel_date_iso) }}</span>
+  </button>
+
+  <!-- نموذج تسجيل / تعديل تأميدة -->
+  <section class="panel tm-formcard" id="tmFormCard" {{ '' if edit_record else 'hidden' }}>
+    <div class="panel-head">
+      <h3>{% if edit_record %}✏️ تعديل تأميدة «{{ edit_record.entity_name }}» — سجل رقم {{ edit_record.id | aindic }}{% else %}➕ تسجيل تأميدة جديدة{% endif %}</h3>
+      {% if edit_record %}<a class="tm-link" href="{{ url_for('tameedat.page') }}&tab=day&day={{ sel_date_iso }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q }}">إلغاء التعديل</a>{% endif %}
+    </div>
+    <form method="post" autocomplete="off" id="tmRecordForm"
+          action="{% if edit_record %}{{ url_for('tameedat.record_edit', record_id=edit_record.id) }}{% else %}{{ url_for('tameedat.record_add') }}{% endif %}">
+      <input type="hidden" name="save_token" value="{{ save_token }}">
+      <div class="tm-frow">
+        <div class="fld">
+          <label for="tmDayFrom">من يوم</label>
+          <input name="day_from" id="tmDayFrom" inputmode="numeric" autocomplete="off" required
+                 data-max="{{ days_in_month }}" placeholder="١"
+                 value="{{ (edit_record.day if edit_record else sel_day) | aindic }}">
+        </div>
+        <div class="fld">
+          <label for="tmDayTo">إلى يوم</label>
+          <input name="day_to" id="tmDayTo" inputmode="numeric" autocomplete="off" required
+                 data-max="{{ days_in_month }}" placeholder="{{ days_in_month | aindic }}"
+                 value="{{ (edit_record.day_to if edit_record and edit_record.range_days > 1 else (edit_record.day if edit_record else sel_day)) | aindic }}">
+        </div>
+        <div class="fld wide">
+          <label for="tmEntity">الجهة</label>
+          <input id="tmEntity" name="entity_name" required placeholder="اكتب أو اختر جهة من قاموس الشهر…"
+                 data-combo="tmDictNames" value="{{ edit_record.entity_name if edit_record else '' }}"
+                 {{ 'readonly class=locked' if edit_record }}>
+          <datalist id="tmDictNames">{% for n in entity_names %}<option value="{{ n }}">{% endfor %}</datalist>
+          <small class="tm-hint warn" id="tmUnknownWarn" hidden>⚠️ جهة غير مسجلة في قاموس الشهر — ستُضاف إليه تلقائيًا عند الحفظ.</small>
+          {% if edit_record %}<small class="tm-hint">لا يمكن تغيير الجهة أثناء التعديل — احذف السجل وأضفه لجهة أخرى.</small>{% endif %}
+        </div>
+      </div>
+
+      <p class="tm-hint tm-range-note">«من يوم» و«إلى يوم» داخل {{ month_name }} فقط (من ١ حتى {{ days_in_month | aindic }}) —
+        لا تعبر شهرًا أو سنة أخرى، والنهاية لا تسبق البداية. لو اليومان متساويان تُسجَّل تأميدة <b>يوم واحد</b> فقط.</p>
+      <p class="tm-hint gold tm-range-hint" id="tmRangeDaysHint" hidden></p>
+
+      <fieldset class="tm-types" id="tmTypes" {{ 'disabled' if edit_record }}>
+        <legend>نوع الجهة {{ '(للجهة الجديدة فقط — المسجلة يُؤخد نوعها من القاموس الحالي)' if not edit_record }}</legend>
+        <label><input type="radio" name="type_choice" value="شرطية" checked> شرطية</label>
+        <label><input type="radio" name="type_choice" value="حربية"> حربية</label>
+        <label><input type="radio" name="type_choice" value="أخرى"> أخرى</label>
+        <input name="type_other" id="tmTypeOther" placeholder="اكتب نوع الجهة…" autocomplete="off" hidden>
+      </fieldset>
+
+      <div class="tm-frow nums">
+        <div class="fld"><label>ضباط</label>
+          <input name="officers" inputmode="numeric" placeholder="٠" value="{{ edit_record.officers | aindic if edit_record else '' }}"></div>
+        <div class="fld"><label>أفراد</label>
+          <input name="individuals" inputmode="numeric" placeholder="٠" value="{{ edit_record.individuals | aindic if edit_record else '' }}"></div>
+        <div class="fld"><label>مجندين</label>
+          <input name="recruits" inputmode="numeric" placeholder="٠" value="{{ edit_record.recruits | aindic if edit_record else '' }}"></div>
+        <div class="fld"><label>الإجمالي (تلقائي)</label>
+          <input id="tmTotal" class="tm-total" readonly value="{{ edit_record.total | aindic if edit_record else '٠' }}"></div>
+      </div>
+
+      <!-- الجهات الملحقة بهذه التأميدة -->
+      <div class="tm-atts">
+        <div class="tm-atts-head">
+          <b>الجهات الملحقة بالتأميدة</b>
+          <span class="tm-hint">تُعرض مع الجهة الأم وتُدمج أعدادها في إجمالي التأميدة</span>
+          <button class="rt-btn dim" type="button" id="tmAttAdd">＋ إضافة جهة ملحقة</button>
+        </div>
+        <div id="tmAttList">
+          {% if edit_record %}
+            {% for a in edit_record.attachments %}
+            <div class="tm-att">
+              <label class="tm-att-fld"><span>اسم الجهة الملحقة</span>
+                <input name="att_name" placeholder="اكتب اسم الجهة…" value="{{ a.name }}" required></label>
+              <label class="tm-att-fld"><span>النوع</span>
+                <input name="att_type" placeholder="شرطية / حربية" value="{{ a.entity_type }}" data-combo="tmDictTypes" autocomplete="off"></label>
+              <label class="tm-att-fld tm-att-num"><span>ضباط</span>
+                <input name="att_officers" inputmode="numeric" placeholder="٠" value="{{ a.officers | aindic }}" title="ضباط"></label>
+              <label class="tm-att-fld tm-att-num"><span>أفراد</span>
+                <input name="att_individuals" inputmode="numeric" placeholder="٠" value="{{ a.individuals | aindic }}" title="أفراد"></label>
+              <label class="tm-att-fld tm-att-num"><span>مجندين</span>
+                <input name="att_recruits" inputmode="numeric" placeholder="٠" value="{{ a.recruits | aindic }}" title="مجندين"></label>
+              <button class="icon-btn del tm-att-del" type="button" title="حذف الملحقة"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <template id="tmAttTpl">
+          <div class="tm-att">
+            <label class="tm-att-fld"><span>اسم الجهة الملحقة</span>
+              <input name="att_name" placeholder="اكتب اسم الجهة…" required></label>
+            <label class="tm-att-fld"><span>النوع</span>
+              <input name="att_type" placeholder="شرطية / حربية" data-combo="tmDictTypes" autocomplete="off"></label>
+            <label class="tm-att-fld tm-att-num"><span>ضباط</span>
+              <input name="att_officers" inputmode="numeric" placeholder="٠" title="ضباط"></label>
+            <label class="tm-att-fld tm-att-num"><span>أفراد</span>
+              <input name="att_individuals" inputmode="numeric" placeholder="٠" title="أفراد"></label>
+            <label class="tm-att-fld tm-att-num"><span>مجندين</span>
+              <input name="att_recruits" inputmode="numeric" placeholder="٠" title="مجندين"></label>
+            <button class="icon-btn del tm-att-del" type="button" title="حذف الملحقة"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </template>
+        <datalist id="tmDictTypes"><option value="شرطية"><option value="حربية"></datalist>
+      </div>
+
+      <div class="fld">
+        <label>ملاحظات</label>
+        <input name="notes" placeholder="اختياري…" value="{{ edit_record.notes if edit_record else '' }}">
+      </div>
+
+      <input type="hidden" name="custom_rations_json" id="tmCustomRationsJson"
+             value="{{ custom_rations_json | e }}">
+      <div class="tm-bigacts">
+        <button type="button" class="tm-bigact amber" id="tmCustomRationsBtn"
+                title="مقررات التموين والمتعهد لهذه التأميدة فقط">
+          <span class="tm-bigact-ico" aria-hidden="true">⚙️</span>
+          <span class="tm-bigact-txt">المقررات والتخصيص التفاعلي للمتعهد والتموين للجهة الحالية</span>
+        </button>
+        <button type="button" class="tm-bigact teal" id="tmRagNamesBtn"
+                title="تسجيل أسماء الراغبين — قيد التطوير">
+          <span class="tm-bigact-ico" aria-hidden="true">👮</span>
+          <span class="tm-bigact-txt">تسجيل أسماء الضباط والأفراد الراغبين للجهة الحالية</span>
+        </button>
+      </div>
+
+      <button class="rt-btn gold tm-save" type="submit">
+        {% if edit_record %}💾 حفظ التعديل في البيانات المحلية{% else %}💾 حفظ التأميدة في البيانات المحلية{% endif %}
+      </button>
+    </form>
+  </section>
+  </div>
+</div>
+
+<!-- سجلات اليوم المحدد -->
+<section class="panel">
+  <div class="panel-head">
+    <h3>📅 تأميدات يوم {{ date_text(sel_date_iso) }} — {{ day_count | aindic }} تأميدة</h3>
+    <span class="panel-hint">إجمالي اليوم: ضباط {{ day_totals.officers | aindic }} · أفراد {{ day_totals.individuals | aindic }} · مجندين {{ day_totals.recruits | aindic }} · <b>القوة {{ day_totals.grand | aindic }}</b>{{ ' (بالملحقات)' if day_records | selectattr('attachments') | list | length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="rt-table tm-table">
+      <thead>
+        <tr><th>م</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th><th>ملاحظات</th><th class="ops">إجراءات</th></tr>
+      </thead>
+      <tbody>
+        {% for r in day_records %}
+        {% set has_att = r.attachments | length > 0 %}
+        <tr class="tm-main">
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name">
+            <b>{{ r.entity_name }}</b>
+            {% if r.range_days > 1 %}<span class="tm-range-chip" title="مدة زمنية مفعّلة — تأميدة واحدة سارية من يوم {{ r.day | aindic }} إلى يوم {{ r.day_to | aindic }}">🕓 من {{ r.day | aindic }} إلى {{ r.day_to | aindic }} ({{ r.range_days | aindic }} أيام)</span>{% endif %}
+            <a class="tm-print-mini" href="{{ url_for('tameedat.print_one', record_id=r.id) }}"
+               title="طباعة هذه التأميدة فقط (مستند رسمي)">🖨 طباعة مستند التأميدة</a>
+            {% if r.permits %}
+            <span class="tm-permit-done" title="حُفظ إذن صرف مربوط بهذه التأميدة">✔ تم عمل إذن ٢ مخازن{% if r.permits[0].number %} رقم {{ r.permits[0].number | aindic }}{% endif %}</span>
+            <a class="tm-permit-make dim" href="{{ url_for('calc2.page') }}&from={{ r.day }}&to={{ r.day_to or r.day }}&selected={{ 'main:' ~ r.id }}">عرض الإذن</a>
+            {% else %}
+            <a class="tm-permit-make" href="{{ url_for('calc2.page') }}&from={{ r.day }}&to={{ r.day_to or r.day }}&selected={{ 'main:' ~ r.id }}"
+               title="فتح حاسبة ٢ مخازن لإذن صرف هذه التأميدة">عمل إذن صرف ٢ مخازن</a>
+            {% endif %}
+            {% if has_att %}
+              {% for a in r.attachments %}<span class="nm-att" title="جهة ملحقة — مستقلة في المومدة والقاموس">├ ملحقة: {{ a.name }}{% if a.entity_type %} ({{ a.entity_type }}){% endif %}</span>{% endfor %}
+              <span class="nm-tot">= إجمالي التأميدة — تأميدة <b>واحدة</b> بكل جهاتها</span>
+            {% endif %}
+          </td>
+          <td><span class="tm-type t-{{ 'base' if r.entity_type in ['شرطية','حربية'] else 'other' }}">{{ r.entity_type }}</span></td>
+          {% if has_att %}
+            {% set off_sum = r.officers + (r.attachments | sum(attribute='officers')) %}
+            {% set ind_sum = r.individuals + (r.attachments | sum(attribute='individuals')) %}
+            {% set rec_sum = r.recruits + (r.attachments | sum(attribute='recruits')) %}
+            <td class="num stack">
+              <span class="stk" title="الجهة الأم">{{ r.officers | aindic }}</span>
+              {% for a in r.attachments %}<span class="stk att" title="ملحقة: {{ a.name }}">+{{ a.officers | aindic }}</span>{% endfor %}
+              <b class="stk tot" title="إجمالي ضباط التأميدة">{{ off_sum | aindic }}</b>
+            </td>
+            <td class="num stack">
+              <span class="stk" title="الجهة الأم">{{ r.individuals | aindic }}</span>
+              {% for a in r.attachments %}<span class="stk att" title="ملحقة: {{ a.name }}">+{{ a.individuals | aindic }}</span>{% endfor %}
+              <b class="stk tot" title="إجمالي أفراد التأميدة">{{ ind_sum | aindic }}</b>
+            </td>
+            <td class="num stack">
+              <span class="stk" title="الجهة الأم">{{ r.recruits | aindic }}</span>
+              {% for a in r.attachments %}<span class="stk att" title="ملحقة: {{ a.name }}">+{{ a.recruits | aindic }}</span>{% endfor %}
+              <b class="stk tot" title="إجمالي مجندين التأميدة">{{ rec_sum | aindic }}</b>
+            </td>
+            <td class="num stack">
+              <span class="stk" title="الجهة الأم وحدها">{{ r.total | aindic }}</span>
+              {% for a in r.attachments %}<span class="stk att" title="ملحقة: {{ a.name }}">+{{ (a.officers + a.individuals + a.recruits) | aindic }}</span>{% endfor %}
+              <b class="stk tot" title="إجمالي التأميدة الواحدة">{{ r.grand_total | aindic }}</b>
+            </td>
+          {% else %}
+            <td class="num">{{ r.officers | aindic }}</td>
+            <td class="num">{{ r.individuals | aindic }}</td>
+            <td class="num">{{ r.recruits | aindic }}</td>
+            <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
+          {% endif %}
+          <td>{{ r.notes or '—' }}</td>
+          <td class="ops tm-ops">
+            <div class="tm-actions">
+              <a class="tm-act tm-act-edit tm-edit" title="تعديل التأميدة" aria-label="تعديل التأميدة"
+                 href="{{ url_for('tameedat.page') }}&tab=day&day={{ sel_date_iso }}&edit={{ r.id }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q }}">
+                <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </a>
+              <a class="tm-act tm-act-copy tm-copy" title="نسخ التأميدة بالجهات المومدة الملحقة عليها — ثم اللصق في يوم آخر من الشهر" aria-label="نسخ التأميدة"
+                 href="{{ url_for('tameedat.page') }}&tab=day&day={{ sel_date_iso }}&copy={{ r.id }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q }}">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </a>
+              <a class="tm-act tm-act-permit tm-permit" title="عمل إذن ٢ مخازن للجهة (من قسم ٢ مخازن)" aria-label="عمل إذن ٢ مخازن"
+                 href="{{ url_for('calc2.page') }}&from={{ r.day }}&to={{ r.day_to or r.day }}&selected={{ 'main:' ~ r.id }}">
+                <svg viewBox="0 0 24 24"><path d="M3 21V8l7-5 7 5v13"/><path d="M14 21v-6h4v6M7 12h2m2 0h2"/></svg>
+              </a>
+              <form class="tm-del-form" method="post" action="{{ url_for('tameedat.record_delete', record_id=r.id) }}"
+                    onsubmit="return confirm('حذف تأميدة «{{ r.entity_name }}» يوم {{ sel_date_iso | datefmt }} مع ملحقاتها نهائيًا من البيانات المحلية؟\nلا يمكن التراجع عن الحذف.');">
+                <button class="tm-act tm-act-delete tm-delete" type="submit" title="حذف التأميدة" aria-label="حذف التأميدة">
+                  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty">{{ 'لا نتائج مطابقة للفلتر أو البحث' if q or f != 'all' else 'لا توجد تأميدات مسجلة في هذا اليوم — سجّل أول تأميدة من النموذج أعلاه ➕' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

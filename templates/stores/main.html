@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}المخازن والثلاجات • موحدة لكل الأصناف{% endblock %}
+{% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<header class="wh-hero">
+  <div class="wh-hero-lines">
+    <b class="wh-l1">🏬 المخازن والثلاجات — موحّدة لكل الأصناف</b>
+    <b class="wh-l2">حركة المخازن مطابقة لحركة ٣ مخازن بالتغليف — والتفريدة تلقائية من إذون ٢ مخازن (الأقرب صلاحية أولًا)</b>
+  </div>
+  <div class="wh-hero-meta">
+    <span class="wh-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
+    <span class="wh-chip dim">بلا تموينية/متعهد — كل الأصناف في المخازن نفسها</span>
+  </div>
+</header>
+
+<nav class="wh-tabs no-print" aria-label="تويبات المخازن">
+  {% for key, name, ic in tabs %}
+  <a class="wh-tab {{ 'on' if tab == key }}" href="{{ url_for('stores.page', tab=key) }}">
+    {{ ic }} <span>{{ name }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+<div class="wh-fsbar no-print">
+  <a class="rt-btn dim" href="{{ url_for('stores.open_folder', tab=tab) }}">📂 فتح مجلد «{{ tab_file }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('stores.open_file', tab=tab) }}">📗 فتح ملف «{{ tab_file }}»</a>
+  <a class="icon-btn down" title="تنزيل «{{ tab_file }}» إكسل" href="{{ url_for('stores.download', tab=tab) }}">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+  </a>
+</div>
+
+{% if tab == 'mains' %}
+<button type="button" class="wh-newbtn no-print" id="whStoreToggle" aria-expanded="false" aria-controls="whStoreForm">
+  <span class="wh-newbtn-plus">＋</span> {% if editing %}تعديل مخزن «{{ editing.name }}»{% else %}إضافة مخزن جديد{% endif %}
+</button>
+
+<form class="panel wh-form {{ 'wh-open' if editing }}" id="whStoreForm" method="post"
+      action="{{ url_for('stores.save') }}" {% if not editing %}hidden{% endif %}>
+  {% if editing %}<input type="hidden" name="store_id" value="{{ editing.id }}">{% endif %}
+  <h3 class="wh-form-title">{% if editing %}تعديل مواصفات مخزن{% else %}إضافة مخزن جديد{% endif %}</h3>
+  <div class="wh-grid">
+    <label class="wh-f">اسم المخزن <i>*</i>
+      <input name="name" required autocomplete="off" value="{{ editing.name if editing else '' }}"
+             placeholder="مخزن الأرز / مخزن الثلاجة..."></label>
+    <label class="wh-f">الموقع
+      <input name="location" autocomplete="off" value="{{ editing.location if editing else '' }}"
+             placeholder="مبنى / دور / جهة"></label>
+    <label class="wh-f">سعة المخزن (متر)
+      <input name="capacity_m2" inputmode="decimal" autocomplete="off"
+             value="{{ editing.capacity_m2 if editing and editing.capacity_m2 is not none else '' }}"></label>
+    <label class="wh-f">عدد المرواح
+      <input name="fans" inputmode="numeric" autocomplete="off"
+             value="{{ editing.fans if editing and editing.fans is not none else '' }}"></label>
+    <label class="wh-f">عدد الشفاطات
+      <input name="extractors" inputmode="numeric" autocomplete="off"
+             value="{{ editing.extractors if editing and editing.extractors is not none else '' }}"></label>
+    <label class="wh-f">تجهيزات أخرى
+      <input name="equipment" autocomplete="off" value="{{ editing.equipment if editing else '' }}"
+             placeholder="رفوف، ميزان، مولد، أريفة..."></label>
+    <label class="wh-f wh-f-wide">ملاحظات
+      <textarea name="notes" rows="2">{{ editing.notes if editing else '' }}</textarea></label>
+  </div>
+  <div class="wh-form-actions no-print">
+    <button class="rt-btn gold" type="submit">💾 حفظ المخزن</button>
+    {% if editing %}<a class="rt-btn dim" href="{{ url_for('stores.page', tab='mains') }}">إلغاء</a>{% endif %}
+  </div>
+</form>
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>🏬 سجل المخازن — مواصفات وتجهيزات</h3>
+    <span class="panel-hint">سجل عام مستمر لا يتغير بتغيّر الشهر — والحركة والأرصدة شهرية معزولة</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>م</th><th>اسم المخزن</th><th>الموقع</th><th>السعة (متر)</th><th>المرواح</th>
+      <th>الشفاطات</th><th>التجهيزات</th><th>ملاحظات</th><th class="no-print">إجراءات</th>
+    </tr></thead>
+    <tbody>
+      {% for s in stores %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="name"><b>{{ s.name }}</b></td>
+        <td>{{ s.location or '—' }}</td>
+        <td class="num">{% if s.capacity_m2 %}{{ s.capacity_m2 | qty3 }}{% else %}—{% endif %}</td>
+        <td class="num">{% if s.fans is not none %}{{ s.fans | aindic }}{% else %}—{% endif %}</td>
+        <td class="num">{% if s.extractors is not none %}{{ s.extractors | aindic }}{% else %}—{% endif %}</td>
+        <td>{{ s.equipment or '—' }}</td>
+        <td>{{ s.notes or '—' }}</td>
+        <td class="ops no-print">
+          <a class="icon-btn edit" title="تعديل مواصفات المخزن"
+             href="{{ url_for('stores.page', tab='mains', edit=s.id) }}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </a>
+          <form method="post" action="{{ url_for('stores.delete') }}"
+                onsubmit="return confirm('حذف مخزن «{{ s.name }}» من السجل؟ الحركات المسجلة باسمه تبقى في الشهور.')">
+            <input type="hidden" name="store_id" value="{{ s.id }}">
+            <button class="icon-btn del" type="submit" title="حذف المخزن">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty">لا مخازن بعد — أضف أول مخزن من الزر الأمبر فوق ➕</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% else %}
+{% for target in report.stores %}
+{% include "stores/_store_card.html" %}
+{% endfor %}
+{% set target = report.unassigned %}
+{% include "stores/_store_card.html" %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

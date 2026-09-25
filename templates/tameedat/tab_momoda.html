@@ -1,0 +1,91 @@
+<!-- تبويب «الجهات المومدة بالشهر الحالي» — صف مستقل لكل جهة + إجمالي القوة -->
+
+<!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21) -->
+<div class="tm-openbar">
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='momoda') }}"
+    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «الجهات المومدة بالشهر الحالي»</a>
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='momoda') }}"
+    title="يفتح ملف الإكسل المحلي للتبويب على جهازك">📗 فتح ملف «ملخص الجهات المومدة.xlsx» (Excel)</a>
+  {% include "partials/print_btn.html" %}
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3>🏢 الجهات المومدة خلال {{ month_name }} {{ year | aindic }} — {{ summary | length | aindic }} جهة</h3>
+    <div class="tm-chips">
+      {% for key, label in type_filters %}
+      <a class="tm-chip {{ 'on' if f == key }}" href="{{ url_for('tameedat.page') }}&tab=momoda{{ '&f=' + key if key != 'all' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <p class="tm-hint" style="margin-bottom:12px">
+    كل جهة مستقلة بصفها — <b>حتى الجهة الملحقة تُعامل كجهة قائمة بذاتها</b> في الإحصائيات والقاموس
+    (صف ملحقة يحمل شارة «ملحقة» ولا يُدمج في جهته الأم) · الإجماليات = أعداد اليوم × أيام السريان —
+    التأميدة ذات المدة الزمنية تُحسب في كل يوم من مدتها · متوسط القوة (ضباط/أفراد/مجندين) يُعرض في تبويب «قاموس ودليل الجهات».
+  </p>
+  <div class="table-wrap">
+    <table class="rt-table tm-table">
+      <thead>
+        <tr><th>م</th><th>الجهة المومدة</th><th>النوع</th><th>أيام التميد</th><th>عدد التأميدات</th>
+            <th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+      </thead>
+      <tbody>
+        {% for r in summary %}
+        <tr class="{{ 'tm-att-momoda' if r.kind == 'attachment' }}">
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name">{% if r.kind == 'attachment' %}<span class="tm-att-badge">ملحقة</span> {% endif %}<b>{{ r.name }}</b></td>
+          <td><span class="tm-type t-{{ 'base' if r.entity_type in ['شرطية','حربية'] else 'other' }}">{{ r.entity_type }}</span></td>
+          <td class="num days">
+            <b>{{ r.active_days | aindic }}</b>
+            <button type="button" class="tm-days-open"
+                    data-days-src="tmDays{{ loop.index }}" data-days-name="{{ r.name }}"
+                    title="قائمة منبثقة بكل تأميدة وتاريخها الدقيق — قابلة للطباعة">📅 افتح الأيام بالتواريخ</button>
+            <template id="tmDays{{ loop.index }}">
+              {% for p in r.participations %}
+              <li>
+                <span class="d-line">
+                  <b>تأميدة رقم {{ p.record_id | aindic }}</b> —
+                  {% if p.range_days > 1 %}
+                    مدة من <bdi dir="ltr">{{ ('%04d-%02d-%02d' | format(year, month, p.day)) | datefmt }}</bdi>
+                    إلى <bdi dir="ltr">{{ ('%04d-%02d-%02d' | format(year, month, p.day_to)) | datefmt }}</bdi>
+                    ({{ p.range_days | aindic }} أيام)
+                  {% else %}
+                    يوم <bdi dir="ltr">{{ ('%04d-%02d-%02d' | format(year, month, p.day)) | datefmt }}</bdi>
+                  {% endif %}
+                  {% if p.get('attachment') %}<em>(ملحقة على تأميدة «{{ p.parent_name }}»)</em>{% endif %}
+                </span>
+                <a class="tm-print-mini" href="{{ url_for('tameedat.print_one', record_id=p.record_id) }}" target="_blank">🖨 طباعة</a>
+              </li>
+              {% endfor %}
+            </template>
+          </td>
+          <td class="num">{{ r.records | aindic }}</td>
+          <td class="num">{{ r.total_officers | aindic }}</td>
+          <td class="num">{{ r.total_individuals | aindic }}</td>
+          <td class="num">{{ r.total_recruits | aindic }}</td>
+          <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty">لا توجد جهات مومدة {{ 'بهذا الفلتر ' if f != 'all' }}في {{ month_name }} {{ year | aindic }} حتى الآن — سجّل التأميدات من تبويب «تأميدات اليوم المحدد».</td></tr>
+        {% endfor %}
+        {% if summary %}
+        <tr class="tm-totalrow">
+          <td></td><td class="name"><b>إجمالي القوة</b></td><td></td>
+          <td class="num">{{ summary_totals.active_days | aindic }}</td>
+          <td class="num">{{ summary_totals.records | aindic }}</td>
+          <td class="num">{{ summary_totals.officers | aindic }}</td>
+          <td class="num">{{ summary_totals.individuals | aindic }}</td>
+          <td class="num">{{ summary_totals.recruits | aindic }}</td>
+          <td class="num" colspan="1"><b>{{ summary_totals.grand | aindic }}</b> <small class="tm-hint">— القوة الفعلية مرة واحدة، بلا تكرار ولا دمج</small></td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <div class="tm-stats">
+    <div class="tm-stat"><b>{{ summary_totals.entities | aindic }}</b><span>جهة مومدة مستقلة</span></div>
+    <div class="tm-stat"><b>{{ summary_totals.records | aindic }}</b><span>تأميدة خلال الشهر</span></div>
+    <div class="tm-stat"><b>{{ summary_totals.active_days | aindic }}</b><span>يوم تميد فعلي</span></div>
+    <div class="tm-stat big"><b>{{ summary_totals.grand | aindic }}</b><span>إجمالي القوة</span></div>
+  </div>
+</section>

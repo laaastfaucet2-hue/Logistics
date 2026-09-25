@@ -1,0 +1,59 @@
+name: Windows desktop installer
+on:
+  push:
+    branches: [arena/01a0c425-logistics]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements/*.txt
+      - name: Install build dependencies
+        run: python -m pip install -r requirements/build.txt
+      - name: Build and smoke-test the offline installer
+        shell: pwsh
+        run: ./scripts/build-installer.ps1 -Python python
+      - name: Test install, update, executable, and preservation on uninstall
+        shell: pwsh
+        run: ./scripts/test-installer.ps1
+      - name: Upload installer and checksum (not user data)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Logistics-Windows-x64-2.2.0
+          path: |
+            dist/Logistics-Setup-2.2.0.exe
+            dist/SHA256.txt
+          retention-days: 14
+          if-no-files-found: error
+      - name: Collect native diagnostics in the workspace
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force runtime | Out-Null
+          $log = Join-Path $env:LOCALAPPDATA 'Logistics\logs\desktop.log'
+          if (Test-Path $log) { Copy-Item $log runtime/desktop.log -Force }
+      - name: Upload native screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-native-validation
+          path: |
+            runtime/ui-smoke.txt
+            runtime/ui-smoke.png
+            runtime/desktop.log
+            runtime/pytest.xml
+            runtime/bundle.log
+            runtime/installer-build.log
+            runtime/packaged-smoke.txt
+          if-no-files-found: ignore
+          retention-days: 7

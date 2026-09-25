@@ -1,0 +1,16 @@
+{% from 'partials/icons.html' import icon %}
+{% macro date_field(name, label, value='') -%}
+<label class="rc-lbl" for="date-{{ name }}">{{ label }}</label>
+<div class="date-field">
+  <input type="text" id="date-{{ name }}" name="{{ name }}" data-date data-date-label="{{ label }}"
+         inputmode="numeric" autocomplete="off" maxlength="16" dir="ltr" lang="ar"
+         placeholder="يوم/شهر/سنة" aria-describedby="date-format-hint"
+         value="{{ value | dateinput }}">
+  <button class="icon-btn date-trigger" type="button" title="اختيار {{ label }} من التقويم"
+          aria-label="اختيار {{ label }} من التقويم" aria-haspopup="dialog" aria-expanded="false" hidden>
+    {{ icon('calendar') }}
+  </button>
+</div>
+{%- endmacro %}
+{% macro date_text(value) -%}<bdi dir="ltr" class="date-display">{{ value | datefmt }}</bdi>{%- endmacro %}
+{% macro period_text(year, month, day) -%}<bdi dir="ltr" class="date-display">{{ period_date(year, month, day) }}</bdi>{%- endmacro %}

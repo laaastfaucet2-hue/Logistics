@@ -1,0 +1,63 @@
+/* Tajawal — الخط الأساسي المعتمد (طلب المستخدم: مطابقة البرنامج الثاني)،
+   محلي بالكامل بأربعة أوزان + ترخيص OFL في static/fonts/Tajawal-OFL.txt.
+   ميزته الحاسمة: يشمل الأرقام العربية المشرقية (٠١٢٣٤٥٦٧٨٩) أصيلة —
+   فتختفي مشاكل تبديل الخط الاحتياطي في مواضع الأرقام نهائيًا. */
+@font-face {
+  font-family: "Tajawal";
+  src: url("../fonts/Tajawal-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tajawal";
+  src: url("../fonts/Tajawal-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tajawal";
+  src: url("../fonts/Tajawal-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tajawal";
+  src: url("../fonts/Tajawal-ExtraBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+/* Changa — complete Arabic/Latin glyph sets, bundled offline.
+   The unmodified-instanced fonts and the OFL license live in static/fonts/. */
+@font-face {
+  font-family: "Changa";
+  src: url("../fonts/Changa-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Changa";
+  src: url("../fonts/Changa-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Changa";
+  src: url("../fonts/Changa-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Changa";
+  src: url("../fonts/Changa-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}

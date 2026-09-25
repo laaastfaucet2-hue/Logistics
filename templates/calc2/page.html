@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}آلة حاسبة ٢ مخازن • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}إذن صرف ٢ مخازن رقم {{ next_number | aindic }} — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>🧮 حاسبة إذن صرف المواد التموينية (٢ مخازن)</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }} — سنة الإذن {{ fiscal_year | aindic }}/{{ (fiscal_year + 1) | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+
+<form method="get" action="{{ url_for('calc2.page') }}" class="panel c2-bar" id="c2Filter">
+  <div class="c2-dates">
+    <label>تاريخ بدء إذن الصرف
+      <input name="from" inputmode="numeric" value="{{ day_from | aindic }}" aria-label="من يوم"></label>
+    <label>تاريخ نهاية الصرف
+      <input name="to" inputmode="numeric" value="{{ day_to | aindic }}" aria-label="إلى يوم"></label>
+    <button class="rt-btn gold" type="submit">تحميل قائمة التأميدات</button>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('calc2.save') }}" class="c2-form" autocomplete="off" id="c2Form">
+  <input type="hidden" name="date_from" value="{{ day_from }}">
+  <input type="hidden" name="date_to" value="{{ day_to }}">
+  <input type="hidden" name="selected_json" id="c2SelectedJson" value="{{ selected | map(attribute='key') | list | tojson }}">
+
+  <div class="panel">
+    <div class="panel-head"><h3>تحميل قائمة التأميدات</h3>
+      <span class="panel-hint">مرتّبة حسب الأيام — كل تأميدة في مربع، والرئيسية وملحقاتها سطور مستقلة داخله</span></div>
+    {% if pick_groups %}
+    <div class="c2-list" id="c2List">
+      {% for g in pick_groups %}
+      <section class="c2-day" data-day="{{ g.day }}">
+        <h4 class="c2-day-h">{{ g.label }}</h4>
+        {% for tm in g.tameedat %}
+        <div class="c2-tm c{{ tm.color }}" data-rid="{{ tm.record_id }}">
+          <div class="c2-tm-head">تأميدة «{{ tm.title }}» — {{ tm.range_label }}</div>
+          {% for p in tm.picks %}
+          <button type="button" class="c2-pickrow {{ 'on' if p in selected }}" data-key="{{ p.key }}"
+                  title="أضف هذه الجهة وحدها إلى مربع الإذن">
+            <span class="c2-pick-who">
+              <b>{{ p.name }}</b>
+              {% if p.is_attachment %}<small>ملحقة</small>{% else %}<small class="main">رئيسية</small>{% endif %}
+            </span>
+            <span class="c2-chip-force">القوة {{ (p.officers + p.individuals + p.recruits) | aindic }}
+              ({{ p.officers | aindic }} / {{ p.individuals | aindic }} / {{ p.recruits | aindic }})</span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </section>
+      {% endfor %}
+    </div>
+    <p class="tm-hint">{{ picks | length | aindic }} جهة — اضغط السطر لإضافته أو حذفه من مربع الإذن.</p>
+    {% else %}
+    <p class="panel-hint" style="padding:16px 0;text-align:center">لا تأميدات في هذه المدة — غيّر التاريخ أو سجّل تأميدة أولًا.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>الجهات المحددة في هذا الإذن <span id="c2BoxCount">({{ selected | length | aindic }})</span></h3>
+      <span class="panel-hint">المربع فاضي إلى أن تضيف جهات — صرف الملحقة دون الرئيسية يُظهر مربع التأميدة وفي داخله الملحقة فقط</span></div>
+    <div class="c2-box" id="c2Box">
+      {% if selected_groups %}
+        {% for g in selected_groups %}
+          {% for tm in g.tameedat %}
+          <div class="c2-tm c{{ tm.color }}" data-rid="{{ tm.record_id }}">
+            <div class="c2-tm-head">تأميدة «{{ tm.title }}» · {{ g.label }} — {{ tm.range_label }}</div>
+            {% for p in tm.picks %}
+            <span class="c2-chip" data-key="{{ p.key }}">
+              <b>{{ p.name }}</b>
+              {% if p.is_attachment %}<small>ملحقة</small>{% else %}<small class="main">رئيسية</small>{% endif %}
+              <span class="c2-chip-force">القوة: {{ (p.officers + p.individuals + p.recruits) | aindic }}
+                (ضباط {{ p.officers | aindic }} · أفراد {{ p.individuals | aindic }} · مجندين {{ p.recruits | aindic }})</span>
+              <button type="button" class="c2-x" aria-label="إزالة">×</button>
+            </span>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+      <span class="c2-box-empty" id="c2Empty">المربع فاضي — اختر جهة من قائمة التأميدات بالأعلى</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>بيانات القوة والصرف</h3></div>
+    <div class="c2-force">
+      <label>عدد الضباط<input name="officers" id="c2Off" inputmode="numeric" value="{{ officers | aindic }}"></label>
+      <label>عدد الأفراد<input name="individuals" id="c2Ind" inputmode="numeric" value="{{ individuals | aindic }}"></label>
+      <label>عدد الجنود (مجندين)<input name="recruits" id="c2Rec" inputmode="numeric" value="{{ recruits | aindic }}"></label>
+      <label class="wide">اسم الجهة / القطاع الطالب
+        <input name="entity_label" id="c2Label" value="{{ entity_label }}"></label>
+      <label>أيام الصرف (المدة)
+        <input name="issue_days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
+    </div>
+    <div class="c2-meals">
+      <b>أقسام الوجبات المستحقة للصرف في هذا الإذن:</b>
+      {% for key, label in meals %}
+      <label><input type="checkbox" name="meal_{{ key }}" value="1" {% if meal_on[key] %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+      <span class="c2-force-total">إجمالي القوة البشرية المستفيدة: <b id="c2Force">{{ force | aindic }}</b> فرد</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>بيانات الصرف</h3></div>
+    <div class="c2-meta">
+      <label>المندوب المستلم — النوع
+        <input name="receiver_kind" data-combo="c2Kinds" autocomplete="off" placeholder="ضابط / فرد / مجند"></label>
+      <datalist id="c2Kinds"><option value="ضابط"><option value="فرد"><option value="مجند"></datalist>
+      <label>الرتبة<input name="receiver_rank" placeholder="مثال: رائد / رقيب"></label>
+      <label>اسم المندوب<input name="receiver_name" placeholder="مندوب الاستلام / عسكر"></label>
+      <label>المسؤول عن الصرف
+        <input name="issuer_name" data-combo="c2Issuers" autocomplete="off"
+               placeholder="حاضر بشهادة صحية أو اكتب اسمًا"></label>
+      <datalist id="c2Issuers">{% for r in issuers %}<option value="{{ r.name }}">{% endfor %}</datalist>
+      <label>رقم إذن الصرف (بون ٢ مخازن)
+        <input name="number" inputmode="numeric" value="{{ next_number | aindic }}"></label>
+    </div>
+  </div>
+
+  {% macro items_table(title, rows, prefix) %}
+  <div class="panel">
+    <div class="panel-head"><h3>{{ title }}</h3>
+      <span class="panel-hint">الكمية = (فطار+غداء+عشاء إن وُجد) × قوة كل جهة × أيام صرف الصنف</span></div>
+    <div class="table-wrap">
+      <table class="rt-table c2-table">
+        <thead>
+          <tr>
+            <th title="مسلسل">م</th><th>اسم الصنف</th><th>المقرر للفرد</th>
+            <th>أيام الصرف</th><th>الكمية المقررة تلقائيًا</th>
+            <th>التعديل والكمية الفعلية</th>
+            <th>الرصيد المتوفر بالمخازن</th><th>الحالة الكلية للرصيد</th>
+          </tr>
+        </thead>
+        <tbody id="c2Body-{{ prefix }}">
+          {% for it in rows %}
+          <tr>
+            <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
+            <td class="name"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+            <td class="c2-pp">
+              <div class="c2-meal"><span>فطار</span><b>{{ it.breakfast | qty3 }}</b></div>
+              <div class="c2-meal"><span>غداء</span><b>{{ it.lunch | qty3 }}</b></div>
+              <div class="c2-meal"><span>عشاء</span><b>{{ it.dinner | qty3 }}</b></div>
+              {% if it.customized %}
+              <div class="c2-pp-cus">
+                <em>مخصص من التأميدة</em>
+                <div class="c2-meal"><span>فطار</span><b>{{ it.custom_breakfast | qty3 }}</b></div>
+                <div class="c2-meal"><span>غداء</span><b>{{ it.custom_lunch | qty3 }}</b></div>
+                <div class="c2-meal"><span>عشاء</span><b>{{ it.custom_dinner | qty3 }}</b></div>
+              </div>
+              {% endif %}
+            </td>
+            <td class="num">{{ it.days | aindic }}</td>
+            <td class="num">{{ it.auto | qty3 }}</td>
+            <td><input name="actual_{{ prefix }}_{{ it.name }}" class="c2-actual"
+                       inputmode="decimal" value="{{ it.auto | qty3 }}"></td>
+            <td class="dim">قيد التطوير</td>
+            <td class="dim">قيد التطوير</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="empty">أضف جهة للمربع بالأعلى لظهور الأصناف — أو خصّص المقررات من التأميدة.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endmacro %}
+
+  {{ items_table("المقررات التموينية", tamween, "tamween") }}
+  {{ items_table("مقررات المتعهد (الطازجة والمجمدة)", contractor, "contractor") }}
+
+  <div class="c2-save">
+    <button class="rt-btn gold big" type="submit">تحديث وحفظ الإذن الحالي</button>
+  </div>
+</form>
+<script type="application/json" id="c2PicksData">{{ picks | tojson }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/calc2.js') }}?v={{ static_ver }}"
+        data-rows="{{ url_for('calc2.rows') }}"></script>
+{% endblock %}

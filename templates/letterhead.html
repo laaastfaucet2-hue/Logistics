@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}الدباجة والتوقيعات الرسمية • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}الدباجة والتوقيعات الرسمية — {{ month_name }} {{ ctx_year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lh.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<div class="ctx-strip"><span>دباجة {{ month_name }} {{ ctx_year | aindic }}</span><span class="sep">•</span><span class="dim">مستقلة لهذا الشهر، وتُطبَّق على مستنداته الرسمية فقط</span><code class="ltr">{{ folder_path }}</code></div>
+{% set copy_kind = "letterhead" %}
+{% include "partials/legacy_notice.html" %}
+{% include "partials/month_copy.html" %}
+
+<div class="panel rt-toolbar">
+  <div class="rt-actions">
+    {% if can_open %}
+    <a class="rt-btn navy" href="{{ url_for('letterhead.open_docx') }}" title="فتح على هذا الجهاز">📄 فتح ملف الوورد</a>
+    <a class="rt-btn navy" href="{{ url_for('letterhead.open_folder') }}" title="فتح على هذا الجهاز">📂 فتح مجلد الدباجة</a>
+    {% endif %}
+    <a class="rt-btn navy" href="{{ url_for('letterhead.download_docx') }}" title="تنزيل ملف الوورد مباشرة على جهازك"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>تنزيل الوورد مباشرة</a>
+    <a class="icon-btn zip" href="{{ url_for('letterhead.download_zip') }}" title="تنزيل مجلد الدباجة كاملًا مضغوطًا (ZIP)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="12" y1="4" x2="12" y2="13"></line><polyline points="8.5 9.5 12 13 15.5 9.5"></polyline></svg></a>
+    {% include "partials/print_btn.html" %}
+  </div>
+</div>
+
+<!-- نموذج الحفظ -->
+<form method="post" action="{{ url_for('letterhead.save') }}" enctype="multipart/form-data" autocomplete="off">
+<div class="lh-grid">
+
+  <!-- مربعات الدباجة — يمين أعلى الصفحة -->
+  <div class="panel lh-panel">
+    <div class="panel-head"><h3>📝 مربعات الدباجة <span class="lh-loc">— يمين أعلى الصفحة</span></h3></div>
+    <div class="lh-boxes">
+      <div class="lh-box"><span class="lh-num">{{ '١' }}</span>
+        <input name="lh_1" value="{{ lh_1 }}" placeholder="السطر الأول: الجهة الأم..."></div>
+      <div class="lh-box"><span class="lh-num">{{ '٢' }}</span>
+        <input name="lh_2" value="{{ lh_2 }}" placeholder="السطر الثاني..."></div>
+      <div class="lh-box"><span class="lh-num">{{ '٣' }}</span>
+        <input name="lh_3" value="{{ lh_3 }}" placeholder="السطر الثالث..."></div>
+      <div class="lh-box"><span class="lh-num">{{ '٤' }}</span>
+        <input name="lh_4" value="{{ lh_4 }}" placeholder="السطر الرابع..."></div>
+    </div>
+  </div>
+
+  <!-- اللوجو — شمال أعلى الصفحة -->
+  <div class="panel lh-panel">
+    <div class="panel-head"><h3>🖼️ اللوجو <span class="lh-loc">— شمال أعلى الصفحة</span></h3></div>
+    <div class="lh-logo-zone">
+      {% if has_logo %}
+      <img src="{{ url_for('letterhead.logo_view') }}" class="lh-logo-img" alt="اللوجو الحالي">
+      {% else %}
+      <div class="lh-logo-empty">لا يوجد لوجو بعد 📷</div>
+      {% endif %}
+      <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp" class="lh-file">
+      <p class="lh-hint">PNG / JPG / WEBP — يُحفظ في مجلد الدباجة ويظهر في ملفات هذا الشهر الرسمية</p>
+    </div>
+  </div>
+
+  <!-- التوقيعان — أسفل الصفحة يمينًا وشمالًا -->
+  <div class="panel lh-panel">
+    <div class="panel-head"><h3>✍️ التوقيع يمين الصفحة</h3></div>
+    <div class="lh-sig-form">
+      <label>الرتبة</label>
+      <input name="sig_right_rank" value="{{ sig_right_rank }}" placeholder="مثال: رائد">
+      <label>الاسم</label>
+      <input name="sig_right_name" value="{{ sig_right_name }}" placeholder="مثال: أحمد محمد علي">
+    </div>
+  </div>
+  <div class="panel lh-panel">
+    <div class="panel-head"><h3>✍️ التوقيع شمال الصفحة</h3></div>
+    <div class="lh-sig-form">
+      <label>الرتبة</label>
+      <input name="sig_left_rank" value="{{ sig_left_rank }}" placeholder="مثال: عميد">
+      <label>الاسم</label>
+      <input name="sig_left_name" value="{{ sig_left_name }}" placeholder="مثال: محمد عبد الله">
+    </div>
+  </div>
+</div>
+
+<div class="lh-savebar">
+  <button class="rt-btn gold big" type="submit">💾 حفظ الدباجة والتوقيعات</button>
+  <span class="lh-hint">بالحفظ: يُعاد بناء <strong>ملف Word الدباجة</strong> وتتحدث الدباجة واللوجو والتوقيعات في <strong>إكسل هذا الشهر فقط</strong> لحظيًا</span>
+</div>
+</form>
+
+{% if has_logo %}
+<form method="post" action="{{ url_for('letterhead.logo_delete') }}" class="lh-del-form inline-f"
+      onsubmit="return confirm('حذف اللوجو الحالي نهائيًا؟')">
+  <button class="mini-btn red" type="submit">🗑 حذف اللوجو الحالي</button>
+</form>
+{% endif %}
+
+<!-- ======== المعاينة الحية ======== -->
+<h2 class="lh-prev-title">👁️ معاينة حية — بالشكل الذي سيُحفظ في الملفات الرسمية</h2>
+<div class="lh-previews">
+
+  <!-- شكل صفحة الوورد -->
+  <div class="a4">
+    <div class="a4-tag">📄 شكل صفحة الوورد الرسمية</div>
+    <div class="a4-top">
+      <div class="a4-lh">
+        <div class="a4-lh-box l1">{{ lh_1 or '........................' }}</div>
+        <div class="a4-lh-box l2">{{ lh_2 or '........................' }}</div>
+        <div class="a4-lh-box l3">{{ lh_3 or '........................' }}</div>
+        <div class="a4-lh-box l4">{{ lh_4 or '........................' }}</div>
+      </div>
+      <div class="a4-logo">
+        {% if has_logo %}<img src="{{ url_for('letterhead.logo_view') }}" alt="لوجو">
+        {% else %}<span>📷<br>اللوجو</span>{% endif %}
+      </div>
+    </div>
+    <div class="a4-body">نص المستند الرسمي يُكتب هنا...<br>(مذكرة / خطاب / محضر)</div>
+    <div class="a4-sigs">
+      <div class="a4-sig right">
+        <div>{{ sig_right_rank or '............' }}</div>
+        <div>{{ sig_right_name or '............' }}</div>
+      </div>
+      <div class="a4-sig left">
+        <div>{{ sig_left_rank or '............' }}</div>
+        <div>{{ sig_left_name or '............' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- شكل شيت الإكسل -->
+  <div class="a4">
+    <div class="a4-tag green">📗 شكل شيت الإكسل الرسمي</div>
+    <div class="a4-top">
+      <div class="a4-lh">
+        <div class="a4-lh-box l1">{{ lh_1 or '........................' }}</div>
+        <div class="a4-lh-box l2">{{ lh_2 or '........................' }}</div>
+        <div class="a4-lh-box l3">{{ lh_3 or '........................' }}</div>
+        <div class="a4-lh-box l4">{{ lh_4 or '........................' }}</div>
+      </div>
+      <div class="a4-logo">
+        {% if has_logo %}<img src="{{ url_for('letterhead.logo_view') }}" alt="لوجو">
+        {% else %}<span>📷<br>اللوجو</span>{% endif %}
+      </div>
+    </div>
+    <div class="xl-title">المقررات التمونيية — مقرر صيفي — {{ month_name }} {{ ctx_year | aindic }}</div>
+    <table class="xl-mock">
+      <thead><tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th></tr></thead>
+      <tbody>
+        <tr><td>١</td><td>أرز بلدي</td><td>كجم</td><td>—</td><td>٧٥٫٠٠٠</td><td>—</td><td>السبت والأحد غداء ٥٠٫٠٠٠</td></tr>
+        <tr><td>٢</td><td>لحمة مجمدة</td><td>كجم</td><td>—</td><td>٠٫١٢٠</td><td>—</td><td>يوميًا</td></tr>
+        <tr><td>٣</td><td>شاي</td><td>جم</td><td>٢٫٠٠٠</td><td>—</td><td>—</td><td>يوميًا</td></tr>
+      </tbody>
+    </table>
+    <div class="a4-sigs">
+      <div class="a4-sig right">
+        <div>{{ sig_right_rank or '............' }}</div>
+        <div>{{ sig_right_name or '............' }}</div>
+      </div>
+      <div class="a4-sig left">
+        <div>{{ sig_left_rank or '............' }}</div>
+        <div>{{ sig_left_name or '............' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel lh-decide">
+  💡 <strong>قرار ليك:</strong> بص على المعاينة دي وقولّي لو حابب تغيّر مكان أي عنصر
+  (مثلًا: الدباجة تبقى في النص فوق، اللوجو أكبر/أصغر، التوقيعات أعلى/أسفل، كلمة "يعتمد" فوق توقيع الشمال...)
+  التعديل يُطبّق على ملفات الشهر المحدد فقط، ولا يغيّر أي شهر آخر.
+</div>
+{% endblock %}

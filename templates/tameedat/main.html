@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_field, date_text %}
+{% block title %}التاميدات • قطاع وسط سيناء - قسم التميينات{% endblock %}
+{% block print_doc_title %}{% if tab == 'day' %}تأميدات يوم {{ date_text(sel_date_iso) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'momoda' %}الجهات المومدة — {{ month_name }} {{ year | aindic }}{% elif tab == 'dict' %}قاموس ودليل الجهات — {{ month_name }} {{ year | aindic }}{% else %}التقرير الشامل للتأميدات — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<!-- الترويسة الرسمية للقسم -->
+<header class="tm-hero">
+  <div class="tm-hero-lines">
+    <b class="tm-l1">منطقة وسط وجنوب للأمن المركزي</b>
+    <b class="tm-l2">قطاع وسط سيناء - قسم التميينات</b>
+  </div>
+  <div class="tm-hero-meta">
+    <span class="tm-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
+    <span class="tm-chip dim">بيانات هذا الشهر منعزلة تمامًا — وتُحفظ محليًا فور أي تغيير</span>
+  </div>
+</header>
+
+<!-- التويبات الأربعة -->
+<nav class="tm-tabs" aria-label="تويبات التاميدات">
+  {% for key, name, ic in tabs %}
+  <a class="tm-tab {{ 'on' if tab == key }}" href="{{ url_for('tameedat.page') }}&tab={{ key }}{{ '&day=' + sel_date_iso if key == 'day' }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q and key == 'day' }}">
+    {{ ic }} <span>{{ name }}</span>
+    {% if key == 'day' %}<b class="tm-count" title="عدد تأميدات اليوم المحدد">{{ day_count | aindic }}</b>{% endif %}
+    {% if key == 'dict' %}<b class="tm-count" title="عدد جهات القاموس">{{ entities | length | aindic }}</b>{% endif %}
+    {% if key == 'momoda' %}<b class="tm-count" title="عدد الجهات المومدة">{{ summary | length | aindic }}</b>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
+{% if tab == 'day' %}
+  {% include "tameedat/tab_day.html" %}
+{% elif tab == 'momoda' %}
+  {% include "tameedat/tab_momoda.html" %}
+{% elif tab == 'dict' %}
+  {% include "tameedat/tab_dict.html" %}
+{% else %}
+  {% include "tameedat/tab_report.html" %}
+{% endif %}
+
+<!-- قائمة منبثقة مشتركة: أيام التميد بالتواريخ — تخدم المومدة والقاموس -->
+<div class="tm-modal" id="tmDaysModal" hidden role="dialog" aria-modal="true" aria-labelledby="tmDaysTitle">
+  <div class="tm-modal-card">
+    <div class="tm-modal-head">
+      <b id="tmDaysTitle">أيام التميد بالتواريخ</b>
+      <button type="button" class="tm-modal-x" id="tmDaysClose" aria-label="إغلاق القائمة">✕</button>
+    </div>
+    <p class="tm-hint">كل تأميدة بتاريخها الدقيق داخل الشهر — «مدة» تعني من يوم البداية حتى النهاية وتُحسب تأميدة واحدة، وتُبيّن القائمة هل كانت الجهة ملحقة على تأميدة أخرى وعلى مَن.</p>
+    <ol class="tm-days-list" id="tmDaysList"></ol>
+    <div class="tm-modal-foot">
+      <button type="button" class="rt-btn gold" id="tmDaysPrint">🖨 طباعة قائمة الأيام</button>
+    </div>
+  </div>
+</div>
+{% include "partials/custom_rations_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script type="application/json" id="tmEntities">{{ entity_names | tojson }}</script>
+<script src="{{ url_for('static', filename='js/tameedat.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/tameedat_rations.js') }}?v={{ static_ver }}"
+        data-preview="{{ url_for('tameedat.rations_preview') }}"></script>
+{% endblock %}

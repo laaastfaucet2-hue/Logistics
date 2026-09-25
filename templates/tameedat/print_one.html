@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_text %}
+{% block body_class %}own-letterhead{% endblock %}
+{% block official_print_head %}{% endblock %}
+{% block official_print_foot %}{% endblock %}
+{% block title %}طباعة تأميدة «{{ record.entity_name }}» • مستند رسمي{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ طباعة هذه التأميدة فقط — مستند رسمي بالدباجة والتوقيعات</span><span class="sep">•</span>
+  <span class="dim">يمكنك اختيار «حفظ PDF» من نافذة الطباعة</span>
+</div>
+<div class="panel rt-toolbar no-print">
+  <div class="rt-actions">
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة المستند">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+    <a class="rt-btn dim" href="{{ url_for('tameedat.page') }}&tab=day&day={{ date_iso }}">↩ عودة لتأميدات اليوم</a>
+  </div>
+</div>
+
+<div class="panel rc-doc tm-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ lh[i] }}</div>{% endfor %}</div>
+      {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <div class="pd-title">تأميدة رقم {{ serial_month | aindic }} — {{ month_name }} {{ year | aindic }}</div>
+  </div>
+
+  <table class="tm-info">
+    <tbody>
+      <tr><th>الجهة</th><td><b>{{ record.entity_name }}</b></td><th>نوع الجهة</th><td>{{ record.entity_type }}</td></tr>
+      <tr><th>التاريخ</th><td><bdi dir="ltr" class="date-display">{{ date_iso | datefmt }}</bdi> — {{ weekday }}</td>
+          <th>الشهر</th><td>{{ month_name }} {{ year | aindic }}{% if record.range_days > 1 %}
+            <div style="margin-top:6pt;font-size:10pt">مدة زمنية مفعّلة: من يوم {{ record.day | aindic }} إلى يوم {{ record.day_to | aindic }} ({{ record.range_days | aindic }} أيام) — تأميدة واحدة.</div>{% endif %}</td></tr>
+    </tbody>
+  </table>
+
+  <table class="rt-table rc-print-table tm-print-table">
+    <thead>
+      <tr><th>م</th><th>الجهة</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">١</td>
+        <td><b>{{ record.entity_name }}</b></td>
+        <td class="num">{{ record.officers | aindic }}</td>
+        <td class="num">{{ record.individuals | aindic }}</td>
+        <td class="num">{{ record.recruits | aindic }}</td>
+        <td class="num"><b>{{ record.total | aindic }}</b></td>
+      </tr>
+      {% for a in record.attachments %}
+      <tr>
+        <td class="num">{{ (loop.index + 1) | aindic }}</td>
+        <td>ملحقة: {{ a.name }}{% if a.entity_type %} <small>({{ a.entity_type }})</small>{% endif %}</td>
+        <td class="num">{{ a.officers | aindic }}</td>
+        <td class="num">{{ a.individuals | aindic }}</td>
+        <td class="num">{{ a.recruits | aindic }}</td>
+        <td class="num">{{ (a.officers + a.individuals + a.recruits) | aindic }}</td>
+      </tr>
+      {% endfor %}
+      {% if record.attachments %}
+      <tr class="tm-totalrow">
+        <td></td><td><b>إجمالي التأميدة مع الملحقات</b></td>
+        <td class="num"><b>{{ (record.officers + record.attachments | sum(attribute='officers')) | aindic }}</b></td>
+        <td class="num"><b>{{ (record.individuals + record.attachments | sum(attribute='individuals')) | aindic }}</b></td>
+        <td class="num"><b>{{ (record.recruits + record.attachments | sum(attribute='recruits')) | aindic }}</b></td>
+        <td class="num"><b>{{ record.grand_total | aindic }}</b></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  {% if record.notes %}<p class="tm-note"><b>ملاحظات:</b> {{ record.notes }}</p>{% endif %}
+
+  <div class="tm-rations ro">
+    <b>المقرر النشط لمقررات المتعهد ({{ {'summer':'صيفي','winter':'شتوي','ramadan':'رمضان'}[ration_kind] }}) — للاسترشاد بهذه التأميدة فقط:</b>
+    <table>
+      <thead><tr><th>الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th></tr></thead>
+      <tbody>
+        {% for it in ration_items %}
+        <tr><td>{{ it.name }}</td><td>{{ it.unit or '—' }}</td>
+            <td class="num">{{ it.breakfast | qty3 if it.breakfast else '—' }}</td>
+            <td class="num">{{ it.lunch | qty3 if it.lunch else '—' }}</td>
+            <td class="num">{{ it.dinner | qty3 if it.dinner else '—' }}</td></tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center">لا مقرر مفعّل في مقررات المتعهد هذا الشهر</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="print-sigs">
+    <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+    <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+  </div>
+</div>
+{% endblock %}

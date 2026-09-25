@@ -1,0 +1,75 @@
+{% from "partials/icons.html" import icon %}
+<!DOCTYPE html><html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}وزارة الداخلية — منظومة التعيينات{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
+{% block head_extra %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dates.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}?v={{ static_ver }}">
+</head><body class="{% block body_class %}{% endblock %}" data-sid="{{ sid }}" data-year="{{ ctx_year }}" data-month="{{ ctx_month }}" data-desktop="{{ '1' if desktop_mode else '0' }}">
+{% include 'partials/windowbar.html' %}
+<div class="bg-fx" aria-hidden="true"></div>
+{% if request.args.get('ok') %}<div class="toast ok" role="status"><span>{{ request.args.get('ok') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
+{% if request.args.get('err') %}<div class="toast err" role="alert"><span>{{ request.args.get('err') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
+{% if request.args.get('warn') %}<div class="toast warn" role="status"><span>{{ request.args.get('warn') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
+<div class="app"><aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار وزارة الداخلية"></div><div><div class="brand-name">وزارة الداخلية</div><div class="brand-sub">قطاع الأمن المركزى</div><div class="brand-sub">منطقة وسط وجنوب سيناء</div><div class="brand-sub">قطاع وسط سيناء</div><div class="brand-sub brand-sub2">قسم التعيينات</div></div></div>
+  <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
+    <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
+    <div class="nav-title">الأقسام الشهرية</div>
+    {% set active_paths = {'tamween_rations':'/rations/tamween', 'contractor_rations':'/rations/contractor', 'mojandeen':'/recruits', 'tameedat':'/tameedat', 'calc2':'/calc2'} %}
+    {% for s in nav_monthly %}
+    <a href="{{ url_for('section_page', key=s.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=s.key), active_paths.get(s.key, '')] }}">{{ icon(s.key) }}{{ s.name }}</a>
+    {% endfor %}
+    <div class="nav-title">أدوات المنظومة</div>
+    {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups'} %}
+    {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
+  </nav>
+  <div class="side-foot"><div class="sidebar-status"><i class="status-dot"></i>{{ 'تعمل محليًا على جهازك' if desktop_mode else 'بيئة المعاينة' }}</div><a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a></div>
+</aside>
+<div class="main"><header class="topbar">
+  <button class="menu-btn" id="menuBtn" type="button" aria-label="القائمة"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="top-date">{{ icon('calendar') }}<bdi id="todayDate" class="date-display" dir="ltr">{{ today_date | datefmt }}</bdi></div>
+  {% include "partials/print_btn.html" %}
+  <div class="top-user"><div><div class="u-name">{{ current_user.full_name }}</div><div class="u-role">{{ 'مدير النظام' if current_user.role == 'admin' else 'أمين مخزن' }}</div></div></div>
+  <div class="ctx" title="السنة والشهر النشطان">
+    <div class="ctx-pill">
+      <button id="addYearBtn" class="ctx-add" title="إنشاء سنة جديدة بمجلداتها الـ12 شهرًا" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <span class="ctx-pill-text"><small>السنة الدفترية</small><input id="ctxYear" class="ctx-sel" data-combo="contextYears" value="{{ ctx_year | aindic }}" autocomplete="off" aria-label="السنة الدفترية النشطة"></span>
+      <svg class="ctx-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="ctx-pill">
+      <span class="ctx-pill-text"><small>الشهر المحاسبي</small><input id="ctxMonth" class="ctx-sel" data-combo="contextMonths" value="{{ months[ctx_month-1][1] }}" autocomplete="off" aria-label="الشهر المحاسبي النشط"></span>
+      <svg class="ctx-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <datalist id="contextYears">{% for y in years %}<option value="{{ y | aindic }}">{% endfor %}</datalist><datalist id="contextMonths">{% for n, label in months %}<option value="{{ label }}" data-month="{{ n }}">{% endfor %}</datalist>
+    <button id="archiveYearBtn" class="ctx-arch" title="نقل السنة المحددة إلى الأرشيف — لا تنتقل إلا بعد انتهائها تمامًا" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>نقل إلى الأرشيف</span></button>
+    <button id="delYearBtn" class="ctx-del" title="حذف السنة المحددة نهائيًا" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6m4-6v6"/></svg></button>
+  </div>
+</header>
+<main class="content">
+  {% block official_print_head %}
+    {% if current_user %}<div class="app-print-head" aria-hidden="true">{% include "partials/official_print_head.html" %}<div class="pd-title">{% block print_doc_title %}{% endblock %}</div></div>{% endif %}
+  {% endblock %}
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="flash flash-{{ category }}"><span>{{ message }}</span><button type="button" class="flash-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endfor %}{% endwith %}{% block content %}{% endblock %}
+  {% block official_print_foot %}
+    {% if current_user %}{% include "partials/official_print_foot.html" %}{% endif %}
+  {% endblock %}
+</main>
+<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>معاينة ويب · احتفظ بنسختك الاحتياطية</span>{% endif %}</footer>
+</div></div>
+{% include 'partials/notifications.html' %}
+<script type="application/json" id="dateConfig">{{ date_config | tojson }}</script>
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/dates.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/date-picker.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/session.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/context.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/desktop.js') }}?v={{ static_ver }}"></script>
+{% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_ver }}"></script>
+</body></html>

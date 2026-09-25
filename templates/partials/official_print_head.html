@@ -1,0 +1,5 @@
+{# أسطر الدباجة الأربعة + اللوجو — تُدرج داخل .app-print-head من base.html #}
+<div class="pd-head">
+  <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ (lh or ['','','',''])[i] }}</div>{% endfor %}</div>
+  {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+</div>

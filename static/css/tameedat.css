@@ -1,0 +1,371 @@
+/* قسم التاميدات — هوية بنفسجية/برتقالية فوق رموز theme.css المشتركة */
+/* الوضع الداكن يمتد إلى عناصر المتصفح الأصلية (قوائم select وشريط التمرير) على هذه الصفحات */
+html { color-scheme: dark; }
+option { background: #0f172a; color: #e2e8f0; }
+.tm-hero { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 18px; padding: 20px 24px; border-radius: var(--radius);
+  background: linear-gradient(110deg, #101b2e, #0f172a 55%, #14223a);
+  border: 1px solid var(--gold-border); }
+.tm-hero-lines { display: flex; flex-direction: column; gap: 3px; }
+.tm-l1 { font-size: 1rem; color: var(--gold-light); font-weight: 600; }
+.tm-l2 { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.tm-hero-meta { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.tm-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 15px;
+  border-radius: 20px; font-size: .85rem; background: var(--surface-gold);
+  border: 1px solid var(--gold-border); color: var(--text); text-decoration: none; }
+.tm-chip.dim { background: transparent; color: var(--muted); border-color: var(--card-border); }
+.tm-chip.month b { color: var(--gold-light); }
+a.tm-chip:hover { border-color: var(--brand-orange); color: var(--gold-light); }
+.tm-chip.on { background: var(--brand-orange); color: var(--on-orange);
+  border-color: var(--brand-orange); font-weight: 600; }
+a.tm-chip.on:hover { color: var(--on-orange); }
+
+.tm-tabs { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 18px; }
+.tm-tab { display: inline-flex; align-items: center; gap: 9px; padding: 12px 20px;
+  border-radius: 11px; text-decoration: none; font-weight: 600; font-size: .95rem;
+  background: var(--card); border: 1px solid var(--card-border); color: var(--muted);
+  transition: border-color .15s, background .15s, color .15s; }
+.tm-tab:hover { border-color: var(--gold-border); color: var(--text); }
+.tm-tab.on { background: var(--brand-orange); border-color: var(--brand-orange);
+  color: var(--on-orange); }
+.tm-count { min-width: 26px; height: 24px; padding: 0 7px; border-radius: 12px;
+  display: inline-grid; place-items: center; font-size: .78rem;
+  background: rgba(255, 255, 255, .14); color: inherit; }
+.tm-tab.on .tm-count { background: rgba(0, 0, 0, .18); }
+
+.tm-copybar { display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding: 13px 18px;
+  border-radius: 11px; background: var(--surface-gold);
+  border: 1px dashed var(--gold-border); font-size: .92rem; }
+.tm-link { color: var(--gold-light); font-size: .88rem; }
+.tm-link:hover { text-decoration: underline; }
+
+/* زرّ «إضافة تأميدة جديدة لهذا اليوم» — amber صلب بعرض العمود، يفتح النموذج ويقفله */
+.tm-newbtn { display: flex; align-items: center; justify-content: center; gap: 11px;
+  width: 100%; padding: 14px 20px; margin: 0 0 16px; border-radius: 12px;
+  background: var(--brand-gold); border: 1px solid var(--brand-gold);
+  color: var(--on-gold); font-family: var(--font-ui); font-size: 16px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 7px 20px rgba(245, 158, 11, .28);
+  transition: transform .14s, box-shadow .14s, background .14s; }
+.tm-newbtn:hover { background: var(--brand-gold-hover); border-color: var(--brand-gold-hover);
+  transform: translateY(-1px); box-shadow: 0 10px 24px rgba(245, 158, 11, .38); }
+.tm-newbtn:active { transform: translateY(0); }
+.tm-newbtn-plus { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  background: rgba(2, 6, 23, .16); color: var(--on-gold); font-size: 19px; font-weight: 700; line-height: 1; }
+.tm-newbtn.open { background: var(--surface-gold); border-color: var(--gold-border);
+  color: var(--gold-light); box-shadow: none; }
+.tm-newbtn.open .tm-newbtn-plus { background: rgba(245, 158, 11, .18); color: var(--gold-light); }
+.tm-range-note { margin: -4px 0 10px; }
+.tm-range-hint { margin: -6px 0 12px; font-weight: 500; }
+.tm-formcol { min-width: 0; }
+
+.tm-daygrid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; margin-bottom: 18px; }
+.tm-dict-stack { display: flex; flex-direction: column; gap: 18px; margin-bottom: 18px; }
+@media (max-width: 1250px) { .tm-daygrid { grid-template-columns: 1fr; } }
+
+.tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+.tm-wd { text-align: center; font-size: .75rem; color: var(--muted); padding-bottom: 4px; }
+.tm-cell { position: relative; aspect-ratio: 1.35; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; border-radius: 9px; text-decoration: none;
+  background: var(--field-bg); border: 1px solid var(--card-border); color: var(--text);
+  font-size: .9rem; transition: border-color .12s, background .12s; }
+.tm-cell.empty { background: transparent; border-color: transparent; }
+a.tm-cell:hover { border-color: var(--brand-orange); }
+.tm-cell.today { border-color: var(--blue); }
+.tm-cell.sel { background: var(--brand-orange); border-color: var(--brand-orange); }
+.tm-cell.sel b { color: var(--on-orange); }
+.tm-cell .tm-dot { position: absolute; top: 5px; left: 6px; min-width: 19px; height: 18px;
+  padding: 0 4px; border-radius: 9px; display: grid; place-items: center;
+  font-size: .66rem; font-style: normal; background: var(--brand-orange);
+  color: var(--on-orange); font-weight: 700; }
+.tm-cell.sel .tm-dot { background: #ffffff; }
+.tm-pastebox { margin-bottom: 12px; }
+.tm-paste { width: 100%; }
+.tm-hint { font-size: .8rem; color: var(--muted); }
+.tm-hint.warn { color: var(--gold-light); display: block; margin-top: 6px; }
+
+.tm-filters { display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; border-top: 1px dashed var(--card-border); padding-top: 14px; }
+.tm-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.tm-search { display: flex; gap: 8px; align-items: center; }
+.tm-search input { padding: 9px 13px; border-radius: 9px; background: var(--field-bg);
+  border: 1px solid var(--field-border); color: var(--text); min-width: 200px; }
+
+.tm-formcard .fld { margin-bottom: 14px; }
+.tm-frow { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.tm-frow .wide { grid-column: span 1; }
+.tm-frow.nums { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 720px) { .tm-frow, .tm-frow.nums { grid-template-columns: 1fr 1fr; } }
+.fld label { display: block; margin-bottom: 7px; font-size: .9rem; font-weight: 500; }
+.fld input { width: 100%; padding: 12px 14px; border-radius: 9px; font-size: 1rem;
+  background: var(--field-bg); border: 1px solid var(--field-border); color: var(--text); }
+.fld input:focus { border-color: var(--brand-orange); box-shadow: var(--focus-ring); outline: none; }
+.fld input.locked, .fld input[readonly]:not(.tm-total) { opacity: .75; }
+.tm-total { background: var(--surface-gold) !important; color: var(--gold-light) !important;
+  font-weight: 700; text-align: center; }
+
+.tm-types { border: 1px dashed var(--card-border); border-radius: 10px;
+  padding: 12px 16px 14px; margin: 0 0 14px; display: flex; align-items: center;
+  gap: 16px; flex-wrap: wrap; }
+.tm-types legend { font-size: .8rem; color: var(--muted); padding: 0 8px; }
+.tm-types label { display: inline-flex; align-items: center; gap: 7px; font-size: .92rem; }
+.tm-types input[name="type_other"], .tm-type-other { padding: 8px 12px; border-radius: 8px;
+  background: var(--field-bg); border: 1px solid var(--field-border);
+  color: var(--text); min-width: 170px; }
+
+.tm-atts { border: 1px solid var(--card-border); border-radius: 11px;
+  padding: 13px 15px; margin-bottom: 15px; background: #0b1220; }
+.tm-atts-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.tm-atts-head b { font-size: .92rem; }
+.tm-atts-head .rt-btn { margin-right: auto; padding: 7px 13px; font-size: .82rem; }
+.tm-att { display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.05fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, .8fr) 42px;
+  gap: 8px; margin-bottom: 10px; align-items: end; min-width: 0; }
+.tm-att > * { min-width: 0; }   /* عناصر الشبكة تنكمش — بلا فيض يسار البطاقة */
+.tm-att-fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tm-att-fld > span { font-size: .72rem; font-weight: 600; color: var(--muted);
+  padding-inline-start: 2px; }
+.tm-att input { width: 100%; padding: 10px 12px; border-radius: 9px;
+  background: #0f172a; border: 1px solid #334155; color: #e2e8f0; font-size: .9rem; }
+.tm-att input:focus { border-color: var(--brand-orange); box-shadow: var(--focus-ring); outline: none; }
+.tm-att input::placeholder { color: #64748b; }
+.tm-att-num input { text-align: center; font-weight: 600; background: #0f172a; }
+.tm-att .tm-att-del { height: 42px; width: 42px; align-self: end;
+  background: #0f172a; border-color: #334155; }
+.tm-save { width: 100%; }
+
+.tm-table td.name b { display: block; }
+.tm-table td.name small { color: var(--muted); }
+.tm-type { display: inline-block; padding: 4px 12px; border-radius: 16px;
+  font-size: .78rem; background: var(--surface-soft);
+  border: 1px solid var(--card-border); }
+.tm-type.t-other { background: var(--surface-gold); border-color: var(--gold-border);
+  color: var(--gold-light); }
+.tm-totalrow td { background: var(--surface-gold) !important; font-weight: 600; }
+
+/* ===== مجموعة إجراءات التأميدة — أربعة أزرار مميزة واحترافية ===== */
+.tm-ops { white-space: nowrap; }
+.tm-actions { display: flex; gap: 7px; align-items: center; justify-content: flex-start; }
+.tm-act { width: 34px; height: 34px; border-radius: 11px; display: inline-flex;
+  align-items: center; justify-content: center; border: 1.5px solid transparent;
+  cursor: pointer; padding: 0;
+  transition: transform .15s, box-shadow .15s, background .15s, border-color .15s, color .15s; }
+.tm-act svg { width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tm-act:hover { transform: translateY(-2px); }
+.tm-act:focus-visible { outline: 2px solid var(--gold-border); outline-offset: 2px; }
+.tm-act-edit { background: #f59e0b; border-color: #f59e0b; color: #020617; }
+.tm-act-edit:hover { background: #fbbf24; box-shadow: 0 5px 14px rgba(245, 158, 11, .35); }
+.tm-act-copy { background: var(--brand-orange); border-color: var(--brand-orange);
+  color: var(--on-orange); }
+.tm-act-copy:hover { background: var(--brand-gold-hover); color: var(--on-orange);
+  box-shadow: 0 5px 14px rgba(245, 158, 11, .35); }
+.tm-act-permit { background: var(--surface-gold); border-color: var(--gold-border);
+  color: var(--gold-light); }
+.tm-act-permit:hover { border-color: var(--gold-light);
+  box-shadow: 0 5px 14px rgba(255, 196, 122, .22); }
+.tm-act-delete { background: rgba(255, 87, 102, .13); border-color: rgba(255, 87, 102, .45);
+  color: #ff7d8c; }
+.tm-act-delete:hover { background: #e4463f; border-color: #e4463f; color: #fff;
+  box-shadow: 0 5px 14px rgba(228, 70, 63, .4); }
+.tm-del-form { display: inline-flex; margin: 0; }
+.tm-print-mini { display: inline-block; margin-top: 5px; font-size: .72rem;
+  color: var(--muted); text-decoration: none; border: 1px dashed var(--card-border);
+  border-radius: 14px; padding: 2px 9px; }
+.tm-print-mini:hover { color: var(--gold-light); border-color: var(--gold-border); }
+.tm-permit-make { display: inline-flex; align-items: center; margin: 6px 0 0 6px; padding: 7px 12px;
+  border-radius: 12px; background: #166534; color: #dcfce7; font-weight: 800; font-size: .78rem;
+  text-decoration: none; border: 1px solid #22c55e; }
+.tm-permit-make:hover { background: #15803d; color: #fff; }
+.tm-permit-make.dim { background: transparent; color: var(--gold-light); border-style: dashed;
+  border-color: var(--gold-border); font-weight: 700; }
+.tm-permit-done { display: inline-flex; margin: 6px 0 0; padding: 7px 12px; border-radius: 12px;
+  background: #14532d; color: #86efac; font-weight: 800; font-size: .78rem;
+  border: 1px solid #22c55e; }
+
+/* ===== صفوف الملحقات — كل ملحقة في سطر منظم بأعمدتها ===== */
+.tm-table tr.tm-attrow td { background: rgba(255, 196, 122, .05); font-size: .88rem; }
+.tm-table tr.tm-attrow td.name { padding-inline-start: 26px; }
+.tm-att-badge { display: inline-block; font-size: .68rem; padding: 2px 9px;
+  border-radius: 12px; background: rgba(245, 158, 11, .14); color: var(--brand-orange);
+  border: 1px solid rgba(245, 158, 11, .4); margin-inline-end: 6px; }
+.tm-att-arrow { color: var(--brand-orange); font-weight: 700; }
+
+/* قيم مكدّسة: الجهة الأم + كل ملحقة + إجمالي التأميدة — كلها في خلية واحدة */
+.tm-table td.num.stack { padding-block: 6px; line-height: 1.35; }
+.tm-table td.num.stack .stk { display: block; white-space: nowrap; font-size: .92rem; }
+.tm-table td.num.stack .stk.att { color: var(--gold-light); opacity: .85; font-size: .85rem; }
+.tm-table td.num.stack .stk.tot { display: block; margin-top: 3px; padding-top: 3px;
+  border-top: 1px dashed var(--card-border); color: var(--brand-orange); font-size: .98rem; }
+.tm-table td.name .nm-att { display: block; margin-top: 4px; font-size: .78rem;
+  color: var(--muted); }
+.tm-table td.name .nm-att::first-letter { color: var(--brand-orange); font-weight: 700; }
+.tm-table td.name .nm-tot { display: block; margin-top: 4px; padding-top: 3px;
+  border-top: 1px dashed var(--card-border); font-size: .74rem; color: var(--gold-light); }
+
+.tm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+@media (max-width: 900px) { .tm-stats { grid-template-columns: repeat(2, 1fr); } }
+.tm-stat { background: var(--card); border: 1px solid var(--card-border);
+  border-top: 3px solid var(--brand-orange); border-radius: 12px; padding: 16px 18px; }
+.tm-stat b { display: block; font-size: 1.7rem; color: var(--gold-light);
+  font-variant-numeric: tabular-nums; }
+.tm-stat.big b { color: var(--brand-orange); }
+.tm-stat span { font-size: .82rem; color: var(--muted); }
+
+.tm-report-desc p, .tm-report-desc li { font-size: .94rem; line-height: 2; }
+.tm-report-desc ul { margin: 8px 22px 12px; }
+.tm-report-desc bdi { background: var(--field-bg); padding: 4px 10px;
+  border-radius: 7px; border: 1px solid var(--field-border); font-size: .8rem; }
+.tm-report-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
+/* المستند الورقي الرسمي */
+.tm-doc .tm-info { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.tm-doc .tm-info th, .tm-doc .tm-info td { border: 1px solid #b7bdc9; padding: 8px 10px;
+  font-size: .85rem; text-align: right; }
+.tm-doc .tm-info th { background: #f1f2f6; width: 16%; color: #0a1230; }
+.tm-doc .tm-note { font-size: .85rem; margin: 8px 0; color: #1a2033; }
+.tm-print-table .tm-totalrow td { background: #e9edf7 !important; }
+.tm-part { text-align: center; color: #0a1230; margin: 16px 0 8px; font-size: .95rem; }
+.tm-stamp { text-align: center; color: #5f5f57; font-size: .78rem; margin-top: 4px; }
+.tm-rations { margin-top: 14px; }
+.tm-rations b { font-size: .82rem; color: #0a1230; display: block; margin-bottom: 6px; }
+.tm-rations table { width: 100%; border-collapse: collapse; }
+.tm-rations th, .tm-rations td { border: 1px solid #c6cbd6; padding: 6px 8px;
+  font-size: .76rem; text-align: center; color: #1a2033; }
+.tm-rations th { background: #f1f2f6; }
+@media print {
+  .tm-doc .tm-rations { break-inside: avoid; }
+}
+
+/* ===== الأرقام العربية المشرقية ==== Tajawal أولًا لأن فيه الأرقام أصليًا ===== */
+.tm-table td.num, .tm-stat b, .tm-total, .tm-range-chip, .tm-att-badge, .tm-table td.num.stack .stk,
+.tm-cell b, .tm-cell .cnt, td.att-total, .tm-copybar b,
+.tm-count, .tm-chip b, .tm-days-open, .tm-days-list bdi, .tm-days-list b,
+input, select, textarea {
+  font-family: "Tajawal", "Segoe UI", "Noto Naskh Arabic", "Noto Sans Arabic", "Tahoma",
+    "DejaVu Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.tm-range-chip { white-space: nowrap; }
+
+/* صف الملحقة داخل المومدة — تظليل خفيف مع شارة */
+.tm-table tr.tm-att-momoda td { background: rgba(255, 196, 122, .05); }
+.tm-table td.num.avg { color: var(--gold-light); }
+
+.tm-range-chip { display: inline-block; margin-top: 4px; margin-inline-end: 8px;
+  font-size: .72rem; padding: 2px 10px; border-radius: 13px; color: var(--gold-light);
+  background: rgba(245, 158, 11, .13); border: 1px solid rgba(245, 158, 11, .45); }
+
+/* ===== قائمة أيام التميد بالتواريخ (منبثقة في المومدة) ===== */
+.tm-days-open { display: block; margin: 4px auto 0; border: 1px dashed var(--gold-border);
+  border-radius: 13px; background: transparent; color: var(--gold-light);
+  font-size: .7rem; padding: 3px 9px; cursor: pointer;
+  font-family: inherit; }
+.tm-days-open:hover { background: rgba(245, 158, 11, .12); }
+.tm-modal { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center;
+  justify-content: center; background: rgba(10, 6, 26, .72); padding: 20px; }
+.tm-modal[hidden] { display: none; }
+.tm-modal-card { width: min(560px, 96vw); max-height: 84vh; overflow: auto;
+  background: var(--bg1, #0f172a); border: 1px solid var(--gold-border);
+  border-radius: 16px; padding: 20px 22px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); }
+.tm-modal-head { display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; border-bottom: 2px solid var(--gold-border); padding-bottom: 10px; margin-bottom: 10px; }
+.tm-modal-head b { color: var(--gold-light); font-size: 1.02rem; }
+.tm-modal-x { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--card-border);
+  background: var(--card); color: var(--muted); cursor: pointer; font-size: .9rem; }
+.tm-modal-x:hover { color: #fff; border-color: #e4463f; background: rgba(228, 70, 63, .2); }
+.tm-days-list { margin: 12px 8px 16px 0; padding-inline-start: 20px; display: grid; gap: 8px; }
+.tm-days-list li { padding: 8px 10px; border-radius: 10px; background: var(--card);
+  border: 1px solid var(--card-border); display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tm-days-list .d-line b { color: var(--brand-orange); }
+.tm-days-list .d-line em { color: var(--muted); font-size: .78rem; margin-inline-start: 6px; }
+.tm-modal-foot { display: flex; justify-content: flex-start; border-top: 1px dashed var(--card-border);
+  padding-top: 12px; }
+.tm-modal .tm-hint { margin-bottom: 4px; }
+
+@media print {
+  body.printing-days * { visibility: hidden; }
+  body.printing-days .tm-modal, body.printing-days .tm-modal * { visibility: visible; }
+  body.printing-days .tm-modal { position: absolute; inset: 0; background: #fff; display: flex;
+    align-items: flex-start; }
+  body.printing-days .tm-modal-card { width: 100%; max-height: none; border: none;
+    box-shadow: none; color: #111; background: #fff; }
+  body.printing-days .tm-modal-card * { color: #111 !important; background: #fff !important;
+    border-color: #999 !important; }
+  body.printing-days .tm-modal-x, body.printing-days .tm-modal-foot,
+  body.printing-days .tm-days-list .tm-print-mini { display: none !important; }
+}
+
+/* ===== شريط فتح المجلد/الملف للتبويب (قاعدة أزرار الملفات) ===== */
+.tm-openbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.tm-openbtn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
+  border-radius: 11px; border: 1px dashed var(--gold-border); background: var(--surface-gold);
+  color: var(--gold-light); font-size: .85rem; text-decoration: none; font-weight: 600; }
+.tm-openbtn:hover { border-color: var(--brand-orange); color: var(--brand-orange);
+  background: rgba(245, 158, 11, .1); }
+
+.tm-cell.issued { box-shadow: inset 0 0 0 2px #22c55e; }
+.tm-cell.issued::after { content: ""; position: absolute; left: 5px; bottom: 5px;
+  width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+.tm-rat-card { width: min(860px, 96vw); max-height: 90vh; overflow: auto; padding-top: 0;
+  border-color: var(--brand-gold); box-shadow: 0 28px 70px rgba(245, 158, 11, .18), 0 12px 40px rgba(0,0,0,.55); }
+.tm-rat-head { display: flex; align-items: center; gap: 12px; margin: 0 -22px 16px;
+  padding: 16px 18px; border-radius: 16px 16px 0 0; background: var(--brand-gold); color: var(--on-gold); }
+.tm-rat-head-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(2, 6, 23, .14); font-size: 1.25rem; flex: 0 0 auto; }
+.tm-rat-head-txt { flex: 1; min-width: 0; }
+.tm-rat-head-txt b { display: block; color: var(--on-gold); font-size: 1.02rem; line-height: 1.45; }
+.tm-rat-head-txt small { display: block; margin-top: 3px; color: #3f2a05; font-weight: 600; font-size: .78rem; }
+.tm-modal-x.on-amber { background: rgba(2, 6, 23, .14); color: var(--on-gold); border-color: transparent; }
+.tm-modal-x.on-amber:hover { background: #e4463f; color: #fff; }
+.tm-rat-bar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.tm-rat-combos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tm-rat-combos label { display: flex; flex-direction: column; gap: 6px; font-size: .82rem; font-weight: 700;
+  color: var(--gold-light); }
+.tm-rat-combos input { border: 1px solid var(--gold-border) !important; background: var(--surface-gold) !important;
+  color: var(--text); font-weight: 700; }
+.tm-rat-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 5px; border-radius: 14px;
+  background: rgba(245, 158, 11, .08); border: 1px solid var(--gold-border); }
+.tm-rat-tab { border: 0; background: transparent; color: var(--muted);
+  border-radius: 10px; padding: 10px 16px; font-weight: 800; cursor: pointer; font-family: inherit;
+  flex: 1; min-width: 140px; }
+.tm-rat-tab.on { background: var(--brand-gold); color: var(--on-gold); box-shadow: 0 6px 16px rgba(245, 158, 11, .28); }
+.tm-rat-hint { color: var(--gold-light); }
+.tm-rat-cols { display: grid; grid-template-columns: 92px 1fr 110px; gap: 8px; padding: 0 12px 6px;
+  font-size: .75rem; font-weight: 800; color: var(--gold-light); }
+.tm-rat-list { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow: auto;
+  padding: 4px; border-radius: 14px; background: rgba(245, 158, 11, .05);
+  border: 1px dashed var(--gold-border); min-height: 88px; }
+.tm-rat-row { display: grid; grid-template-columns: 92px 1fr 110px; gap: 8px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--gold-border); border-radius: 12px;
+  background: #0f172a; }
+.tm-rat-row.off { opacity: .42; }
+.tm-rat-day { display: flex; flex-direction: column; gap: 2px; border: 0; border-radius: 10px;
+  background: var(--brand-gold); color: var(--on-gold); font-weight: 800; padding: 8px 6px; cursor: pointer;
+  font-family: inherit; }
+.tm-rat-day small { font-weight: 600; opacity: .85; }
+.tm-rat-name { font-weight: 700; }
+.tm-rat-qty { padding: 8px; border-radius: 9px; border: 1px solid var(--gold-border);
+  background: var(--surface-gold); color: var(--text); text-align: center; font-weight: 800; }
+.tm-rat-save { width: 100%; justify-content: center; padding: 12px 18px; font-weight: 800; }
+.tm-soon-card { width: min(520px, 96vw); padding-top: 0; border-color: var(--brand-gold); }
+.tm-soon-body { text-align: center; padding: 18px 8px 8px; }
+.tm-soon-badge { display: inline-flex; margin-bottom: 12px; padding: 6px 14px; border-radius: 999px;
+  background: var(--brand-gold); color: var(--on-gold); font-weight: 800; }
+.tm-soon-body p { color: var(--text); font-weight: 600; line-height: 1.7; margin: 0; }
+
+.tm-bigacts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 16px; }
+.tm-bigact { display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 86px; padding: 14px 16px; border-radius: 16px; border: 0; cursor: pointer;
+  font-family: inherit; text-align: center; line-height: 1.45;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .28); transition: transform .14s, box-shadow .14s, filter .14s; }
+.tm-bigact:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.tm-bigact-ico { font-size: 1.35rem; flex: 0 0 auto; }
+.tm-bigact-txt { font-size: .92rem; font-weight: 800; }
+.tm-bigact.amber { background: var(--brand-gold); color: var(--on-gold);
+  box-shadow: 0 8px 22px rgba(245, 158, 11, .38); }
+.tm-bigact.teal { background: #134e4a; color: #ecfdf5; border: 1px solid #2dd4bf; }
+@media (max-width: 820px) { .tm-bigacts, .tm-rat-combos { grid-template-columns: 1fr; } }

@@ -1,0 +1,27 @@
+/* Native bootstrap screen: shared fonts, tokens and buttons, no external resources. */
+body { margin: 0; min-height: 100vh; }
+.bar { height: var(--window-h); display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  background: var(--window-bg); color: var(--muted); font-size: 13px;  border-bottom: 1px solid var(--card-border); }
+.bar span { flex: 1; align-self: stretch; display: flex; align-items: center; }
+.bar button { width: 42px; height: var(--window-h); margin-left: -16px; background: none; border: 0; color: var(--muted); }
+.bar button:hover { background: var(--brand-gold); color: var(--on-gold); }
+.bar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.stage { min-height: calc(100vh - var(--window-h)); display: grid; place-items: center; text-align: center; padding: 35px;  background: radial-gradient(ellipse at center, #f59e0b1a, transparent 65%); }
+.card { max-width: 620px; width: 100%; padding: 40px; background: transparent;
+  border: 0; border-top: 0;
+  border-radius: 15px; box-shadow: none; }
+.mark { width: 76px; height: 76px; margin: 0 auto 20px; }
+.mark svg { width: 100%; height: 100%; }
+h1 { font-size: 32px; margin: 12px 0; }
+p { color: var(--muted); line-height: 2; font-size: 16px; }
+.eyebrow { font-size: 12px; letter-spacing: 2px; color: var(--gold-light); }
+.buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 26px 0; }
+.note { font-size: 13px; }
+.loading { height: 4px; width: 190px; background: var(--surface-soft); margin: 28px auto;
+  overflow: hidden; border-radius: 3px; border: 1px solid var(--card-border); }
+.loading::after { content: ""; display: block; width: 45%; height: 100%;
+  background: var(--brand-gold); animation: progress 1.2s ease-in-out infinite alternate; }
+@keyframes progress { to { transform: translateX(-130%); } }
+#error { background: var(--surface-red); color: var(--red); border: 1px solid var(--danger-border);
+  border-radius: 9px; padding: 15px; margin-bottom: 16px; font-size: 14px;
+  line-height: 1.9; white-space: pre-wrap; text-align: right; }

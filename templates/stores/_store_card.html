@@ -1,0 +1,72 @@
+{# كارت مخزن واحد: حركته الداخلية/الخارجية بالتغليف + كشف أرصدته — مستهدف بالحلقة #}
+<section class="panel wh-store-card">
+  <div class="panel-head">
+    <h3>{{ '🏬' if target.store.id else '📦' }} {{ target.store.name }}</h3>
+    <span class="wh-chip dim">
+      {% if target.store.id %}
+        {% if target.store.capacity_m2 %}السعة: {{ target.store.capacity_m2 | qty3 }} متر •{% endif %}
+        {% if target.store.fans is not none %}مرواح: {{ target.store.fans | aindic }} •{% endif %}
+        {% if target.store.extractors is not none %}شفاطات: {{ target.store.extractors | aindic }}{% endif %}
+      {% else %}كمية داخلية لم تُوزَّع على مخازن بعد{% endif %}
+    </span>
+  </div>
+
+  <b class="wh-taf-title">الحركة الداخلية والخارجية</b>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>النوع</th><th>التاريخ</th><th>الدورة</th><th>الصنف</th>
+      <th>الكمية</th><th>الوحدة</th><th>التغليف</th><th>المستند</th>
+    </tr></thead>
+    <tbody>
+      {% for row in target.inn %}
+      <tr>
+        <td class="wh-in">داخل</td>
+        <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
+        <td>{{ row.cycle }}</td>
+        <td class="name"><b>{{ row.item }}</b></td>
+        <td class="num">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td>
+        <td>{{ row.pack_label or '—' }}</td>
+        <td>{% if row.serial %}إذن إضافة رقم {{ row.serial | aindic }}{% else %}رصيد أول المدة{% endif %}</td>
+      </tr>
+      {% endfor %}
+      {% for row in target.out %}
+      <tr class="wh-issue-row">
+        <td class="wh-out">خارج</td>
+        <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
+        <td>{{ row.cycle }}</td>
+        <td class="name"><b>{{ row.item }}</b></td>
+        <td class="num wh-issued">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td>
+        <td>{{ row.pack_label or '—' }}</td>
+        <td>إذن صرف ٢ مخازن رقم {{ row.permit_no | aindic }}
+          {% if row.expiry %}(صلاحية <bdi dir="ltr" class="date-display">{{ row.expiry | datefmt }}</bdi>){% endif %}</td>
+      </tr>
+      {% else %}
+      {% if not target.inn %}
+      <tr><td colspan="8" class="empty">لا حركة بعد — أضف كمية لهذا المخزن من ١ مخازن (توزيع الكمية على المخازن)</td></tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <b class="wh-taf-title">كشف أرصدة المخزن — يتجدد تلقائيًا مع أي ٢ مخازن</b>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th></tr></thead>
+    <tbody>
+      {% for item, qty in target.balances.items() %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="name"><b>{{ item }}</b></td>
+        <td class="num"><b>{{ qty | qty3 }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>

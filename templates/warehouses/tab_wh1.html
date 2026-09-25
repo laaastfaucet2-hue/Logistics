@@ -1,0 +1,102 @@
+{# ١ مخازن — إذن إضافة صنف: الإدخال اليدوي الوحيد في الدورة المخزنية #}
+<button type="button" class="wh-newbtn no-print" id="whWh1Toggle"
+        aria-expanded="false" aria-controls="whWh1Form">
+  <span class="wh-newbtn-plus">＋</span> إذن إضافة جديد (١ مخازن)
+</button>
+
+<form class="panel wh-form" id="whWh1Form" method="post"
+      action="{{ url_for('warehouses.wh1_add', cycle=cycle_key) }}" hidden data-autopen>
+  <input type="hidden" name="cycle" value="{{ cycle_key }}">
+  <h3 class="wh-form-title">📥 إذن إضافة صنف — ١ مخازن</h3>
+  <p class="wh-form-hint">الكمية تُدخل بالوحدة التعاملية المحددة للصنف في ٣ مخازن، والتحويل لوحدة القاعدة تلقائي (١ طن = ١٠٠٠ كجم). عند الحفظ يُفتح كارت الصنف في دفتر ٣ مخازن تلقائيًا.</p>
+  <div class="wh-grid">
+    <label class="wh-f">الصنف <i>*</i>
+      <input name="item_name" required data-combo="whItemsList" autocomplete="off"
+             value="{{ prefill }}" id="whItemName" placeholder="اكتب أو اختر صنفًا من المقرر..."></label>
+    <label class="wh-f">رقم الإذن <small>(تدخله يدويًا — فاضي = يكمّل التسلسل)</small>
+      <input name="receipt_no" inputmode="numeric" autocomplete="off" placeholder="مثال: ١"></label>
+    <label class="wh-f">وحدة التعامل <small>(للصنف الجديد — تثبت في ٣ مخازن)</small>
+      <input name="handle_unit" id="whUnitInput" data-combo="whUnitsList" autocomplete="off"
+             placeholder="كجم، طن، شيكارة..."></label>
+    <label class="wh-f">كمية الإضافة <i>*</i>
+      <input name="qty" id="whQty" required inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
+    <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whConvHint"></span></div>
+
+    <label class="wh-f">نوع التغليف <small>(اختياري — والكمية تُحسب تلقائيًا)</small>
+      <input name="pack_kind" id="whPackKind" data-combo="whPackKindsList" autocomplete="off"
+             placeholder="شكارة، كرتونة، بلات، علبة..."></label>
+    <label class="wh-f">عدد العبوات
+      <input name="pack_count" id="whPackCount" inputmode="decimal" autocomplete="off"></label>
+    <label class="wh-f">سعة العبوة <small>(بوحدة التعامل — تُحفظ للصنف)</small>
+      <input name="pack_capacity" id="whPackCapacity" inputmode="decimal" autocomplete="off"></label>
+    <label class="wh-f">كمية سائبة (بدون تغليف)
+      <input name="pack_loose" id="whPackLoose" inputmode="decimal" autocomplete="off"></label>
+    <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whPackHint"></span></div>
+
+    <fieldset class="wh-pack wh-f-wide" id="whSplitBox">
+      <legend>توزيع الكمية على المخازن — مخزن أو أكثر (التخطي = غير موزع)</legend>
+      <div id="whSplitRows"></div>
+      <button type="button" class="rt-btn dim" id="whSplitAdd">＋ مخزن آخر</button>
+      <div class="wh-hintline" id="whSplitHint"></div>
+    </fieldset>
+
+    <label class="wh-f">الشركة المنتجة (على المنتج)
+      <input name="producer" data-combo="whProducersList" autocomplete="off" placeholder="اسم الشركة المنتجة للصنف"></label>
+    <label class="wh-f">الشركة الموردة
+      <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off" placeholder="من تاب الشركات الموردة"></label>
+    {{ date_field('prod_date', 'تاريخ الإنتاج') }}
+    {{ date_field('exp_date', 'تاريخ الصلاحية') }}
+    <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whShelfHint"></span></div>
+    <label class="wh-f">يوم الإذن (داخل الشهر النشط)
+      <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}">
+      <span class="wh-hintline wh-day-hint"></span></label>
+    <label class="wh-f wh-f-wide">ملاحظات
+      <textarea name="notes" rows="2" placeholder="أي بيانات مكمّلة للإذن"></textarea></label>
+  </div>
+  <div class="wh-form-actions no-print">
+    <button class="rt-btn gold" type="submit">💾 حفظ الإذن وفتح كارت الصنف في ٣ مخازن</button>
+  </div>
+</form>
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>📥 إذون إضافة ١ مخازن — {{ cycle_name }}</h3>
+    <span class="panel-hint">الأرقام تسلسلية داخل الدورة والشهر — وكل إذن حركته مسجلة في دفتر ٣ مخازن</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>رقم الإذن</th><th>اليوم</th><th>التاريخ</th><th>الصنف</th>
+      <th>الكمية</th><th>الوحدة</th><th>يعادل (قاعدة)</th><th>التغليف</th><th>المخازن</th>
+      <th>الشركة المنتجة</th><th>المورد</th><th>الإنتاج</th><th>الصلاحية</th><th>المدة</th><th>ملاحظات</th>
+    </tr></thead>
+    <tbody>
+      {% for r in receipts %}
+      <tr>
+        <td class="num"><b>{{ r.serial | aindic }}</b></td>
+        <td>{{ r.wday }}</td>
+        <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+        <td class="name"><b>{{ r.item_name }}</b></td>
+        <td class="num">{{ r.qty_handle | qty3 }}</td>
+        <td>{{ r.unit }}</td>
+        <td class="num">{{ r.qty_base | qty3 }} {{ r.base_unit }}</td>
+        <td>{% if r.pack_kind and r.pack_kind != 'بدون تغليف' %}
+              {% if r.pack_count %}{{ '%g' | format(r.pack_count) | aindic }} {{ r.pack_kind }}
+                {% if r.pack_capacity %}× {{ r.pack_capacity | qty3 }}{% endif %}{% endif %}
+              {% if r.pack_loose %}+ {{ r.pack_loose | qty3 }} سائب{% endif %}
+            {% else %}—{% endif %}</td>
+        <td>{% for s in r.stores %}{{ s.store_name }} ({{ s.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
+        <td>{{ r.producer or '—' }}</td>
+        <td>{{ r.supplier_name or '—' }}</td>
+        <td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
+        <td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
+        <td class="num">{% if r.shelf_days is not none %}{{ r.shelf_days | aindic }} يوم{% else %}—{% endif %}</td>
+        <td>{{ r.notes or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="14" class="empty">لا إذون إضافة بعد هذا الشهر — أضف أول إذن من الزر الأمبر فوق ➕</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>

@@ -1,0 +1,87 @@
+{# تاب الشركات الموردة — نموذج تعريفي شامل — منفصلة تمامًا عن الشركات المنتجة بفواتير المتعهد #}
+<button type="button" class="wh-newbtn no-print" id="whSupplierToggle"
+        aria-expanded="false" aria-controls="whSupplierForm">
+  <span class="wh-newbtn-plus">＋</span>
+  {% if editing %}تعديل بيانات شركة «{{ editing.name }}»{% else %}إضافة شركة موردة جديدة{% endif %}
+</button>
+
+<form class="panel wh-form {{ 'wh-open' if editing }}" id="whSupplierForm"
+      method="post" action="{{ url_for('warehouses.suppliers_save' if editing else 'warehouses.suppliers_add', cycle=cycle_key) }}"
+      {% if not editing %}hidden{% endif %} data-autopen>
+  <input type="hidden" name="cycle" value="{{ cycle_key }}">
+  {% if editing %}<input type="hidden" name="supplier_id" value="{{ editing.id }}">{% endif %}
+  <h3 class="wh-form-title">{% if editing %}تعديل بيانات شركة موردة{% else %}تسجيل شركة موردة جديدة{% endif %}</h3>
+  <div class="wh-grid">
+    <label class="wh-f">اسم الشركة <i>*</i>
+      <input name="name" required autocomplete="off" value="{{ editing.name if editing else '' }}"
+             placeholder="الشركة العامة للصناعات الغذائية"></label>
+    <label class="wh-f">اسم المورد
+      <input name="contact" autocomplete="off" value="{{ editing.contact if editing else '' }}"
+             placeholder="الاسم الكامل لمسؤول التوريد"></label>
+    <label class="wh-f">تليفون المورد
+      <input name="phone" inputmode="tel" autocomplete="off" value="{{ editing.phone if editing else '' }}"
+             placeholder="٠١٠×××××××"></label>
+    <label class="wh-f">العنوان
+      <input name="address" autocomplete="off" value="{{ editing.address if editing else '' }}"
+             placeholder="المحافظة — المدينة — الشارع"></label>
+    <label class="wh-f">النشاط
+      <input name="activity" data-combo="whActivityList" autocomplete="off"
+             value="{{ editing.activity if editing else '' }}"
+             placeholder="أغذية / ألبان / معلبات..."></label>
+    <label class="wh-f wh-f-wide">ملاحظات
+      <textarea name="notes" rows="2" placeholder="أي بيانات إضافية عن الشركة أو المورد">{{ editing.notes if editing else '' }}</textarea></label>
+  </div>
+  <div class="wh-form-actions no-print">
+    <button class="rt-btn gold" type="submit">💾 {% if editing %}حفظ التعديل{% else %}حفظ الشركة{% endif %}</button>
+    {% if editing %}<a class="rt-btn dim" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='suppliers') }}">إلغاء</a>{% endif %}
+  </div>
+</form>
+
+<datalist id="whActivityList">
+  <option value="أغذية"></option><option value="ألبان"></option><option value="معلبات"></option>
+  <option value="حبوب وخضروات"></option><option value="لحوم ودواجن"></option><option value="مواد تغليف"></option>
+</datalist>
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>🏢 سجل الشركات الموردة — {{ cycle_name }}</h3>
+    <span class="panel-hint">سجل مستقل لهذه الدورة فقط — بيانات الشركات المنتجة في فواتير المتعهد منفصلة عنه</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>م</th><th>اسم الشركة</th><th>اسم المورد</th><th>تليفون المورد</th>
+      <th>العنوان</th><th>النشاط</th><th>ملاحظات</th><th class="no-print">إجراءات</th>
+    </tr></thead>
+    <tbody>
+      {% for s in suppliers %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="name"><b>{{ s.name }}</b></td>
+        <td>{{ s.contact or '—' }}</td>
+        <td>{{ s.phone or '—' }}</td>
+        <td>{{ s.address or '—' }}</td>
+        <td>{{ s.activity or '—' }}</td>
+        <td>{{ s.notes or '—' }}</td>
+        <td class="ops no-print">
+          <a class="icon-btn edit" title="تعديل بيانات الشركة"
+             href="{{ url_for('warehouses.page', cycle=cycle_key, sub='suppliers', edit=s.id) }}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </a>
+          <form method="post" action="{{ url_for('warehouses.suppliers_delete', cycle=cycle_key) }}"
+                onsubmit="return confirm('حذف شركة «{{ s.name }}» نهائيًا من سجل موردي هذه الدورة؟')">
+            <input type="hidden" name="cycle" value="{{ cycle_key }}">
+            <input type="hidden" name="supplier_id" value="{{ s.id }}">
+            <button class="icon-btn del" type="submit" title="حذف الشركة">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">لا شركات موردة بعد في {{ cycle_name }} — أضف أول شركة من الزر الأمبر فوق ➕</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
