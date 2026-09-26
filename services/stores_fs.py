@@ -8,6 +8,7 @@
 """
 import logging
 
+from core import dates
 from core.config import MONTH_NAMES
 from data_access import db_warehouses as dw
 from data_access import db_stores
@@ -46,7 +47,7 @@ def _fmt_pack(row):
 
 def snapshot(year, month):
     """مرايا القسم الثلاثة — تُستدعى عند الفتح وبعد كل حفظ في المخازن."""
-    from core import egtime
+    from core import arabic_numbers as arnum, egtime
     try:
         stores = db_stores.list_stores()
         _save_xlsx(file_path(year, month, "mains"), [(
@@ -60,22 +61,26 @@ def snapshot(year, month):
              for i, s in enumerate(stores, 1)])])
 
         rep = dw.stores_report(year, month)
+        def _d(iso):
+            """التاريخ الموحد «٠٣/٠٩/٢٠٢٦» في خلايا المرايا."""
+            return dates.format_date(iso) or iso
         move_rows, balance_rows = [], []
         idx = 0
         for target in rep["stores"] + [rep["unassigned"]]:
             store_name = target["store"]["name"]
             for row in target["inn"]:
                 idx += 1
-                move_rows.append((idx, store_name, "إضافة", row["date_iso"],
+                doc = (f"إذن إضافة رقم {arnum.to_arabic_indic(row['serial'])}"
+                       if row.get("serial") else "رصيد أول المدة")
+                move_rows.append((idx, store_name, "إضافة", _d(row["date_iso"]),
                                   row["cycle"], row["item"], row["qty"], row["unit"],
-                                  _fmt_pack(row), f"إذن إضافة رقم {row['serial']}"
-                                  if row.get("serial") else "رصيد أول المدة"))
+                                  _fmt_pack(row), doc))
             for row in target["out"]:
                 idx += 1
-                move_rows.append((idx, store_name, "صرف", row["date_iso"],
+                move_rows.append((idx, store_name, "صرف", _d(row["date_iso"]),
                                   row["cycle"], row["item"], row["qty"], row["unit"],
                                   _fmt_pack(row),
-                                  f"إذن صرف ٢ مخازن رقم {row['permit_no']}"))
+                                  f"إذن صرف ٢ مخازن رقم {arnum.to_arabic_indic(row['permit_no'])}"))
         for target in rep["stores"] + [rep["unassigned"]]:
             store_name = target["store"]["name"]
             for item, qty in sorted(target["balances"].items()):

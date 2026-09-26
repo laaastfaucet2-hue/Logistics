@@ -14,7 +14,7 @@ import json
 import logging
 from datetime import date
 
-from core import dates, egtime
+from core import arabic_numbers as arnum, dates, egtime
 from core.config import SECTIONS, MONTH_NAMES
 from data_access import dataguard, storage
 from data_access import db_warehouses as dw
@@ -156,18 +156,25 @@ def snapshot_cycle(year, month, cycle):
             "ملاحظات": r["notes"] or "—",
         } for r in receipts]})
     def _pack_cell(r):
+        if r.get("pack_label"):
+            return r["pack_label"]          # التسمية العربية الموحدة
         if not r.get("pack_kind") or r["pack_kind"] == "بدون تغليف":
             return "—"
         bits = []
         if r.get("pack_count"):
-            bits.append(f"{r['pack_count']:g} {r['pack_kind']}"
-                        + (f" × {r['pack_capacity']:g}" if r.get("pack_capacity") else ""))
+            cell = "{} {}".format(arnum.fmt_qty(r["pack_count"]).rstrip("0").rstrip("٫") or "٠", r["pack_kind"])
+            if r.get("pack_capacity"):
+                cell += " × {}".format(arnum.fmt_qty(r["pack_capacity"]).rstrip("0").rstrip("٫") or "٠")
+            bits.append(cell)
         if r.get("pack_loose"):
-            bits.append(f"{r['pack_loose']:g} سائب")
+            bits.append("{} سائب".format(arnum.fmt_qty(r["pack_loose"]).rstrip("0").rstrip("٫") or "٠"))
         return " + ".join(bits) or "—"
 
     def _stores_cell(r):
-        return "، ".join(f"{p['store_name']} ({p['qty']:g})" for p in r["stores"]) or "—"
+        cells = []
+        for p in r["stores"]:
+            cells.append("{} ({})".format(p["store_name"], arnum.fmt_qty(p["qty"])))
+        return "، ".join(cells) or "—"
 
     _save_xlsx(cycle_dir(year, month, cycle, "wh1") / TAB_XLSX["wh1"], [(
         "إذون إضافة ١ مخازن",

@@ -63,6 +63,10 @@ def _selected_picks(picks, raw):
         keys = [k for k in (request.args.get("selected") or request.args.get("permit") or "").split(",") if k]
     out, seen = [], set()
     for key in keys:
+        if isinstance(key, dict):                       # طلب غير متوقع: خُذ المفتاح منه
+            key = key.get("key") or ""
+        if not isinstance(key, str):
+            continue
         if key.startswith("combined:"):
             rid = key.split(":", 1)[1]
             key = f"main:{rid}"

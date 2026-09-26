@@ -25,6 +25,37 @@
         {{ c.name }} <small>{% if c.unit %}({{ c.unit }}){% endif %} — لم تُضف بعد</small>
       </a>
       {% endfor %}
+      <!-- رصيد أول المدة لصنف لم يُفتح كارته بعد: يفتح الكارت تلقائيًا -->
+      <form class="wh-opener no-print" method="post"
+            action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
+        <input type="hidden" name="cycle" value="{{ cycle_key }}">
+        <b class="wh-opener-title">🧾 رصيد أول المدة لصنف جديد</b>
+        <div class="wh-grid">
+          <label class="wh-f">الصنف <i>*</i>
+            <input name="item_name" required data-combo="whMissingList" autocomplete="off"
+                   placeholder="اكتب أو اختر صنفًا من المقرر"></label>
+          <label class="wh-f">الكمية <i>*</i>
+            <input name="qty" inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
+          <label class="wh-f">اليوم
+            <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}"></label>
+          <label class="wh-f">الشركة المنتجة
+            <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
+          <label class="wh-f">الشركة الموردة
+            <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
+          <label class="wh-f">نوع التغليف <small>(اختياري)</small>
+            <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off"></label>
+          <label class="wh-f">عدد العبوات
+            <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">سعة العبوة
+            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">كمية سائبة
+            <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+          <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
+        </div>
+        <div class="wh-form-actions">
+          <button class="rt-btn gold" type="submit">💾 تسجيل الرصيد وفتح الكارت</button>
+        </div>
+      </form>
     </div>
     {% endif %}
   </aside>

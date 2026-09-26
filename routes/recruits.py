@@ -235,7 +235,7 @@ def journal_save():
         return _rb(err="يوم غير صالح", tab="journal")
     meta = da.get_meta(year, month, day)
     if meta["locked"]:
-        return _rb(err="يومية يوم {} مُثبَّتة ومقفولة — اطلب «تعديلً رغم التثبيت» أولًا".format(day),
+        return _rb(err="يومية يوم {} مُثبَّتة ومقفولة — اطلب «تعديلً رغم التثبيت» أولًا".format(arnum.to_arabic_indic(day)),
                    tab="journal", day=day)
     entries = []
     for r in dr.list_recruits(*_ctx()):
@@ -258,7 +258,7 @@ def journal_unlock():
     year, month = _ctx()
     day = arnum.parse_int(request.form.get("day")) or 1
     da.unlock_day(year, month, day)
-    return _rb(ok="فُتحت يومية يوم {} للتعديل (بتأكيدك الصريح)".format(day), tab="journal", day=day)
+    return _rb(ok="فُتحت يومية يوم {} للتعديل (بتأكيدك الصريح)".format(arnum.to_arabic_indic(day)), tab="journal", day=day)
 
 
 @recruits_bp.route("/journal/range", methods=["POST"])
@@ -307,7 +307,7 @@ def journal_delete_entry():
         return _rb(err="اليومية مُثبَّتة — افتحها أولًا", tab="journal", day=day)
     da.delete_recruit_day(year, month, day, rid)
     _after_attendance_change(year, month)
-    return _rb(ok="حُذف التسجيل من يوم {}".format(day), tab="journal", day=day)
+    return _rb(ok="حُذف التسجيل من يوم {}".format(arnum.to_arabic_indic(day)), tab="journal", day=day)
 
 
 def _after_attendance_change(year, month):

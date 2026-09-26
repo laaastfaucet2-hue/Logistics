@@ -68,6 +68,7 @@
 <datalist id="whItemsList">{% for n in items_data %}<option value="{{ n }}"></option>{% endfor %}</datalist>
 <datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
 <datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
+<datalist id="whMissingList">{% for c in catalog_missing %}<option value="{{ c.name }}"></option>{% endfor %}</datalist>
 <script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
 <script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
 <script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>

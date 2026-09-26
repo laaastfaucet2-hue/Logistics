@@ -345,9 +345,13 @@ def wh3_opener():
     year, month = _ctx()
     cycle = _cycle()
     item_id = arnum.parse_int(request.form.get("item_id"))
-    item = dw.get_item(year, month, item_id or 0, cycle)
+    item = dw.get_item(year, month, item_id or 0, cycle) if item_id else None
+    name_fallback = (request.form.get("item_name") or "").strip()
     if not item:
-        return _rb(cycle, "wh3", err="الصنف غير موجود في هذه الدورة")
+        # صنف لم يُفتح كارته بعد — «رصيد أول المدة» يفتح الكارت تلقائيًا
+        if not name_fallback:
+            return _rb(cycle, "wh3", err="اختر الصنف أولًا أو اكتب اسمه لتسجيل رصيد أول المدة")
+        item = {"name": name_fallback}
     qty = arnum.parse_float(request.form.get("qty"))
     if qty is None or qty <= 0:
         return _rb(cycle, "wh3", err="اكتب كمية رصيد أول المدة", item=item_id)

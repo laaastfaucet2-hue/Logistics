@@ -374,6 +374,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     from core import egtime
     pack_kind = (pack_kind or "").strip()
     pack_total = 0.0
+    pack_label_text = ""
     extras = []
     if pack_kind and pack_kind != "بدون تغليف":
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
@@ -383,6 +384,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
             raise ValueError("اكتب عدد العبوات وسعة العبوة أو الكمية السائبة — "
                              "لا يمكن إذن إضافة بكمية صفر")
         qty_handle = pack_total
+        pack_label_text = pack_label_probe
         extras.append("تغليف: " + pack_label_probe)
     elif pack_kind:
         pack_kind = ""
@@ -438,7 +440,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 "pack_kind,pack_count,pack_capacity,pack_loose)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (cycle, serial, item["id"], day, date_iso, qty_handle, item["handle_unit"],
-                 qty_base, base_unit, "{}", "", (producer or "").strip(), supplier_id,
+                 qty_base, base_unit, "{}", pack_label_text, (producer or "").strip(), supplier_id,
                  supplier_name, prod_iso, exp_iso, shelf_days, notes_text, stamp,
                  pack_kind, float(pack_count or 0), float(pack_capacity or 0),
                  float(pack_loose or 0)))
@@ -738,6 +740,23 @@ def stores_report(year, month):
                   "balances": {}, "total": 0.0}
     for cycle, cycle_name in (("supply", "الإمداد"), ("contractor", "المتعهد")):
         items = {it["id"]: it for it in list_items(year, month, cycle)}
+        # رصيد أول المدة: كمية داخل على «غير موزع على مخازن» — وإلا يظهر الرصيد بالسالب
+        conn = _conn(year, month)
+        openers = [dict(r) for r in conn.execute(
+            "SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
+        conn.close()
+        for o in openers:
+            item = items.get(o["item_id"])
+            if not item or not (o["added"] or 0):
+                continue
+            unassigned["inn"].append({
+                "date_iso": o["date_iso"], "cycle": cycle_name,
+                "item": item["name"], "unit": item["handle_unit"],
+                "qty": float(o["added"]), "pack_label": "",
+                "serial": 0, "expiry": "",
+            })
+            unassigned["balances"][item["name"]] = \
+                unassigned["balances"].get(item["name"], 0.0) + float(o["added"])
         for r in list_receipts(year, month, cycle):
             item = items.get(r["item_id"])
             if not item:
