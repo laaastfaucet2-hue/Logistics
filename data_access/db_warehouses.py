@@ -857,10 +857,19 @@ def _batch_pool(year, month, cycle):
     return pool
 
 
+def _rem_label(batch, q, rest_word="سائب"):
+    """تفكيك كميات الدفعة — الأرصدة بعبوة مفتوحة، والمصروف (rest_word="") بدونه."""
+    return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
+
+
 def tafreeda_rows(year, month, cycle):
     """التفريدة التلقائية: الأقرب صلاحية أولًا ثم الأقدم إضافةً — لكل سطر
-    التفكيك والمنتج والرصيد بالمخزن بعد الصرف."""
+    التفكيك والمنتج ورصيد المخزن كله (مجموع الدفعات) قبل الصرف وبعده."""
     pool = _batch_pool(year, month, cycle)
+    store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
+    for b in pool:
+        _k = (b["item"]["name"], b["store_id"])
+        store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)
     rows = []
     for permit in permits_book(year, month, cycle):
         for entry in permit["cycle_items"]:
@@ -875,7 +884,6 @@ def tafreeda_rows(year, month, cycle):
                 take = min(need, batch["remaining"])
                 batch["remaining"] = round(batch["remaining"] - take, 6)
                 need = round(need - take, 6)
-                _rem_after = batch["remaining"]
                 rows.append({
                     "pack_inner_label": "", "pack_outer_label": "",
                     "permit_no": permit["number"],
@@ -888,27 +896,19 @@ def tafreeda_rows(year, month, cycle):
                     "qty": round(take, 6), "pack_label": batch["pack_label"],
                 })
                 _inner, _outer = pack_split(
-                    batch.get("pack_kind"), batch.get("pack_count"),
-                    batch.get("pack_capacity"), batch.get("pack_loose"),
-                    batch["item"]["handle_unit"],
-                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
-                    batch.get("pack_loose_unit"))
+                    batch.get("pack_kind"), batch.get("pack_count"), batch.get("pack_capacity"),
+                    batch.get("pack_loose"), batch["item"]["handle_unit"],
+                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), batch.get("pack_loose_unit"))
                 rows[-1]["pack_inner_label"] = _inner
                 rows[-1]["pack_outer_label"] = _outer
                 rows[-1]["producer"] = batch.get("producer") or ""
                 # «١ شكارة + ١٠ كجم» أو «٣٠ كجم» — المنصرف مُفكَّك بعبوات الدفعة
-                rows[-1]["issued_label"] = pack_breakdown(
-                    batch.get("pack_kind"), batch.get("pack_capacity"),
-                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
-                    take, batch["item"]["handle_unit"], rest_word="")
-                # رصيد المخزن قبل الصرف وبعده بالتفكيك — «٣٠ شكارة → ٢٩ شكارة + ٤٧»
-                def _rem_lbl(q):
-                    k, c = batch.get("pack_kind"), batch.get("pack_capacity")
-                    ic, ca = batch.get("pack_inner_count"), batch.get("pack_inner_capacity")
-                    return pack_breakdown(k, c, ic, ca, q, batch["item"]["handle_unit"]) or \
-                        f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
-                rows[-1]["rem_before_label"] = _rem_lbl(round(_rem_after + take, 6))
-                rows[-1]["rem_after_label"] = _rem_lbl(_rem_after)
+                rows[-1]["issued_label"] = _rem_label(batch, take, "")
+                # رصيد المخزن كله قبل الصرف وبعده (اختيار المستخدم — مجموع الدفعات)
+                _k = (batch["item"]["name"], batch["store_id"])
+                store_bal[_k] = round(store_bal.get(_k, 0.0) - take, 6)
+                rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6))
+                rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
     return rows
 
 
