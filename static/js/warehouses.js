@@ -444,3 +444,17 @@ document.addEventListener("click", function (ev) {
     }
     if (ev.target instanceof HTMLDialogElement) ev.target.close();  /* ضغط بالخارج */
   });
+
+/* تابان ٢ مخازن الفرعيان: تبديل بين التفاريد وسجلات ٢ مخازن بلا إعادة تحميل */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-wh2sub]");
+  if (!btn) return;
+  var scope = btn.closest(".panel");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh2sub]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh2panel]"), function (p) {
+    p.hidden = p.getAttribute("data-wh2panel") !== btn.getAttribute("data-wh2sub");
+  });
+});

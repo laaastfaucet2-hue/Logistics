@@ -1,77 +1,74 @@
-{# دفتر ٢ مخازن — إذون آلة الحاسبة (عرض) + قائمة التفاريد: كل تفريدة سطر
-   برقم إذن الصرف تفتح نافذة منبثقة بالتفريدة كاملة: صنف ← مخازن بالتفكيك #}
+{# دفتر ٢ مخازن — تابان فرعيان جنب بعض (توجيه ٢٧/٠٩): «التفاريد» هو الافتراضي فوق،
+   وجنبه «سجلات ٢ مخازن» — كل إذن سطر وزرار «عرض الإذن» يفتح نافذة منبثقة
+   بجدول التفريدة: مسلسل/الصنف/الوحدة/المنصرف بالوحدة/المنصرف بالتغليف/المخزن/
+   تاريخ الانتهاء/ملاحظات — فقط هذا #}
 <div class="panel">
   <div class="panel-head">
-    <h3>📤 دفتر ٢ مخازن — إذون صرف آلة الحاسبة</h3>
+    <h3>📤 ٢ مخازن — إذون صرف آلة الحاسبة</h3>
     <span class="panel-hint">دورة {{ cycle_name }} فقط — أصناف الدورة الأخرى لا تظهر هنا إطلاقًا</span>
   </div>
-  <p class="wh-note">هذا الدفتر يجمع كل إذن صرف محفوظ من «آلة حاسبة ٢ مخازن» وأصناف دورة
-    <b>{{ cycle_name }}</b> داخل كل إذن. الخصم التلقائي في دفاتر ٣ مخازن (٤ و٥ و٦ مخازن)
-    <b>قيد التطوير</b> ويُبنى مع مراحل الدورة القادمة.</p>
-  {% for p in permits %}
-  <div class="wh-permit">
-    <div class="wh-permit-head">
-      <b class="wh-permit-no">إذن صرف ٢ مخازن رقم {{ p.number | aindic }}</b>
-      <span class="wh-chip dim">السنة المالية {{ p.fiscal_year | aindic }} (١/٧ — ٣٠/٦)</span>
-      <span class="wh-chip">{{ p.entity_label or 'إذن مجمع' }}</span>
-    </div>
-    <div class="wh-permit-meta">
-      <span>من يوم {{ p.date_from | aindic }}{% if p.date_to != p.date_from %} إلى يوم {{ p.date_to | aindic }}{% endif %}</span>
-      <span>• أيام الصرف: {{ p.issue_days | aindic }}</span>
-      <span>• القوة: ضباط {{ p.officers | aindic }} / أفراد {{ p.individuals | aindic }} / مجندين {{ p.recruits | aindic }}</span>
-    </div>
-    {% if p.cycle_items %}
+  <div class="wh-subtabs no-print">
+    <button type="button" class="wh-subtab active" data-wh2sub="tafared">🧾 التفاريد</button>
+    <button type="button" class="wh-subtab" data-wh2sub="sijlat">📖 سجلات ٢ مخازن</button>
+  </div>
+
+  <!-- التفاريد: كل تفريدة سطر برقم إذن الصرف — تفتح نافذة بالتفريدة كاملة -->
+  <div class="wh-subpanel" data-wh2panel="tafared">
+    {% if taf_popup %}
     <div class="wh-scroll">
-    <table class="rt-table wh-table">
-      <thead><tr><th>م</th><th>الصنف</th><th>الكمية الفعلية</th><th>الوحدة</th></tr></thead>
+    <table class="rt-table wh-table wh-taf-list">
+      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>من يوم</th><th>إلى يوم</th>
+        <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
       <tbody>
-        {% for it in p.cycle_items %}
-        <tr>
+        {% for no, pg in taf_popup.items() %}
+        <tr class="wh-taf-row" data-taf-open="tafDialog-{{ no }}" title="اضغط لعرض التفريدة كاملة">
           <td class="num">{{ loop.index | aindic }}</td>
-          <td class="name"><b>{{ it.name }}</b></td>
-          <td class="num">{{ it.qty | qty3 }}</td>
-          <td>{{ it.unit or '—' }}</td>
+          <td class="num"><b>{{ no | aindic }}</b></td>
+          <td class="num">{{ pg.date_from | aindic }}</td>
+          <td class="num">{{ pg.date_to | aindic }}</td>
+          <td class="num">{{ pg.lines | length | aindic }}</td>
+          <td class="num wh-issued"><b>{{ pg.total | qty3 }}</b></td>
+          <td class="no-print"><button type="button" class="rt-btn dim"
+                data-taf-open="tafDialog-{{ no }}">📄 عرض الإذن</button></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     </div>
     {% else %}
-    <p class="wh-note dim">لا أصناف لدورة {{ cycle_name }} في هذا الإذن.</p>
+    <p class="empty">لا تفاريد منصرفة بعد — اعمل إذن صرف من «آلة حاسبة ٢ مخازن» وسيظهر هنا تلقائيًا.</p>
     {% endif %}
   </div>
-  {% else %}
-  <p class="empty">لا إذون صرف محفوظة بعد — اعمل إذنًا من «آلة حاسبة ٢ مخازن» وسيظهر هنا تلقائيًا.</p>
-  {% endfor %}
-</div>
 
-{% if taf_popup %}
-<!-- قائمة التفاريد: كل تفريدة سطر برقم إذن الصرف — تفتح نافذة بالتفريدة كاملة -->
-<div class="panel">
-  <div class="panel-head">
-    <h3>🧾 التفاريد</h3>
-    <span class="panel-hint">كل تفريدة سطر — اضغط السطر تفتح التفريدة كاملة:
-      الصنف ← المخازن بالمنصرف المفكك والرصيد بعده</span>
-  </div>
-  <div class="wh-scroll">
-  <table class="rt-table wh-table wh-taf-list">
-    <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>من يوم</th><th>إلى يوم</th>
-      <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
-    <tbody>
-      {% for no, pg in taf_popup.items() %}
-      <tr class="wh-taf-row" data-taf-open="tafDialog-{{ no }}" title="اضغط لعرض التفريدة كاملة">
-        <td class="num">{{ loop.index | aindic }}</td>
-        <td class="num"><b>{{ no | aindic }}</b></td>
-        <td class="num">{{ pg.date_from | aindic }}</td>
-        <td class="num">{{ pg.date_to | aindic }}</td>
-        <td class="num">{{ pg.lines | length | aindic }}</td>
-        <td class="num wh-issued"><b>{{ pg.total | qty3 }}</b></td>
-        <td class="no-print"><button type="button" class="rt-btn dim"
-              data-taf-open="tafDialog-{{ no }}">📄 عرض التفريدة</button></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <!-- سجلات ٢ مخازن: كل إذن سطر + زرار عرض الإذن يفتح نفس النافذة -->
+  <div class="wh-subpanel" data-wh2panel="sijlat" hidden>
+    {% if permits %}
+    <div class="wh-scroll">
+    <table class="rt-table wh-table wh-taf-list">
+      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة</th><th>من يوم</th><th>إلى يوم</th>
+        <th>أيام الصرف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
+      <tbody>
+        {% for p in permits %}
+        {% set pg = taf_popup.get(p.number) %}
+        <tr class="{% if pg %}wh-taf-row{% endif %}" {% if pg %}data-taf-open="tafDialog-{{ p.number }}"
+            title="اضغط لعرض التفريدة كاملة"{% endif %}>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="num"><b title="إذن صرف ٢ مخازن رقم {{ p.number | aindic }}">{{ p.number | aindic }}</b></td>
+          <td>{{ p.entity_label or 'إذن مجمع' }}</td>
+          <td class="num">{{ p.date_from | aindic }}</td>
+          <td class="num">{{ p.date_to | aindic }}</td>
+          <td class="num">{{ p.issue_days | aindic }}</td>
+          <td class="num wh-issued">{% if pg %}<b>{{ pg.total | qty3 }}</b>{% else %}—{% endif %}</td>
+          <td class="no-print">{% if pg %}<button type="button" class="rt-btn dim"
+                data-taf-open="tafDialog-{{ p.number }}">📄 عرض الإذن</button>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty">لا إذون صرف محفوظة بعد — اعمل إذنًا من «آلة حاسبة ٢ مخازن» وسيظهر هنا تلقائيًا.</p>
+    {% endif %}
   </div>
 </div>
 
@@ -84,36 +81,31 @@
     <button type="button" class="icon-btn" data-taf-close="{{ no }}" title="إغلاق">✕</button>
   </div>
   <div class="wh-dialog-body">
-    {% for iname, it in pg.lines.items() %}
-    <div class="wh-taf-item">
-      <b class="wh-taf-item-name">{{ iname }}</b>
-      <span class="wh-chip dim">إجمالي المنصرف: <b>{{ it.total | qty3 }} {{ it.unit }}</b></span>
-      <div class="wh-scroll">
-      <table class="rt-table wh-table">
-        <thead><tr><th>المخزن</th><th>المنصرف</th><th>المنصرف (مفكك)</th>
-          <th>رصيد المخزن قبل</th><th>الرصيد بعد الصرف</th>
-          <th>الشركة المنتجة</th><th>تاريخ الانتهاء</th></tr></thead>
-        <tbody>
-          {% for t in it.stores %}
-          <tr>
-            <td>{{ t.store_name }}</td>
-            <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
-            <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
-            <td class="wh-pack-cell">{{ t.rem_before_label or '—' }}</td>
-            <td class="wh-pack-cell">{{ t.rem_after_label or '—' }}</td>
-            <td>{{ t.producer or '—' }}</td>
-            <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>المنصرف بالوحدة</th>
+        <th>المنصرف بالتغليف</th><th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+        {% for iname, it in pg.lines.items() %}
+        {% for t in it.stores %}
+        <tr>
+          <td class="num">{{ t.seq | aindic }}</td>
+          <td class="name"><b>{{ iname }}</b></td>
+          <td>{{ t.unit or '—' }}</td>
+          <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
+          <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
+          <td>{{ t.store_name }}</td>
+          <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td>{{ t.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
     </div>
-    {% endfor %}
   </div>
   <div class="wh-dialog-foot no-print">
     <button type="button" class="rt-btn dim" data-taf-close="{{ no }}">إغلاق</button>
   </div>
 </dialog>
 {% endfor %}
-{% endif %}

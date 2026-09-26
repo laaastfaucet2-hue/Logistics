@@ -189,14 +189,14 @@ def test_wh2_book_filters_items_per_cycle(client):
     _init()
     _save_permit(1, {"tamween_أرز": 15, "contractor_سكر": 7})
     supply_page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    assert "إذن صرف ٢ مخازن رقم ١" in supply_page and "أرز" in supply_page
-    assert "١٥٫٠٠٠" in supply_page
-    assert "سكر" not in supply_page
+    # سجلات ٢ مخازن: كل إذن سطر بعنوانه — وعزل الدورة في القائمة
+    assert 'data-wh2panel="sijlat"' in supply_page
+    assert "إذن صرف ٢ مخازن رقم ١" in supply_page and "جهة الاختبار" in supply_page
     contractor_page = _page(client, "/warehouses?cycle=contractor&sub=wh2")
-    assert "سكر" in contractor_page
-    # عزل تام: الإذن مالوش أصناف تانية لدورة المتعهد فلا يُذكر فيه صنف التموين إطلاقًا
+    assert "إذن صرف ٢ مخازن رقم ١" in contractor_page
+    # عزل تام: الصنف التمويني لا يُذكر في صفحة المتعهد إطلاقًا
     assert "أرز" not in contractor_page
-    _save_permit(2, {"tamween_سكر": 3})   # إذن بلا أصناف متعهد — لا يظهر في دفترها
+    _save_permit(2, {"tamween_سكر": 3})   # إذن بلا أصناف متعهد — لا يظهر في سجلاتها
     contractor_page2 = _page(client, "/warehouses?cycle=contractor&sub=wh2")
     assert "إذن صرف ٢ مخازن رقم ٢" not in contractor_page2
 
@@ -738,14 +738,24 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
         "selected_json": "[\"main:%d\"]" % rec_id, "entity_label": "جهة التفاريد",
         "meal_lunch": "1", "actual_tamween_أرز بلدي": "60"})
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    # قائمة التفاريد: سطر برقم الإذن + النافذة المنبثقة بالتفريدة كاملة
+    # تابان فرعيان جنب بعض: «التفاريد» الافتراضي فوق + «سجلات ٢ مخازن»
+    assert 'data-wh2sub="tafared"' in page and 'data-wh2sub="sijlat"' in page
+    assert "سجلات ٢ مخازن" in page
+    # قائمة التفاريد: سطر برقم الإذن + زرار عرض الإذن يفتح النافذة
     assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
+    assert "عرض الإذن" in page
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
-    assert "رصيد المخزن قبل" in page and "الرصيد بعد الصرف" in page
-    assert "١٠ شكارة" in page and "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page
-    assert "مطاحن الاختبار" in page
+    # النافذة: الجدول ثمانية أعمدة بالظبط — بلا رصيد ولا شركة منتجة
+    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page and "ملاحظات" in page
+    assert "رصيد المخزن قبل" not in page and "الرصيد بعد الصرف" not in page
+    assert "الشركة المنتجة" not in page
+    # الشركة المنتجة مكانها الطبيعي سجل الإضافة
+    page1 = _page(client, "/warehouses?cycle=supply&sub=wh1")
+    assert "مطاحن الاختبار" in page1
     # مفيش تابات مستقلة للتفاريد في الشريط
     assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
     page3 = _page(client, "/warehouses?cycle=supply&sub=wh3")
     assert "٣ مخازن تفاريد" in page3 and 'data-taf-open="taf3Dialog-1"' in page3
     assert "إجمالي المنصرف: <b>٦٠٫٠٠٠" in page3
+    # ٣ مخازن زي ما هي: الرصيد قبل/بعد يظهر هناك (رصيد المخزن كله)
+    assert "١٠ شكارة" in page3 and "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page3

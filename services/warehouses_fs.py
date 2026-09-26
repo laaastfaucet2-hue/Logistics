@@ -247,23 +247,17 @@ def snapshot_cycle(year, month, cycle):
                                 p["date_to"], p["issue_days"], p["entity_label"] or "—",
                                 it["name"], it["qty"], it["unit"] or "—"))
     tafreeda = dw.tafreeda_rows(year, month, cycle)
-    taf_rows = [(t["permit_no"], t["item"], t["store_name"],
-                 t["receipt_serial"] or "رصيد أول المدة",
-                 _date_or_dash(t["expiry"]), t["qty"], t["unit"],
+    taf_rows = [(t.get("seq") or 0, t["item"], t["unit"], t["qty"],
                  t.get("issued_label") or arnum.fmt_qty(t["qty"]),
-                 t.get("rem_before_label") or "—",
-                 t.get("rem_after_label") or "—",
-                 t.get("producer") or "—",
-                 t.get("pack_inner_label") or "—",
-                 t.get("pack_outer_label") or t["pack_label"] or "—") for t in tafreeda]
+                 t["store_name"], _date_or_dash(t["expiry"]),
+                 t.get("notes") or "—") for t in tafreeda]
     _save_xlsx(cycle_dir(year, month, cycle, "wh2") / TAB_XLSX["wh2"], [
         ("دفتر إذون صرف ٢ مخازن",
          ["رقم الإذن", "السنة المالية", "من يوم", "إلى يوم", "أيام الصرف",
           "الجهات", "الصنف", "الكمية الفعلية", "الوحدة"], permit_rows),
         ("التفريدة التلقائية",
-         ["رقم الإذن", "الصنف", "المخزن", "الدفعة (إذن إضافة)", "الصلاحية",
-          "الكمية المنصرفة", "الوحدة", "المنصرف (مفكك)", "الرصيد قبل الصرف",
-          "الرصيد بعد الصرف", "الشركة المنتجة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
+         ["م", "الصنف", "الوحدة", "المنصرف بالوحدة", "المنصرف بالتغليف",
+          "المخزن", "تاريخ الانتهاء", "ملاحظات"], taf_rows)])
 
     dataguard.auto_backup("write", min_minutes=20)
     return True

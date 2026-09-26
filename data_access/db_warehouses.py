@@ -829,7 +829,7 @@ def _batch_pool(year, month, cycle):
                 "pack_inner_count": r["pack_inner_count"],
                 "pack_inner_capacity": r["pack_inner_capacity"],
                 "pack_loose_unit": r["pack_loose_unit"],
-                "producer": r["producer"] or "",
+                "producer": r["producer"] or "", "notes": r["notes"] or "",
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -866,6 +866,7 @@ def tafreeda_rows(year, month, cycle):
     """التفريدة التلقائية: الأقرب صلاحية أولًا ثم الأقدم إضافةً — لكل سطر
     التفكيك والمنتج ورصيد المخزن كله (مجموع الدفعات) قبل الصرف وبعده."""
     pool = _batch_pool(year, month, cycle)
+    _seqs = {}                           # مسلسل السطر داخل التفريدة الواحدة
     store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
     for b in pool:
         _k = (b["item"]["name"], b["store_id"])
@@ -886,12 +887,9 @@ def tafreeda_rows(year, month, cycle):
                 need = round(need - take, 6)
                 rows.append({
                     "pack_inner_label": "", "pack_outer_label": "",
-                    "permit_no": permit["number"],
-                    "date_from": permit["date_from"], "date_to": permit["date_to"],
-                    "item": batch["item"]["name"],
-                    "unit": batch["item"]["handle_unit"],
-                    "store_id": batch["store_id"], "store_name": batch["store_name"],
-                    "receipt_serial": batch["serial"],
+                    "permit_no": permit["number"], "date_from": permit["date_from"], "date_to": permit["date_to"],
+                    "item": batch["item"]["name"], "unit": batch["item"]["handle_unit"], "store_id": batch["store_id"],
+                    "store_name": batch["store_name"], "receipt_serial": batch["serial"],
                     "expiry": batch["expiry"] if batch["expiry"] != NO_EXPIRY else "",
                     "qty": round(take, 6), "pack_label": batch["pack_label"],
                 })
@@ -909,6 +907,8 @@ def tafreeda_rows(year, month, cycle):
                 store_bal[_k] = round(store_bal.get(_k, 0.0) - take, 6)
                 rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6))
                 rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
+                rows[-1]["seq"] = _seqs[permit["number"]] = _seqs.get(permit["number"], 0) + 1
+                rows[-1]["notes"] = batch.get("notes") or ""
     return rows
 
 
