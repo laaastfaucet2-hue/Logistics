@@ -20,6 +20,9 @@ def test_units_merge_tamween_contractor_and_custom(app):
     units = db_rations.collect_units(2031, 9)
     for u in UNITS:
         assert u in units
+    # الستة الأساسيين ثابتين فوق القائمة (توجيه ٢٦/٠٩) — وبلتة ضمن الوحدات
+    assert units[:6] == ["كجم", "جم", "قطعة", "علبة", "باكت", "فتلة"]
+    assert "بلتة" in units
     assert units.index("كجم") < units.index("شيكارة")
     assert "شيكارة" in units
     assert "جردل" in units
