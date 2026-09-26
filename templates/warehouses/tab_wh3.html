@@ -300,13 +300,14 @@
       <div class="wh-scroll">
       <table class="rt-table wh-table">
         <thead><tr><th>المخزن</th><th>إجمالي المنصرف</th><th>التغليف (مفكك)</th>
-          <th>الرصيد بعد الصرف</th></tr></thead>
+          <th>رصيد المخزن قبل</th><th>الرصيد بعد الصرف</th></tr></thead>
         <tbody>
           {% for t in it.stores %}
           <tr>
             <td>{{ t.store_name }}</td>
             <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
             <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
+            <td class="wh-pack-cell">{{ t.rem_before_label or '—' }}</td>
             <td class="wh-pack-cell">{{ t.rem_after_label or '—' }}</td>
           </tr>
           {% endfor %}

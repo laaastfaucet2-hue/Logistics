@@ -741,7 +741,8 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     # قائمة التفاريد: سطر برقم الإذن + النافذة المنبثقة بالتفريدة كاملة
     assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
-    assert "الرصيد بعد الصرف" in page and "٨ شكارة + ٤٠ طن" in page
+    assert "رصيد المخزن قبل" in page and "الرصيد بعد الصرف" in page
+    assert "١٠ شكارة" in page and "٨ شكارة + ٤٠ طن" in page
     assert "مطاحن الاختبار" in page
     # مفيش تابات مستقلة للتفاريد في الشريط
     assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]

@@ -251,6 +251,7 @@ def snapshot_cycle(year, month, cycle):
                  t["receipt_serial"] or "رصيد أول المدة",
                  _date_or_dash(t["expiry"]), t["qty"], t["unit"],
                  t.get("issued_label") or arnum.fmt_qty(t["qty"]),
+                 t.get("rem_before_label") or "—",
                  t.get("rem_after_label") or "—",
                  t.get("producer") or "—",
                  t.get("pack_inner_label") or "—",
@@ -261,8 +262,8 @@ def snapshot_cycle(year, month, cycle):
           "الجهات", "الصنف", "الكمية الفعلية", "الوحدة"], permit_rows),
         ("التفريدة التلقائية",
          ["رقم الإذن", "الصنف", "المخزن", "الدفعة (إذن إضافة)", "الصلاحية",
-          "الكمية المنصرفة", "الوحدة", "المنصرف (مفكك)", "الرصيد بعد الصرف",
-          "الشركة المنتجة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
+          "الكمية المنصرفة", "الوحدة", "المنصرف (مفكك)", "الرصيد قبل الصرف",
+          "الرصيد بعد الصرف", "الشركة المنتجة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
 
     dataguard.auto_backup("write", min_minutes=20)
     return True

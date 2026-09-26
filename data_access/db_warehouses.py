@@ -901,12 +901,14 @@ def tafreeda_rows(year, month, cycle):
                     batch.get("pack_kind"), batch.get("pack_capacity"),
                     batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
                     take, batch["item"]["handle_unit"], rest_word="")
-                # الرصيد المتبقي بالمخزن بعد الصرف — «٨ شكارة كاملة + ٤٠ كجم سائب»
-                rows[-1]["rem_after_label"] = pack_breakdown(
-                    batch.get("pack_kind"), batch.get("pack_capacity"),
-                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
-                    _rem_after, batch["item"]["handle_unit"]) or \
-                    f"{arnum.fmt_qty_trim(_rem_after)} {batch['item']['handle_unit']}"
+                # رصيد المخزن قبل الصرف وبعده بالتفكيك — «٣٠ شكارة → ٢٩ شكارة + ٤٧»
+                def _rem_lbl(q):
+                    k, c = batch.get("pack_kind"), batch.get("pack_capacity")
+                    ic, ca = batch.get("pack_inner_count"), batch.get("pack_inner_capacity")
+                    return pack_breakdown(k, c, ic, ca, q, batch["item"]["handle_unit"]) or \
+                        f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
+                rows[-1]["rem_before_label"] = _rem_lbl(round(_rem_after + take, 6))
+                rows[-1]["rem_after_label"] = _rem_lbl(_rem_after)
     return rows
 
 
