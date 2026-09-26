@@ -1,5 +1,67 @@
 {% extends "base.html" %}
-{% block title %}المخازن والثلاجات • موحدة لكل الأصناف{% endblock %}
+{% block title %}المخازن والثلاجات • موحدة لكل الأصناف
+<!-- نافذة الحذف: مخزن عليه حركة لا يُحذف إلا بنقل أصنافه (توجيه ٢٦/٠٩) -->
+<div id="storeDelModal" class="rt-modal" hidden>
+  <div class="rt-modal-box">
+    <b id="storeDelTitle">تأكيد الحذف</b>
+    <p id="storeDelText" class="dim"></p>
+    <div id="storeDelTransfer" hidden>
+      <label>انقل أصنافه إلى
+        <input name="transfer_name" data-combo="storeTransferList" autocomplete="off"
+               placeholder="اختر المخزن أو الثلاجة"></label>
+    </div>
+    <div class="rt-modal-actions">
+      <button type="button" class="rt-btn gold" id="storeDelOk">تأكيد</button>
+      <button type="button" class="rt-btn dim" id="storeDelCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+<datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalist>
+<script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+<script>
+(function () {
+  var modal = document.getElementById("storeDelModal");
+  if (!modal) return;
+  var pending = null;
+  function close() { modal.hidden = true; pending = null; }
+  Array.prototype.forEach.call(document.querySelectorAll(".js-del-form"), function (form) {
+    form.addEventListener("submit", function (ev) {
+      if (form.dataset.confirmed === "1") return;   // التأكيد تم — أرسل عادي
+      ev.preventDefault();
+      pending = form;
+      var moved = form.dataset.moved === "1";
+      document.getElementById("storeDelTitle").textContent =
+        "حذف مخزن «" + form.dataset.name + "»";
+      document.getElementById("storeDelText").textContent = moved
+        ? "هذا المخزن عليه حركة — ممنوع حذفه إلا بنقل أصنافه إلى مخزن أو ثلاجة أخرى."
+        : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
+      document.getElementById("storeDelTransfer").hidden = !moved;
+      var input = modal.querySelector("[name=transfer_name]");
+      if (input) input.value = "";
+      modal.hidden = false;
+    });
+  });
+  document.getElementById("storeDelCancel").addEventListener("click", close);
+  document.getElementById("storeDelOk").addEventListener("click", function () {
+    if (!pending) return close();
+    var moved = pending.dataset.moved === "1";
+    var input = modal.querySelector("[name=transfer_name]");
+    if (moved) {
+      var name = (input && input.value || "").trim();
+      var map = {};
+      try { JSON.parse(document.getElementById("storeListData").textContent)
+        .forEach(function (t) { map[t.name] = t.id; }); } catch (err) {}
+      if (!map[name] || name === pending.dataset.name) { input.focus(); return; }
+      pending.querySelector("[name=transfer_to]").value = map[name];
+    }
+    pending.dataset.confirmed = "1";
+    close();
+    pending.submit();
+  });
+})();
+</script>
+
+{% endblock %}
 {% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
 
 {% block head_extra %}
@@ -98,9 +160,10 @@
              href="{{ url_for('stores.page', tab='mains', edit=s.id) }}">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </a>
-          <form method="post" action="{{ url_for('stores.delete') }}"
-                onsubmit="return confirm('حذف مخزن «{{ s.name }}» من السجل؟ الحركات المسجلة باسمه تبقى في الشهور.')">
+          <form method="post" action="{{ url_for('stores.delete') }}" class="js-del-form"
+                data-name="{{ s.name }}" data-moved="{{ 1 if has_move.get(s.id) else 0 }}">
             <input type="hidden" name="store_id" value="{{ s.id }}">
+            <input type="hidden" name="transfer_to" value="">
             <button class="icon-btn del" type="submit" title="حذف المخزن">
               <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
             </button>

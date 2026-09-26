@@ -82,6 +82,15 @@ CREATE TABLE IF NOT EXISTS wh_ledger (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS wh_opener_stores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    store_id INTEGER,
+    store_name TEXT NOT NULL,
+    qty REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS wh_receipt_stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     receipt_id INTEGER NOT NULL REFERENCES wh_receipts(id) ON DELETE CASCADE,
@@ -109,22 +118,44 @@ NEW_RECEIPT_COLUMNS = (
     ("pack_loose", "REAL"),
 )
 
+NEW_LEDGER_COLUMNS = (
+    ("prod_date", "TEXT DEFAULT ''"),
+    ("exp_date", "TEXT DEFAULT ''"),
+)
 
-def _migrate_receipts(conn):
-    """ترقية تدريجية: أعمدة التغليف الجديدة (مستوى واحد + سائب) لقواعد الشهور القديمة."""
+
+def _migrate_tables(conn):
+    """ترقية تدريجية: أعمدة التغليف لإذون الإضافة وأعمدة الإنتاج/الصلاحية للدفتر."""
     cols = {r[1] for r in conn.execute("PRAGMA table_info(wh_receipts)")}
-    if not cols:
-        return
-    for name, decl in NEW_RECEIPT_COLUMNS:
-        if name not in cols:
-            conn.execute(f"ALTER TABLE wh_receipts ADD COLUMN {name} {decl}")
-    conn.commit()
+    if cols:
+        for name, decl in NEW_RECEIPT_COLUMNS:
+            if name not in cols:
+                conn.execute(f"ALTER TABLE wh_receipts ADD COLUMN {name} {decl}")
+        conn.commit()
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(wh_ledger)")}
+    if cols:
+        for name, decl in NEW_LEDGER_COLUMNS:
+            if name not in cols:
+                conn.execute(f"ALTER TABLE wh_ledger ADD COLUMN {name} {decl}")
+        conn.commit()
+    # توحيد تسميات التغليف القديمة (قبل قاعدة «الصحيح صحيح والكسر بكسره»)
+    rows = conn.execute(
+        "SELECT id, unit, pack_kind, pack_count, pack_capacity, pack_loose, pack_label "
+        "FROM wh_receipts WHERE pack_kind != ''").fetchall()
+    for r in rows:
+        label, _total = pack_summary(r["pack_kind"], r["pack_count"],
+                                     r["pack_capacity"], r["pack_loose"], r["unit"])
+        if label and label != r["pack_label"]:
+            conn.execute("UPDATE wh_receipts SET pack_label=? WHERE id=?",
+                         (label, r["id"]))
+    if rows:
+        conn.commit()
 
 
 def _conn(year, month):
     conn = months.get_db(year, month)
     conn.executescript(SCHEMA)
-    _migrate_receipts(conn)
+    _migrate_tables(conn)
     return conn
 
 
@@ -304,15 +335,15 @@ def pack_summary(kind, count, capacity, loose, unit):
         if count > 0 and capacity > 0:
             total += count * capacity
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} × "
-                        f"{arnum.fmt_qty(capacity)} {unit}")
+                        f"{arnum.fmt_qty_trim(capacity)} {unit}")
         elif count > 0:
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind}")
     if loose > 0:
         total += loose
-        bits.append(f"{arnum.fmt_qty(loose)} {unit} سائب")
+        bits.append(f"{arnum.fmt_qty_trim(loose)} {unit} سائب")
     label = " + ".join(bits)
     if bits and total > 0 and (count and capacity):
-        label += f" = {arnum.fmt_qty(total)} {unit}"
+        label += f" = {arnum.fmt_qty_trim(total)} {unit}"
     return label, round(total, 6)
 
 
@@ -515,9 +546,11 @@ def has_opener(year, month, item_id):
 def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                producer="", supplier_id=None, supplier_name="",
                notes="", date_iso="",
-               pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0):
-    """رصيد أول المدة: إدخال حقيقي بكل بياناته (توجيه المستخدم ٢٥/٠٩/٢٠٢٦) —
-    كمية + شركة منتجة + مورد + تغليف. مرة واحدة لكل صنف، وأول سطور الكارت."""
+               pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
+               prod_iso="", exp_iso="", stores=None):
+    """رصيد أول المدة: إدخال حقيقي بكل بياناته (توجيه ٢٥/٠٩ وتوسيع ٢٦/٠٩) —
+    كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
+    تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف، وأول سطور الكارت."""
     from core import egtime
     item, created = resolve_item(year, month, cycle, item_name, handle_unit_hint)
     if has_opener(year, month, item["id"]):
@@ -529,6 +562,17 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
+    prod_iso = (prod_iso or "").strip()
+    exp_iso = (exp_iso or "").strip()
+    if prod_iso and exp_iso and exp_iso < prod_iso:
+        raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
+    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
+             if q and float(q) > 0]
+    if parts:
+        diff = round(qty - sum(q for _s, _n, q in parts), 6)
+        if abs(diff) > 0.000001:
+            raise ValueError("مجموع الكميات على المخازن لا يساوي كمية رصيد أول المدة — "
+                             "وزّع الكمية كاملة على المخازن")
     supplier_id = int(supplier_id) if supplier_id else None
     supplier_name = (supplier_name or "").strip()
     if supplier_id and not supplier_name:
@@ -548,12 +592,70 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     with conn:
         conn.execute(
             "INSERT INTO wh_ledger (cycle,item_id,day,date_iso,kind,permit_no,label,"
-            "added,issued,balance,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "added,issued,balance,notes,created_at,prod_date,exp_date) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (cycle, item["id"], day, date_iso, "opener", 0, "رصيد أول المدة",
-             qty, 0.0, qty, " — ".join(bits), stamp))
+             qty, 0.0, qty, " — ".join(bits), stamp, prod_iso, exp_iso))
+        for sid, sname, q in parts:
+            conn.execute(
+                "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
+                " VALUES (?,?,?,?,?)", (cycle, item["id"], sid, sname, q))
         _remember_spec(conn, cycle, item["id"], pack_kind, pack_capacity)
     conn.close()
     return {"item": item, "qty": qty, "created": created}
+
+
+def opener_stores(year, month, cycle):
+    """توزيع أرصدة أول المدة على المخازن: {item_id: [{store_id,store_name,qty}]}."""
+    conn = _conn(year, month)
+    rows = [dict(r) for r in conn.execute(
+        "SELECT item_id, store_id, store_name, qty FROM wh_opener_stores WHERE cycle=?",
+        (cycle,))]
+    conn.close()
+    out = {}
+    for r in rows:
+        out.setdefault(r["item_id"], []).append(r)
+    return out
+
+
+def _iter_month_conns():
+    """اتصالات كل قواعد الشهور الموجودة (بلا إنشاء) — المخازن أصل مستمر عبر الشهور."""
+    from data_access import storage
+    for year in storage.list_years():
+        for month in range(1, 13):
+            path = months.month_db_path(year, month)
+            if not path.exists():
+                continue
+            conn = _conn(year, month)
+            yield year, month, conn
+            conn.close()
+
+
+def store_has_movement(store_id):
+    """هل للمخزن حركة توزيع في أي شهر (إذون إضافة أو أرصدة أول مدة)؟"""
+    for _y, _m, conn in _iter_month_conns():
+        for table in ("wh_receipt_stores", "wh_opener_stores"):
+            row = conn.execute(
+                f"SELECT 1 FROM {table} WHERE store_id=? LIMIT 1", (store_id,)).fetchone()
+            if row:
+                return True
+    return False
+
+
+def move_store_splits(store_id, new_store_id, new_store_name):
+    """نقل توزيعات مخزن إلى مخزن آخر في كل الشهور (قبل حذفه)."""
+    moved = 0
+    for _y, _m, conn in _iter_month_conns():
+        with conn:
+            cur = conn.execute(
+                "UPDATE wh_receipt_stores SET store_id=?, store_name=? WHERE store_id=?",
+                (new_store_id, new_store_name, store_id))
+            moved += cur.rowcount
+            cur = conn.execute(
+                "UPDATE wh_opener_stores SET store_id=?, store_name=? WHERE store_id=?",
+                (new_store_id, new_store_name, store_id))
+            moved += cur.rowcount
+    return moved
 
 
 def issue_rows_for_item(year, month, cycle, item):
@@ -664,6 +766,7 @@ def _batch_pool(year, month, cycle):
     openers = [dict(r) for r in conn.execute(
         "SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
     conn.close()
+    opener_parts = opener_stores(year, month, cycle)
     pool = []
     for r in sorted(list_receipts(year, month, cycle), key=lambda x: x["id"]):
         item = items.get(r["item_id"])
@@ -685,13 +788,18 @@ def _batch_pool(year, month, cycle):
         item = items.get(o["item_id"])
         if not item:
             continue
-        pool.append({
-            "item": item, "qty": float(o["added"] or 0),
-            "remaining": float(o["added"] or 0),
-            "expiry": NO_EXPIRY, "order": f"{o['date_iso']}-00000",
-            "serial": 0, "pack_label": "", "store_id": None,
-            "store_name": UNASSIGNED,
-        })
+        parts = opener_parts.get(o["item_id"]) or [
+            {"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
+        for part in parts:
+            pool.append({
+                "item": item, "qty": float(part["qty"]),
+                "remaining": float(part["qty"]),
+                "expiry": o["exp_date"] or NO_EXPIRY,
+                "order": f"{o['date_iso']}-00000",
+                "serial": 0, "pack_label": "",
+                "store_id": part["store_id"],
+                "store_name": part["store_name"] or UNASSIGNED,
+            })
     pool.sort(key=lambda b: (b["expiry"], b["order"]))
     return pool
 
@@ -740,23 +848,29 @@ def stores_report(year, month):
                   "balances": {}, "total": 0.0}
     for cycle, cycle_name in (("supply", "الإمداد"), ("contractor", "المتعهد")):
         items = {it["id"]: it for it in list_items(year, month, cycle)}
-        # رصيد أول المدة: كمية داخل على «غير موزع على مخازن» — وإلا يظهر الرصيد بالسالب
+        # رصيد أول المدة: كمية داخل موزعة على مخازنه (أو «غير موزع» بلا توزيع)
         conn = _conn(year, month)
         openers = [dict(r) for r in conn.execute(
             "SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
         conn.close()
+        opener_parts = opener_stores(year, month, cycle)
         for o in openers:
             item = items.get(o["item_id"])
             if not item or not (o["added"] or 0):
                 continue
-            unassigned["inn"].append({
-                "date_iso": o["date_iso"], "cycle": cycle_name,
-                "item": item["name"], "unit": item["handle_unit"],
-                "qty": float(o["added"]), "pack_label": "",
-                "serial": 0, "expiry": "",
-            })
-            unassigned["balances"][item["name"]] = \
-                unassigned["balances"].get(item["name"], 0.0) + float(o["added"])
+            for part in (opener_parts.get(o["item_id"]) or [
+                    {"store_id": None, "store_name": UNASSIGNED,
+                     "qty": float(o["added"])}]):
+                target = report.get(part["store_id"], unassigned)
+                qty = float(part["qty"] or 0)
+                target["inn"].append({
+                    "date_iso": o["date_iso"], "cycle": cycle_name,
+                    "item": item["name"], "unit": item["handle_unit"],
+                    "qty": qty, "pack_label": "",
+                    "serial": 0, "expiry": o["exp_date"] or "",
+                })
+                target["balances"][item["name"]] = \
+                    target["balances"].get(item["name"], 0.0) + qty
         for r in list_receipts(year, month, cycle):
             item = items.get(r["item_id"])
             if not item:

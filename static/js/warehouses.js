@@ -27,7 +27,8 @@
 
   function fmt(n) {
     if (n === null || !isFinite(n)) return "";
-    return n.toLocaleString("ar-EG", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    var t = n.toLocaleString("ar-EG", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    return t;  /* الصحيحة صحيحة والكسور بكسورها — مطابقة لfmt_qty_trim */
   }
 
   function baseOf(unit) {
@@ -191,13 +192,13 @@
       }
       if (qtyEl) {
         if (total > 0) {
-          qtyEl.value = total.toLocaleString("ar-EG", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+          qtyEl.value = fmt(total);
           qtyEl.readOnly = true;
         } else {
           qtyEl.readOnly = false;
         }
         refreshConv();
-        refreshSplitHint();
+        SPLIT_REFRESH.forEach(function (fn) { fn(); });
       }
     }
     [kindEl, countEl, capEl, looseEl].forEach(function (el) {
@@ -221,63 +222,96 @@
   if (wh1Form) wirePackaging(wh1Form, "#whPackHint");
   wirePackaging(document, null);
 
-  /* توزيع الكمية على المخازن — صفوف ديناميكية بكومبو متمثّم (قاعدة ١٠) */
-  var splitRows = document.getElementById("whSplitRows");
-  var splitAdd = document.getElementById("whSplitAdd");
-  var splitHint = document.getElementById("whSplitHint");
+  /* توزيع الكمية على المخازن — صناديق متعددة (١ مخازن + رصيد أول المدة) بكومبو متمثّم */
+  var SPLIT_REFRESH = [];
 
-  function splitSum() {
-    if (!splitRows) return null;
-    var sum = 0, any = false;
-    Array.prototype.forEach.call(
-      splitRows.querySelectorAll('[name=store_qty]'), function (el) {
-        var n = toNum(el.value);
-        if (n && n > 0) { sum += n; any = true; }
+  function wireSplitBox(box) {
+    var rows = box.querySelector(".js-split-rows");
+    var add = box.querySelector(".js-split-add");
+    var hint = box.querySelector(".js-split-hint");
+    if (!rows || !add || rows.dataset.wired) return;
+    rows.dataset.wired = "1";
+    var form = box.closest("form");
+    var qtyEl = form ? form.querySelector("input[name=qty]") : null;
+
+    function splitSum() {
+      var sum = 0, any = false;
+      Array.prototype.forEach.call(
+        rows.querySelectorAll('[name=store_qty]'), function (el) {
+          var n = toNum(el.value);
+          if (n && n > 0) { sum += n; any = true; }
+        });
+      return any ? sum : null;
+    }
+
+    function refresh() {
+      if (!hint) return;
+      var sum = splitSum();
+      var qty = qtyEl ? toNum(qtyEl.value) : null;
+      if (sum === null) { hint.textContent = ""; return; }
+      hint.textContent = "مجموع التوزيع: " + fmt(sum) +
+        (qty !== null ? (Math.abs(sum - qty) < 0.0001
+          ? " — يطابق الكمية ✓"
+          : " — لا يطابق الكمية (" + fmt(qty) + ")!") : "");
+    }
+    SPLIT_REFRESH.push(refresh);
+
+    function addRow() {
+      var row = document.createElement("div");
+      row.className = "wh-split-row";
+      row.innerHTML =
+        '<input type="hidden" name="store_id" value="">' +
+        '<input name="store_name" data-combo="whStoresList" autocomplete="off" placeholder="اختر المخزن">' +
+        '<input name="store_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية">' +
+        '<button type="button" class="icon-btn del js-split-del" title="إزالة المخزن">' +
+        '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
+      rows.appendChild(row);
+      if (window.LogisticsCombo) window.LogisticsCombo.enhance(row);
+      row.querySelector('[name=store_name]').addEventListener("change", function () {
+        row.querySelector('[name=store_id]').value = storeIdByName(this.value) || "";
+        refresh();
       });
-    return any ? sum : null;
+      row.querySelector('[name=store_qty]').addEventListener("input", refresh);
+      row.querySelector(".js-split-del").addEventListener("click", function () {
+        row.remove();
+        refresh();
+      });
+      refresh();
+    }
+
+    add.addEventListener("click", addRow);
+    if (box.dataset.autoRow === "1" && !rows.children.length) addRow();
+    refresh();
   }
 
-  function refreshSplitHint() {
-    if (!splitHint || !splitRows) return;
-    var sum = splitSum();
-    var qty = qtyInput ? toNum(qtyInput.value) : null;
-    if (sum === null) { splitHint.textContent = ""; return; }
-    splitHint.textContent = "مجموع التوزيع: " + fmt(sum) +
-      (qty !== null ? (Math.abs(sum - qty) < 0.0001
-        ? " — يطابق كمية الإذن ✓"
-        : " — لا يطابق كمية الإذن (" + fmt(qty) + ")!") : "");
+  Array.prototype.forEach.call(document.querySelectorAll(".js-split-box"), wireSplitBox);
+
+  /* مدة الصلاحية تلقائيًا — لكل نموذج (١ مخازن + رصيد أول المدة) */
+  function parseDate(text) {
+    var t = String(text || "").trim();
+    for (var i = 0; i < 10; i++) t = t.split(AR[i]).join(String(i));
+    var parts = t.split("/").map(function (p) { return parseInt(p, 10); });
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    return new Date(parts[2], parts[1] - 1, parts[0]);
   }
 
-  function addSplitRow() {
-    if (!splitRows) return;
-    var row = document.createElement("div");
-    row.className = "wh-split-row";
-    row.innerHTML =
-      '<input type="hidden" name="store_id" value="">' +
-      '<input name="store_name" data-combo="whStoresList" autocomplete="off" placeholder="اختر المخزن">' +
-      '<input name="store_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية">' +
-      '<button type="button" class="icon-btn del js-split-del" title="إزالة المخزن">' +
-      '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
-    splitRows.appendChild(row);
-    if (window.LogisticsCombo) window.LogisticsCombo.enhance(row);
-    row.querySelector('[name=store_name]').addEventListener("change", function () {
-      row.querySelector('[name=store_id]').value = storeIdByName(this.value) || "";
-      refreshSplitHint();
-    });
-    row.querySelector('[name=store_qty]').addEventListener("input", refreshSplitHint);
-    row.querySelector(".js-split-del").addEventListener("click", function () {
-      row.remove();
-      refreshSplitHint();
-    });
-    refreshSplitHint();
+  function wireShelf(form) {
+    var prod = form.querySelector('[name=prod_date]');
+    var exp = form.querySelector('[name=exp_date]');
+    var hint = form.querySelector(".js-shelf-hint");
+    if (!prod || !exp || !hint || prod.dataset.shelfWired) return;
+    prod.dataset.shelfWired = "1";
+    function refresh() {
+      var d1 = parseDate(prod.value), d2 = parseDate(exp.value);
+      if (!d1 || !d2) { hint.textContent = ""; return; }
+      var days = Math.round((d2 - d1) / 86400000);
+      hint.textContent = days >= 0
+        ? "مدة الصلاحية: " + days.toLocaleString("ar-EG") + " يوم"
+        : "تنبيه: الصلاحية قبل الإنتاج!";
+    }
+    prod.addEventListener("change", refresh);
+    exp.addEventListener("change", refresh);
+    refresh();
   }
-
-  if (splitAdd) splitAdd.addEventListener("click", addSplitRow);
-  var wh1Toggle = document.getElementById("whWh1Toggle");
-  if (wh1Toggle && splitRows) {
-    wh1Toggle.addEventListener("click", function once() {
-      if (!splitRows.children.length) addSplitRow();
-      wh1Toggle.removeEventListener("click", once);
-    });
-  }
+  Array.prototype.forEach.call(document.querySelectorAll("form"), wireShelf);
 })();

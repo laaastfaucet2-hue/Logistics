@@ -108,6 +108,8 @@ def page():
         stores=db_stores.list_stores(), editing=editing,
         report=report,
         tab_file=sf.TAB_FILES[tab],
+        # علم «عليه حركة» لكل مخزن — يُستخدم في نافذة الحذف/النقل
+        has_move={s["id"]: dw.store_has_movement(s["id"]) for s in db_stores.list_stores()},
     )
 
 
@@ -139,6 +141,18 @@ def delete():
     store = db_stores.get_store(arnum.parse_int(request.form.get("store_id")) or 0)
     if not store:
         return _rb("mains", err="المخزن غير موجود")
+    # قاعدة ٢٦/٠٩: ممنوع حذف مخزن عليه حركة إلا بنقل أصنافه إلى مخزن آخر
+    transfer_id = arnum.parse_int(request.form.get("transfer_to"))
+    target = db_stores.get_store(transfer_id) if transfer_id else None
+    if dw.store_has_movement(store["id"]):
+        if not target or target["id"] == store["id"]:
+            return _rb("mains", err="ممنوع حذف «%s»: عليه حركة — انقل أصنافه "
+                                    "إلى مخزن أو ثلاجة أخرى أولًا" % store["name"])
+        moved = dw.move_store_splits(store["id"], target["id"], target["name"])
+        db_stores.delete_store(store["id"])
+        _snapshot(year, month)
+        return _rb("mains", ok=f"حُذف مخزن «{store['name']}» ونُقلت أصنافه "
+                               f"({arnum.to_arabic_indic(moved)}) إلى «{target['name']}»")
     db_stores.delete_store(store["id"])
     _snapshot(year, month)
     return _rb("mains", ok=f"حُذف مخزن «{store['name']}» من السجل — وتسجيلها في البيانات المحلية")

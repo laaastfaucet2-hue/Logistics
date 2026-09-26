@@ -65,6 +65,23 @@ def fmt_qty(value):
     return to_arabic_indic(f"{f:.3f}").replace(".", "٫")
 
 
+def fmt_qty_trim(value):
+    """كمية بلا أصفار زائدة: الصحيحة تظهر صحيحة والكسر يظهر بكسره (توجيه ٢٦/٠٩).
+
+    50 → «٥٠»   |   1.5 → «١٫٥»   |   0.66 → «٠٫٦٦»   |   None/فاضي → «»
+    """
+    if value is None or value == "":
+        return ""
+    try:
+        f = float(to_western(value))
+    except (TypeError, ValueError):
+        return str(value)
+    text = f"{f:.3f}".rstrip("0").rstrip(".")
+    if text in ("", "-"):
+        text = "0"
+    return to_arabic_indic(text.replace(".", "٫"))
+
+
 def digit_sets():
     """Expose the same digit alphabets to local browser formatters (no duplicate maps)."""
     return {"western": "0123456789", "eastern": _EASTERN, "persian": _PERSIAN}

@@ -51,6 +51,15 @@
           <label class="wh-f">كمية سائبة
             <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
           <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
+          {{ date_field('prod_date', 'تاريخ الإنتاج') }}
+          {{ date_field('exp_date', 'تاريخ الصلاحية') }}
+          <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
+        </div>
+        <div class="js-split-box" data-auto-row="1">
+          <b class="wh-split-title">توزيع الرصيد على المخازن (اختياري — والمجموع يجب أن يطابق الكمية)</b>
+          <div class="js-split-rows"></div>
+          <button type="button" class="rt-btn dim js-split-add">＋ إضافة مخزن</button>
+          <span class="wh-hintline js-split-hint"></span>
         </div>
         <div class="wh-form-actions">
           <button class="rt-btn gold" type="submit">💾 تسجيل الرصيد وفتح الكارت</button>
@@ -107,8 +116,17 @@
         <label class="wh-f">كمية سائبة
           <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
         <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
+        {{ date_field('prod_date', 'تاريخ الإنتاج') }}
+        {{ date_field('exp_date', 'تاريخ الصلاحية') }}
+        <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
         <label class="wh-f wh-f-wide">ملاحظات
           <textarea name="notes" rows="2"></textarea></label>
+      </div>
+      <div class="js-split-box" data-auto-row="1">
+        <b class="wh-split-title">توزيع الرصيد على المخازن (اختياري — والمجموع يجب أن يطابق الكمية)</b>
+        <div class="js-split-rows"></div>
+        <button type="button" class="rt-btn dim js-split-add">＋ إضافة مخزن</button>
+        <span class="wh-hintline js-split-hint"></span>
       </div>
       <div class="wh-form-actions">
         <button class="rt-btn gold" type="submit">💾 تسجيل رصيد أول المدة</button>

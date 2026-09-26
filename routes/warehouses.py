@@ -366,6 +366,20 @@ def wh3_opener():
         if sup["name"] == supplier_name:
             supplier_id = sup["id"]
             break
+    stores_parts = []
+    for sid_raw, qty_raw in zip(request.form.getlist("store_id"),
+                                request.form.getlist("store_qty")):
+        sid = arnum.parse_int(sid_raw)
+        sqty = arnum.parse_float(qty_raw)
+        store = db_stores.get_store(sid) if sid else None
+        if store and sqty and sqty > 0:
+            stores_parts.append((store["id"], store["name"], sqty))
+    try:
+        prod_iso = _opt_date(request.form.get("prod_date"))
+        exp_iso = _opt_date(request.form.get("exp_date"))
+    except ValueError:
+        return _rb(cycle, "wh3", err="تاريخ مستحيل — اكتب التاريخ يوم/شهر/سنة صحيحًا",
+                   item=item_id)
     try:
         dw.add_opener(year, month, cycle, item["name"], qty, day,
                       producer=request.form.get("producer"),
@@ -373,7 +387,8 @@ def wh3_opener():
                       notes=request.form.get("notes"),
                       date_iso=f"{year:04d}-{month:02d}-{day:02d}",
                       pack_kind=pack_kind, pack_count=pack_count,
-                      pack_capacity=pack_capacity, pack_loose=pack_loose)
+                      pack_capacity=pack_capacity, pack_loose=pack_loose,
+                      prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh3", err=str(exc), item=item_id)
     _snapshot(cycle)

@@ -486,3 +486,84 @@ def test_store_registry_crud_rules(client):
     assert __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]["name"] == "مخزن الشفاطات المعدل"
     _post(client, "/stores/delete", {"store_id": store["id"]})
     assert __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores() == []
+
+# ======================================================================
+# قواعد جولة ٢٦/٠٩: أرقام التغليف المقصوصة + رصيد أول المدة الكامل + حذف المخازن
+# ======================================================================
+def test_pack_label_integers_stay_integers_fractions_show_fractions():
+    from data_access.db_warehouses import pack_summary
+    label, total = pack_summary("شكارة", 19, 50, 50, "كجم")
+    assert label == "١٩ شكارة × ٥٠ كجم + ٥٠ كجم سائب = ١٠٠٠ كجم" and total == 1000.0
+    label, total = pack_summary("بلاتة", 2, 12.5, 0, "كجم")
+    assert "١٢٫٥ كجم" in label and "= ٢٥ كجم" in label and total == 25.0
+    label, _ = pack_summary("كرتونة", 3, 0.66, 0, "لتر")
+    assert "٠٫٦٦ لتر" in label
+
+
+def test_opener_full_fields_splits_and_expiry_drive_fefo(client):
+    _init()
+    db_stores_add = __import__("data_access.db_stores", fromlist=["add_store"])
+    db_stores_add.add_store("مخزن أ")
+    db_stores_add.add_store("مخزن ب")
+    stores = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()
+    a, b = stores[0], stores[1]
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "سكر أبيض", "كجم", 0, 0, 0)
+    # رصيد أول المدة بتوزيع ٣٠/٢٠ وصلاحية قريبة — يُصرف أولًا رغم أنه أقدم إضافةً
+    _post(client, "/warehouses/wh3/opener?cycle=supply", {
+        "cycle": "supply", "item_name": "سكر أبيض", "qty": "٥٠", "day": "١",
+        "producer": "حوانيت", "supplier_name": "مورد قديم",
+        "prod_date": "٠١/٠١/٢٠٢٦", "exp_date": "٠١/١١/٢٠٢٦",
+        "store_id": [str(a["id"]), str(b["id"])], "store_qty": ["٣٠", "٢٠"]})
+    # إذن إضافة بلا صلاحية — أحدث خزينًا لكن صلاحيته أبعد
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "سكر أبيض", "qty": "٤٠", "day": "٢",
+        "receipt_no": "١", "store_id": [str(a["id"])], "store_qty": ["٤٠"]})
+    rows = dw.tafreeda_rows(YEAR, MONTH, "supply")
+    dp.save_permit(YEAR, MONTH, {
+        "number": 1, "fiscal_year": 2026, "date_from": 5, "date_to": 5,
+        "issue_days": 1, "mode": "box", "entity_label": "جهة", "officers": 0,
+        "individuals": 10, "recruits": 0, "meals": ["lunch"],
+        "record_ids": [1], "actuals": {"tamween_سكر أبيض": 55}})
+    rows = dw.tafreeda_rows(YEAR, MONTH, "supply")
+    assert rows[0]["receipt_serial"] == 0 and rows[0]["qty"] == 30.0   # الرصيد أولًا: أقرب صلاحية
+    assert rows[0]["store_name"] == "مخزن أ"
+    assert rows[1]["receipt_serial"] == 0 and rows[1]["qty"] == 20.0 and rows[1]["store_name"] == "مخزن ب"
+    assert rows[2]["receipt_serial"] == 1 and rows[2]["qty"] == 5.0    # ثم إذن الإضافة
+    # مجموع لا يطابق → رفض
+    response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
+        "cycle": "supply", "item_name": "شاي فتلة", "qty": "١٠", "day": "١",
+        "store_id": [str(a["id"])], "store_qty": ["٧"]}, follow=True)
+    assert "لا يساوي كمية رصيد أول المدة" in response.data.decode("utf-8")
+    # صلاحية قبل إنتاج → رفض
+    response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
+        "cycle": "supply", "item_name": "شاي فتلة", "qty": "١٠", "day": "١",
+        "prod_date": "٠١/٠٦/٢٠٢٦", "exp_date": "٠١/٠١/٢٠٢٦"}, follow=True)
+    assert "قبل تاريخ الإنتاج" in response.data.decode("utf-8")
+
+
+def test_store_with_movement_cannot_delete_without_transfer(client):
+    _init()
+    db_stores_add = __import__("data_access.db_stores", fromlist=["add_store"])
+    db_stores_add.add_store("مخزن الحذف")
+    db_stores_add.add_store("مخزن الوجهة")
+    stores = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()
+    victim, dest = stores[0], stores[1]
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0, 0)
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٢",
+        "receipt_no": "١", "store_id": [str(victim["id"])], "store_qty": ["١٠٠"]})
+    # بلا نقل → مرفوض
+    response = _post(client, "/stores/delete", {"store_id": str(victim["id"])}, follow=True)
+    assert "ممنوع حذف" in response.data.decode("utf-8")
+    # بالنقل → يُحذف وتنتقل التوزيعات (والاسم يُعاد تسميته في الحركة)
+    response = _post(client, "/stores/delete",
+                     {"store_id": str(victim["id"]), "transfer_to": str(dest["id"])},
+                     follow=True)
+    assert "ونُقلت أصنافه" in response.data.decode("utf-8")
+    remaining = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()
+    assert [st["id"] for st in remaining] == [dest["id"]]
+    splits = dw.list_receipts(YEAR, MONTH, "supply")[0]["stores"]
+    assert splits[0]["store_id"] == dest["id"] and splits[0]["qty"] == 100.0
+    # الوجهة ورثت الحركة → صارت هي الأخرى محمية من الحذف
+    response = _post(client, "/stores/delete", {"store_id": str(dest["id"])}, follow=True)
+    assert "ممنوع حذف" in response.data.decode("utf-8")
