@@ -717,6 +717,21 @@ def test_permit_same_number_updates_once_and_reports_impact(client):
     assert len(rows) == 1 and rows[0]["qty"] == 20.0     # التفريدة اتجددت بالقيمة الجديدة
 
 
+def test_pack_ledger_loose_stays_loose():
+    """توجيه ٢٧/٠٩ مساءً: «٥٠ شكارة + ٢٠٠ سائب» الرصيد يبقى كده مش ٥٤ شكارة —
+    والصرف ينقص السائب أولًا، ولو خلص تُفتح عبوة كاملة."""
+    from data_access.packaging import PackLedger
+    led = PackLedger("شكارة", 50, "كجم")
+    led.add(50, 200)
+    assert led.label() == "٥٠ شكارة + ٢٠٠ كجم سائب"
+    led.take(3)
+    assert led.label() == "٥٠ شكارة + ١٩٧ كجم سائب"
+    led.take(197)
+    assert led.label() == "٥٠ شكارة"
+    led.take(3)
+    assert led.label() == "٤٩ شكارة كاملة + شكارة مفتوحة (٤٧ كجم)"
+
+
 def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     """التفاريد جوه ٢ و٣ مخازن (توجيه ٢٦/٠٩): كل تفريدة سطر برقم الإذن تفتح
     نافذة كاملة: صنف ← مخازن بالمنصرف المفكك والرصيد بعد الصرف والمنتج."""

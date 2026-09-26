@@ -17,7 +17,7 @@ from datetime import date
 from core import arabic_numbers as arnum, dates, egtime
 from core.config import SECTIONS, MONTH_NAMES
 from data_access import dataguard, storage
-from data_access import db_warehouses as dw
+from data_access import db_warehouses as dw, packaging
 
 CYCLE_FOLDERS = {"supply": "سجل الإمداد", "contractor": "سجل المتعهد"}
 SUB_FOLDERS = {
@@ -281,50 +281,48 @@ def snapshot_all(year, month):
 
 
 def taf3_pack_rows(year, month, cycle, item_id):
-    """دفتر التفاريد الخاص بصنف (توجيه ٢٧/٠٩): زي دفتر ٣ مخازن بالظبط
-    بس مضاف/منصرف/الرصيد كلهم بالتغليف — (rows، balance_pack) أو None."""
+    """دفتر التفاريد الخاص بصنف (توجيه ٢٧/٠٩): زي دفتر ٣ مخازن بالظبط بس
+    مضاف/منصرف/الرصيد كلهم بالتغليف. الرصيد بمدير العبوات PackLedger:
+    الكاملة ما تتحولش سائب — الصرف من السائب أولًا (توجيه ٢٧/٠٩ مساءً)."""
     item = dw.get_item(year, month, item_id)
     if not item:
         return None
     card = dw.item_card(year, month, item_id)
-    takes, batches = {}, {}
-    for t in dw.tafreeda_rows(year, month, cycle):
-        if t["item"] == item["name"]:
-            takes.setdefault(t["permit_no"], []).append(t)
-    for b in dw._batch_pool(year, month, cycle):
-        if b["item"]["name"] == item["name"]:
-            batches.setdefault(b["serial"], b)
-    specs = dw.pack_specs_map(year, month, cycle).get(item["name"], {})
-    fallback = next(iter(specs.values()), {}) if specs else {}
     unit = item["handle_unit"]
+    specs = dw.pack_specs_map(year, month, cycle).get(item["name"], {})
+    fb_name = next(iter(specs), "") if specs else ""
+    _sp = specs.get(fb_name, {}) if specs else {}
+    fb = {"pack_kind": fb_name, "pack_capacity": _sp.get("capacity", 0),
+          "pack_inner_count": _sp.get("inner_count", 0),
+          "pack_inner_capacity": _sp.get("inner_capacity", 0)}
+    led = packaging.PackLedger(fb.get("pack_kind"), fb.get("pack_capacity"), unit)
 
-    def _brk(q, spec, rest="سائب"):
+    def _brk(q, spec=None, rest="سائب"):
         spec = spec or {}
         return dw.pack_breakdown(spec.get("pack_kind"), spec.get("pack_capacity"),
                                  spec.get("pack_inner_count"), spec.get("pack_inner_capacity"),
                                  q, unit, rest) or f"{arnum.fmt_qty_trim(q)} {unit}"
 
-    rows, _cur = [], {}
-    _i = 0
+    rows, _i = [], 0
     for r in card["rows"]:
         _i += 1
-        if r["kind"] == "add1" and batches.get(r.get("permit_no")):
-            _cur = batches[r["permit_no"]]
         added_pack = r.get("pack_label") or (f"{arnum.fmt_qty(r['added'])} {unit}" if r["added"] else "—")
-        issued_pack = "—"
-        if r["kind"] == "issue2":
-            per = {}
-            for t in takes.get(r["permit_no"], []):
-                per[t["receipt_serial"]] = round(per.get(t["receipt_serial"], 0.0) + t["qty"], 6)
-            parts = [x for x in (_brk(q, batches.get(s), "") for s, q in per.items()) if x]
-            issued_pack = "؛ ".join(parts) if parts else f"{arnum.fmt_qty(r['issued'])} {unit}"
-            if not _cur and per:
-                _cur = batches.get(next(iter(per)), {}) or fallback
-        bal_pack = _brk(r["balance"], _cur or fallback)
+        if r["kind"] != "issue2":
+            cnt, kind, cap, loose = packaging.parse_pack_label(added_pack)
+            if cnt > 0:
+                led.set_kind(kind, cap)
+                over = round(float(r["added"] or 0) - (cnt * cap + loose), 6)
+                led.add(cnt, loose + (over if over > 0 else 0))
+            else:
+                led.add_qty(r["added"])
+            added_pack = added_pack or "—"
+        else:
+            led.take(r["issued"])
+            issued_pack = _brk(r["issued"], fb, "") if r["issued"] else "—"
         rows.append({"seq": _i, "day": r["day"], "date_iso": r["date_iso"],
                      "permit_no": r.get("permit_no"), "label": r.get("label"),
                      "kind": r["kind"], "added": r["added"], "added_pack": added_pack,
-                     "issued": r["issued"], "issued_pack": issued_pack,
-                     "balance": r["balance"], "bal_pack": bal_pack,
+                     "issued": r["issued"], "issued_pack": issued_pack if r["kind"] == "issue2" else "—",
+                     "balance": r["balance"], "bal_pack": led.label(),
                      "notes": r.get("notes") or ""})
     return {"item": item, "rows": rows, "balance_pack": rows[-1]["bal_pack"] if rows else ""}
