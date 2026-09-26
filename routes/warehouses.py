@@ -175,6 +175,22 @@ def page():
     tafreeda_by_permit = {}
     for row in tafreeda:
         tafreeda_by_permit.setdefault(row["permit_no"], []).append(row)
+    # الجهة المستلمة: الرئيسية فقط + دائرة «ملحقات» تفتح الجهات الأخرى (توجيه ٢٧/٠٩)
+    from data_access import db_tameedat as dt
+    for p in permits:
+        mains, extras = [], []
+        for rid in (p.get("record_ids") or []):
+            rec = dt.get_record(year, month, rid)
+            if not rec:
+                continue
+            mains.append(rec["entity_name"])
+            extras.extend(rec.get("attachments") or [])
+        p["main_entity"] = mains[0] if mains else (p.get("entity_label") or "—")
+        p["extras"] = extras
+    for no, pg in taf_popup.items():
+        _pe = next((q for q in permits if q["number"] == no), None)
+        pg["main_entity"] = _pe["main_entity"] if _pe else ""
+        pg["extras"] = _pe["extras"] if _pe else []
     stores_registry = db_stores.list_stores()
     pack_kinds = dw.collect_pack_kinds()
     packs_map = dw.pack_specs_map(year, month, cycle)

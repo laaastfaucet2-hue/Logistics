@@ -231,3 +231,10 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   color: var(--text); padding: 8px 16px; border-radius: 10px; cursor: pointer;
   font-weight: 700; font-size: .9rem; }
 .wh-subtab.active { background: var(--gold); border-color: var(--gold); color: #020617; }
+/* دائرة «ملحقات»: تفتح نافذة الجهات الأخرى (توجيه ٢٧/٠٩) */
+.wh-extras-dot { display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--gold-border); background: var(--surface-gold);
+  color: var(--gold-light); border-radius: 999px; padding: 2px 10px;
+  font-size: .78rem; font-weight: 700; cursor: pointer; margin-inline-start: 8px; }
+.wh-extras-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.wh-extras-dot:hover { background: var(--gold); color: #020617; }

@@ -17,13 +17,16 @@
     {% if taf_popup %}
     <div class="wh-scroll">
     <table class="rt-table wh-table wh-taf-list">
-      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>من يوم</th><th>إلى يوم</th>
+      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة المستلمة</th><th>من يوم</th><th>إلى يوم</th>
         <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
       <tbody>
         {% for no, pg in taf_popup.items() %}
         <tr class="wh-taf-row" data-taf-open="tafDialog-{{ no }}" title="اضغط لعرض التفريدة كاملة">
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="num"><b>{{ no | aindic }}</b></td>
+          <td class="name"><b>{{ pg.main_entity or '—' }}</b>{% if pg.extras %}
+            <button type="button" class="wh-extras-dot" data-taf-open="extrasDialog-{{ no }}"
+              title="افتح الجهات الأخرى"><span class="dot"></span> ملحقات ({{ pg.extras | length | aindic }})</button>{% endif %}</td>
           <td class="num">{{ pg.date_from | aindic }}</td>
           <td class="num">{{ pg.date_to | aindic }}</td>
           <td class="num">{{ pg.lines | length | aindic }}</td>
@@ -45,7 +48,7 @@
     {% if permits %}
     <div class="wh-scroll">
     <table class="rt-table wh-table wh-taf-list">
-      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة</th><th>من يوم</th><th>إلى يوم</th>
+      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة المستلمة</th><th>من يوم</th><th>إلى يوم</th>
         <th>أيام الصرف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
       <tbody>
         {% for p in permits %}
@@ -54,7 +57,9 @@
             title="اضغط لعرض التفريدة كاملة"{% endif %}>
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="num"><b title="إذن صرف ٢ مخازن رقم {{ p.number | aindic }}">{{ p.number | aindic }}</b></td>
-          <td>{{ p.entity_label or 'إذن مجمع' }}</td>
+          <td class="name"><b>{{ p.main_entity or 'إذن مجمع' }}</b>{% if p.extras %}
+            <button type="button" class="wh-extras-dot" data-taf-open="extrasDialog-{{ p.number }}"
+              title="افتح الجهات الأخرى"><span class="dot"></span> ملحقات ({{ p.extras | length | aindic }})</button>{% endif %}</td>
           <td class="num">{{ p.date_from | aindic }}</td>
           <td class="num">{{ p.date_to | aindic }}</td>
           <td class="num">{{ p.issue_days | aindic }}</td>
@@ -106,6 +111,38 @@
   </div>
   <div class="wh-dialog-foot no-print">
     <button type="button" class="rt-btn dim" data-taf-close="{{ no }}">إغلاق</button>
+  </div>
+</dialog>
+{% endfor %}
+
+{% for no, pg in taf_popup.items() if pg.extras %}
+<!-- الجهات الأخرى (الملحقات): نافذة منبثقة — قاعدة ٣٢ قابلة للإغلاق -->
+<dialog class="wh-dialog" id="extrasDialog-{{ no }}">
+  <div class="wh-dialog-head">
+    <b>🔵 ملحقات إذن صرف رقم {{ no | aindic }} — الجهات الأخرى</b>
+    <button type="button" class="icon-btn" data-taf-close="extrasDialog-{{ no }}" title="إغلاق">✕</button>
+  </div>
+  <div class="wh-dialog-body">
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th></tr></thead>
+      <tbody>
+        {% for a in pg.extras %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ a.name }}</b></td>
+          <td>{{ a.entity_type or '—' }}</td>
+          <td class="num">{{ a.officers | aindic }}</td>
+          <td class="num">{{ a.individuals | aindic }}</td>
+          <td class="num">{{ a.recruits | aindic }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="wh-dialog-foot no-print">
+    <button type="button" class="rt-btn dim" data-taf-close="extrasDialog-{{ no }}">إغلاق</button>
   </div>
 </dialog>
 {% endfor %}

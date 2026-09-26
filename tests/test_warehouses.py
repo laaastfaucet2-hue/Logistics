@@ -733,6 +733,10 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     from data_access import db_tameedat as dt
     ent_id = dt.add_entity(YEAR, MONTH, "جهة التفاريد", "شرطية")
     rec_id = dt.add_record(YEAR, MONTH, 5, dt.get_entity(YEAR, MONTH, ent_id), 1, 5, 0, "")
+    # ملحقة على نفس التأميدة — تظهر جوه دائرة «ملحقات» فقط (توجيه ٢٧/٠٩)
+    dt.update_record(YEAR, MONTH, rec_id, 5, 1, 5, 0, "",
+                     attachments=[{"name": "جهة ملحقة تجريبية", "entity_type": "شرطية",
+                                   "officers": 1, "individuals": 2, "recruits": 0}])
     _post(client, "/calc2/save", {
         "date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
         "selected_json": "[\"main:%d\"]" % rec_id, "entity_label": "جهة التفاريد",
@@ -744,6 +748,10 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     # قائمة التفاريد: سطر برقم الإذن + زرار عرض الإذن يفتح النافذة
     assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
     assert "عرض الإذن" in page
+    # «الجهة المستلمة»: الرئيسية فقط + دائرة ملحقات تفتح الجهات الأخرى
+    assert "الجهة المستلمة" in page and "جهة التفاريد" in page
+    assert 'data-taf-open="extrasDialog-1"' in page
+    assert page.count("جهة ملحقة تجريبية") == 1        # الملحقة داخل نافذتها فقط
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
     # النافذة: الجدول ثمانية أعمدة بالظبط — بلا رصيد ولا شركة منتجة
     assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page and "ملاحظات" in page
