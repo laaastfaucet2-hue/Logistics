@@ -28,7 +28,9 @@ TABS = [
     ("suppliers", "الشركات الموردة", "🏢"),
     ("wh1", "١ مخازن — إذون الإضافة", "📥"),
     ("wh2", "٢ مخازن — إذون الصرف", "📤"),
+    ("tafsarf", "التفاريد المصروفة", "🧾"),
     ("wh3", "٣ مخازن — دفتر الأصناف", "📒"),
+    ("wh3taf", "٣ مخازن تفاريد", "📋"),
 ]
 SUB_KEYS = {t[0] for t in TABS}
 
@@ -157,7 +159,15 @@ def page():
                        if c["name"].lower() not in item_name_set]
 
     permits = dw.permits_book(year, month, cycle) if sub == "wh2" else []
-    tafreeda = dw.tafreeda_rows(year, month, cycle) if sub == "wh2" else []
+    tafreeda = dw.tafreeda_rows(year, month, cycle)
+    for _t in tafreeda:
+        _t["wday"] = _wday(year, month, _t["date_from"])
+        _t["fdate_iso"] = f"{year:04d}-{month:02d}-{int(_t['date_from']):02d}"
+    tafreeda_by_item = {}
+    for _t in tafreeda:
+        tafreeda_by_item.setdefault(_t["item"], []).append(_t)
+    taf_totals = {n: round(sum(float(r["qty"]) for r in rs), 6)
+                  for n, rs in tafreeda_by_item.items()}
     tafreeda_by_permit = {}
     for row in tafreeda:
         tafreeda_by_permit.setdefault(row["permit_no"], []).append(row)
@@ -182,7 +192,8 @@ def page():
     cycle_cfg = WAREHOUSE_MAP[cycle]
     tab_file = wf.TAB_XLSX[sub]
     counts = {"suppliers": len(suppliers), "wh1": len(receipts),
-              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items)}
+              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items),
+              "tafsarf": len(tafreeda)}
     items_data = {}
     for it in items:
         base, factor = unit_base(it["handle_unit"])
@@ -213,6 +224,8 @@ def page():
         items_data=items_data, unit_base_data=UNIT_BASE,
         stores_registry=stores_registry, pack_kinds=pack_kinds,
         tafreeda_by_permit=tafreeda_by_permit, tafreeda_all=tafreeda,
+        tafreeda_by_item=tafreeda_by_item, taf_totals=taf_totals,
+        taf_selected=request.args.get("taf_item") or "",
     )
 
 

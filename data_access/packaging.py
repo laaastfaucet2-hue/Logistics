@@ -93,8 +93,9 @@ def pack_summary(kind, count, capacity, loose, unit,
     return label, round(total, 6)
 
 
-def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit):
-    """«إيه التغليف المتبقي بالضبط» — تفكيك الرصيد لعبوات كاملة + سائب.
+def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
+                   rest_word="سائب"):
+    """تفكيك كمية لعبوات كاملة + باقي (كلمة الباقي تُضبط بالمتصل).
 
     ١٧٠ كجم بشكارة ٥٠ ⇒ «٣ شكارة + ٢٠ كجم سائب»؛
     ٢٨ كجم بكرتونة ٦ علب × ٢ كجم ⇒ «٢ كرتونة + ٢ علبة»؛
@@ -120,14 +121,16 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit)
             parts.append(f"{arnum.to_arabic_indic(str(full_packs))} "
                          f"{_box_word(full_packs)}")
         if rest > 0.000001:
-            parts.append(f"{arnum.fmt_qty_trim(rest)} {unit} سائب")
+            _w = f" {rest_word}" if rest_word else ""
+            parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}{_w}")
     elif kind and capacity > 0:
         full = int(remaining // capacity)
         rest = round(remaining - full * capacity, 6)
         if full > 0:
             parts.append(f"{arnum.to_arabic_indic(str(full))} {kind}")
         if rest > 0.000001:
-            parts.append(f"{arnum.fmt_qty_trim(rest)} {unit} سائب")
+            _w = f" {rest_word}" if rest_word else ""
+            parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}{_w}")
     else:
         parts.append(f"{arnum.fmt_qty_trim(remaining)} {unit}")
     return " + ".join(parts) if parts else ""

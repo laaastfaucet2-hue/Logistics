@@ -173,9 +173,7 @@ def _conn(year, month):
     return conn
 
 
-# ======================================================================
-# الشركات الموردة — لكل دورة سجلها المنفصل تمامًا
-# ======================================================================
+# ========== الشركات الموردة — لكل دورة سجلها المنفصل تمامًا ==========
 def list_suppliers(year, month, cycle):
     conn = _conn(year, month)
     rows = [dict(r) for r in conn.execute(
@@ -228,9 +226,7 @@ def delete_supplier(year, month, supplier_id):
     conn.close()
 
 
-# ======================================================================
-# كتالوج ٣ مخازن — الأصناف ووحدة التعامل
-# ======================================================================
+# ========== كتالوج ٣ مخازن — الأصناف ووحدة التعامل ==========
 def ration_catalog(year, month, cycle):
     """أصناف مقرر الدورة من جداول المقررات (بدون تكرار) — مصدر السحب الأول."""
     section = SECTION_BY_CYCLE[cycle]
@@ -331,9 +327,7 @@ def resolve_item(year, month, cycle, name, handle_unit_hint=""):
     return get_item(year, month, item_id), True
 
 
-# ======================================================================
-# ١ مخازن — إذون إضافة الأصناف (الإدخال اليدوي الوحيد في الدورة)
-# ======================================================================
+# ========== ١ مخازن — إذون إضافة الأصناف (الإدخال اليدوي الوحيد في الدورة) ==========
 def _remember_spec(conn, cycle, item_id, kind, capacity,
                    inner_count=0, inner_capacity=0):
     """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها) للصنف تلقائيًا."""
@@ -525,9 +519,7 @@ def list_receipts(year, month, cycle, limit=10000):
     return rows
 
 
-# ======================================================================
-# ٣ مخازن — دفتر الصنف (كارت لكل صنف) + رصيد أول المدة + منصرف إذون ٢ مخازن
-# ======================================================================
+# ========== ٣ مخازن — دفتر الصنف (كارت لكل صنف) + رصيد أول المدة + منصرف إذون ٢ مخازن ==========
 def _convert(qty, from_unit, to_unit):
     """يحوّل كمية بين وحدتين عبر وحدات القاعدة (طن→كجم→طن…). غير المعروفة معاملها ١."""
     _base1, factor_from = unit_base(from_unit)
@@ -777,9 +769,7 @@ def item_card(year, month, item_id):
     }
 
 
-# ======================================================================
-# دفتر ٢ مخازن — إذون آلة الحاسبة (عرض؛ الخصم التلقائي مع ٤–٧ مخازن)
-# ======================================================================
+# ========== دفتر ٢ مخازن — إذون آلة الحاسبة (عرض؛ الخصم التلقائي مع ٤–٧ مخازن) ==========
 def permits_book(year, month, cycle):
     """أذون ٢ مخازن وأصناف دورة {cycle} داخل كل إذن — مفاتيح actuals
     «{section}_{الصنف}» تفصل التموين عن المتعهد (وحدات من الجدول مباشرة)."""
@@ -807,9 +797,7 @@ def permits_book(year, month, cycle):
         out.append({**permit, "cycle_items": items})
     return out
 
-# ======================================================================
-# المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن
-# ======================================================================
+# ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
 UNASSIGNED = "غير موزع على مخازن"
 NO_EXPIRY = "9999-12-31"
 
@@ -824,6 +812,9 @@ def _batch_pool(year, month, cycle):
     conn.close()
     opener_parts = opener_stores(year, month, cycle)
     pool = []
+    def _opener_producer(o):
+        _n = o.get("notes") or ""
+        return _n.split("منتج: ")[-1].split(" — ")[0] if "منتج: " in _n else ""
     for r in sorted(list_receipts(year, month, cycle), key=lambda x: x["id"]):
         item = items.get(r["item_id"])
         if not item:
@@ -842,6 +833,7 @@ def _batch_pool(year, month, cycle):
                 "pack_inner_count": r["pack_inner_count"],
                 "pack_inner_capacity": r["pack_inner_capacity"],
                 "pack_loose_unit": r["pack_loose_unit"],
+                "producer": r["producer"] or "",
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -861,7 +853,7 @@ def _batch_pool(year, month, cycle):
                 "pack_kind": "", "pack_count": 0,
                 "pack_capacity": 0, "pack_loose": 0,
                 "pack_inner_count": 0, "pack_inner_capacity": 0,
-                "pack_loose_unit": "",
+                "pack_loose_unit": "", "producer": _opener_producer(o),
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -906,6 +898,12 @@ def tafreeda_rows(year, month, cycle):
                     batch.get("pack_loose_unit"))
                 rows[-1]["pack_inner_label"] = _inner
                 rows[-1]["pack_outer_label"] = _outer
+                rows[-1]["producer"] = batch.get("producer") or ""
+                # «١ شكارة + ١٠ كجم» أو «٣٠ كجم» — المنصرف مُفكَّك بعبوات الدفعة
+                rows[-1]["issued_label"] = pack_breakdown(
+                    batch.get("pack_kind"), batch.get("pack_capacity"),
+                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
+                    take, batch["item"]["handle_unit"], rest_word="")
     return rows
 
 

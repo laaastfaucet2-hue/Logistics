@@ -1,0 +1,34 @@
+{# التفاريد المصروفة — كل سطر صرف من كل مخزن: المنصرف مُفكَّك بعبوات الدفعة
+   «١ شكارة + ١٠ كجم» أو «٣٠ كجم» + الشركة المنتجة + الصلاحية (توجيه ٢٦/٠٩) #}
+<div class="panel">
+  <div class="panel-head">
+    <h3>🧾 التفاريد المصروفة — {{ cycle_name }}</h3>
+    <span class="panel-hint">كل كمية منصرفة من كل مخزن — مُفكَّكة بعبوات الصنف
+      (لو ٦٠ كجم من شكارة ٥٠ يبقى ١ شكارة + ١٠ كجم)</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>المسلسل</th><th>اليوم</th><th>التاريخ</th><th>المخزن</th><th>الصنف</th>
+      <th>الوحدة</th><th>المنصرف من المخزن</th><th>الشركة المنتجة</th><th>تاريخ الانتهاء</th>
+    </tr></thead>
+    <tbody>
+      {% for t in tafreeda_all %}
+      <tr>
+        <td class="num"><b>{{ loop.index | aindic }}</b></td>
+        <td>{{ t.wday }}</td>
+        <td><bdi dir="ltr" class="date-display">{{ t.fdate_iso | datefmt }}</bdi></td>
+        <td>{{ t.store_name }}</td>
+        <td class="name"><b>{{ t.item }}</b></td>
+        <td>{{ t.unit }}</td>
+        <td class="num wh-pack-cell"><b>{{ t.issued_label or (t.qty | qty3 + ' ' + t.unit) }}</b></td>
+        <td>{{ t.producer or '—' }}</td>
+        <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty">لا تفاريد مصروفة بعد — أول إذن صرف من «آلة حاسبة ٢ مخازن» يظهر هنا تلقائيًا</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>

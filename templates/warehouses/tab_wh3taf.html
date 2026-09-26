@@ -1,0 +1,64 @@
+{# ٣ مخازن تفاريد — زي دفتر ٣ مخازن (كارت لكل صنف) بس شغال بإجمالي الكمية
+   المنصرفة والتغليف الكامل للدفعة (توجيه ٢٦/٠٩) #}
+<div class="wh-ledger-grid">
+  <aside class="panel wh-items-col no-print">
+    <div class="panel-head"><h3>📋 أصناف التفاريد</h3>
+      <span class="panel-hint">اضغط الصنف لتفاريداته — وإجمالي المنصرف</span></div>
+    <div class="wh-items-list">
+      {% for name, total in taf_totals.items() %}
+      <a class="wh-item {{ 'on' if taf_selected == name }}"
+         href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh3taf', taf_item=name) }}">
+        <b>{{ name }}</b>
+        <small>المنصرف: {{ total | qty3 }}
+          {{ tafreeda_by_item[name][0].unit }}</small>
+      </a>
+      {% else %}
+      <p class="empty">لا تفاريد بعد — أول إذن صرف يفتح التفاريد هنا تلقائيًا.</p>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <section class="panel wh-card">
+    {% if taf_selected and taf_selected in tafreeda_by_item %}
+    {% set rows = tafreeda_by_item[taf_selected] %}
+    <div class="panel-head">
+      <h3>تفاريد الصنف: <b class="wh-card-name">{{ taf_selected }}</b></h3>
+      <span class="wh-chip dim">إجمالي المنصرف: <b>{{ taf_totals[taf_selected] | qty3 }}
+        {{ rows[0].unit }}</b></span>
+    </div>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table wh-ledger">
+      <thead><tr>
+        <th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>المخزن</th>
+        <th>إجمالي المنصرف</th><th>الوحدة</th><th>التغليف</th>
+      </tr></thead>
+      <tbody>
+        {% for t in rows %}
+        <tr>
+          <td class="num"><b>{{ loop.index | aindic }}</b></td>
+          <td>{{ t.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ t.fdate_iso | datefmt }}</bdi></td>
+          <td class="num">{{ t.permit_no | aindic }}</td>
+          <td>{{ t.store_name }}</td>
+          <td class="num wh-issued"><b>{{ t.qty | qty3 }}</b></td>
+          <td>{{ t.unit }}</td>
+          <td class="wh-pack-cell">{{ t.pack_outer_label or t.pack_label or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">الإجمالي</td>
+          <td class="num"><b>{{ taf_totals[taf_selected] | qty3 }}</b> {{ rows[0].unit }}</td>
+          <td></td><td></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="panel-head"><h3>📋 ٣ مخازن تفاريد</h3></div>
+    <p class="empty">اختر صنفًا من القائمة لعرض تفاريدته: إجمالي الكمية المنصرفة
+      والتغليف الكامل لكل دفعة — من كل إذون ٢ مخازن.</p>
+    {% endif %}
+  </section>
+</div>
