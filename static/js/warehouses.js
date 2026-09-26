@@ -16,6 +16,7 @@
   var UNIT_BASE = json("whUnitBaseData");    // {unit: [base, factor]}
   var CTX = json("whContext");               // {year, month, days_in_month}
   var AR = "٠١٢٣٤٥٦٧٨٩";
+  var SPLIT_REFRESH = [];   // يجب أن يُعرَّف قبل wirePackaging — استدعاء refresh المباشر يستخدمه
   var WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
   function toNum(text) {
@@ -335,7 +336,6 @@
   wirePackaging(document, null);
 
   /* توزيع الكمية على المخازن — صناديق متعددة (١ مخازن + رصيد أول المدة) بكومبو متمثّم */
-  var SPLIT_REFRESH = [];
 
   function wireSplitBox(box) {
     var rows = box.querySelector(".js-split-rows");
