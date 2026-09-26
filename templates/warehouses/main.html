@@ -69,6 +69,7 @@
 <datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
 <datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
 <datalist id="whMissingList">{% for c in catalog_missing %}<option value="{{ c.name }}"></option>{% endfor %}</datalist>
+<datalist id="whLooseUnitsList"><option value="كجم"></option><option value="لتر"></option><option value="جرام"></option><option value="علبة"></option></datalist>
 <script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
 <script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
 <script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>

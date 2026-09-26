@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""صيغ التغليف اللفظية الاحترافية — توجيه المستخدم ٢٦/٠٩ مساءً.
+"""صيغ التغليف اللفظية الاحترافية — توجيه المستخدم ٢٦/٠٩ مساءً وجلسة المربع الموحد.
 
-كل خطوة الحسبة ظاهرة بالكلام: العدد + مسمى العبوة + وزن الوحدة + عملية الضرب
-+ السائب = المجموع، مع دعم التداخل (كارتونة بداخلها علب بوزن معلوم للعلبة).
+النموذج المعتمد: وزن العبوة الواحدة (الكرتونة كام؟) هو المرجع للمجموع،
+والعلب بداخلها تفصيل اختياري — ولو فيه فرق بين وزن العبوة وحاصل ضرب العلب
+تُظهر الصيغ الفرق بوضوح. السائب يدخل بوحدة التعامل أو بالعلب (يتحول بوزن العلبة).
 """
 from core import arabic_numbers as arnum
 
@@ -15,21 +16,35 @@ def _box_word(n):
     return "علبة"
 
 
-def _box_word(n):
-    """«علبة/علبتين/علب/علبة» بحسب العدد — لصيغة الكرتونة بداخلها علب."""
-    n = int(n or 0)
-    if 3 <= n <= 10:
-        return "علب"
-    return "علبة"
+def _is_loose_boxes(loose_unit):
+    """هل السائب مُدخل بالعلب؟ («علبة» أو «علب»)."""
+    return (loose_unit or "").strip().startswith("علب")
+
+
+def pack_diff_note(capacity, inner_count, inner_capacity, unit):
+    """جملة الفرق بين وزن العبوة وحاصل ضرب العلب — فاضية لو مفيش فرق أو علب."""
+    capacity = float(capacity or 0)
+    inner_count = float(inner_count or 0)
+    inner_capacity = float(inner_capacity or 0)
+    if capacity <= 0 or inner_count <= 0 or inner_capacity <= 0:
+        return ""
+    sub = inner_count * inner_capacity
+    diff = round(capacity - sub, 6)
+    if abs(diff) <= 0.001:
+        return ""
+    word = "فوق" if diff > 0 else "تحت"
+    return (f"فرق {arnum.fmt_qty_trim(abs(diff))} {unit} {word} حاصل العلب "
+            f"({arnum.fmt_qty_trim(sub)} {unit})")
 
 
 def pack_summary(kind, count, capacity, loose, unit,
-                 inner_count=0, inner_capacity=0):
-    """(الملخص النصي الاحترافي، المجموع) — توجيه المستخدم ٢٦/٠٩ مساءً.
+                 inner_count=0, inner_capacity=0, loose_unit=""):
+    """(الملخص النصي الاحترافي، المجموع) — كل خطوة الحسبة ظاهرة بالكلام.
 
-    الصحيح يظهر صحيحًا والكسر بكسره، وكل خطوة الحسبة ظاهرة:
     - شكارة: «١٩ شكارة × وزن الشكارة ٥٠ كجم = ٩٥٠ كجم + ٥٠ كجم سائب = ١٠٠٠ كجم»
-    - كرتونة بداخلها علب: «٤ كرتونة بداخلها ٦ علب × وزن العلبة ١٢ كجم = ٢٨٨ كجم»
+    - كرتونة بعleb: «١٠ كرتونة × وزن الكرتونة ١٢ كجم (بداخلها ٦ علب × ٢ كجم) = ١٢٠ كجم»
+    - بلا وزن للعبوة: «٤ كرتونة بداخلها ٦ علب × وزن العلبة ٢ كجم = ٤٨ كجم»
+    - سائب بالعلب: «٥ علب × ٢ كجم = ١٠ كجم سائب»
     """
     kind = (kind or "").strip()
     count = float(count or 0)
@@ -40,7 +55,18 @@ def pack_summary(kind, count, capacity, loose, unit,
     total = 0.0
     bits = []
     if kind and kind != "بدون تغليف" and count > 0:
-        if inner_count > 0 and inner_capacity > 0:
+        if capacity > 0:
+            sub = count * capacity
+            total += sub
+            detail = ""
+            if inner_count > 0 and inner_capacity > 0:
+                detail = (f" (بداخلها {arnum.to_arabic_indic(f'{inner_count:g}')} "
+                          f"{_box_word(inner_count)} × "
+                          f"{arnum.fmt_qty_trim(inner_capacity)} {unit})")
+            bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} × وزن "
+                        f"ال{kind} {arnum.fmt_qty_trim(capacity)} {unit}{detail} = "
+                        f"{arnum.fmt_qty_trim(sub)} {unit}")
+        elif inner_count > 0 and inner_capacity > 0:
             sub = count * inner_count * inner_capacity
             total += sub
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} "
@@ -48,17 +74,19 @@ def pack_summary(kind, count, capacity, loose, unit,
                         f"{_box_word(inner_count)} × وزن العلبة "
                         f"{arnum.fmt_qty_trim(inner_capacity)} {unit} = "
                         f"{arnum.fmt_qty_trim(sub)} {unit}")
-        elif capacity > 0:
-            sub = count * capacity
-            total += sub
-            bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} × وزن "
-                        f"ال{kind} {arnum.fmt_qty_trim(capacity)} {unit} = "
-                        f"{arnum.fmt_qty_trim(sub)} {unit}")
         else:
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind}")
     if loose > 0:
-        total += loose
-        bits.append(f"{arnum.fmt_qty_trim(loose)} {unit} سائب")
+        if _is_loose_boxes(loose_unit) and inner_capacity > 0:
+            loose_kg = loose * inner_capacity
+            total += loose_kg
+            bits.append(f"{arnum.to_arabic_indic(f'{loose:g}')} "
+                        f"{_box_word(loose)} × "
+                        f"{arnum.fmt_qty_trim(inner_capacity)} {unit} = "
+                        f"{arnum.fmt_qty_trim(loose_kg)} {unit} سائب")
+        else:
+            total += loose
+            bits.append(f"{arnum.fmt_qty_trim(loose)} {unit} سائب")
     label = " + ".join(bits)
     if len(bits) > 1 and total > 0:
         label += f" = {arnum.fmt_qty_trim(total)} {unit}"
@@ -106,12 +134,12 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit)
 
 
 def pack_split(kind, count, capacity, loose, unit,
-               inner_count=0, inner_capacity=0):
+               inner_count=0, inner_capacity=0, loose_unit=""):
     """(تغليف داخلي، تغليف خارجي) لسطر التفريدة — العمودان المستقلان.
 
-    كرتونة بداخلها علب: الداخلي «٦ علب × وزن العلبة ٢ كجم = ١٢ كجم للكرتونة»
-    والخارجي «٤ كرتونة × ١٢ كجم = ٤٨ كجم». بلا علب: الداخلي «—»
-    والخارجي الصيغة الكاملة «١٩ شكارة × وزن الشكارة ٥٠ كجم = ٩٥٠ كجم».
+    كرتونة بعلب: الداخلي «٦ علب × وزن العلبة ٢ كجم = ١٢ كجم للكرتونة»
+    (+ جملة الفرق لو وزن الكرتونة المكتوب لا يطابق) والخارجي
+    «١٠ كرتونة × وزن الكرتونة ١٢ كجم = ١٢٠ كجم». بلا علب: الداخلي «—».
     """
     kind = (kind or "").strip()
     count = float(count or 0)
@@ -126,11 +154,20 @@ def pack_split(kind, count, capacity, loose, unit,
         inner = (f"{arnum.to_arabic_indic(f'{inner_count:g}')} {_box_word(inner_count)}"
                  f" × وزن العلبة {arnum.fmt_qty_trim(inner_capacity)} {unit}"
                  f" = {arnum.fmt_qty_trim(carton_w)} {unit} لل{kind}")
+        diff = pack_diff_note(capacity, inner_count, inner_capacity, unit)
+        if diff:
+            inner += f" ({diff})"
+        ref_w = capacity if capacity > 0 else carton_w
         outer = (f"{arnum.to_arabic_indic(f'{count:g}')} {kind} × وزن "
-                 f"ال{kind} {arnum.fmt_qty_trim(carton_w)} {unit} = "
-                 f"{arnum.fmt_qty_trim(count * carton_w)} {unit}")
+                 f"ال{kind} {arnum.fmt_qty_trim(ref_w)} {unit} = "
+                 f"{arnum.fmt_qty_trim(count * ref_w)} {unit}")
         if loose > 0:
-            outer += f" + {arnum.fmt_qty_trim(loose)} {unit} سائب"
+            if _is_loose_boxes(loose_unit) and inner_capacity > 0:
+                outer += (f" + {arnum.to_arabic_indic(f'{loose:g}')} "
+                          f"{_box_word(loose)} × "
+                          f"{arnum.fmt_qty_trim(inner_capacity)} {unit} سائب")
+            else:
+                outer += f" + {arnum.fmt_qty_trim(loose)} {unit} سائب"
         return inner, outer
     if capacity > 0:
         inner = ""

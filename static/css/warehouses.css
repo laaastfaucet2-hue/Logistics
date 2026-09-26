@@ -184,3 +184,26 @@
 @media (max-width: 720px) {
   .wh-pack-cell { min-width: 160px; }
 }
+
+/* مربع التغليف الموحد (٢٦/٠٩): النوع ← العبوة كام؟ ← علب اختيارية ← السائب بوحدته */
+fieldset.wh-pack { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 6px 14px 10px; margin: 2px 0 8px; }
+fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
+  padding: 0 8px; font-size: .85rem; }
+.wh-pack-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; }
+.wh-pack-inner-toggle { display: flex; align-items: center; gap: 8px;
+  margin: 10px 2px 6px; font-size: .84rem; cursor: pointer; color: var(--text); }
+.wh-pack-inner-toggle input { width: 16px; height: 16px; accent-color: var(--brand-gold); }
+.wh-pack-inner-toggle small { color: var(--muted); }
+.wh-pack-inner { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; align-items: end; padding: 8px 12px 10px; margin: 0 0 8px;
+  border-right: 3px solid var(--brand-gold); border-radius: 8px;
+  background: var(--surface-gold); }
+.wh-pack-inner + .wh-pack-row, .wh-pack-inner ~ .js-pack-hint { margin-top: 4px; }
+.wh-pack-diff { min-height: 4px; font-size: .8rem; font-weight: 700; margin-top: 4px; }
+.wh-pack-diff.bad { color: var(--red); }
+.wh-pack-diff.good { color: var(--green); }
+@media (max-width: 980px) {
+  .wh-pack-row, .wh-pack-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

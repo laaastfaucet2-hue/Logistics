@@ -306,6 +306,7 @@ def wh1_add():
     pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
     pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
     pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
+    pack_loose_unit = (request.form.get("pack_loose_unit") or "").strip()
     stores_parts = []
     for sid_raw, qty_raw in zip(request.form.getlist("store_id"),
                                 request.form.getlist("store_qty")):
@@ -334,6 +335,7 @@ def wh1_add():
             pack_capacity=pack_capacity, pack_loose=pack_loose,
             pack_inner_count=pack_inner_count,
             pack_inner_capacity=pack_inner_capacity,
+            pack_loose_unit=pack_loose_unit,
             stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh1", err=str(exc))
@@ -379,6 +381,7 @@ def wh3_opener():
     pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
     pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
     pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
+    pack_loose_unit = (request.form.get("pack_loose_unit") or "").strip()
     supplier_id = None
     supplier_name = (request.form.get("supplier_name") or "").strip()
     for sup in dw.list_suppliers(year, month, cycle):
@@ -409,6 +412,7 @@ def wh3_opener():
                       pack_capacity=pack_capacity, pack_loose=pack_loose,
                       pack_inner_count=pack_inner_count,
                       pack_inner_capacity=pack_inner_capacity,
+                      pack_loose_unit=pack_loose_unit,
                       prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh3", err=str(exc), item=item_id)

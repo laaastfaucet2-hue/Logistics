@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""الدورة المخزنية «مستودعات وسجلات» — سجل الإمداد وسجل المتعهد (جداول month.db).
-
-دورتان منفصلتان تمامًا (عمود cycle في كل جدول) وبنفس البنية بالضبط:
-- wh_suppliers: الشركات الموردة (نموذج تعريفي شامل) — منفصلة كليًا عن بيانات
-  الشركات المنتجة في فواتير المتعهد.
-- wh_items: كتالوج ٣ مخازن — كل صنف ووحدة التعامل المحددة له في الدورة كلها.
-- wh_receipts: أذون ١ مخازن (إذن إضافة صنف) — الإدخال اليدوي الوحيد في الدورة.
-- wh_ledger: دفتر ٣ مخازن — كارت لكل صنف (مسلسل/يوم/تاريخ/رقم إذن/مضاف/منصرف/رصيد).
-دفتر ٢ مخازن يُقرأ من أذون آلة الحاسبة (db_permits) — عرض في هذه الدفعة،
-والخصم التلقائي لدفاتر ٣ مخازن يُبنى مع مراحل ٤–٧ مخازن.
+"""الدورة المخزنية «مستودعات وسجلات» — دورتان منفصلتان (عمود cycle) وبنفس البنية:
+wh_suppliers (موردو الدورة، منفصلون عن فواتير المتعهد)، wh_items (كتالوج ٣
+مخازن)، wh_receipts (أذون ١ مخازن — الإدخال اليدوي الوحيد)، wh_ledger (دفتر ٣
+مخازن). دفتر ٢ مخازن يُقرأ من أذون آلة الحاسبة (db_permits) — والخصم مع ٤–٧.
 """
 import json
 
@@ -120,6 +114,7 @@ NEW_RECEIPT_COLUMNS = (
     ("pack_loose", "REAL"),
     ("pack_inner_count", "REAL"),
     ("pack_inner_capacity", "REAL"),
+    ("pack_loose_unit", "TEXT NOT NULL DEFAULT ''"),
 )
 
 NEW_LEDGER_COLUMNS = (
@@ -157,12 +152,13 @@ def _migrate_tables(conn):
     # توحيد تسميات التغليف القديمة (قبل قاعدة «الصحيح صحيح والكسر بكسره»)
     rows = conn.execute(
         "SELECT id, unit, pack_kind, pack_count, pack_capacity, pack_loose, "
-        "pack_inner_count, pack_inner_capacity, pack_label "
+        "pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_label "
         "FROM wh_receipts WHERE pack_kind != ''").fetchall()
     for r in rows:
         label, _total = pack_summary(r["pack_kind"], r["pack_count"],
                                      r["pack_capacity"], r["pack_loose"], r["unit"],
-                                     r["pack_inner_count"], r["pack_inner_capacity"])
+                                     r["pack_inner_count"], r["pack_inner_capacity"],
+                                     r["pack_loose_unit"])
         if label and label != r["pack_label"]:
             conn.execute("UPDATE wh_receipts SET pack_label=? WHERE id=?",
                          (label, r["id"]))
@@ -391,14 +387,13 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 supplier_name="", prod_iso="", exp_iso="", notes="",
                 date_iso="", receipt_no=None,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
-                pack_inner_count=0, pack_inner_capacity=0,
+                pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
                 stores=None):
     """يحفظ إذن إضافة ١ مخازن ويسجل حركته في دفتر ٣ مخازن — ويرجع بياناته.
 
-    - رقم الإذن يدوي (فاضي = يكمّل التسلسل، وأكبر رقم يصبح أصل التسلسل).
-    - التغليف «مستوى واحد + سائب»: عدد العبوات × سعة العبوة + سائب = الكمية
-      تُحسب تلقائيًا، وسعة العبوة تُحفظ للصنف (تعبئ تلقائيًا بعدها).
-    - stores: قائمة (store_id, store_name, qty) لتوزيع الكمية على مخزن أو أكثر.
+    رقم الإذن يدوي (فاضي = يكمّل التسلسل). التغليف يحسب الكمية تلقائيًا
+    (وزن العبوة هو المرجع والعلب تفصيل)، وسعة العبوة تُحفظ للصنف.
+    stores: قائمة (store_id, store_name, qty) لتوزيع الكمية على مخزن أو أكثر.
     """
     from core import egtime
     pack_kind = (pack_kind or "").strip()
@@ -407,9 +402,13 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     extras = []
     if pack_kind and pack_kind != "بدون تغليف":
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
+        if (pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 \
+                and not (float(pack_inner_capacity or 0) > 0):
+            raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
         pack_label_probe, pack_total = pack_summary(
             pack_kind, pack_count, pack_capacity, pack_loose,
-            item_probe["handle_unit"], pack_inner_count, pack_inner_capacity)
+            item_probe["handle_unit"], pack_inner_count, pack_inner_capacity,
+            pack_loose_unit)
         if pack_total <= 0:
             raise ValueError("اكتب عدد العبوات ووزن العبوة (أو العلب بداخلها) أو الكمية السائبة — "
                              "لا يمكن إذن إضافة بكمية صفر")
@@ -468,14 +467,14 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 "qty_base,base_unit,pack,pack_label,producer,supplier_id,supplier_name,"
                 "prod_date,exp_date,shelf_days,notes,created_at,"
                 "pack_kind,pack_count,pack_capacity,pack_loose,"
-                "pack_inner_count,pack_inner_capacity)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "pack_inner_count,pack_inner_capacity,pack_loose_unit)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (cycle, serial, item["id"], day, date_iso, qty_handle, item["handle_unit"],
                  qty_base, base_unit, "{}", pack_label_text, (producer or "").strip(), supplier_id,
                  supplier_name, prod_iso, exp_iso, shelf_days, notes_text, stamp,
                  pack_kind, float(pack_count or 0), float(pack_capacity or 0),
                  float(pack_loose or 0), float(pack_inner_count or 0),
-                 float(pack_inner_capacity or 0)))
+                 float(pack_inner_capacity or 0), (pack_loose_unit or "").strip()))
             receipt_id = cur.lastrowid
             for sid, sname, q in parts:
                 conn.execute(
@@ -551,7 +550,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                producer="", supplier_id=None, supplier_name="",
                notes="", date_iso="",
                pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
-               pack_inner_count=0, pack_inner_capacity=0,
+               pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
                prod_iso="", exp_iso="", stores=None):
     """رصيد أول المدة: إدخال حقيقي بكل بياناته (توجيه ٢٥/٠٩ وتوسيع ٢٦/٠٩) —
     كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
@@ -562,9 +561,13 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
         raise ValueError(
             f"رصيد أول المدة مسجّل بالفعل لصنف «{item['name']}» — لا يُسجل مرتين")
     pack_kind = (pack_kind or "").strip()
+    if (pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 \
+            and not (float(pack_inner_capacity or 0) > 0):
+        raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
     label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity,
                                           pack_loose, item["handle_unit"],
-                                          pack_inner_count, pack_inner_capacity)
+                                          pack_inner_count, pack_inner_capacity,
+                                          pack_loose_unit)
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
@@ -679,8 +682,8 @@ def item_name_in_use(year, month, name):
 
 
 def cascade_purge_item(year, month, cycle, name):
-    """حذف صنف يمسحه من كل حاجة (توجيه ٢٦/٠٩): الكارت وإذون الإضافة والتوزيعات
-    ورصيد أول المدة والدفتر وسعة التغليف — والتفريدة تتجدد تلقائيًا بدونه."""
+    """حذف صنف يمسحه من كل حاجة (توجيه ٢٦/٠٩): الكارت والإيذانات والتوزيعات
+    ورصيد أول المدة والدفتر وسعة التغليف — والتفريدة تتجدد بدونه."""
     conn = _conn(year, month)
     with conn:
         ids = [r["id"] for r in conn.execute(
@@ -718,10 +721,7 @@ def move_store_splits(store_id, new_store_id, new_store_name):
 
 
 def issue_rows_for_item(year, month, cycle, item):
-    """حركات المنصرف لهذا الصنف من إذون ٢ مخازن المحفوظة (دفتر الإضافة والتخصيم).
-
-    كمية الإذن بوحدة المقرر — تُحوَّل لوحدة تعامل الصنف تلقائيًا.
-    """
+    """منصرف الصنف من إذون ٢ مخازن — كمية الإذن تتحول لوحدة تعامل الصنف."""
     from core import arabic_numbers as arnum
     rows = []
     for permit in permits_book(year, month, cycle):
@@ -781,11 +781,8 @@ def item_card(year, month, item_id):
 # دفتر ٢ مخازن — إذون آلة الحاسبة (عرض؛ الخصم التلقائي مع ٤–٧ مخازن)
 # ======================================================================
 def permits_book(year, month, cycle):
-    """أذون ٢ مخازن المحفوظة بالشهر وأصناف دورة {cycle} داخل كل إذن فقط.
-
-    مفاتيح actuals بصيغة «{section}_{اسم الصنف}» — فيُفصل أصناف التموين عن المتعهد.
-    يقرأ الوحدات مباشرة من الجدول (لا list_items) تفاديًا لدورة استدعاء.
-    """
+    """أذون ٢ مخازن وأصناف دورة {cycle} داخل كل إذن — مفاتيح actuals
+    «{section}_{الصنف}» تفصل التموين عن المتعهد (وحدات من الجدول مباشرة)."""
     from data_access import db_permits as dp
     prefix = SECTION_BY_CYCLE[cycle] + "_"
     conn = _conn(year, month)
@@ -844,6 +841,7 @@ def _batch_pool(year, month, cycle):
                 "pack_capacity": r["pack_capacity"], "pack_loose": r["pack_loose"],
                 "pack_inner_count": r["pack_inner_count"],
                 "pack_inner_capacity": r["pack_inner_capacity"],
+                "pack_loose_unit": r["pack_loose_unit"],
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -863,6 +861,7 @@ def _batch_pool(year, month, cycle):
                 "pack_kind": "", "pack_count": 0,
                 "pack_capacity": 0, "pack_loose": 0,
                 "pack_inner_count": 0, "pack_inner_capacity": 0,
+                "pack_loose_unit": "",
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -871,11 +870,8 @@ def _batch_pool(year, month, cycle):
 
 
 def tafreeda_rows(year, month, cycle):
-    """التفريدة التلقائية: كميات كل إذن صرف ٢ مخازن تتوزع على دفعات المخازن.
-
-    الأقرب صلاحية يُصرف أولًا؛ وعند تطابق رصيدين يُصرف الأقدم إضافةً.
-    الكمية محوّلة لوحدة تعامل الصنف، ومع كل سطر تغليف الدفعة الأصلية.
-    """
+    """التفريدة التلقائية: كميات إذون الصرف تتوزع على الدفعات — الأقرب صلاحية
+    أولًا، وعند التساوي الأقدم إضافةً؛ الكمية بوحدة الصنف ومع كل سطر تغليفه."""
     pool = _batch_pool(year, month, cycle)
     rows = []
     for permit in permits_book(year, month, cycle):
@@ -906,7 +902,8 @@ def tafreeda_rows(year, month, cycle):
                     batch.get("pack_kind"), batch.get("pack_count"),
                     batch.get("pack_capacity"), batch.get("pack_loose"),
                     batch["item"]["handle_unit"],
-                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"))
+                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
+                    batch.get("pack_loose_unit"))
                 rows[-1]["pack_inner_label"] = _inner
                 rows[-1]["pack_outer_label"] = _outer
     return rows

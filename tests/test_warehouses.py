@@ -507,14 +507,23 @@ def test_pack_label_integers_stay_integers_fractions_show_fractions():
 
 
 def test_pack_nested_carton_formula_and_breakdown():
-    """الكرتونة بداخلها علب: الصيغة + «التغليف المتبقي بالضبط»."""
+    """الكرتونة بداخلها علب: وزن العبوة هو المرجع + فحص الفرق + المتبقي بالضبط."""
     from data_access.db_warehouses import pack_breakdown, pack_split, pack_summary
+    # وزن الكرتونة المرجع والعلب تفصيل (توجيه مربع التغليف)
+    label, total = pack_summary("كرتونة", 10, 12, 0, "كجم", 6, 2)
+    assert label == "١٠ كرتونة × وزن الكرتونة ١٢ كجم (بداخلها ٦ علب × ٢ كجم) = ١٢٠ كجم"
+    assert total == 120.0
+    # بلا وزن للعبوة: حاصل العلب هو الحسبة
     label, total = pack_summary("كرتونة", 4, 0, 0, "كجم", 6, 2)
-    assert label == "٤ كرتونة بداخلها ٦ علب × وزن العلبة ٢ كجم = ٤٨ كجم"
-    assert total == 48.0
-    inner, outer = pack_split("كرتونة", 4, 0, 0, "كجم", 6, 2)
-    assert inner == "٦ علب × وزن العلبة ٢ كجم = ١٢ كجم للكرتونة"
-    assert outer == "٤ كرتونة × وزن الكرتونة ١٢ كجم = ٤٨ كجم"
+    assert label == "٤ كرتونة بداخلها ٦ علب × وزن العلبة ٢ كجم = ٤٨ كجم" and total == 48.0
+    # السائب بالعلب: ٤ علب × ٢ كجم = ٨ كجم سائب
+    label, total = pack_summary("كرتونة", 10, 12, 4, "كجم", 6, 2, "علبة")
+    assert ("+ ٤ علب × ٢ كجم = ٨ كجم سائب = ١٢٨ كجم" in label) and total == 128.0
+    # فرق العلب يظهر في عمود التغليف الداخلي
+    inner, outer = pack_split("كرتونة", 10, 12.5, 0, "كجم", 6, 2)
+    assert "فرق ٠٫٥ كجم فوق حاصل العلب" in inner and "١٢٫٥ كجم" in outer
+    inner, outer = pack_split("كرتونة", 10, 12, 0, "كجم", 6, 2)
+    assert "فرق" not in inner
     # التفكيك: ٢٨ كجم متبقية من كرتونة ١٢ (٦×٢) ⇒ ٢ كرتونة + ٢ علبة
     assert pack_breakdown("كرتونة", 0, 6, 2, 28, "كجم") == "٢ كرتونة + ٢ علبة"
     assert pack_breakdown("كرتونة", 0, 6, 2, 11.988, "كجم") == "٥ علب + ١٫٩٨٨ كجم سائب"

@@ -148,6 +148,7 @@ def snapshot_cycle(year, month, cycle):
                         "عدد العلب بالداخل": r.get("pack_inner_count") or 0,
                         "وزن العلبة": r.get("pack_inner_capacity") or 0,
                         "كمية سائبة": r.get("pack_loose") or 0,
+                        "وحدة السائب": r.get("pack_loose_unit") or "وحدة التعامل",
                         "الصيغة الكاملة": r.get("pack_label") or "—"},
             "المخازن": [{"المخزن": p["store_name"], "الكمية": p["qty"]}
                         for p in r["stores"]],
