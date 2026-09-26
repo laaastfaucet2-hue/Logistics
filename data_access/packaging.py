@@ -5,6 +5,8 @@
 والعلب بداخلها تفصيل اختياري — ولو فيه فرق بين وزن العبوة وحاصل ضرب العلب
 تُظهر الصيغ الفرق بوضوح. السائب يدخل بوحدة التعامل أو بالعلب (يتحول بوزن العلبة).
 """
+import re
+
 from core import arabic_numbers as arnum
 
 
@@ -206,3 +208,84 @@ def pack_split(kind, count, capacity, loose, unit,
             outer += f" + {arnum.fmt_qty_trim(loose)} {unit} سائب"
         return inner, outer
     return "", f"{arnum.to_arabic_indic(f'{count:g}')} {kind}"
+
+
+def parse_pack_label(label):
+    """(count, kind, capacity, loose) من صيغة الملخص الموحدة — أصفار لو ما لقتش."""
+    label = (label or "").strip()
+    if not label or label == "—":
+        return 0.0, "", 0.0, 0.0
+    _num = r"([\d٠-٩]+(?:[\.٫][\d٠-٩]+)?)"
+    cnt, kind, cap, loose = 0.0, "", 0.0, 0.0
+    m = re.search(_num + r"\s+([^\s×=+]+)\s*×", label)
+    if m:
+        cnt, kind = arnum.parse_float(m.group(1)) or 0.0, m.group(2)
+        c = re.search(r"وزن ال[^\s]+\s+" + _num, label)
+        cap = arnum.parse_float(c.group(1)) if c else 0.0
+    else:
+        m = re.match(r"^" + _num + r"\s+([^\s×=+]+)$", label)
+        if m:
+            cnt, kind = arnum.parse_float(m.group(1)) or 0.0, m.group(2)
+    l = re.search(r"\+\s*" + _num + r"\s+([^\s=]+)\s+سائب", label)
+    if l:
+        loose = arnum.parse_float(l.group(1)) or 0.0
+    return cnt, kind, cap, loose
+
+
+class PackLedger:
+    """رصيد عبوات الصنف (توجيه ٢٧/٠٩ مساءً): الكاملة ما تتحولش سائب —
+    الصرف يسحب من السائب أولًا، ثم من المفتوحة، ثم يفتح عبوة كاملة."""
+
+    def __init__(self, kind="", capacity=0.0, unit=""):
+        self.kind = (kind or "").strip()
+        self.capacity = float(capacity or 0)
+        self.unit = unit or ""
+        self.full = 0.0      # عبوات كاملة مقفولة
+        self.loose = 0.0     # سائب حر بوحدة التعامل
+        self.rest = 0.0      # باقي عبوة مفتوحة
+
+    def set_kind(self, kind, capacity):
+        if not self.kind and (kind or "").strip():
+            self.kind = (kind or "").strip()
+            self.capacity = float(capacity or 0)
+
+    def add(self, count, loose):
+        self.full += float(count or 0)
+        self.loose += float(loose or 0)
+
+    def add_qty(self, q):
+        self.loose += float(q or 0)
+
+    def take(self, q):
+        q = float(q or 0)
+        t = min(q, self.loose)
+        self.loose = round(self.loose - t, 6)
+        q = round(q - t, 6)
+        if q > 0 and self.rest > 0:
+            t = min(q, self.rest)
+            self.rest = round(self.rest - t, 6)
+            q = round(q - t, 6)
+        while q > 0 and self.full >= 1 and self.capacity > 0:
+            self.full -= 1
+            if self.capacity >= q:
+                self.rest = round(self.capacity - q, 6)
+                q = 0
+            else:
+                q = round(q - self.capacity, 6)
+
+    def label(self):
+        if not self.kind:
+            return f"{arnum.fmt_qty_trim(round(self.loose, 6))} {self.unit}".strip()
+        parts = []
+        fem = self.kind in _FEM_KINDS
+        if self.rest > 0:
+            if self.full > 0:
+                parts.append(f"{arnum.to_arabic_indic(f'{self.full:g}')} "
+                             f"{self.kind} {'كاملة' if fem else 'كامل'}")
+            parts.append(f"{_open_pack(self.kind)} "
+                         f"({arnum.fmt_qty_trim(self.rest)} {self.unit})")
+        elif self.full > 0:
+            parts.append(f"{arnum.to_arabic_indic(f'{self.full:g}')} {self.kind}")
+        if self.loose > 0 or not parts:
+            parts.append(f"{arnum.fmt_qty_trim(round(self.loose, 6))} {self.unit} سائب")
+        return " + ".join(parts)
