@@ -526,8 +526,8 @@ def test_pack_nested_carton_formula_and_breakdown():
     assert "فرق" not in inner
     # التفكيك: ٢٨ كجم متبقية من كرتونة ١٢ (٦×٢) ⇒ ٢ كرتونة + ٢ علبة
     assert pack_breakdown("كرتونة", 0, 6, 2, 28, "كجم") == "٢ كرتونة + ٢ علبة"
-    assert pack_breakdown("كرتونة", 0, 6, 2, 11.988, "كجم") == "٥ علب + ١٫٩٨٨ كجم سائب"
-    assert pack_breakdown("شكارة", 50, 0, 0, 170, "كجم") == "٣ شكارة + ٢٠ كجم سائب"
+    assert pack_breakdown("كرتونة", 0, 6, 2, 11.988, "كجم") == "٥ علب كاملة + علبة مفتوحة (١٫٩٨٨ كجم)"
+    assert pack_breakdown("شكارة", 50, 0, 0, 170, "كجم") == "٣ شكارة كاملة + شكارة مفتوحة (٢٠ كجم)"
 
 
 def test_opener_full_fields_splits_and_expiry_drive_fefo(client):
@@ -742,7 +742,7 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
     assert "رصيد المخزن قبل" in page and "الرصيد بعد الصرف" in page
-    assert "١٠ شكارة" in page and "٨ شكارة + ٤٠ طن" in page
+    assert "١٠ شكارة" in page and "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page
     assert "مطاحن الاختبار" in page
     # مفيش تابات مستقلة للتفاريد في الشريط
     assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
