@@ -278,3 +278,53 @@ def snapshot_all(year, month):
         except Exception:
             logging.exception("warehouses snapshot failed for cycle %s", cycle)
     return True
+
+
+def taf3_pack_rows(year, month, cycle, item_id):
+    """دفتر التفاريد الخاص بصنف (توجيه ٢٧/٠٩): زي دفتر ٣ مخازن بالظبط
+    بس مضاف/منصرف/الرصيد كلهم بالتغليف — (rows، balance_pack) أو None."""
+    item = dw.get_item(year, month, item_id)
+    if not item:
+        return None
+    card = dw.item_card(year, month, item_id)
+    takes, batches = {}, {}
+    for t in dw.tafreeda_rows(year, month, cycle):
+        if t["item"] == item["name"]:
+            takes.setdefault(t["permit_no"], []).append(t)
+    for b in dw._batch_pool(year, month, cycle):
+        if b["item"]["name"] == item["name"]:
+            batches.setdefault(b["serial"], b)
+    specs = dw.pack_specs_map(year, month, cycle).get(item["name"], {})
+    fallback = next(iter(specs.values()), {}) if specs else {}
+    unit = item["handle_unit"]
+
+    def _brk(q, spec, rest="سائب"):
+        spec = spec or {}
+        return dw.pack_breakdown(spec.get("pack_kind"), spec.get("pack_capacity"),
+                                 spec.get("pack_inner_count"), spec.get("pack_inner_capacity"),
+                                 q, unit, rest) or f"{arnum.fmt_qty_trim(q)} {unit}"
+
+    rows, _cur = [], {}
+    _i = 0
+    for r in card["rows"]:
+        _i += 1
+        if r["kind"] == "add1" and batches.get(r.get("permit_no")):
+            _cur = batches[r["permit_no"]]
+        added_pack = r.get("pack_label") or (f"{arnum.fmt_qty(r['added'])} {unit}" if r["added"] else "—")
+        issued_pack = "—"
+        if r["kind"] == "issue2":
+            per = {}
+            for t in takes.get(r["permit_no"], []):
+                per[t["receipt_serial"]] = round(per.get(t["receipt_serial"], 0.0) + t["qty"], 6)
+            parts = [x for x in (_brk(q, batches.get(s), "") for s, q in per.items()) if x]
+            issued_pack = "؛ ".join(parts) if parts else f"{arnum.fmt_qty(r['issued'])} {unit}"
+            if not _cur and per:
+                _cur = batches.get(next(iter(per)), {}) or fallback
+        bal_pack = _brk(r["balance"], _cur or fallback)
+        rows.append({"seq": _i, "day": r["day"], "date_iso": r["date_iso"],
+                     "permit_no": r.get("permit_no"), "label": r.get("label"),
+                     "kind": r["kind"], "added": r["added"], "added_pack": added_pack,
+                     "issued": r["issued"], "issued_pack": issued_pack,
+                     "balance": r["balance"], "bal_pack": bal_pack,
+                     "notes": r.get("notes") or ""})
+    return {"item": item, "rows": rows, "balance_pack": rows[-1]["bal_pack"] if rows else ""}

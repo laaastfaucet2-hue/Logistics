@@ -754,8 +754,16 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     assert "مطاحن الاختبار" in page1
     # مفيش تابات مستقلة للتفاريد في الشريط
     assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
+    # ٣ مخازن: القائمة بلا صنف مفتوح → إرشاد فقط
     page3 = _page(client, "/warehouses?cycle=supply&sub=wh3")
-    assert "٣ مخازن تفاريد" in page3 and 'data-taf-open="taf3Dialog-1"' in page3
-    assert "إجمالي المنصرف: <b>٦٠٫٠٠٠" in page3
-    # ٣ مخازن زي ما هي: الرصيد قبل/بعد يظهر هناك (رصيد المخزن كله)
-    assert "١٠ شكارة" in page3 and "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page3
+    assert "٣ مخازن تفاريد" in page3 and "افتح صنفًا من القائمة" in page3
+    # فتح صنف → دفتر التفاريد الخاص بيه: مضاف/منصرف/الرصيد بالتغليف
+    import re as _re
+    _m = _re.search(r"item=(\d+)", page3)
+    assert _m, "لا يوجد صنف في الكتالوج"
+    page3 = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={_m.group(1)}")
+    assert "دفتر التفريدة" in page3 or "مضاف" in page3
+    assert "١ شكارة + ١٠ طن" in page3                       # منصرف بالتغليف (صيغة المصروف)
+    assert "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page3   # الرصيد بالتغليف
+    # الكارت العادي: عمود «التغليف» اتشال — ٩ أعمدة بالظبط
+    assert "<th>التغليف</th>" not in page3

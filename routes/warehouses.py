@@ -188,10 +188,16 @@ def page():
         card = dw.item_card(year, month, arnum.parse_int(request.args.get("item")) or 0)
         if card and card["item"]["cycle"] != cycle:
             card = None
+    taf3 = None
     if card:
         for row in card["rows"]:
             row["wday"] = _wday(year, month, row["day"])
         card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
+        # دفتر التفاريد الخاص بالصنف: مضاف/منصرف/الرصيد بالتغليف (توجيه ٢٧/٠٩)
+        taf3 = wf.taf3_pack_rows(year, month, cycle, card["item"]["id"])
+        if taf3:
+            for row in taf3["rows"]:
+                row["wday"] = _wday(year, month, row["day"])
 
     cycle_cfg = WAREHOUSE_MAP[cycle]
     tab_file = wf.TAB_XLSX[sub]
@@ -227,7 +233,7 @@ def page():
         items_data=items_data, unit_base_data=UNIT_BASE,
         stores_registry=stores_registry, pack_kinds=pack_kinds,
         tafreeda_by_permit=tafreeda_by_permit, tafreeda_all=tafreeda,
-        taf_popup=taf_popup,
+        taf_popup=taf_popup, taf3=taf3,
     )
 
 

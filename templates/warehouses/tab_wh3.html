@@ -193,7 +193,7 @@
     <table class="rt-table wh-table wh-ledger">
       <thead><tr>
         <th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
-        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>التغليف</th><th>ملاحظات</th>
+        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th>
       </tr></thead>
       <tbody>
         {% if card.opener_row %}
@@ -206,14 +206,13 @@
           <td class="num">{{ card.opener_row.added | qty3 }}</td>
           <td class="num">٠٫٠٠٠</td>
           <td class="num"><b>{{ card.opener_row.balance | qty3 }}</b></td>
-          <td class="wh-pack-cell">{{ card.opener_row.pack_label or '—' }}</td>
           <td>{{ card.opener_row.notes or '—' }}</td>
         </tr>
         {% else %}
         <tr class="wh-opener-row">
           <td class="num">—</td><td colspan="3" class="name">رصيد أول المدة</td>
           <td>لم يُسجَّل بعد — أدخله من النموذج بكل بياناته</td>
-          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td><td></td>
+          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td>
         </tr>
         {% endif %}
         {% set n = namespace(i=0) %}
@@ -228,12 +227,11 @@
           <td class="num">{{ row.added | qty3 }}</td>
           <td class="num {% if row.kind == 'issue2' %}wh-issued{% endif %}">{{ row.issued | qty3 }}</td>
           <td class="num"><b>{{ row.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
-          <td class="wh-pack-cell">{{ row.pack_label or '—' }}</td>
           <td>{{ row.notes or '—' }}</td>
         </tr>
         {% else %}
         {% if card.has_opener %}
-        <tr><td colspan="10" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
+        <tr><td colspan="9" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
         {% endif %}
         {% endfor %}
       </tbody>
@@ -243,7 +241,7 @@
           <td class="num">{{ card.total_added | qty3 }}</td>
           <td class="num">{{ card.total_issued | qty3 }}</td>
           <td class="num"><b>{{ card.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
-          <td></td><td></td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -256,70 +254,46 @@
   </section>
 </div>
 
-{% if taf_popup %}
-<!-- ٣ مخازن تفاريد: قائمة التفاريد (سطر لكل إذن) — تفتح نافذة بالأصناف
-     بإجمالي المنصرف وتفكيك المصروف والرصيد بعده (توجيه ٢٦/٠٩) -->
+{# دفتر التفاريد الخاص بالصنف (توجيه ٢٧/٠٩): يفتح مع كارت الصنف —
+   نفس أعمدة دفتر ٣ مخازن بس مضاف/منصرف/الرصيد كلهم بالتغليف #}
 <div class="panel" style="margin-top:16px;">
+  {% if card and taf3 %}
   <div class="panel-head">
-    <h3>📋 ٣ مخازن تفاريد</h3>
-    <span class="panel-hint">زي ٣ مخازن بس بإجمالي الكمية والتغليف — اضغط السطر تفتح التفريدة كاملة</span>
+    <h3>📋 ٣ مخازن تفاريد — <b>{{ card.item.name }}</b></h3>
+    <span class="panel-hint">دفتر التفريدة الخاص بالصنف: مضاف ومنصرف والرصيد بالتغليف</span>
   </div>
   <div class="wh-scroll">
-  <table class="rt-table wh-table wh-taf-list">
-    <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>من يوم</th><th>إلى يوم</th>
-      <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
+  <table class="rt-table wh-table wh-ledger">
+    <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+      <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th></tr></thead>
     <tbody>
-      {% for no, pg in taf_popup.items() %}
-      <tr class="wh-taf-row" data-taf-open="taf3Dialog-{{ no }}" title="اضغط لعرض التفريدة كاملة">
-        <td class="num">{{ loop.index | aindic }}</td>
-        <td class="num"><b>{{ no | aindic }}</b></td>
-        <td class="num">{{ pg.date_from | aindic }}</td>
-        <td class="num">{{ pg.date_to | aindic }}</td>
-        <td class="num">{{ pg.lines | length | aindic }}</td>
-        <td class="num wh-issued"><b>{{ pg.total | qty3 }}</b></td>
-        <td class="no-print"><button type="button" class="rt-btn dim"
-              data-taf-open="taf3Dialog-{{ no }}">📄 عرض التفريدة</button></td>
+      {% for r in taf3.rows %}
+      <tr {% if r.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
+        <td class="num">{{ r.seq | aindic }}</td>
+        <td>{{ r.wday }}</td>
+        <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+        <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
+        <td>{{ r.label or '—' }}</td>
+        <td class="wh-pack-cell">{{ r.added_pack }}</td>
+        <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
+        <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
+        <td>{{ r.notes or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5">الإجماليات</td>
+        <td class="num">{{ card.total_added | qty3 }}</td>
+        <td class="num">{{ card.total_issued | qty3 }}</td>
+        <td class="wh-pack-cell"><b>{{ taf3.balance_pack }}</b></td>
+        <td></td>
+      </tr>
+    </tfoot>
   </table>
   </div>
+  {% else %}
+  <div class="panel-head"><h3>📋 ٣ مخازن تفاريد</h3></div>
+  <p class="empty">افتح صنفًا من القائمة فوق ليظهر دفتر تفاريده: مضاف ومنصرف والرصيد بالتغليف.</p>
+  {% endif %}
 </div>
-
-{% for no, pg in taf_popup.items() %}
-<dialog class="wh-dialog" id="taf3Dialog-{{ no }}">
-  <div class="wh-dialog-head">
-    <b>📋 تفريدة ٣ مخازن — إذن صرف رقم {{ no | aindic }}</b>
-    <button type="button" class="icon-btn" data-taf-close="taf3Dialog-{{ no }}" title="إغلاق">✕</button>
-  </div>
-  <div class="wh-dialog-body">
-    {% for iname, it in pg.lines.items() %}
-    <div class="wh-taf-item">
-      <b class="wh-taf-item-name">{{ iname }}</b>
-      <span class="wh-chip dim">إجمالي المنصرف: <b>{{ it.total | qty3 }} {{ it.unit }}</b></span>
-      <div class="wh-scroll">
-      <table class="rt-table wh-table">
-        <thead><tr><th>المخزن</th><th>إجمالي المنصرف</th><th>التغليف (مفكك)</th>
-          <th>رصيد المخزن قبل</th><th>الرصيد بعد الصرف</th></tr></thead>
-        <tbody>
-          {% for t in it.stores %}
-          <tr>
-            <td>{{ t.store_name }}</td>
-            <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
-            <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
-            <td class="wh-pack-cell">{{ t.rem_before_label or '—' }}</td>
-            <td class="wh-pack-cell">{{ t.rem_after_label or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  <div class="wh-dialog-foot no-print">
-    <button type="button" class="rt-btn dim" data-taf-close="taf3Dialog-{{ no }}">إغلاق</button>
-  </div>
-</dialog>
-{% endfor %}
-{% endif %}
