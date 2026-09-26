@@ -64,10 +64,13 @@ def _open_path(path):
 
 
 def _snapshot(year, month):
+    """يُحدّث مرايا الإكسل؛ الملف المفتوح يفشل الآن ويتحدث تلقائيًا بعد إغلاقه."""
     try:
         sf.snapshot(year, month)
+        return True
     except Exception:
         logging.exception("stores mirror failed")
+        return False
 
 
 def _store_fields():
@@ -150,9 +153,12 @@ def delete():
                                     "إلى مخزن أو ثلاجة أخرى أولًا" % store["name"])
         moved = dw.move_store_splits(store["id"], target["id"], target["name"])
         db_stores.delete_store(store["id"])
-        _snapshot(year, month)
+        if not _snapshot(year, month):
+            tail = " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة"
+        else:
+            tail = ""
         return _rb("mains", ok=f"حُذف مخزن «{store['name']}» ونُقلت أصنافه "
-                               f"({arnum.to_arabic_indic(moved)}) إلى «{target['name']}»")
+                               f"({arnum.to_arabic_indic(moved)}) إلى «{target['name']}»" + tail)
     db_stores.delete_store(store["id"])
     _snapshot(year, month)
     return _rb("mains", ok=f"حُذف مخزن «{store['name']}» من السجل — وتسجيلها في البيانات المحلية")

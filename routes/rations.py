@@ -4,6 +4,7 @@
 
 ملاحظة: app.py يسجّل هذا الـBlueprint في نهايته، لذا الاستيراد من app آمن هنا.
 """
+import logging
 import os
 import sys
 import subprocess
@@ -18,9 +19,12 @@ from core.config import (SECTIONS, RATION_KINDS, RATION_KIND_MAP, MEALS, DAYS,
                     MONTH_NAMES)
 from core import arabic_numbers as arnum
 from data_access import months
+from data_access import db_permits as dp
 from data_access import db_rations as dr
+from data_access import db_warehouses as dw
 from data_access import db_entities as de
 from documents import xlsx_rations
+from services import warehouses_fs
 from data_access import dataguard
 from data_access import db_letterhead as db
 
@@ -132,6 +136,11 @@ def item_edit(section, item_id):
     kind = request.form.get("kind", RATION_KINDS[0][0])
     if not name:
         return _rb(section, kind=kind, err="اكتب اسم الصنف أولًا")
+    old_item = dr.get_item(year, month, item_id)
+    if old_item and old_item["name"] != name and dw.item_name_in_use(year, month, old_item["name"]):
+        return _rb(section, kind=kind,
+                   err=f"ممنوع تغيير اسم «{old_item['name']}»: له كارت مخزلنة/حركة — "
+                       "احذف الصنف لحذفه من كل حاجة ثم أعد إضافته بالاسم الصحيح")
     unit = (request.form.get("unit") or "").strip()
     dr.update_item(year, month, item_id, name, unit,
                    arnum.parse_float(request.form.get("breakfast")),
@@ -147,9 +156,25 @@ def item_edit(section, item_id):
 def item_delete(section, item_id):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
+    old_item = dr.get_item(year, month, item_id)
     dr.delete_item(year, month, item_id)
+    if old_item:
+        # حذف الصنف يمسحه من كل حاجة: جداول الجهات + إذون الصرف + المستودعات
+        de.purge_item_name(year, month, section, old_item["name"])
+        cycle = "supply" if section == "tamween" else "contractor"
+        n = dw.cascade_purge_item(year, month, cycle, old_item["name"])
+        stripped = dp.strip_item_from_permits(year, month, section, old_item["name"])
+        for store_cycle in ("supply", "contractor"):
+            try:
+                warehouses_fs.snapshot_cycle(year, month, store_cycle)
+            except Exception:
+                logging.exception("stores snapshot after item delete failed")
+        ok = (f"حُذف «{old_item['name']}» من المقرر وجداول الجهات وإذون الصرف "
+              f"والمستودعات ({arnum.to_arabic_indic(n)} كارت) — وعدل {arnum.to_arabic_indic(stripped)} إذنًا")
+    else:
+        ok = "تم حذف الصنف وتحديث الإكسل"
     xlsx_rations.rebuild(year, month, section)
-    return _rb(section, kind=request.form.get("kind"), ok="تم حذف الصنف وتحديث الإكسل")
+    return _rb(section, kind=request.form.get("kind"), ok=ok)
 
 
 # ======================================================================

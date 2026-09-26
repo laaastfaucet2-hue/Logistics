@@ -51,6 +51,47 @@ def _issuers(year, month, day):
     return out
 
 
+def _impact_snapshot(year, month):
+    """لقطة مختصرة للسلسلة كلها: التفريدة + أرصدة المخازن — لتقرير الأثر الكامل."""
+    from data_access import db_warehouses as dw
+    taf, bal = {}, {}
+    for cycle in ("supply", "contractor"):
+        for row in dw.tafreeda_rows(year, month, cycle):
+            key = (cycle, row["permit_no"])
+            taf[key] = taf.get(key, 0) + 1
+    rep = dw.stores_report(year, month)
+    for target in rep["stores"] + [rep["unassigned"]]:
+        name = target["store"]["name"]
+        for item, qty in target["balances"].items():
+            bal[(name, item)] = qty
+    return {"taf": taf, "bal": bal}
+
+
+def _impact_report(before, after):
+    """فرج يسرد كل اللي اتغير: سطور التفريدة وأرصدة كل مخزن — تقرير كامل بالعربي."""
+    from core import arabic_numbers as arnum
+    lines = []
+    keys = sorted(set(before["taf"]) | set(after["taf"]))
+    for key in keys:
+        b, a = before["taf"].get(key, 0), after["taf"].get(key, 0)
+        if b != a:
+            cycle, no = key
+            label = "الإمداد" if cycle == "supply" else "المتعهد"
+            lines.append(f"تفريدة إذن {label} رقم {arnum.to_arabic_indic(no)}: "
+                         f"{arnum.to_arabic_indic(b)}→{arnum.to_arabic_indic(a)} سطر")
+    keys = sorted(set(before["bal"]) | set(after["bal"]))
+    for key in keys:
+        b, a = before["bal"].get(key, 0.0), after["bal"].get(key, 0.0)
+        if abs(b - a) > 0.000001:
+            lines.append(f"رصيد «{key[0]}/{key[1]}»: {arnum.fmt_qty_trim(b)}"
+                         f"→{arnum.fmt_qty_trim(a)}")
+    if not lines:
+        return ""
+    shown = lines[:10]
+    extra = f" — و{arnum.to_arabic_indic(len(lines) - 10)} تغييرًا آخر" if len(lines) > 10 else ""
+    return " 📦 تقرير الأثر الكامل: " + "؛ ".join(shown) + extra + "."
+
+
 def _selected_picks(picks, raw):
     keys = []
     if raw:
@@ -143,6 +184,7 @@ def rows():
 @login_required
 def save():
     year, month = _ctx()
+    before = _impact_snapshot(year, month)
     day_from = _day(year, month, request.form.get("date_from"), 1)
     day_to = _day(year, month, request.form.get("date_to"), day_from)
     if day_to < day_from:
@@ -185,5 +227,6 @@ def save():
     ok = (f"حُفظ إذن صرف رقم {arnum.to_arabic_indic(number)} للجهات: {names} "
           f"من يوم {arnum.to_arabic_indic(day_from)} "
           f"لمدة {arnum.to_arabic_indic(issue_days)} يومًا.")
+    ok += _impact_report(before, _impact_snapshot(year, month))
     keys = ",".join(p["key"] for p in selected)
     return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys, "days": issue_days})

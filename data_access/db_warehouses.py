@@ -564,6 +564,8 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
     prod_iso = (prod_iso or "").strip()
     exp_iso = (exp_iso or "").strip()
+    if not exp_iso:
+        raise ValueError("تاريخ الصلاحية إلزامي لرصيد أول المدة — زي أي صنف بالظبط")
     if prod_iso and exp_iso and exp_iso < prod_iso:
         raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
     parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
@@ -640,6 +642,56 @@ def store_has_movement(store_id):
             if row:
                 return True
     return False
+
+
+def item_has_movement(year, month, cycle, item_id):
+    """هل للصنف أي حركة (إذن إضافة أو رصيد أول المدة أو صرف)؟"""
+    conn = _conn(year, month)
+    row = conn.execute(
+        "SELECT 1 FROM wh_receipts WHERE cycle=? AND item_id=? LIMIT 1",
+        (cycle, item_id)).fetchone()
+    if not row:
+        row = conn.execute(
+            "SELECT 1 FROM wh_ledger WHERE cycle=? AND item_id=? LIMIT 1",
+            (cycle, item_id)).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def item_name_in_use(year, month, name):
+    """هل الاسم مفتوح كارت له في ٣ مخازن (أي دورة)؟ — يمنع إعادة التسمية."""
+    for cycle in ("supply", "contractor"):
+        conn = _conn(year, month)
+        row = conn.execute(
+            "SELECT 1 FROM wh_items WHERE cycle=? AND name=? LIMIT 1",
+            (cycle, name)).fetchone()
+        conn.close()
+        if row:
+            return True
+    return False
+
+
+def cascade_purge_item(year, month, cycle, name):
+    """حذف صنف يمسحه من كل حاجة (توجيه ٢٦/٠٩): الكارت وإذون الإضافة والتوزيعات
+    ورصيد أول المدة والدفتر وسعة التغليف — والتفريدة تتجدد تلقائيًا بدونه."""
+    conn = _conn(year, month)
+    with conn:
+        ids = [r["id"] for r in conn.execute(
+            "SELECT id FROM wh_items WHERE cycle=? AND name=?", (cycle, name))]
+        for item_id in ids:
+            conn.execute(
+                "DELETE FROM wh_receipt_stores WHERE receipt_id IN "
+                "(SELECT id FROM wh_receipts WHERE item_id=?)", (item_id,))
+            conn.execute("DELETE FROM wh_receipts WHERE item_id=?", (item_id,))
+            conn.execute("DELETE FROM wh_opener_stores WHERE cycle=? AND item_id=?",
+                         (cycle, item_id))
+            conn.execute("DELETE FROM wh_ledger WHERE cycle=? AND item_id=?",
+                         (cycle, item_id))
+            conn.execute("DELETE FROM wh_pack_specs WHERE cycle=? AND item_id=?",
+                         (cycle, item_id))
+        conn.execute("DELETE FROM wh_items WHERE cycle=? AND name=?", (cycle, name))
+    conn.close()
+    return len(ids)
 
 
 def move_store_splits(store_id, new_store_id, new_store_name):

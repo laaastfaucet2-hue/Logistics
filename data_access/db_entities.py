@@ -151,3 +151,13 @@ def set_days(year, month, entity_item_id, day_qty):
                 (entity_item_id, wd, day_qty[wd]))
     conn.commit()
     conn.close()
+
+
+def purge_item_name(year, month, section, name):
+    """حذف صنف: يمسحه من جداول كل جهات القسم (توجيه «يحذف من كل حاجة»)."""
+    conn = months.get_db(year, month)
+    with conn:
+        conn.execute(
+            "DELETE FROM entity_items WHERE name=? AND entity_id IN "
+            "(SELECT id FROM entities WHERE section=?)", (name, section))
+    conn.close()

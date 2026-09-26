@@ -43,11 +43,14 @@ def _ctx():
 
 
 def _snapshot(cycle):
+    """يُحدّث مرايا الإكسل؛ لو الملف مفتوح يفشل الآن ويتحدث تلقائيًا بعد إغلاقه."""
     try:
         year, month = _ctx()
         wf.snapshot_cycle(year, month, cycle)
+        return True
     except Exception:
         logging.exception("warehouses mirror failed (cycle=%s)", cycle)
+        return False
 
 
 def _rb(cycle="supply", sub="wh1", ok=None, err=None, warn=None, item=None, **extra):
@@ -174,6 +177,7 @@ def page():
     if card:
         for row in card["rows"]:
             row["wday"] = _wday(year, month, row["day"])
+        card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
 
     cycle_cfg = WAREHOUSE_MAP[cycle]
     tab_file = wf.TAB_XLSX[sub]
@@ -325,14 +329,15 @@ def wh1_add():
             stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh1", err=str(exc))
-    _snapshot(cycle)
+    snap_ok = _snapshot(cycle)
     conv = ""
     if result["factor"] and result["factor"] != 1:
         conv = (f" — {arnum.fmt_qty(result['qty_handle'])} {result['item']['handle_unit']}"
                 f" = {arnum.fmt_qty(result['qty_base'])} {result['base_unit']}")
     ok = (f"حُفظ إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(result['serial'])}{conv}"
           f" وفتح كارت «{result['item']['name']}» في دفتر ٣ مخازن تلقائيًا"
-          " — وتسجيلها في البيانات المحلية")
+          " — وتسجيلها في البيانات المحلية") + (
+        "" if snap_ok else " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة")
     return _rb(cycle, "wh3", item=result["item"]["id"], ok=ok)
 
 
@@ -391,10 +396,11 @@ def wh3_opener():
                       prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh3", err=str(exc), item=item_id)
-    _snapshot(cycle)
-    return _rb(cycle, "wh3", item=item_id,
-               ok=(f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته"
-                   " — وتسجيلها في البيانات المحلية"))
+    ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته"
+               " — وتسجيلها في البيانات المحلية")
+    if not _snapshot(cycle):
+        ok_open += " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة"
+    return _rb(cycle, "wh3", item=item_id, ok=ok_open)
 
 
 # ======================================================================
@@ -412,6 +418,10 @@ def wh3_unit():
         return _rb(cycle, "wh3", err="الصنف غير موجود في هذه الدورة")
     if not unit:
         return _rb(cycle, "wh3", err="اكتب وحدة التعامل", item=item_id)
+    if dw.item_has_movement(year, month, cycle, item_id):
+        return _rb(cycle, "wh3", item=item_id,
+                   err="ممنوع تغيير وحدة التعامل بعد أول حركة على الصنف — "
+                       "الوحدة تُثبَّت لتحافظ أرقام الدفتر على معناها")
     dw.set_handle_unit(year, month, item_id, unit)
     _snapshot(cycle)
     return _rb(cycle, "wh3", item=item_id,

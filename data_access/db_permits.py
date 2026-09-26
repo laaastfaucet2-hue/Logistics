@@ -68,10 +68,46 @@ def take_number(posted=None, when=None):
     return number, fiscal
 
 
+def permit_number_exists(year, month, number, fiscal_year=None):
+    """هل رقم الإذن مستخدم بالفعل في السنة المالية؟ (لتحديث بدل التكرار)"""
+    conn = _conn(year, month)
+    fiscal = fiscal_year or egtime.permit_fiscal_year()
+    row = conn.execute(
+        "SELECT 1 FROM calc2_permits WHERE number=? AND fiscal_year=? LIMIT 1",
+        (int(number), int(fiscal))).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def strip_item_from_permits(year, month, section, name):
+    """حذف صنف: يمسحه من كميات كل أذون الصرف المحفوظة (توجيه «يحذف من كل حاجة»)."""
+    prefix = "tamween_" if section == "tamween" else "contractor_"
+    key = prefix + name
+    conn = _conn(year, month)
+    touched = 0
+    with conn:
+        for row in conn.execute("SELECT id, actuals FROM calc2_permits").fetchall():
+            try:
+                actuals = json.loads(row["actuals"] or "{}")
+            except (ValueError, TypeError):
+                continue
+            if key in actuals:
+                actuals.pop(key, None)
+                conn.execute("UPDATE calc2_permits SET actuals=? WHERE id=?",
+                             (json.dumps(actuals, ensure_ascii=False), row["id"]))
+                touched += 1
+    conn.close()
+    return touched
+
+
 def save_permit(year, month, data):
+    """يحفظ إذن الصرف — والرقم الموجود مسبقًا يُستبدل (تحديث) لا يتكرر."""
     conn = _conn(year, month)
     stamp = egtime.now().isoformat(timespec="seconds")
     with conn:
+        conn.execute(
+            "DELETE FROM calc2_permits WHERE number=? AND fiscal_year=?",
+            (int(data["number"]), int(data["fiscal_year"])))
         cur = conn.execute(
             "INSERT INTO calc2_permits (number, fiscal_year, date_from, date_to, issue_days,"
             " mode, entity_label, officers, individuals, recruits, meals,"

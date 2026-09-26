@@ -242,6 +242,7 @@ def test_opener_balance_entered_with_full_details_once(client):
         "cycle": "supply", "item_id": item["id"], "qty": "٥٠", "day": "١",
         "producer": "مطاحن الافتتاح", "supplier_name": "مورد الافتتاح",
         "pack_kind": "شكارة", "pack_count": "١", "pack_capacity": "٥٠",
+        "exp_date": "٠١/٠١/٢٠٢٧",
         "notes": "رصيد السنة الماضية"})
     card = dw.item_card(YEAR, MONTH, item["id"])
     assert card["has_opener"] and card["opener_row"]["added"] == 50.0
@@ -251,7 +252,8 @@ def test_opener_balance_entered_with_full_details_once(client):
     assert "تغليف" in card["opener_row"]["notes"]
     # مرة واحدة فقط لكل صنف
     response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
-        "cycle": "supply", "item_id": item["id"], "qty": "٩", "day": "٢"}, follow=True)
+        "cycle": "supply", "item_id": item["id"], "qty": "٩", "day": "٢",
+        "exp_date": "٠١/٠٦/٢٠٢٧"}, follow=True)
     assert "لا يُسجل مرتين" in response.data.decode("utf-8")
     page = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={item['id']}")
     assert "رصيد أول المدة" in page and "رصيد السنة الماضية" in page
@@ -532,6 +534,7 @@ def test_opener_full_fields_splits_and_expiry_drive_fefo(client):
     # مجموع لا يطابق → رفض
     response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
         "cycle": "supply", "item_name": "شاي فتلة", "qty": "١٠", "day": "١",
+        "exp_date": "٠١/٠٩/٢٠٢٧",
         "store_id": [str(a["id"])], "store_qty": ["٧"]}, follow=True)
     assert "لا يساوي كمية رصيد أول المدة" in response.data.decode("utf-8")
     # صلاحية قبل إنتاج → رفض
@@ -567,3 +570,120 @@ def test_store_with_movement_cannot_delete_without_transfer(client):
     # الوجهة ورثت الحركة → صارت هي الأخرى محمية من الحذف
     response = _post(client, "/stores/delete", {"store_id": str(dest["id"])}, follow=True)
     assert "ممنوع حذف" in response.data.decode("utf-8")
+
+# ======================================================================
+# قواعد حسم ٢٦/٠٩ (الجزء الثاني): صلاحية الرصيد إلزامية، منع إعادة التسمية،
+# الحذف من كل حاجة، قفل الوحدة بعد الحركة، تحديث الإذن بدل تكراره + تقرير الأثر
+# ======================================================================
+def test_opener_expiry_is_mandatory(client):
+    _init()
+    response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
+        "cycle": "supply", "item_name": "زيت ذرة", "qty": "٥٠", "day": "١",
+        "producer": "شركة"}, follow=True)
+    assert "تاريخ الصلاحية إلزامي" in response.data.decode("utf-8")
+
+
+def test_item_rename_blocked_once_it_has_warehouse_card(client):
+    _init()
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0, 0)
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٢",
+        "receipt_no": "١"})
+    items, _custom = dr.get_items(YEAR, MONTH, "tamween", "summer")
+    item = [i for i in items if i["name"] == "أرز بلدي"][0]
+    response = _post(client, f"/rations/tamween/items/edit/{item['id']}", {
+        "kind": "summer", "name": "أرز", "unit": "كجم",
+        "breakfast": "0", "lunch": "٠٫١٥", "dinner": "0"}, follow=True)
+    page = response.data.decode("utf-8")
+    assert "ممنوع تغيير اسم" in page
+    # صنف بلا كارت مخزلنة → إعادة التسمية مسموحة
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "شاي فتلة", "كجم", 0, 0, 0)
+    items, _custom = dr.get_items(YEAR, MONTH, "tamween", "summer")
+    item2 = [i for i in items if i["name"] == "شاي فتلة"][0]
+    response = _post(client, f"/rations/tamween/items/edit/{item2['id']}", {
+        "kind": "summer", "name": "شاي صافي", "unit": "كجم",
+        "breakfast": "0", "lunch": "٠٫٠٠٥", "dinner": "0"}, follow=True)
+    assert "تم حفظ التعديل" in response.data.decode("utf-8")
+
+
+def test_item_delete_cascades_to_everything(client):
+    _init()
+    db_stores_add = __import__("data_access.db_stores", fromlist=["add_store"])
+    db_stores_add.add_store("المخزن الرئيسي")
+    store = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0, 0)
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٢",
+        "receipt_no": "١", "store_id": [str(store["id"])], "store_qty": ["١٠٠"]})
+    dp.save_permit(YEAR, MONTH, {
+        "number": 1, "fiscal_year": 2026, "date_from": 5, "date_to": 5,
+        "issue_days": 1, "mode": "box", "entity_label": "جهة", "officers": 0,
+        "individuals": 5, "recruits": 0, "meals": ["lunch"],
+        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 5}})
+    assert len(dw.tafreeda_rows(YEAR, MONTH, "supply")) == 1
+    items, _custom = dr.get_items(YEAR, MONTH, "tamween", "summer")
+    item = [i for i in items if i["name"] == "أرز بلدي"][0]
+    response = _post(client, f"/rations/tamween/items/delete/{item['id']}", {
+        "kind": "summer"}, follow=True)
+    page = response.data.decode("utf-8")
+    assert "من المقرر وجداول الجهات وإذون الصرف والمستودعات" in page
+    # المستودعات اتقفت بالكامل
+    assert dw.list_receipts(YEAR, MONTH, "supply") == []
+    assert dw.list_items(YEAR, MONTH, "supply") == []
+    assert dw.tafreeda_rows(YEAR, MONTH, "supply") == []
+    # إذن الصنف اتمسح من كميات الأذون
+    import json as _json
+    conn = __import__("data_access.months", fromlist=["get_db"]).get_db(YEAR, MONTH)
+    actuals = _json.loads(conn.execute(
+        "SELECT actuals FROM calc2_permits WHERE number=1").fetchone()[0])
+    conn.close()
+    assert "tamween_أرز بلدي" not in actuals
+
+
+def test_unit_change_locked_after_first_movement(client):
+    _init()
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أعلاف", "طن", 0, 0, 0)
+    items, _custom = dr.get_items(YEAR, MONTH, "tamween", "summer")
+    item = [i for i in items if i["name"] == "أعلاف"][0]
+    # بلا حركة → مسموح
+    _post(client, "/warehouses/wh3/unit?cycle=supply", {
+        "cycle": "supply", "item_id": str(item["id"]), "handle_unit": "كجم"})
+    # حركة → مقفول
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أعلاف", "qty": "٥٠٠", "day": "٢",
+        "receipt_no": "١"})
+    response = _post(client, "/warehouses/wh3/unit?cycle=supply", {
+        "cycle": "supply", "item_id": str(item["id"]), "handle_unit": "كجم"}, follow=True)
+    assert "ممنوع تغيير وحدة التعامل بعد أول حركة" in response.data.decode("utf-8")
+
+
+def test_permit_same_number_updates_once_and_reports_impact(client):
+    _init()
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0, 0)
+    db_stores_add = __import__("data_access.db_stores", fromlist=["add_store"])
+    db_stores_add.add_store("المخزن الرئيسي")
+    store = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]
+    _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٢",
+        "receipt_no": "١", "store_id": [str(store["id"])], "store_qty": ["١٠٠"]})
+    # تأميدة حقيقية حتى يظهر الصنف في مربع الحاسبة
+    from data_access import db_tameedat as dt
+    ent_id = dt.add_entity(YEAR, MONTH, "جهة", "شرطية")
+    dt.add_record(YEAR, MONTH, 5, dt.get_entity(YEAR, MONTH, ent_id), 1, 5, 0, "")
+    data = {"date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
+            "selected_json": "[\"main:1\"]", "entity_label": "جهة",
+            "meal_lunch": "1", "actual_tamween_أرز بلدي": "5"}
+    _post(client, "/calc2/save", data=dict(data))
+    # تحديث نفس الرقم: الكمية ٢٠ بدل ٥
+    data["actual_tamween_أرز بلدي"] = "20"
+    response = _post(client, "/calc2/save", data=dict(data), follow=True)
+    page = response.data.decode("utf-8")
+    assert "تقرير الأثر الكامل" in page
+    assert "رصيد «المخزن الرئيسي/أرز بلدي»: ٩٥→٨٠" in page
+    # إذن واحد فقط — لا تكرار
+    conn = __import__("data_access.months", fromlist=["get_db"]).get_db(YEAR, MONTH)
+    count = conn.execute("SELECT COUNT(*) FROM calc2_permits WHERE number=1").fetchone()[0]
+    conn.close()
+    assert count == 1
+    rows = dw.tafreeda_rows(YEAR, MONTH, "supply")
+    assert len(rows) == 1 and rows[0]["qty"] == 20.0     # التفريدة اتجددت بالقيمة الجديدة

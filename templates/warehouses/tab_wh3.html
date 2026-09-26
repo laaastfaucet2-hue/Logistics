@@ -52,7 +52,7 @@
             <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
           <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
           {{ date_field('prod_date', 'تاريخ الإنتاج') }}
-          {{ date_field('exp_date', 'تاريخ الصلاحية') }}
+          {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
           <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
         </div>
         <div class="js-split-box" data-auto-row="1">
@@ -81,9 +81,15 @@
           action="{{ url_for('warehouses.wh3_unit', cycle=cycle_key) }}">
       <input type="hidden" name="cycle" value="{{ cycle_key }}">
       <input type="hidden" name="item_id" value="{{ card.item.id }}">
+      {% if card.moved %}
+      <label>وحدة التعامل (مُثبَّتة — يوجد حركة على الصنف)
+        <input name="handle_unit" value="{{ card.item.handle_unit }}" readonly
+               class="dim" title="ممنوع تغيير الوحدة بعد أول حركة"></label>
+      {% else %}
       <label>تغيير وحدة التعامل (تُطبق على الحركات الجديدة)
         <input name="handle_unit" data-combo="whUnitsList" autocomplete="off"
                value="{{ card.item.handle_unit }}"></label>
+      {% endif %}
       <button class="icon-btn save" type="submit" title="حفظ وحدة التعامل">
         <svg viewBox="0 0 24 24"><path d="M4 3h12l4 4v14H4ZM8 3v6h8V3M8 21v-8h8v8"></path></svg>
       </button>
@@ -117,7 +123,7 @@
           <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
         <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
         {{ date_field('prod_date', 'تاريخ الإنتاج') }}
-        {{ date_field('exp_date', 'تاريخ الصلاحية') }}
+        {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
         <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
         <label class="wh-f wh-f-wide">ملاحظات
           <textarea name="notes" rows="2"></textarea></label>
