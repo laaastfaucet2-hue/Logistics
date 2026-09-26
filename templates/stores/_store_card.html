@@ -55,16 +55,17 @@
   <b class="wh-taf-title">كشف أرصدة المخزن — يتجدد تلقائيًا مع أي ٢ مخازن</b>
   <div class="wh-scroll">
   <table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th></tr></thead>
+    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th><th>التغليف المتبقي بالضبط</th></tr></thead>
     <tbody>
       {% for item, qty in target.balances.items() %}
       <tr>
         <td class="num">{{ loop.index | aindic }}</td>
         <td class="name"><b>{{ item }}</b></td>
         <td class="num"><b>{{ qty | qty3 }}</b></td>
+        <td class="wh-pack-cell">{{ target.pack_notes.get(item) or '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="3" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
+      <tr><td colspan="4" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
       {% endfor %}
     </tbody>
   </table>

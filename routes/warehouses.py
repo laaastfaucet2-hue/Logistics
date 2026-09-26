@@ -212,7 +212,7 @@ def page():
         prefill=request.args.get("item_name") or "",
         items_data=items_data, unit_base_data=UNIT_BASE,
         stores_registry=stores_registry, pack_kinds=pack_kinds,
-        tafreeda_by_permit=tafreeda_by_permit,
+        tafreeda_by_permit=tafreeda_by_permit, tafreeda_all=tafreeda,
     )
 
 
@@ -300,6 +300,8 @@ def wh1_add():
     pack_count = arnum.parse_float(request.form.get("pack_count")) or 0
     pack_capacity = arnum.parse_float(request.form.get("pack_capacity")) or 0
     pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
+    pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
+    pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
     stores_parts = []
     for sid_raw, qty_raw in zip(request.form.getlist("store_id"),
                                 request.form.getlist("store_qty")):
@@ -326,6 +328,8 @@ def wh1_add():
             receipt_no=receipt_no,
             pack_kind=pack_kind, pack_count=pack_count,
             pack_capacity=pack_capacity, pack_loose=pack_loose,
+            pack_inner_count=pack_inner_count,
+            pack_inner_capacity=pack_inner_capacity,
             stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh1", err=str(exc))
@@ -365,6 +369,8 @@ def wh3_opener():
     pack_count = arnum.parse_float(request.form.get("pack_count")) or 0
     pack_capacity = arnum.parse_float(request.form.get("pack_capacity")) or 0
     pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
+    pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
+    pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
     supplier_id = None
     supplier_name = (request.form.get("supplier_name") or "").strip()
     for sup in dw.list_suppliers(year, month, cycle):
@@ -393,6 +399,8 @@ def wh3_opener():
                       date_iso=f"{year:04d}-{month:02d}-{day:02d}",
                       pack_kind=pack_kind, pack_count=pack_count,
                       pack_capacity=pack_capacity, pack_loose=pack_loose,
+                      pack_inner_count=pack_inner_count,
+                      pack_inner_capacity=pack_inner_capacity,
                       prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh3", err=str(exc), item=item_id)

@@ -25,8 +25,12 @@
         {{ c.name }} <small>{% if c.unit %}({{ c.unit }}){% endif %} — لم تُضف بعد</small>
       </a>
       {% endfor %}
-      <!-- رصيد أول المدة لصنف لم يُفتح كارته بعد: يفتح الكارت تلقائيًا -->
-      <form class="wh-opener no-print" method="post"
+      <!-- رصيد أول المدة لصنف لم يُفتح كارته بعد: يفتح الكارت تلقائيًا — قائمة تفتح وتقفل -->
+      <button type="button" class="wh-newbtn no-print" id="whOpenerNewToggle"
+              aria-expanded="false" aria-controls="whOpenerNewForm">
+        <span class="wh-newbtn-plus">＋</span> رصيد أول المدة لصنف جديد
+      </button>
+      <form class="wh-opener no-print" id="whOpenerNewForm" method="post" hidden
             action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
         <input type="hidden" name="cycle" value="{{ cycle_key }}">
         <b class="wh-opener-title">🧾 رصيد أول المدة لصنف جديد</b>
@@ -46,8 +50,12 @@
             <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off"></label>
           <label class="wh-f">عدد العبوات
             <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off"></label>
-          <label class="wh-f">سعة العبوة
+          <label class="wh-f">وزن العبوة الواحدة
             <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">عدد العلب داخل العبوة <small>(لو الكرتونة جواها علب)</small>
+            <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">وزن العلبة الواحدة
+            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
           <label class="wh-f">كمية سائبة
             <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
           <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
@@ -97,8 +105,13 @@
     </form>
 
     {% if not card.has_opener %}
-    <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته -->
-    <form class="wh-opener no-print" method="post"
+    <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته — قائمة تفتح وتقفل (توجيه ٢٦/٠٩) -->
+    <button type="button" class="wh-newbtn no-print" id="whOpenerToggle"
+            aria-expanded="false" aria-controls="whOpenerForm">
+      <span class="wh-newbtn-plus">＋</span> رصيد أول المدة — «{{ card.item.name }}»
+    </button>
+    <form class="wh-opener no-print" id="whOpenerForm" method="post" hidden
+          data-item-name="{{ card.item.name }}"
           action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
       <input type="hidden" name="cycle" value="{{ cycle_key }}">
       <input type="hidden" name="item_id" value="{{ card.item.id }}">
@@ -117,8 +130,12 @@
           <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off"></label>
         <label class="wh-f">عدد العبوات
           <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f">سعة العبوة
+        <label class="wh-f">وزن العبوة الواحدة
           <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+        <label class="wh-f">عدد العلب داخل العبوة <small>(لو الكرتونة جواها علب)</small>
+          <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off"></label>
+        <label class="wh-f">وزن العلبة الواحدة
+          <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
         <label class="wh-f">كمية سائبة
           <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
         <div class="wh-f wh-f-hint"><span class="wh-hintline js-pack-hint"></span></div>
@@ -144,7 +161,7 @@
     <table class="rt-table wh-table wh-ledger">
       <thead><tr>
         <th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
-        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th>
+        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>التغليف</th><th>ملاحظات</th>
       </tr></thead>
       <tbody>
         {% if card.opener_row %}
@@ -157,13 +174,14 @@
           <td class="num">{{ card.opener_row.added | qty3 }}</td>
           <td class="num">٠٫٠٠٠</td>
           <td class="num"><b>{{ card.opener_row.balance | qty3 }}</b></td>
+          <td class="wh-pack-cell">{{ card.opener_row.pack_label or '—' }}</td>
           <td>{{ card.opener_row.notes or '—' }}</td>
         </tr>
         {% else %}
         <tr class="wh-opener-row">
           <td class="num">—</td><td colspan="3" class="name">رصيد أول المدة</td>
-          <td>لم يُسجَّل بعد — أدخله من النموذج فوق بكل بياناته</td>
-          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td>
+          <td>لم يُسجَّل بعد — أدخله من النموذج بكل بياناته</td>
+          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td><td></td>
         </tr>
         {% endif %}
         {% set n = namespace(i=0) %}
@@ -178,11 +196,12 @@
           <td class="num">{{ row.added | qty3 }}</td>
           <td class="num {% if row.kind == 'issue2' %}wh-issued{% endif %}">{{ row.issued | qty3 }}</td>
           <td class="num"><b>{{ row.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td class="wh-pack-cell">{{ row.pack_label or '—' }}</td>
           <td>{{ row.notes or '—' }}</td>
         </tr>
         {% else %}
         {% if card.has_opener %}
-        <tr><td colspan="9" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
+        <tr><td colspan="10" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
         {% endif %}
         {% endfor %}
       </tbody>
@@ -192,7 +211,7 @@
           <td class="num">{{ card.total_added | qty3 }}</td>
           <td class="num">{{ card.total_issued | qty3 }}</td>
           <td class="num"><b>{{ card.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
-          <td></td>
+          <td></td><td></td>
         </tr>
       </tfoot>
     </table>

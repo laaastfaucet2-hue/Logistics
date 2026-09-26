@@ -144,8 +144,11 @@ def snapshot_cycle(year, month, cycle):
             "يعادل بوحدة القاعدة": r["qty_base"], "وحدة القاعدة": r["base_unit"],
             "التغليف": {"النوع": r.get("pack_kind") or "—",
                         "عدد العبوات": r.get("pack_count") or 0,
-                        "سعة العبوة": r.get("pack_capacity") or 0,
-                        "كمية سائبة": r.get("pack_loose") or 0},
+                        "وزن العبوة": r.get("pack_capacity") or 0,
+                        "عدد العلب بالداخل": r.get("pack_inner_count") or 0,
+                        "وزن العلبة": r.get("pack_inner_capacity") or 0,
+                        "كمية سائبة": r.get("pack_loose") or 0,
+                        "الصيغة الكاملة": r.get("pack_label") or "—"},
             "المخازن": [{"المخزن": p["store_name"], "الكمية": p["qty"]}
                         for p in r["stores"]],
             "الشركة المنتجة": r["producer"] or "—",
@@ -246,14 +249,15 @@ def snapshot_cycle(year, month, cycle):
     taf_rows = [(t["permit_no"], t["item"], t["store_name"],
                  t["receipt_serial"] or "رصيد أول المدة",
                  _date_or_dash(t["expiry"]), t["qty"], t["unit"],
-                 t["pack_label"] or "—") for t in tafreeda]
+                 t.get("pack_inner_label") or "—",
+                 t.get("pack_outer_label") or t["pack_label"] or "—") for t in tafreeda]
     _save_xlsx(cycle_dir(year, month, cycle, "wh2") / TAB_XLSX["wh2"], [
         ("دفتر إذون صرف ٢ مخازن",
          ["رقم الإذن", "السنة المالية", "من يوم", "إلى يوم", "أيام الصرف",
           "الجهات", "الصنف", "الكمية الفعلية", "الوحدة"], permit_rows),
         ("التفريدة التلقائية",
          ["رقم الإذن", "الصنف", "المخزن", "الدفعة (إذن إضافة)", "الصلاحية",
-          "الكمية المنصرفة", "الوحدة", "تغليف الدفعة"], taf_rows)])
+          "الكمية المنصرفة", "الوحدة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
 
     dataguard.auto_backup("write", min_minutes=20)
     return True

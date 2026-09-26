@@ -249,7 +249,9 @@ def test_opener_balance_entered_with_full_details_once(client):
     assert card["balance"] == 70.0                     # ٥٠ افتتاح + ٢٠ إذن
     assert "مطاحن الافتتاح" in card["opener_row"]["notes"]
     assert "مورد الافتتاح" in card["opener_row"]["notes"]
-    assert "تغليف" in card["opener_row"]["notes"]
+    # التغليف له عموده المستقل — لا يُخلط في الملاحظات (قاعدة ٢٦/٠٩)
+    assert "شكارة" in (card["opener_row"]["pack_label"] or "")
+    assert "تغليف" not in card["opener_row"]["notes"]
     # مرة واحدة فقط لكل صنف
     response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
         "cycle": "supply", "item_id": item["id"], "qty": "٩", "day": "٢",
@@ -364,7 +366,7 @@ def test_packaging_auto_total_and_capacity_memory(client):
     assert receipt["pack_capacity"] == 50.0
     # السعة ات حفظت للصنف — تظهر في خريطة التعبئة التلقائية
     specs = dw.pack_specs_map(YEAR, MONTH, "supply")
-    assert specs["أرز بلدي"]["شكارة"] == 50.0
+    assert specs["أرز بلدي"]["شكارة"]["capacity"] == 50.0
     page = _page(client, "/warehouses?cycle=supply&sub=wh1")
     assert "شكارة" in page and "٨٠٫٠٠٠" in page
 
@@ -493,13 +495,30 @@ def test_store_registry_crud_rules(client):
 # قواعد جولة ٢٦/٠٩: أرقام التغليف المقصوصة + رصيد أول المدة الكامل + حذف المخازن
 # ======================================================================
 def test_pack_label_integers_stay_integers_fractions_show_fractions():
+    """الصيغة اللفظية الاحترافية (توجيه ٢٦/٠٩ مساءً): كل خطوة الحسبة ظاهرة."""
     from data_access.db_warehouses import pack_summary
     label, total = pack_summary("شكارة", 19, 50, 50, "كجم")
-    assert label == "١٩ شكارة × ٥٠ كجم + ٥٠ كجم سائب = ١٠٠٠ كجم" and total == 1000.0
+    assert label == ("١٩ شكارة × وزن الشكارة ٥٠ كجم = ٩٥٠ كجم"
+                     " + ٥٠ كجم سائب = ١٠٠٠ كجم") and total == 1000.0
     label, total = pack_summary("بلاتة", 2, 12.5, 0, "كجم")
-    assert "١٢٫٥ كجم" in label and "= ٢٥ كجم" in label and total == 25.0
+    assert "وزن البلاتة ١٢٫٥ كجم" in label and "= ٢٥ كجم" in label and total == 25.0
     label, _ = pack_summary("كرتونة", 3, 0.66, 0, "لتر")
     assert "٠٫٦٦ لتر" in label
+
+
+def test_pack_nested_carton_formula_and_breakdown():
+    """الكرتونة بداخلها علب: الصيغة + «التغليف المتبقي بالضبط»."""
+    from data_access.db_warehouses import pack_breakdown, pack_split, pack_summary
+    label, total = pack_summary("كرتونة", 4, 0, 0, "كجم", 6, 2)
+    assert label == "٤ كرتونة بداخلها ٦ علب × وزن العلبة ٢ كجم = ٤٨ كجم"
+    assert total == 48.0
+    inner, outer = pack_split("كرتونة", 4, 0, 0, "كجم", 6, 2)
+    assert inner == "٦ علب × وزن العلبة ٢ كجم = ١٢ كجم للكرتونة"
+    assert outer == "٤ كرتونة × وزن الكرتونة ١٢ كجم = ٤٨ كجم"
+    # التفكيك: ٢٨ كجم متبقية من كرتونة ١٢ (٦×٢) ⇒ ٢ كرتونة + ٢ علبة
+    assert pack_breakdown("كرتونة", 0, 6, 2, 28, "كجم") == "٢ كرتونة + ٢ علبة"
+    assert pack_breakdown("كرتونة", 0, 6, 2, 11.988, "كجم") == "٥ علب + ١٫٩٨٨ كجم سائب"
+    assert pack_breakdown("شكارة", 50, 0, 0, 170, "كجم") == "٣ شكارة + ٢٠ كجم سائب"
 
 
 def test_opener_full_fields_splits_and_expiry_drive_fefo(client):

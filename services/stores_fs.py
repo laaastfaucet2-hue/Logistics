@@ -84,13 +84,14 @@ def snapshot(year, month):
         for target in rep["stores"] + [rep["unassigned"]]:
             store_name = target["store"]["name"]
             for item, qty in sorted(target["balances"].items()):
-                balance_rows.append((store_name, item, qty))
+                balance_rows.append((store_name, item, qty,
+                                     target.get("pack_notes", {}).get(item) or "—"))
         _save_xlsx(file_path(year, month, "movement"), [
             ("حركة المخازن",
              ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف",
               "الكمية", "الوحدة", "التغليف", "المستند"], move_rows),
             ("كشف الأرصدة",
-             ["المخزن", "الصنف", "الرصيد"], balance_rows)])
+             ["المخزن", "الصنف", "الرصيد", "التغليف المتبقي بالضبط"], balance_rows)])
     except Exception:
         logging.exception("stores snapshot failed")
 

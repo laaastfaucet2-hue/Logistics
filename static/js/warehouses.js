@@ -37,8 +37,9 @@
     return row ? { base: row[0], factor: row[1] } : { base: key, factor: 1 };
   }
 
-  /* فتح/قفل نماذج الزر الأمبر */
-  [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"]].forEach(function (pair) {
+  /* فتح/قفل نماذج الزر الأمبر + فورمات رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
+  [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"],
+   ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"]].forEach(function (pair) {
     var btn = document.getElementById(pair[0]);
     var form = document.getElementById(pair[1]);
     if (!btn || !form) return;
@@ -166,9 +167,21 @@
     if (!kindEl) return;
     var countEl = root.querySelector('[name=pack_count]');
     var capEl = root.querySelector('[name=pack_capacity]');
+    var innerCountEl = root.querySelector('[name=pack_inner_count]');
+    var innerCapEl = root.querySelector('[name=pack_inner_capacity]');
     var looseEl = root.querySelector('[name=pack_loose]');
     var hint = hintSel ? document.querySelector(hintSel) : root.querySelector(".js-pack-hint");
     var qtyEl = root.querySelector('input[name=qty]');
+    var localItem = root.querySelector('[name=item_name]');
+
+    /* الصنف: من حقل النموذج نفسه، أو اسم كارت الصنف (data-item-name)، أو حقل ١ مخازن */
+    function currentInfo() {
+      var name = "";
+      if (root.dataset && root.dataset.itemName) name = root.dataset.itemName;
+      else if (localItem) name = localItem.value.trim();
+      else if (itemInput) name = itemInput.value.trim();
+      return name ? (ITEMS[name] || null) : null;
+    }
 
     function isReal() {
       var k = kindEl.value.trim();
@@ -177,18 +190,42 @@
     function refresh() {
       var count = toNum(countEl ? countEl.value : null) || 0;
       var cap = toNum(capEl ? capEl.value : null) || 0;
+      var innerCount = innerCountEl ? (toNum(innerCountEl.value) || 0) : 0;
+      var innerCap = innerCapEl ? (toNum(innerCapEl.value) || 0) : 0;
       var loose = toNum(looseEl ? looseEl.value : null) || 0;
-      var total = isReal() ? count * cap + loose : 0;
-      var info = (itemInput && ITEMS[itemInput.value.trim()]) ? ITEMS[itemInput.value.trim()] : null;
+      var info = currentInfo();
       var unit = info ? info.unit : "";
-      if (hint) {
-        var bits = [];
-        if (isReal() && count) {
+      var bits = [];
+      var total = 0;
+      if (isReal() && count) {
+        if (innerCount && innerCap) {
+          /* كرتونة بداخلها علب: N كرتونة بداخلها M علبة × وزن العلبة W = X كجم */
+          var cartonW = innerCount * innerCap;
+          var sub = count * cartonW;
+          total += sub;
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
-            (cap ? " × " + fmt(cap) + " " + unit : ""));
+            " بداخلها " + innerCount.toLocaleString("ar-EG") + " " +
+            (innerCount >= 3 && innerCount <= 10 ? "علب" : "علبة") +
+            " × وزن العلبة " + fmt(innerCap) + " " + unit +
+            " = " + fmt(sub) + " " + unit);
+        } else if (cap) {
+          /* صيغة المستخدم: ١٩ شكارة × وزن الشكارة ٥٠ كجم = ٩٥٠ كجم */
+          var sub2 = count * cap;
+          total += sub2;
+          bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
+            " × وزن ال" + kindEl.value.trim() + " " + fmt(cap) + " " + unit +
+            " = " + fmt(sub2) + " " + unit);
+        } else {
+          bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim());
         }
-        if (loose) bits.push(fmt(loose) + " " + unit + " سائب");
-        hint.textContent = bits.join(" + ") + (total ? " = " + fmt(total) + " " + unit : "");
+      }
+      if (loose) {
+        total += loose;
+        bits.push(fmt(loose) + " " + unit + " سائب");
+      }
+      if (hint) {
+        hint.textContent = bits.join(" + ") +
+          (bits.length > 1 && total ? " = " + fmt(total) + " " + unit : "");
       }
       if (qtyEl) {
         if (total > 0) {
@@ -201,17 +238,25 @@
         SPLIT_REFRESH.forEach(function (fn) { fn(); });
       }
     }
-    [kindEl, countEl, capEl, looseEl].forEach(function (el) {
+    [kindEl, countEl, capEl, innerCountEl, innerCapEl, looseEl].forEach(function (el) {
       if (!el) return;
       el.addEventListener("input", refresh);
       el.addEventListener("change", refresh);
     });
     kindEl.addEventListener("change", function () {
-      var name = itemInput ? itemInput.value.trim() : "";
-      var specs = (ITEMS[name] || {}).packs || {};
+      var info2 = currentInfo();
+      var specs = (info2 && info2.packs) || {};
       var remembered = specs[kindEl.value.trim()];
-      if (remembered && capEl && !capEl.value) {
-        capEl.value = remembered.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+      if (remembered) {
+        if (capEl && !capEl.value && remembered.capacity) {
+          capEl.value = remembered.capacity.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+        }
+        if (innerCountEl && !innerCountEl.value && remembered.inner_count) {
+          innerCountEl.value = remembered.inner_count.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+        }
+        if (innerCapEl && !innerCapEl.value && remembered.inner_capacity) {
+          innerCapEl.value = remembered.inner_capacity.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+        }
       }
       refresh();
     });

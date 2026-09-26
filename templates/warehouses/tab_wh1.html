@@ -27,8 +27,12 @@
              placeholder="شكارة، كرتونة، بلات، علبة..."></label>
     <label class="wh-f">عدد العبوات
       <input name="pack_count" id="whPackCount" inputmode="decimal" autocomplete="off"></label>
-    <label class="wh-f">سعة العبوة <small>(بوحدة التعامل — تُحفظ للصنف)</small>
+    <label class="wh-f">وزن العبوة الواحدة <small>(بوحدة التعامل — تُحفظ للصنف)</small>
       <input name="pack_capacity" id="whPackCapacity" inputmode="decimal" autocomplete="off"></label>
+    <label class="wh-f">عدد العلب داخل العبوة <small>(لو الكرتونة جواها علب)</small>
+      <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off"></label>
+    <label class="wh-f">وزن العلبة الواحدة
+      <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
     <label class="wh-f">كمية سائبة (بدون تغليف)
       <input name="pack_loose" id="whPackLoose" inputmode="decimal" autocomplete="off"></label>
     <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whPackHint"></span></div>
@@ -80,11 +84,7 @@
         <td class="num">{{ r.qty_handle | qty3 }}</td>
         <td>{{ r.unit }}</td>
         <td class="num">{{ r.qty_base | qty3 }} {{ r.base_unit }}</td>
-        <td>{% if r.pack_kind and r.pack_kind != 'بدون تغليف' %}
-              {% if r.pack_count %}{{ '%g' | format(r.pack_count) | aindic }} {{ r.pack_kind }}
-                {% if r.pack_capacity %}× {{ r.pack_capacity | qty3 }}{% endif %}{% endif %}
-              {% if r.pack_loose %}+ {{ r.pack_loose | qty3 }} سائب{% endif %}
-            {% else %}—{% endif %}</td>
+        <td class="wh-pack-cell">{{ r.pack_label or '—' }}</td>
         <td>{% for s in r.stores %}{{ s.store_name }} ({{ s.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
         <td>{{ r.producer or '—' }}</td>
         <td>{{ r.supplier_name or '—' }}</td>

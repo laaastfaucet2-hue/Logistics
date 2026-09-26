@@ -1,5 +1,7 @@
 /* Fixed day/month/year segments in RTL text; same Changa font and purple/orange theme. */
 .date-display { direction: ltr; unicode-bidi: isolate; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* التواريخ كتلة واحدة لا تتلف داخل الخلايا الضيقة (ملاحظة ٢٦/٠٩) */
+bdi[dir="ltr"] { white-space: nowrap; }
 .date-field { position: relative; min-width: 0; width: 100%; }
 .rc-form .date-field input[data-date] { direction: ltr; text-align: right; padding-left: 44px; padding-right: 12px;
   min-width: 0; font-variant-numeric: tabular-nums; }

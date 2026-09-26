@@ -178,3 +178,9 @@
 .wh-store-card { margin-bottom: 16px; }
 .wh-in { color: var(--green); font-weight: 800; }
 .wh-out { color: var(--red); font-weight: 800; }
+
+/* خلية التغليف: الصيغة اللفظية كاملة بلا لف مخل (توجيه ٢٦/٠٩) */
+.wh-pack-cell { min-width: 210px; font-size: .78rem; line-height: 1.9; }
+@media (max-width: 720px) {
+  .wh-pack-cell { min-width: 160px; }
+}
