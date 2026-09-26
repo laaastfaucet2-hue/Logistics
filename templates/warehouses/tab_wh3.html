@@ -120,6 +120,12 @@
       <span class="wh-badge-dev">الحالة الكلية للصنف — قيد التطوير</span>
     </form>
 
+    <div class="wh-subtabs no-print">
+      <button type="button" class="wh-subtab active" data-wh3sub="daftar">📒 دفتر ٣ مخازن</button>
+      <button type="button" class="wh-subtab" data-wh3sub="tafared">📋 دفتر ٣ مخازن تفاريد</button>
+    </div>
+    <div class="wh-subpanel" data-wh3panel="daftar">
+
     {% if not card.has_opener %}
     <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته — قائمة تفتح وتقفل (توجيه ٢٦/٠٩) -->
     <button type="button" class="wh-newbtn no-print" id="whOpenerToggle"
@@ -246,54 +252,47 @@
       </tfoot>
     </table>
     </div>
+    </div>
+    <div class="wh-subpanel" data-wh3panel="tafared" hidden>
+      {% if taf3 and taf3.rows %}
+      <div class="wh-scroll">
+      <table class="rt-table wh-table wh-ledger">
+        <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+          <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+          {% for r in taf3.rows %}
+          <tr {% if r.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
+            <td class="num">{{ r.seq | aindic }}</td>
+            <td>{{ r.wday }}</td>
+            <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+            <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
+            <td>{{ r.label or '—' }}</td>
+            <td class="wh-pack-cell">{{ r.added_pack }}</td>
+            <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
+            <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
+            <td>{{ r.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5">الإجماليات</td>
+            <td class="num">{{ card.total_added | qty3 }}</td>
+            <td class="num">{{ card.total_issued | qty3 }}</td>
+            <td class="wh-pack-cell"><b>{{ taf3.balance_pack }}</b></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+      {% else %}
+      <p class="empty">سجّل رصيد أول المدة من «دفتر ٣ مخازن» أولًا ليظهر دفتر التفاريد بالتغليف.</p>
+      {% endif %}
+    </div>
     {% else %}
     <div class="panel-head"><h3>📒 دفتر ٣ مخازن</h3></div>
     <p class="empty">اختر صنفًا من القائمة ليفتح كارته: مسلسل الحركة، اليوم، التاريخ، رقم الإذن،
       المضاف، المنصرف، والرصيد — بالوحدة التعاملية للصنف.</p>
     {% endif %}
   </section>
-</div>
-
-{# دفتر التفاريد الخاص بالصنف (توجيه ٢٧/٠٩): يفتح مع كارت الصنف —
-   نفس أعمدة دفتر ٣ مخازن بس مضاف/منصرف/الرصيد كلهم بالتغليف #}
-<div class="panel" style="margin-top:16px;">
-  {% if card and taf3 %}
-  <div class="panel-head">
-    <h3>📋 ٣ مخازن تفاريد — <b>{{ card.item.name }}</b></h3>
-    <span class="panel-hint">دفتر التفريدة الخاص بالصنف: مضاف ومنصرف والرصيد بالتغليف</span>
-  </div>
-  <div class="wh-scroll">
-  <table class="rt-table wh-table wh-ledger">
-    <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
-      <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th></tr></thead>
-    <tbody>
-      {% for r in taf3.rows %}
-      <tr {% if r.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
-        <td class="num">{{ r.seq | aindic }}</td>
-        <td>{{ r.wday }}</td>
-        <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
-        <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
-        <td>{{ r.label or '—' }}</td>
-        <td class="wh-pack-cell">{{ r.added_pack }}</td>
-        <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
-        <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
-        <td>{{ r.notes or '—' }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="5">الإجماليات</td>
-        <td class="num">{{ card.total_added | qty3 }}</td>
-        <td class="num">{{ card.total_issued | qty3 }}</td>
-        <td class="wh-pack-cell"><b>{{ taf3.balance_pack }}</b></td>
-        <td></td>
-      </tr>
-    </tfoot>
-  </table>
-  </div>
-  {% else %}
-  <div class="panel-head"><h3>📋 ٣ مخازن تفاريد</h3></div>
-  <p class="empty">افتح صنفًا من القائمة فوق ليظهر دفتر تفاريده: مضاف ومنصرف والرصيد بالتغليف.</p>
-  {% endif %}
 </div>

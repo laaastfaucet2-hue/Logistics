@@ -53,8 +53,8 @@
       <tbody>
         {% for p in permits %}
         {% set pg = taf_popup.get(p.number) %}
-        <tr class="{% if pg %}wh-taf-row{% endif %}" {% if pg %}data-taf-open="tafDialog-{{ p.number }}"
-            title="اضغط لعرض التفريدة كاملة"{% endif %}>
+        <tr class="{% if pg %}wh-taf-row{% endif %}" {% if pg %}data-taf-open="sijDialog-{{ p.number }}"
+            title="اضغط لعرض الإذن"{% endif %}>
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="num"><b title="إذن صرف ٢ مخازن رقم {{ p.number | aindic }}">{{ p.number | aindic }}</b></td>
           <td class="name"><b>{{ p.main_entity or 'إذن مجمع' }}</b>{% if p.extras %}
@@ -65,7 +65,7 @@
           <td class="num">{{ p.issue_days | aindic }}</td>
           <td class="num wh-issued">{% if pg %}<b>{{ pg.total | qty3 }}</b>{% else %}—{% endif %}</td>
           <td class="no-print">{% if pg %}<button type="button" class="rt-btn dim"
-                data-taf-open="tafDialog-{{ p.number }}">📄 عرض الإذن</button>{% else %}—{% endif %}</td>
+                data-taf-open="sijDialog-{{ p.number }}">📄 عرض الإذن</button>{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -143,6 +143,43 @@
   </div>
   <div class="wh-dialog-foot no-print">
     <button type="button" class="rt-btn dim" data-taf-close="extrasDialog-{{ no }}">إغلاق</button>
+  </div>
+</dialog>
+{% endfor %}
+
+{% for no, pg in taf_popup.items() %}
+<!-- نافذة سجلات ٢ مخازن: من غير «المنصرف بالتغليف» (توجيه ٢٧/٠٩ مساءً) -->
+<dialog class="wh-dialog" id="sijDialog-{{ no }}">
+  <div class="wh-dialog-head">
+    <b>📖 إذن صرف رقم {{ no | aindic }}
+      {% if pg.main_entity %}— {{ pg.main_entity }}{% endif %}</b>
+    <button type="button" class="icon-btn" data-taf-close="sijDialog-{{ no }}" title="إغلاق">✕</button>
+  </div>
+  <div class="wh-dialog-body">
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>المنصرف بالوحدة</th>
+        <th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+        {% for iname, it in pg.lines.items() %}
+        {% for t in it.stores %}
+        <tr>
+          <td class="num">{{ t.seq | aindic }}</td>
+          <td class="name"><b>{{ iname }}</b></td>
+          <td>{{ t.unit or '—' }}</td>
+          <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
+          <td>{{ t.store_name }}</td>
+          <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td>{{ t.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="wh-dialog-foot no-print">
+    <button type="button" class="rt-btn dim" data-taf-close="sijDialog-{{ no }}">إغلاق</button>
   </div>
 </dialog>
 {% endfor %}

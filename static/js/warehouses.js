@@ -445,16 +445,18 @@ document.addEventListener("click", function (ev) {
     if (ev.target instanceof HTMLDialogElement) ev.target.close();  /* ضغط بالخارج */
   });
 
-/* تابان ٢ مخازن الفرعيان: تبديل بين التفاريد وسجلات ٢ مخازن بلا إعادة تحميل */
+/* التابات الفرعية (٢ و٣ مخازن): تبديل بلا إعادة تحميل */
 document.addEventListener("click", function (ev) {
-  var btn = ev.target.closest("[data-wh2sub]");
+  var btn = ev.target.closest("[data-wh2sub],[data-wh3sub]");
   if (!btn) return;
   var scope = btn.closest(".panel");
   if (!scope) return;
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh2sub]"), function (b) {
+  var sub = btn.hasAttribute("data-wh2sub") ? "data-wh2sub" : "data-wh3sub";
+  var pan = btn.hasAttribute("data-wh2sub") ? "data-wh2panel" : "data-wh3panel";
+  Array.prototype.forEach.call(scope.querySelectorAll("[" + sub + "]"), function (b) {
     b.classList.toggle("active", b === btn);
   });
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh2panel]"), function (p) {
-    p.hidden = p.getAttribute("data-wh2panel") !== btn.getAttribute("data-wh2sub");
+  Array.prototype.forEach.call(scope.querySelectorAll("[" + pan + "]"), function (p) {
+    p.hidden = p.getAttribute(pan) !== btn.getAttribute(sub);
   });
 });

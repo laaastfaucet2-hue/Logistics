@@ -87,35 +87,53 @@
     <span class="panel-hint">الأرقام تسلسلية داخل الدورة والشهر — وكل إذن حركته مسجلة في دفتر ٣ مخازن</span>
   </div>
   <div class="wh-scroll">
-  <table class="rt-table wh-table">
-    <thead><tr>
-      <th>رقم الإذن</th><th>اليوم</th><th>التاريخ</th><th>الصنف</th>
-      <th>الكمية</th><th>الوحدة</th><th>يعادل (قاعدة)</th><th>التغليف</th><th>المخازن</th>
-      <th>الشركة المنتجة</th><th>المورد</th><th>الإنتاج</th><th>الصلاحية</th><th>المدة</th><th>ملاحظات</th>
-    </tr></thead>
+  <table class="rt-table wh-table wh-taf-list">
+    <thead><tr><th>م</th><th>رقم الإذن</th><th>الأصناف</th>
+      <th>الشركة الموردة</th><th></th></tr></thead>
     <tbody>
       {% for r in receipts %}
-      <tr>
+      <tr class="wh-taf-row" data-taf-open="wh1Dialog-{{ r.id }}" title="اضغط لعرض الإذن كامل">
+        <td class="num">{{ loop.index | aindic }}</td>
         <td class="num"><b>{{ r.serial | aindic }}</b></td>
-        <td>{{ r.wday }}</td>
-        <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
         <td class="name"><b>{{ r.item_name }}</b></td>
-        <td class="num">{{ r.qty_handle | qty3 }}</td>
-        <td>{{ r.unit }}</td>
-        <td class="num">{{ r.qty_base | qty3 }} {{ r.base_unit }}</td>
-        <td class="wh-pack-cell">{{ r.pack_label or '—' }}</td>
-        <td>{% for s in r.stores %}{{ s.store_name }} ({{ s.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
-        <td>{{ r.producer or '—' }}</td>
         <td>{{ r.supplier_name or '—' }}</td>
-        <td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
-        <td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
-        <td class="num">{% if r.shelf_days is not none %}{{ r.shelf_days | aindic }} يوم{% else %}—{% endif %}</td>
-        <td>{{ r.notes or '—' }}</td>
+        <td class="no-print"><button type="button" class="rt-btn dim"
+              data-taf-open="wh1Dialog-{{ r.id }}">📄 عرض الإذن</button></td>
       </tr>
       {% else %}
-      <tr><td colspan="14" class="empty">لا إذون إضافة بعد هذا الشهر — أضف أول إذن من الزر الأمبر فوق ➕</td></tr>
+      <tr><td colspan="5" class="empty">لا إذون إضافة بعد هذا الشهر — أضف أول إذن من الزر الأمبر فوق ➕</td></tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
-</div>
+
+{% for r in receipts %}
+<dialog class="wh-dialog" id="wh1Dialog-{{ r.id }}">
+  <div class="wh-dialog-head">
+    <b>📥 إذن إضافة ١ مخازن رقم {{ r.serial | aindic }}</b>
+    <button type="button" class="icon-btn" data-taf-close="wh1Dialog-{{ r.id }}" title="إغلاق">✕</button>
+  </div>
+  <div class="wh-dialog-body">
+    <table class="rt-table wh-table">
+      <tbody>
+        <tr><th>اليوم</th><td>{{ r.wday }}</td></tr>
+        <tr><th>التاريخ</th><td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td></tr>
+        <tr><th>الصنف</th><td class="name"><b>{{ r.item_name }}</b></td></tr>
+        <tr><th>الكمية</th><td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}
+          {% if r.qty_base %}— يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td></tr>
+        <tr><th>التغليف</th><td class="wh-pack-cell">{{ r.pack_label or '—' }}</td></tr>
+        <tr><th>المخازن</th><td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td></tr>
+        <tr><th>الشركة المنتجة</th><td>{{ r.producer or '—' }}</td></tr>
+        <tr><th>الشركة الموردة</th><td>{{ r.supplier_name or '—' }}</td></tr>
+        <tr><th>الإنتاج</th><td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td></tr>
+        <tr><th>الصلاحية</th><td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}
+          {% if r.shelf_days is not none %} ({{ r.shelf_days | aindic }} يوم){% endif %}</td></tr>
+        <tr><th>ملاحظات</th><td>{{ r.notes or '—' }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="wh-dialog-foot no-print">
+    <button type="button" class="rt-btn dim" data-taf-close="wh1Dialog-{{ r.id }}">إغلاق</button>
+  </div>
+</dialog>
+{% endfor %}
