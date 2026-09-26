@@ -383,12 +383,8 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                 pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
                 stores=None):
-    """يحفظ إذن إضافة ١ مخازن ويسجل حركته في دفتر ٣ مخازن — ويرجع بياناته.
-
-    رقم الإذن يدوي (فاضي = يكمّل التسلسل). التغليف يحسب الكمية تلقائيًا
-    (وزن العبوة هو المرجع والعلب تفصيل)، وسعة العبوة تُحفظ للصنف.
-    stores: قائمة (store_id, store_name, qty) لتوزيع الكمية على مخزن أو أكثر.
-    """
+    """يحفظ إذن إضافة ١ مخازن ويفتح كارت الصنف — رقم يدوي، والتغليف يحسب
+    الكمية تلقائيًا، وstores لتوزيع الكمية على مخزن أو أكثر."""
     from core import egtime
     pack_kind = (pack_kind or "").strip()
     pack_total = 0.0
@@ -862,8 +858,8 @@ def _batch_pool(year, month, cycle):
 
 
 def tafreeda_rows(year, month, cycle):
-    """التفريدة التلقائية: كميات إذون الصرف تتوزع على الدفعات — الأقرب صلاحية
-    أولًا، وعند التساوي الأقدم إضافةً؛ الكمية بوحدة الصنف ومع كل سطر تغليفه."""
+    """التفريدة التلقائية: الأقرب صلاحية أولًا ثم الأقدم إضافةً — لكل سطر
+    التفكيك والمنتج والرصيد بالمخزن بعد الصرف."""
     pool = _batch_pool(year, month, cycle)
     rows = []
     for permit in permits_book(year, month, cycle):
@@ -879,6 +875,7 @@ def tafreeda_rows(year, month, cycle):
                 take = min(need, batch["remaining"])
                 batch["remaining"] = round(batch["remaining"] - take, 6)
                 need = round(need - take, 6)
+                _rem_after = batch["remaining"]
                 rows.append({
                     "pack_inner_label": "", "pack_outer_label": "",
                     "permit_no": permit["number"],
@@ -904,6 +901,12 @@ def tafreeda_rows(year, month, cycle):
                     batch.get("pack_kind"), batch.get("pack_capacity"),
                     batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
                     take, batch["item"]["handle_unit"], rest_word="")
+                # الرصيد المتبقي بالمخزن بعد الصرف — «٨ شكارة كاملة + ٤٠ كجم سائب»
+                rows[-1]["rem_after_label"] = pack_breakdown(
+                    batch.get("pack_kind"), batch.get("pack_capacity"),
+                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"),
+                    _rem_after, batch["item"]["handle_unit"]) or \
+                    f"{arnum.fmt_qty_trim(_rem_after)} {batch['item']['handle_unit']}"
     return rows
 
 

@@ -28,9 +28,7 @@ TABS = [
     ("suppliers", "الشركات الموردة", "🏢"),
     ("wh1", "١ مخازن — إذون الإضافة", "📥"),
     ("wh2", "٢ مخازن — إذون الصرف", "📤"),
-    ("tafsarf", "التفاريد المصروفة", "🧾"),
     ("wh3", "٣ مخازن — دفتر الأصناف", "📒"),
-    ("wh3taf", "٣ مخازن تفاريد", "📋"),
 ]
 SUB_KEYS = {t[0] for t in TABS}
 
@@ -163,11 +161,17 @@ def page():
     for _t in tafreeda:
         _t["wday"] = _wday(year, month, _t["date_from"])
         _t["fdate_iso"] = f"{year:04d}-{month:02d}-{int(_t['date_from']):02d}"
-    tafreeda_by_item = {}
+    # التفريدة كاملة للنافذة المنبثقة: إذن ← صنف (الإجمالي) ← مخازن بالتفكيك
+    taf_popup = {}
     for _t in tafreeda:
-        tafreeda_by_item.setdefault(_t["item"], []).append(_t)
-    taf_totals = {n: round(sum(float(r["qty"]) for r in rs), 6)
-                  for n, rs in tafreeda_by_item.items()}
+        _pg = taf_popup.setdefault(_t["permit_no"],
+                                   {"date_from": _t["date_from"],
+                                    "date_to": _t["date_to"], "total": 0.0, "lines": {}})
+        _pg["total"] = round(_pg["total"] + float(_t["qty"]), 6)
+        _it = _pg["lines"].setdefault(_t["item"], {"unit": _t["unit"], "total": 0.0,
+                                                   "stores": []})
+        _it["total"] = round(_it["total"] + float(_t["qty"]), 6)
+        _it["stores"].append(_t)
     tafreeda_by_permit = {}
     for row in tafreeda:
         tafreeda_by_permit.setdefault(row["permit_no"], []).append(row)
@@ -192,8 +196,7 @@ def page():
     cycle_cfg = WAREHOUSE_MAP[cycle]
     tab_file = wf.TAB_XLSX[sub]
     counts = {"suppliers": len(suppliers), "wh1": len(receipts),
-              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items),
-              "tafsarf": len(tafreeda)}
+              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items)}
     items_data = {}
     for it in items:
         base, factor = unit_base(it["handle_unit"])
@@ -224,8 +227,7 @@ def page():
         items_data=items_data, unit_base_data=UNIT_BASE,
         stores_registry=stores_registry, pack_kinds=pack_kinds,
         tafreeda_by_permit=tafreeda_by_permit, tafreeda_all=tafreeda,
-        tafreeda_by_item=tafreeda_by_item, taf_totals=taf_totals,
-        taf_selected=request.args.get("taf_item") or "",
+        taf_popup=taf_popup,
     )
 
 

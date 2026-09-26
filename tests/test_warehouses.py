@@ -441,9 +441,9 @@ def test_tafreeda_fefo_nearest_expiry_first_then_older(client):
     rows2 = [r for r in rows if r["permit_no"] == 2]
     assert rows2[0]["receipt_serial"] == 3 and rows2[0]["qty"] == 5.0   # بقايا الأقدم إضافةً أولًا
     assert rows2[1]["receipt_serial"] == 4 and rows2[1]["qty"] == 10.0
-    # التفريدة ظاهرة في دفتر ٢ مخازن
+    # التفاريد في دفتر ٢ مخازن: سطر بالإذن + نافذة فيها المخازن
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    assert "التفريدة التلقائية من المخازن" in page and "المخزن الرئيسي" in page
+    assert "🧾 التفاريد" in page and "المخزن الرئيسي" in page
 
 
 def test_stores_page_tabs_and_unified_cycles(client):
@@ -717,33 +717,34 @@ def test_permit_same_number_updates_once_and_reports_impact(client):
     assert len(rows) == 1 and rows[0]["qty"] == 20.0     # التفريدة اتجددت بالقيمة الجديدة
 
 
-def test_issued_tafreeda_tabs_breakdown_and_totals(client):
-    """تابا «التفاريد المصروفة» و«٣ مخازن تفاريد» (توجيه ٢٦/٠٩ بالصورة):
-    المنصرف من المخزن مُفكَّك بعبوات الدفعة + المنتج + الصلاحية، وبإجمالي الكمية."""
+def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
+    """التفاريد جوه ٢ و٣ مخازن (توجيه ٢٦/٠٩): كل تفريدة سطر برقم الإذن تفتح
+    نافذة كاملة: صنف ← مخازن بالمنصرف المفكك والرصيد بعد الصرف والمنتج."""
     _init()
     _seed_ration_item()
     db_stores_add = __import__("data_access.db_stores", fromlist=["add_store"])
     db_stores_add.add_store("مخزن التفريدة")
     store = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]
     _post(client, "/warehouses/wh1/add?cycle=supply", {
-        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٣",
-        "pack_kind": "شكارة", "pack_count": "٢", "pack_capacity": "٥٠",
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "٥٠٠", "day": "٣",
+        "pack_kind": "شكارة", "pack_count": "١٠", "pack_capacity": "٥٠",
         "producer": "مطاحن الاختبار",
-        "store_id": [str(store["id"])], "store_qty": ["١٠٠"]})
+        "store_id": [str(store["id"])], "store_qty": ["٥٠٠"]})
     from data_access import db_tameedat as dt
-    from urllib.parse import quote
     ent_id = dt.add_entity(YEAR, MONTH, "جهة التفاريد", "شرطية")
     rec_id = dt.add_record(YEAR, MONTH, 5, dt.get_entity(YEAR, MONTH, ent_id), 1, 5, 0, "")
     _post(client, "/calc2/save", {
         "date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
         "selected_json": "[\"main:%d\"]" % rec_id, "entity_label": "جهة التفاريد",
         "meal_lunch": "1", "actual_tamween_أرز بلدي": "60"})
-    page = _page(client, "/warehouses?cycle=supply&sub=tafsarf")
-    assert "التفاريد المصروفة" in page
-    # ٦٠ (بوحدة الصنف) من عبوة ٥٠ ⇒ «١ شكارة + ١٠» (توجيه المستخدم حرفيًا)
-    assert "١ شكارة + ١٠ طن" in page
+    page = _page(client, "/warehouses?cycle=supply&sub=wh2")
+    # قائمة التفاريد: سطر برقم الإذن + النافذة المنبثقة بالتفريدة كاملة
+    assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
+    assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
+    assert "الرصيد بعد الصرف" in page and "٨ شكارة + ٤٠ طن" in page
     assert "مطاحن الاختبار" in page
-    page3 = _page(client, "/warehouses?cycle=supply&sub=wh3taf&taf_item=" + quote("أرز بلدي"))
-    assert "تفاريد الصنف" in page3 and "٦٠٫٠٠٠" in page3
-    assert "٢ شكارة × وزن الشكارة ٥٠ طن = ١٠٠ طن" in page3
-    assert "مخزن التفريدة" in page3
+    # مفيش تابات مستقلة للتفاريد في الشريط
+    assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
+    page3 = _page(client, "/warehouses?cycle=supply&sub=wh3")
+    assert "٣ مخازن تفاريد" in page3 and 'data-taf-open="taf3Dialog-1"' in page3
+    assert "إجمالي المنصرف: <b>٦٠٫٠٠٠" in page3

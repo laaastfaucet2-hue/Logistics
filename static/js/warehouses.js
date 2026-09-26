@@ -427,3 +427,20 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll("form"), wireShelf);
 })();
+
+/* نوافذ التفاريد المنبثقة: فتح من أي سطر/زر، وإغلاق بزر أو Esc أو الضغط بالخارج */
+document.addEventListener("click", function (ev) {
+    var openBtn = ev.target.closest("[data-taf-open]");
+    if (openBtn) {
+      var dlg = document.getElementById(openBtn.getAttribute("data-taf-open"));
+      if (dlg && dlg.showModal) { dlg.showModal(); }
+      return;
+    }
+    var closeBtn = ev.target.closest("[data-taf-close]");
+    if (closeBtn) {
+      var d2 = document.getElementById(closeBtn.getAttribute("data-taf-close"));
+      if (d2 && d2.close) d2.close();
+      return;
+    }
+    if (ev.target instanceof HTMLDialogElement) ev.target.close();  /* ضغط بالخارج */
+  });

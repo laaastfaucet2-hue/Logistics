@@ -255,3 +255,70 @@
     {% endif %}
   </section>
 </div>
+
+{% if taf_popup %}
+<!-- ٣ مخازن تفاريد: قائمة التفاريد (سطر لكل إذن) — تفتح نافذة بالأصناف
+     بإجمالي المنصرف وتفكيك المصروف والرصيد بعده (توجيه ٢٦/٠٩) -->
+<div class="panel" style="margin-top:16px;">
+  <div class="panel-head">
+    <h3>📋 ٣ مخازن تفاريد</h3>
+    <span class="panel-hint">زي ٣ مخازن بس بإجمالي الكمية والتغليف — اضغط السطر تفتح التفريدة كاملة</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table wh-taf-list">
+    <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>من يوم</th><th>إلى يوم</th>
+      <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
+    <tbody>
+      {% for no, pg in taf_popup.items() %}
+      <tr class="wh-taf-row" data-taf-open="taf3Dialog-{{ no }}" title="اضغط لعرض التفريدة كاملة">
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="num"><b>{{ no | aindic }}</b></td>
+        <td class="num">{{ pg.date_from | aindic }}</td>
+        <td class="num">{{ pg.date_to | aindic }}</td>
+        <td class="num">{{ pg.lines | length | aindic }}</td>
+        <td class="num wh-issued"><b>{{ pg.total | qty3 }}</b></td>
+        <td class="no-print"><button type="button" class="rt-btn dim"
+              data-taf-open="taf3Dialog-{{ no }}">📄 عرض التفريدة</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% for no, pg in taf_popup.items() %}
+<dialog class="wh-dialog" id="taf3Dialog-{{ no }}">
+  <div class="wh-dialog-head">
+    <b>📋 تفريدة ٣ مخازن — إذن صرف رقم {{ no | aindic }}</b>
+    <button type="button" class="icon-btn" data-taf-close="taf3Dialog-{{ no }}" title="إغلاق">✕</button>
+  </div>
+  <div class="wh-dialog-body">
+    {% for iname, it in pg.lines.items() %}
+    <div class="wh-taf-item">
+      <b class="wh-taf-item-name">{{ iname }}</b>
+      <span class="wh-chip dim">إجمالي المنصرف: <b>{{ it.total | qty3 }} {{ it.unit }}</b></span>
+      <div class="wh-scroll">
+      <table class="rt-table wh-table">
+        <thead><tr><th>المخزن</th><th>إجمالي المنصرف</th><th>التغليف (مفكك)</th>
+          <th>الرصيد بعد الصرف</th></tr></thead>
+        <tbody>
+          {% for t in it.stores %}
+          <tr>
+            <td>{{ t.store_name }}</td>
+            <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
+            <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
+            <td class="wh-pack-cell">{{ t.rem_after_label or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="wh-dialog-foot no-print">
+    <button type="button" class="rt-btn dim" data-taf-close="taf3Dialog-{{ no }}">إغلاق</button>
+  </div>
+</dialog>
+{% endfor %}
+{% endif %}

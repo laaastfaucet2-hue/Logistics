@@ -24,18 +24,14 @@ SUB_FOLDERS = {
     "suppliers": "الشركات الموردة",
     "wh1": "١ مخازن إذون الإضافة",
     "wh2": "٢ مخازن إذون الصرف",
-    "tafsarf": "التفاريد المصروفة",
     "wh3": "٣ مخازن دفتر الأصناف",
-    "wh3taf": "٣ مخازن تفاريد",
 }
 # ملفات Excel التي يفتحها المستخدم بزر «فتح ملف» — كلها Excel (توجيه ٢٣/٠٩)
 TAB_XLSX = {
     "suppliers": "الشركات الموردة.xlsx",
     "wh1": "إذون إضافة ١ مخازن.xlsx",
     "wh2": "دفتر إذون صرف ٢ مخازن.xlsx",
-    "tafsarf": "التفاريد المصروفة.xlsx",
     "wh3": "دفتر ٣ مخازن.xlsx",
-    "wh3taf": "٣ مخازن تفاريد.xlsx",
 }
 
 HEADER_1 = "منطقة وسط وجنوب للأمن المركزي"
@@ -254,6 +250,9 @@ def snapshot_cycle(year, month, cycle):
     taf_rows = [(t["permit_no"], t["item"], t["store_name"],
                  t["receipt_serial"] or "رصيد أول المدة",
                  _date_or_dash(t["expiry"]), t["qty"], t["unit"],
+                 t.get("issued_label") or arnum.fmt_qty(t["qty"]),
+                 t.get("rem_after_label") or "—",
+                 t.get("producer") or "—",
                  t.get("pack_inner_label") or "—",
                  t.get("pack_outer_label") or t["pack_label"] or "—") for t in tafreeda]
     _save_xlsx(cycle_dir(year, month, cycle, "wh2") / TAB_XLSX["wh2"], [
@@ -262,33 +261,8 @@ def snapshot_cycle(year, month, cycle):
           "الجهات", "الصنف", "الكمية الفعلية", "الوحدة"], permit_rows),
         ("التفريدة التلقائية",
          ["رقم الإذن", "الصنف", "المخزن", "الدفعة (إذن إضافة)", "الصلاحية",
-          "الكمية المنصرفة", "الوحدة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
-
-    # ---------- التفاريد المصروفة (لكل مخزن، بالتفكيك) + ٣ مخازن تفاريد (إجمالي) ----------
-    _saved_taf = dw.tafreeda_rows(year, month, cycle)
-    _sarf = [(
-        i, _wday(t["date_from"], year, month), _d(t["date_from"], year, month),
-        t["store_name"], t["item"], t["unit"],
-        t.get("issued_label") or arnum.fmt_qty(t["qty"]),
-        t.get("producer") or "—", _date_or_dash(t["expiry"])) for i, t in enumerate(_saved_taf, 1)]
-    _save_xlsx(cycle_dir(year, month, cycle, "tafsarf") / TAB_XLSX["tafsarf"], [(
-        "التفاريد المصروفة",
-        ["المسلسل", "اليوم", "التاريخ", "المخزن", "الصنف", "الوحدة",
-         "المنصرف من المخزن", "الشركة المنتجة", "تاريخ الانتهاء"], _sarf)])
-    _by_item = {}
-    for _t in _saved_taf:
-        _by_item.setdefault(_t["item"], []).append(_t)
-    _grouped = []
-    for _name, _rows in _by_item.items():
-        for _t in _rows:
-            _grouped.append((_name, _wday(_t["date_from"], year, month),
-                             _d(_t["date_from"], year, month),
-                             _t["permit_no"], _t["store_name"], _t["qty"], _t["unit"],
-                             _t.get("pack_outer_label") or _t["pack_label"] or "—"))
-    _save_xlsx(cycle_dir(year, month, cycle, "wh3taf") / TAB_XLSX["wh3taf"], [(
-        "٣ مخازن تفاريد",
-        ["الصنف", "اليوم", "التاريخ", "رقم الإذن", "المخزن",
-         "إجمالي المنصرف", "الوحدة", "التغليف"], _grouped)])
+          "الكمية المنصرفة", "الوحدة", "المنصرف (مفكك)", "الرصيد بعد الصرف",
+          "الشركة المنتجة", "تغليف داخلي", "تغليف خارجي"], taf_rows)])
 
     dataguard.auto_backup("write", min_minutes=20)
     return True
