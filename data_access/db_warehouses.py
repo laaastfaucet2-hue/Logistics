@@ -357,8 +357,7 @@ def _remember_spec(conn, cycle, item_id, kind, capacity,
 
 
 def pack_specs_map(year, month, cycle):
-    """{اسم الصنف: {نوع التغليف: {capacity, inner_count, inner_capacity}}}
-    — لتعبئة مواصفات العبوة تلقائيًا في النموذج."""
+    """{الصنف: {النوع: {capacity, inner_count, inner_capacity}}} — للتعبئة التلقائية."""
     conn = _conn(year, month)
     rows = conn.execute(
         "SELECT wi.name n, ps.kind k, ps.capacity c, ps.inner_count ic,"
@@ -981,10 +980,13 @@ def stores_report(year, month):
     all_targets = list(report.values()) + [unassigned]
     for target in all_targets:
         for item_name, qty in target["balances"].items():
-            spec = specs.get(item_name)
-            if not spec or qty <= 0:
+            spec_entry = specs.get(item_name) or {}
+            if not spec_entry or qty <= 0:
                 continue
-            note = pack_breakdown("", spec.get("capacity"),
+            # آخر مواصفات مسجلة للصنف (الأحدث تحديثًا) — بنوع تغليفها
+            pack_kind = list(spec_entry)[-1]
+            spec = spec_entry[pack_kind]
+            note = pack_breakdown(pack_kind, spec.get("capacity"),
                                   spec.get("inner_count"), spec.get("inner_capacity"),
                                   qty, units.get(item_name, ""))
             if note:

@@ -281,10 +281,14 @@ def wh1_add():
     cycle = _cycle()
     name = (request.form.get("item_name") or "").strip()
     qty = arnum.parse_float(request.form.get("qty"))
+    pack_kind_pre = (request.form.get("pack_kind") or "").strip()
+    has_pack = pack_kind_pre and pack_kind_pre != "بدون تغليف" and (
+        arnum.parse_float(request.form.get("pack_count")) or
+        arnum.parse_float(request.form.get("pack_loose")))
     if not name:
         return _rb(cycle, "wh1", err="اكتب اسم الصنف أولًا — من أصناف المقرر أو صنف جديد")
-    if qty is None or qty <= 0:
-        return _rb(cycle, "wh1", err="اكتب كمية الإضافة بالوحدة التعاملية للصنف")
+    if (qty is None or qty <= 0) and not has_pack:
+        return _rb(cycle, "wh1", err="اكتب كمية الإضافة بالوحدة التعاملية للصنف أو بيانات التغليف")
     receipt_no = arnum.parse_int(request.form.get("receipt_no"))
     if receipt_no is not None and receipt_no < 1:
         receipt_no = None
@@ -362,8 +366,12 @@ def wh3_opener():
             return _rb(cycle, "wh3", err="اختر الصنف أولًا أو اكتب اسمه لتسجيل رصيد أول المدة")
         item = {"name": name_fallback}
     qty = arnum.parse_float(request.form.get("qty"))
-    if qty is None or qty <= 0:
-        return _rb(cycle, "wh3", err="اكتب كمية رصيد أول المدة", item=item_id)
+    pack_kind_pre = (request.form.get("pack_kind") or "").strip()
+    has_pack = pack_kind_pre and pack_kind_pre != "بدون تغليف" and (
+        arnum.parse_float(request.form.get("pack_count")) or
+        arnum.parse_float(request.form.get("pack_loose")))
+    if (qty is None or qty <= 0) and not has_pack:
+        return _rb(cycle, "wh3", err="اكتب كمية رصيد أول المدة أو بيانات التغليف", item=item_id)
     day = _day(year, month, request.form.get("day"), _default_day(year, month))
     pack_kind = (request.form.get("pack_kind") or "").strip()
     pack_count = arnum.parse_float(request.form.get("pack_count")) or 0
