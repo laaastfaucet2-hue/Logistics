@@ -244,6 +244,9 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 .wh-fs { border: 1px solid var(--card-border); border-radius: 12px;
   padding: 14px 16px; margin: 12px 0; background: var(--surface-1); }
 .wh-fs legend { font-weight: 800; color: var(--gold-light); padding: 0 8px; }
+/* تابات المخازن الفرعية: تاب لكل مخزن (توجيه ٢٧/٠٩) */
+.wh-subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.wh-subtabs .wh-tab { padding: 8px 14px; font-size: .9rem; }
 .wh-item-card { border: 1px solid var(--gold-border); border-radius: 12px;
   padding: 12px 14px; margin-bottom: 14px; background: var(--card); }
 .wh-item-card-head { display: flex; align-items: center; justify-content: space-between;

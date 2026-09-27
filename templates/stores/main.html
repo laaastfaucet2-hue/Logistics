@@ -96,6 +96,18 @@
   </a>
 </div>
 
+<!-- تابات المخازن: تاب لكل مخزن — يفتح حركته وجرد أرصدته هو وحده (توجيه ٢٧/٠٩) -->
+{% if tab == 'movement' or stores %}
+<nav class="wh-subtabs no-print" aria-label="تويبات كل مخزن">
+  {% for st in store_tabs %}
+  <a class="wh-tab {{ 'on' if tab == 'movement' and store_sel == st.id }}"
+     href="{{ url_for('stores.page', tab='movement', store=st.id) }}">🏬 <span>{{ st.name }}</span></a>
+  {% endfor %}
+  <a class="wh-tab {{ 'on' if tab == 'movement' and store_sel == 0 }}"
+     href="{{ url_for('stores.page', tab='movement', store=0) }}">📦 <span>غير موزع</span></a>
+</nav>
+{% endif %}
+
 {% if tab == 'mains' %}
 <button type="button" class="wh-newbtn no-print" id="whStoreToggle" aria-expanded="false" aria-controls="whStoreForm">
   <span class="wh-newbtn-plus">＋</span> {% if editing %}تعديل مخزن «{{ editing.name }}»{% else %}إضافة مخزن جديد{% endif %}
@@ -179,14 +191,27 @@
 </div>
 
 {% else %}
-{% for target in report.stores %}
-{% include "stores/_store_card.html" %}
-{% endfor %}
-{% set target = report.unassigned %}
 {% include "stores/_store_card.html" %}
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script>
+/* زرار «إضافة مخزن جديد» يفتح ويقفل النموذج فعلًا (توجيه ٢٧/٠٩) */
+(function () {
+  var t = document.getElementById("whStoreToggle");
+  var f = document.getElementById("whStoreForm");
+  if (!t || !f || t.dataset.wired) return;
+  t.dataset.wired = "1";
+  t.addEventListener("click", function () {
+    f.hidden = !f.hidden;
+    t.setAttribute("aria-expanded", f.hidden ? "false" : "true");
+    if (!f.hidden) {
+      var i = f.querySelector("[name=name]");
+      if (i) i.focus();
+    }
+  });
+})();
+</script>
 {% endblock %}

@@ -473,8 +473,12 @@ def test_stores_page_tabs_and_unified_cycles(client):
         "store_id": [str(store["id"])], "store_qty": ["٢٥"]})
     page = _page(client, "/stores?tab=movement")
     assert "مخزن موحد" in page and "أرز بلدي" in page and "سكر" in page
-    assert "كشف أرصدة المخزن" in page
+    assert "جرد أرصدة المخزن" in page
     assert "٤٠٫٠٠٠" in page and "٢٥٫٠٠٠" in page
+    # تابات لكل مخزن: المخزن المختار لوحده — مش المخازن على بعض (توجيه ٢٧/٠٩)
+    assert "wh-subtabs" in page and "غير موزع" in page
+    assert page.count("wh-store-card") == 1
+    assert "whStoreToggle" in page and "dataset.wired" in page
     # تحويل القسم من الشريط
     response = client.get("/sections/cold_stores", follow_redirects=True)
     assert "المخازن والثلاجات" in response.data.decode("utf-8")

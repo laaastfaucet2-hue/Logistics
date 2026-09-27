@@ -103,13 +103,29 @@ def page():
     editing = None
     if request.args.get("edit"):
         editing = db_stores.get_store(arnum.parse_int(request.args.get("edit")) or 0)
-    report = dw.stores_report(year, month) if tab == "movement" else None
+    # تابات المخازن: تاب لكل مخزن — يفتح حركته وجرد أرصدته هو وحده (توجيه ٢٧/٠٩)
+    store_tabs = []
+    target = None
+    store_sel = None
+    if tab == "movement":
+        report = dw.stores_report(year, month)
+        store_tabs = [{"id": e["store"]["id"], "name": e["store"]["name"]}
+                      for e in report["stores"]]
+        raw = arnum.parse_int(request.args.get("store"))
+        pool = {e["store"]["id"]: e for e in report["stores"]}
+        if raw == 0 or (raw is None and not store_tabs):
+            store_sel, target = 0, report["unassigned"]
+        elif raw in pool:
+            store_sel, target = raw, pool[raw]
+        else:
+            target = report["stores"][0]
+            store_sel = target["store"]["id"]
     return render_template(
         "stores/main.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
         tabs=TABS, tab=tab,
         stores=db_stores.list_stores(), editing=editing,
-        report=report,
+        store_tabs=store_tabs, store_sel=store_sel, target=target,
         tab_file=sf.TAB_FILES[tab],
         # علم «عليه حركة» لكل مخزن — يُستخدم في نافذة الحذف/النقل
         has_move={s["id"]: dw.store_has_movement(s["id"]) for s in db_stores.list_stores()},
