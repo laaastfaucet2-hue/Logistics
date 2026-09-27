@@ -138,12 +138,10 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
         if full_cartons > 0:
             parts.append(f"{arnum.to_arabic_indic(str(full_cartons))} {kind}{_fw}")
         if full_packs > 0:
-            parts.append(f"{arnum.to_arabic_indic(str(full_packs))} "
-                         f"{_box_word(full_packs)}{_fw}")
+            parts.append(f"{arnum.to_arabic_indic(str(full_packs))} {_box_word(full_packs)}{_fw}")
         if rest > 0.000001:
             if open_mode:
-                parts.append(f"{_open_pack(_box_word(1))} "
-                             f"({arnum.fmt_qty_trim(rest)} {unit})")
+                parts.append(f"{_open_pack(_box_word(1))} ({arnum.fmt_qty_trim(rest)} {unit})")
             else:
                 parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
     elif kind and capacity > 0:
@@ -154,8 +152,7 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
             parts.append(f"{arnum.to_arabic_indic(str(full))} {kind}{_fw}")
         if rest > 0.000001:
             if open_mode:
-                parts.append(f"{_open_pack(kind)} "
-                             f"({arnum.fmt_qty_trim(rest)} {unit})")
+                parts.append(f"{_open_pack(kind)} ({arnum.fmt_qty_trim(rest)} {unit})")
             else:
                 parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
     else:
@@ -280,10 +277,8 @@ class PackLedger:
         fem = self.kind in _FEM_KINDS
         if self.rest > 0:
             if self.full > 0:
-                parts.append(f"{arnum.to_arabic_indic(f'{self.full:g}')} "
-                             f"{self.kind} {'كاملة' if fem else 'كامل'}")
-            parts.append(f"{_open_pack(self.kind)} "
-                         f"({arnum.fmt_qty_trim(self.rest)} {self.unit})")
+                parts.append(f"{arnum.to_arabic_indic(f'{self.full:g}')} {self.kind} {'كاملة' if fem else 'كامل'}")
+            parts.append(f"{_open_pack(self.kind)} ({arnum.fmt_qty_trim(self.rest)} {self.unit})")
         elif self.full > 0:
             parts.append(f"{arnum.to_arabic_indic(f'{self.full:g}')} {self.kind}")
         if self.loose > 0 or not parts:

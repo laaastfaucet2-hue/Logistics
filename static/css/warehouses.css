@@ -238,3 +238,14 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   font-size: .78rem; font-weight: 700; cursor: pointer; margin-inline-start: 8px; }
 .wh-extras-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .wh-extras-dot:hover { background: var(--gold); color: #020617; }
+
+/* إذن ١ مخازن الاحترافي: مربعات + كارت لكل صنف (توجيه ٢٧/٠٩) */
+.wh-fs { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 14px 16px; margin: 12px 0; background: var(--surface-1); }
+.wh-fs legend { font-weight: 800; color: var(--gold-light); padding: 0 8px; }
+.wh-item-card { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 14px; background: var(--card); }
+.wh-item-card-head { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; color: var(--gold-light); }
+.icon-btn.del { color: #f87171; }
+.wh-add-line { margin-top: 4px; }

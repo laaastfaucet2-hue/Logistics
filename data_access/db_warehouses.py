@@ -382,7 +382,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 date_iso="", receipt_no=None,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                 pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
-                stores=None):
+                stores=None, allow_same_serial=False):
     """يحفظ إذن إضافة ١ مخازن ويفتح كارت الصنف — رقم يدوي، والتغليف يحسب
     الكمية تلقائيًا، وstores لتوزيع الكمية على مخزن أو أكثر."""
     from core import egtime
@@ -395,10 +395,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
         if (pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 \
                 and not (float(pack_inner_capacity or 0) > 0):
             raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
-        pack_label_probe, pack_total = pack_summary(
-            pack_kind, pack_count, pack_capacity, pack_loose,
-            item_probe["handle_unit"], pack_inner_count, pack_inner_capacity,
-            pack_loose_unit)
+        pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item_probe["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit)
         if pack_total <= 0:
             raise ValueError("اكتب عدد العبوات ووزن العبوة (أو العلب بداخلها) أو الكمية السائبة — "
                              "لا يمكن إذن إضافة بكمية صفر")
@@ -425,24 +422,19 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     if supplier_id and not supplier_name:
         sup = get_supplier(year, month, supplier_id)
         supplier_name = sup["name"] if sup else ""
-    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
-             if q and float(q) > 0]
+    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or []) if q and float(q) > 0]
     if parts:
         diff = round(qty_handle - sum(q for _s, _n, q in parts), 6)
         if abs(diff) > 0.000001:
-            raise ValueError("مجموع الكميات على المخازن لا يساوي كمية الإذن — "
-                             "وزّع الكمية كاملة على المخازن")
+            raise ValueError("مجموع الكميات على المخازن لا يساوي كمية الإذن — وزّع الكمية كاملة")
         extras.append("مخازن: " + "، ".join(f"{n} ({arnum.fmt_qty(q)} {item['handle_unit']})" for _s, n, q in parts))
     conn = _conn(year, month)
     if receipt_no:
-        exists = conn.execute(
-            "SELECT 1 FROM wh_receipts WHERE cycle=? AND serial=?",
-            (cycle, int(receipt_no))).fetchone()
-        if exists:
-            conn.close()
-            raise ValueError(
-                f"رقم الإذن {arnum.to_arabic_indic(receipt_no)} مستخدم من قبل في هذه "
-                "الدورة — اكتب رقمًا آخر أو اتركه فاضيًا ليُكمّل التسلسل")
+        if not allow_same_serial:
+            exists = conn.execute("SELECT 1 FROM wh_receipts WHERE cycle=? AND serial=?", (cycle, int(receipt_no))).fetchone()
+            if exists:
+                conn.close()
+                raise ValueError(f"رقم الإذن {arnum.to_arabic_indic(receipt_no)} مستخدم من قبل — اكتب رقمًا آخر أو اتركه فاضيًا")
         serial = int(receipt_no)
     else:
         serial = (conn.execute(
@@ -741,7 +733,7 @@ def item_card(year, month, item_id):
     conn.close()
     for r in issue_rows_for_item(year, month, item["cycle"], item):
         rows.append(r)
-    for r in rows:                       # ملاحظات المستخدم فقط — لا بتات تلقائية
+    for r in rows:                       # ملاحظات المستخدم فقط
         r["notes"] = user_notes(r.get("notes"))
 
     def sort_key(r):
@@ -799,6 +791,17 @@ UNASSIGNED = "غير موزع على مخازن"
 NO_EXPIRY = "9999-12-31"
 
 
+def receipt_groups(year, month, cycle):
+    """إيذانات ١ مخازن مجمعة: إذن واحد قد يشمل كذا صنف — صفوف نفس serial تتجمع."""
+    from datetime import date as _date; from core import egtime as _eg
+    out = {}
+    for r in list_receipts(year, month, cycle):
+        try: wday = _eg.weekday_ar(_date.fromisoformat(r["date_iso"] or ""))
+        except ValueError: wday = None
+        g = out.setdefault(r["serial"], {"serial": r["serial"], "day": r["day"], "date_iso": r["date_iso"], "wday": wday, "supplier_name": r["supplier_name"], "producer": r["producer"], "notes": user_notes(r["notes"]), "lines": []})
+        rr = dict(r); rr["notes"] = user_notes(r["notes"]); g["lines"].append(rr)
+    return [out[k] for k in sorted(out)]
+
 def user_notes(notes):
     """ملاحظات المستخدم فقط — البتات التلقائية (مخازن:/منتج:/مورد:) لا تُعرض أبدًا (توجيه ٢٧/٠٩)."""
     segs = [seg.strip() for seg in (notes or "").split(" — ")]
@@ -843,8 +846,7 @@ def _batch_pool(year, month, cycle):
         item = items.get(o["item_id"])
         if not item:
             continue
-        parts = opener_parts.get(o["item_id"]) or [
-            {"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
+        parts = opener_parts.get(o["item_id"]) or [{"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
         for part in parts:
             pool.append({
                 "item": item, "qty": float(part["qty"]),
@@ -874,8 +876,7 @@ def tafreeda_rows(year, month, cycle):
     _seqs = {}                           # مسلسل السطر داخل التفريدة الواحدة
     store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
     for b in pool:
-        _k = (b["item"]["name"], b["store_id"])
-        store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)  # رصيد المخزن كله
+        _k = (b["item"]["name"], b["store_id"]); store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)  # رصيد المخزن كله
     rows = []
     for permit in permits_book(year, month, cycle):
         for entry in permit["cycle_items"]:

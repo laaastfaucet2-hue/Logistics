@@ -152,6 +152,7 @@ def page():
         r["item_name"] = names.get(r["item_id"], "—")
         r["wday"] = _wday(year, month, r["day"])
         r["notes"] = dw.user_notes(r["notes"])   # ملاحظات المستخدم فقط — لا بتات تلقائية
+    groups = dw.receipt_groups(year, month, cycle)   # إيذانات مجمعة (كذا صنف للإذن)
 
     item_name_set = {it["name"].lower() for it in items}
     catalog_missing = [c for c in dw.ration_catalog(year, month, cycle)
@@ -239,7 +240,7 @@ def page():
         subs=TABS, sub=sub, sub_name=dict((t[0], t[1]) for t in TABS)[sub],
         tab_file=tab_file, tab_folder=wf.SUB_FOLDERS[sub],
         counts=counts,
-        suppliers=suppliers, editing=editing,
+        suppliers=suppliers, editing=editing, groups=groups,
         items=items, catalog_missing=catalog_missing,
         receipts=receipts, permits=permits, card=card,
         units=__import__("data_access.db_rations", fromlist=["collect_units"])
@@ -315,78 +316,105 @@ def suppliers_delete():
 @warehouses_bp.route("/wh1/add", methods=["POST"])
 @login_required
 def wh1_add():
+    """إذن إضافة ١ مخازن احترافي (توجيه ٢٧/٠٩): إذن واحد × كذا صنف × كذا تغليف —
+    مربعات: بيانات الإذن + كارت لكل صنف (تغليف موحد + تواريخ + توزيع مخازن)."""
     year, month = _ctx()
     cycle = _cycle()
-    name = (request.form.get("item_name") or "").strip()
-    qty = arnum.parse_float(request.form.get("qty"))
-    pack_kind_pre = (request.form.get("pack_kind") or "").strip()
-    has_pack = pack_kind_pre and pack_kind_pre != "بدون تغليف" and (
-        arnum.parse_float(request.form.get("pack_count")) or
-        arnum.parse_float(request.form.get("pack_loose")))
-    if not name:
-        return _rb(cycle, "wh1", err="اكتب اسم الصنف أولًا — من أصناف المقرر أو صنف جديد")
-    if (qty is None or qty <= 0) and not has_pack:
-        return _rb(cycle, "wh1", err="اكتب كمية الإضافة بالوحدة التعاملية للصنف أو بيانات التغليف")
     receipt_no = arnum.parse_int(request.form.get("receipt_no"))
     if receipt_no is not None and receipt_no < 1:
         receipt_no = None
     day = _day(year, month, request.form.get("day"), _default_day(year, month))
-    try:
-        prod_iso = _opt_date(request.form.get("prod_date"))
-        exp_iso = _opt_date(request.form.get("exp_date"))
-    except ValueError:
-        return _rb(cycle, "wh1", err="تاريخ مستحيل — اكتب التاريخ يوم/شهر/سنة صحيحًا")
-    if prod_iso and exp_iso and exp_iso < prod_iso:
-        return _rb(cycle, "wh1", err="تاريخ الصلاحية قبل تاريخ الإنتاج")
-    pack_kind = (request.form.get("pack_kind") or "").strip()
-    pack_count = arnum.parse_float(request.form.get("pack_count")) or 0
-    pack_capacity = arnum.parse_float(request.form.get("pack_capacity")) or 0
-    pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
-    pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
-    pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
-    pack_loose_unit = (request.form.get("pack_loose_unit") or "").strip()
-    stores_parts = []
-    for sid_raw, qty_raw in zip(request.form.getlist("store_id"),
-                                request.form.getlist("store_qty")):
-        sid = arnum.parse_int(sid_raw)
-        sqty = arnum.parse_float(qty_raw)
-        store = db_stores.get_store(sid) if sid else None
-        if store and sqty and sqty > 0:
-            stores_parts.append((store["id"], store["name"], sqty))
-    supplier_id = None
+    producer = (request.form.get("producer") or "").strip()
     supplier_name = (request.form.get("supplier_name") or "").strip()
+    supplier_id = None
     for sup in dw.list_suppliers(year, month, cycle):
         if sup["name"] == supplier_name:
             supplier_id = sup["id"]
             break
+    head_notes = (request.form.get("notes") or "").strip()
+    date_iso = f"{year:04d}-{month:02d}-{day:02d}"
+
+    # توافق خلفي: الحقول القديمة المفردة (item_name/qty/...) تُعامل كسطر واحد
+    if "l0_item_name" not in request.form and "item_name" in request.form:
+        data = request.form.to_dict(flat=False)
+        for old_key, new_key in [
+                ("item_name", "l0_item_name"), ("handle_unit", "l0_handle_unit"),
+                ("qty", "l0_qty"), ("pack_kind", "l0_pack_kind"),
+                ("pack_count", "l0_pack_count"), ("pack_capacity", "l0_pack_capacity"),
+                ("pack_loose", "l0_pack_loose"), ("pack_inner_count", "l0_pack_inner_count"),
+                ("pack_inner_capacity", "l0_pack_inner_capacity"),
+                ("pack_loose_unit", "l0_pack_loose_unit"),
+                ("prod_date", "l0_prod_date"), ("exp_date", "l0_exp_date"),
+                ("store_id", "l0_store_id"), ("store_qty", "l0_store_qty")]:
+            if old_key in data:
+                data[new_key] = data.pop(old_key)
+        from werkzeug.datastructures import ImmutableMultiDict
+        request.form = ImmutableMultiDict(data)
+
+    # أسطر الأصناف: l{i}_item_name حتى أول رقم غير موجود
+    lines = []
+    for i in range(60):
+        name = (request.form.get(f"l{i}_item_name") or "").strip()
+        if f"l{i}_item_name" not in request.form:
+            break
+        lines.append((i, name))
+    lines = [(i, n) for i, n in lines if n]
+    if not lines:
+        return _rb(cycle, "wh1", err="ضيف صنفًا واحدًا على الأقل في الإذن")
+
+    saved = []
     try:
-        result = dw.add_receipt(
-            year, month, cycle, day, name, qty,
-            handle_unit_hint=request.form.get("handle_unit"),
-            producer=request.form.get("producer"),
-            supplier_id=supplier_id, supplier_name=supplier_name,
-            prod_iso=prod_iso, exp_iso=exp_iso,
-            notes=request.form.get("notes"),
-            date_iso=f"{year:04d}-{month:02d}-{day:02d}",
-            receipt_no=receipt_no,
-            pack_kind=pack_kind, pack_count=pack_count,
-            pack_capacity=pack_capacity, pack_loose=pack_loose,
-            pack_inner_count=pack_inner_count,
-            pack_inner_capacity=pack_inner_capacity,
-            pack_loose_unit=pack_loose_unit,
-            stores=stores_parts)
+        for order, (i, name) in enumerate(lines):
+            def _f(key, default=0.0):
+                return arnum.parse_float(request.form.get(f"l{i}_{key}")) or default
+            qty = arnum.parse_float(request.form.get(f"l{i}_qty"))
+            pack_kind = (request.form.get(f"l{i}_pack_kind") or "").strip()
+            has_pack = pack_kind and pack_kind != "بدون تغليف" and (
+                _f("pack_count") or _f("pack_loose"))
+            if (qty is None or qty <= 0) and not has_pack:
+                raise ValueError(f"الصنف «{name}»: اكتب الكمية أو بيانات التغليف")
+            try:
+                prod_iso = _opt_date(request.form.get(f"l{i}_prod_date"))
+                exp_iso = _opt_date(request.form.get(f"l{i}_exp_date"))
+            except ValueError:
+                raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه يوم/شهر/سنة صحيحًا")
+            if prod_iso and exp_iso and exp_iso < prod_iso:
+                raise ValueError(f"الصنف «{name}»: تاريخ الصلاحية قبل تاريخ الإنتاج")
+            stores_parts = []
+            for sid_raw, qty_raw in zip(request.form.getlist(f"l{i}_store_id"),
+                                        request.form.getlist(f"l{i}_store_qty")):
+                sid = arnum.parse_int(sid_raw)
+                sqty = arnum.parse_float(qty_raw)
+                store = db_stores.get_store(sid) if sid else None
+                if store and sqty and sqty > 0:
+                    stores_parts.append((store["id"], store["name"], sqty))
+            result = dw.add_receipt(
+                year, month, cycle, day, name, qty,
+                handle_unit_hint=request.form.get(f"l{i}_handle_unit"),
+                producer=producer, supplier_id=supplier_id, supplier_name=supplier_name,
+                prod_iso=prod_iso, exp_iso=exp_iso,
+                notes=head_notes, date_iso=date_iso,
+                receipt_no=receipt_no, allow_same_serial=order > 0,
+                pack_kind=pack_kind, pack_count=_f("pack_count"),
+                pack_capacity=_f("pack_capacity"), pack_loose=_f("pack_loose"),
+                pack_inner_count=_f("pack_inner_count"),
+                pack_inner_capacity=_f("pack_inner_capacity"),
+                pack_loose_unit=(request.form.get(f"l{i}_pack_loose_unit") or "").strip(),
+                stores=stores_parts)
+            saved.append(result)
     except ValueError as exc:
         return _rb(cycle, "wh1", err=str(exc))
     snap_ok = _snapshot(cycle)
+    first = saved[0]
+    items_word = " + ".join(r["item"]["name"] for r in saved)
     conv = ""
-    if result["factor"] and result["factor"] != 1:
-        conv = (f" — {arnum.fmt_qty(result['qty_handle'])} {result['item']['handle_unit']}"
-                f" = {arnum.fmt_qty(result['qty_base'])} {result['base_unit']}")
-    ok = (f"حُفظ إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(result['serial'])}{conv}"
-          f" وفتح كارت «{result['item']['name']}» في دفتر ٣ مخازن تلقائيًا"
-          " — وتسجيلها في البيانات المحلية") + (
+    if len(saved) == 1 and first["factor"] and first["factor"] != 1:
+        conv = (f" — {arnum.fmt_qty(first['qty_handle'])} {first['item']['handle_unit']}"
+                f" = {arnum.fmt_qty(first['qty_base'])} {first['base_unit']}")
+    ok = (f"حُفظ إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(first['serial'])} — "
+          f"{arnum.to_arabic_indic(str(len(saved)))} أصناف: {items_word}{conv} — وتسجيلها في البيانات المحلية") + (
         "" if snap_ok else " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة")
-    return _rb(cycle, "wh3", item=result["item"]["id"], ok=ok)
+    return _rb(cycle, "wh3", item=first["item"]["id"], ok=ok)
 
 
 # ======================================================================

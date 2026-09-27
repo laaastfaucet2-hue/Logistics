@@ -7,98 +7,126 @@
 <form class="panel wh-form" id="whWh1Form" method="post"
       action="{{ url_for('warehouses.wh1_add', cycle=cycle_key) }}" hidden data-autopen>
   <input type="hidden" name="cycle" value="{{ cycle_key }}">
-  <h3 class="wh-form-title">📥 إذن إضافة صنف — ١ مخازن</h3>
-  <p class="wh-form-hint">الكمية تُدخل بالوحدة التعاملية المحددة للصنف في ٣ مخازن، والتحويل لوحدة القاعدة تلقائي (١ طن = ١٠٠٠ كجم). عند الحفظ يُفتح كارت الصنف في دفتر ٣ مخازن تلقائيًا.</p>
-  <div class="wh-grid">
-    <label class="wh-f">الصنف <i>*</i>
-      <input name="item_name" required data-combo="whItemsList" autocomplete="off"
-             value="{{ prefill }}" id="whItemName" placeholder="اكتب أو اختر صنفًا من المقرر..."></label>
-    <label class="wh-f">رقم الإذن <small>(تدخله يدويًا — فاضي = يكمّل التسلسل)</small>
-      <input name="receipt_no" inputmode="numeric" autocomplete="off" placeholder="مثال: ١"></label>
-    <label class="wh-f">وحدة التعامل <small>(للصنف الجديد — تثبت في ٣ مخازن)</small>
-      <input name="handle_unit" id="whUnitInput" data-combo="whUnitsList" autocomplete="off"
-             placeholder="كجم، طن، شيكارة..."></label>
-    <label class="wh-f">كمية الإضافة <i>*</i>
-      <input name="qty" id="whQty" required inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
-    <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whConvHint"></span></div>
+  <h3 class="wh-form-title">📥 إذن إضافة — ١ مخازن</h3>
+  <p class="wh-form-hint">إذن واحد يشمل كذا صنف، وكل صنف بتغليفه وتوزيعه وتواريخه — والكمية تتحسب من التغليف تلقائيًا (١ طن = ١٠٠٠ كجم).</p>
 
-    <fieldset class="wh-pack wh-f-wide" id="whPackBox">
-      <legend>📦 التغليف — اختياري (الكمية تتحسب تلقائيًا)</legend>
-      <div class="wh-pack-row">
-        <label class="wh-f">نوع العبوة
-          <input name="pack_kind" id="whPackKind" data-combo="whPackKindsList" autocomplete="off"
-                 placeholder="شكارة، كرتونة، بلات، جركن..."></label>
-        <label class="wh-f">عدد العبوات
-          <input name="pack_count" id="whPackCount" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f">العبوة الواحدة كام؟ <small>(كجم — لتر — حسب الوحدة)</small>
-          <input name="pack_capacity" id="whPackCapacity" inputmode="decimal" autocomplete="off"></label>
+  <!-- مربع ١: بيانات الإذن -->
+  <fieldset class="wh-fs">
+    <legend>📋 بيانات الإذن</legend>
+    <div class="wh-grid">
+      <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
+        <input name="receipt_no" inputmode="numeric" autocomplete="off" placeholder="مثال: ١"></label>
+      <label class="wh-f">يوم الإذن (داخل الشهر النشط)
+        <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}">
+        <span class="wh-hintline wh-day-hint"></span></label>
+      <label class="wh-f">الشركة الموردة
+        <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off" placeholder="اختر أو اكتب"></label>
+      <label class="wh-f">الشركة المنتجة
+        <input name="producer" data-combo="whProducersList" autocomplete="off" placeholder="اسم الشركة المنتجة"></label>
+      <label class="wh-f wh-f-wide">ملاحظات الإذن
+        <textarea name="notes" rows="2" placeholder="أي بيانات مكمّلة للإذن"></textarea></label>
+    </div>
+  </fieldset>
+
+  <!-- مربع ٢: الأصناف — كارت لكل صنف -->
+  <fieldset class="wh-fs">
+    <legend>📦 الأصناف — كل صنف في كارت مستقل</legend>
+    <div id="whItemLines"></div>
+    <button type="button" class="rt-btn gold wh-add-line" id="whAddLine">
+      <span class="wh-newbtn-plus">＋</span> إضافة صنف آخر</button>
+  </fieldset>
+
+  <div class="wh-form-actions no-print">
+    <button class="rt-btn gold" type="submit">💾 حفظ الإذن وفتح كروت الأصناف في ٣ مخازن</button>
+  </div>
+
+  <!-- قالب كارت الصنف: __IDX__ يُستبدل برقم الكارت -->
+  <template id="whLineTpl">
+    <div class="wh-item-card" data-line="__IDX__" data-line-prefix="l__IDX___">
+      <div class="wh-item-card-head">
+        <b class="js-line-title">الصنف</b>
+        <button type="button" class="icon-btn del js-line-del" title="حذف الصنف من الإذن">✕</button>
       </div>
-      <label class="wh-pack-inner-toggle">
-        <input type="checkbox" class="js-inner-toggle">
-        العبوة بداخلها علب — حدد عدد العلب ووزن العلبة <small>(ولو فيه فرق هيقولك)</small>
-      </label>
-      <div class="wh-pack-inner js-inner-row" hidden>
-        <label class="wh-f">عدد العلب داخل العبوة
-          <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f">وزن العلبة الواحدة (كجم)
-          <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
-        <div class="wh-f wh-f-hint"><span class="wh-hintline js-inner-sum"></span></div>
+      <div class="wh-grid">
+        <label class="wh-f">الصنف <i>*</i>
+          <input class="js-item-name" name="l__IDX___item_name" required data-combo="whItemsList" autocomplete="off" placeholder="اكتب أو اختر صنفًا من المقرر..."></label>
+        <label class="wh-f">وحدة التعامل <small>(للصنف الجديد — تثبت في ٣ مخازن)</small>
+          <input class="js-unit" name="l__IDX___handle_unit" data-combo="whUnitsList" autocomplete="off" placeholder="كجم، لتر، شكارة..."></label>
+        <div class="wh-f wh-f-hint"><span class="wh-hintline js-conv-hint"></span></div>
       </div>
-      <div class="wh-pack-row wh-pack-loose">
-        <label class="wh-f">كمية سائبة (من غير عبوة)
-          <input name="pack_loose" id="whPackLoose" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f">وحدة السائب
-          <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList"
-                 autocomplete="off" placeholder="كجم أو علب"></label>
+      <div class="wh-grid">
+        <label class="wh-f">الكمية الإجمالية <small>(تتحسب تلقائيًا من التغليف — أو اكتبها بنفسك)</small>
+          <input name="l__IDX___qty" class="js-line-qty" inputmode="decimal" autocomplete="off"></label>
+        <div class="wh-f wh-f-hint"></div>
         <div class="wh-f wh-f-hint"></div>
       </div>
-      <div class="wh-hintline js-pack-hint" id="whPackHint"></div>
-      <div class="wh-pack-diff js-pack-diff"></div>
-    </fieldset>
-
-    <fieldset class="wh-pack wh-f-wide js-split-box" id="whSplitBox">
-      <legend>توزيع الكمية على المخازن — مخزن أو أكثر (التخطي = غير موزع)</legend>
-      <div id="whSplitRows" class="js-split-rows"></div>
-      <button type="button" class="rt-btn dim" id="whSplitAdd">＋ مخزن آخر</button>
-      <div class="wh-hintline js-split-hint" id="whSplitHint"></div>
-    </fieldset>
-
-    <label class="wh-f">الشركة المنتجة (على المنتج)
-      <input name="producer" data-combo="whProducersList" autocomplete="off" placeholder="اسم الشركة المنتجة للصنف"></label>
-    <label class="wh-f">الشركة الموردة
-      <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off" placeholder="من تاب الشركات الموردة"></label>
-    {{ date_field('prod_date', 'تاريخ الإنتاج') }}
-    {{ date_field('exp_date', 'تاريخ الصلاحية') }}
-    <div class="wh-f wh-f-hint"><span class="wh-hintline" id="whShelfHint"></span></div>
-    <label class="wh-f">يوم الإذن (داخل الشهر النشط)
-      <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}">
-      <span class="wh-hintline wh-day-hint"></span></label>
-    <label class="wh-f wh-f-wide">ملاحظات
-      <textarea name="notes" rows="2" placeholder="أي بيانات مكمّلة للإذن"></textarea></label>
-  </div>
-  <div class="wh-form-actions no-print">
-    <button class="rt-btn gold" type="submit">💾 حفظ الإذن وفتح كارت الصنف في ٣ مخازن</button>
-  </div>
+      <fieldset class="wh-pack wh-f-wide">
+        <legend>📦 التغليف — اختياري (الكمية تتحسب تلقائيًا)</legend>
+        <div class="wh-pack-row">
+          <label class="wh-f">نوع العبوة
+            <input name="l__IDX___pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="شكارة، كرتونة، بلتة، جركن..."></label>
+          <label class="wh-f">عدد العبوات
+            <input name="l__IDX___pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">العبوة الواحدة كام؟ <small>(بوزن العبوة)</small>
+            <input name="l__IDX___pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+        </div>
+        <label class="wh-pack-inner-toggle">
+          <input type="checkbox" class="js-inner-toggle">
+          العبوة بداخلها علب — حدد عدد العلب ووزن العلبة <small>(ولو فيه فرق هيقولك)</small>
+        </label>
+        <div class="wh-pack-inner js-inner-row" hidden>
+          <label class="wh-f">عدد العلب داخل العبوة
+            <input name="l__IDX___pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">وزن العلبة الواحدة
+            <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+          <div class="wh-f wh-f-hint"><span class="wh-hintline js-inner-sum"></span></div>
+        </div>
+        <div class="wh-pack-row wh-pack-loose">
+          <label class="wh-f">كمية سائبة
+            <input name="l__IDX___pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">وحدة السائب
+            <input name="l__IDX___pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList" autocomplete="off" placeholder="كجم أو علب"></label>
+          <div class="wh-f wh-f-hint"></div>
+        </div>
+        <div class="wh-hintline js-pack-hint"></div>
+        <div class="wh-pack-diff js-pack-diff"></div>
+      </fieldset>
+      <div class="wh-grid">
+        <label class="wh-f">تاريخ الإنتاج <small>(يوم/شهر/سنة)</small>
+          <input name="l__IDX___prod_date" class="js-prod-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
+        <label class="wh-f">تاريخ الصلاحية
+          <input name="l__IDX___exp_date" class="js-exp-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
+        <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
+      </div>
+      <div class="js-split-box" data-auto-row="1">
+        <b class="wh-split-title">توزيع الكمية على المخازن (اختياري — والمجموع يجب أن يطابق)</b>
+        <div class="js-split-rows"></div>
+        <button type="button" class="rt-btn dim js-split-add">＋ إضافة مخزن</button>
+        <span class="wh-hintline js-split-hint"></span>
+      </div>
+    </div>
+  </template>
 </form>
 
 <div class="panel">
   <div class="panel-head">
     <h3>📥 إذون إضافة ١ مخازن — {{ cycle_name }}</h3>
-    <span class="panel-hint">الأرقام تسلسلية داخل الدورة والشهر — وكل إذن حركته مسجلة في دفتر ٣ مخازن</span>
+    <span class="panel-hint">كل إذن سطر — وقد يشمل كذا صنف — وكل إذن حركته مسجلة في دفتر ٣ مخازن</span>
   </div>
   <div class="wh-scroll">
   <table class="rt-table wh-table wh-taf-list">
     <thead><tr><th>م</th><th>رقم الإذن</th><th>الأصناف</th>
       <th>الشركة الموردة</th><th></th></tr></thead>
     <tbody>
-      {% for r in receipts %}
-      <tr class="wh-taf-row" data-taf-open="wh1Dialog-{{ r.id }}" title="اضغط لعرض الإذن كامل">
+      {% for g in groups %}
+      {% set names_list = g.lines | map(attribute='item_name') | list %}
+      <tr class="wh-taf-row" data-taf-open="wh1Dialog-{{ g.serial }}" title="اضغط لعرض الإذن كامل">
         <td class="num">{{ loop.index | aindic }}</td>
-        <td class="num"><b>{{ r.serial | aindic }}</b></td>
-        <td class="name"><b>{{ r.item_name }}</b></td>
-        <td>{{ r.supplier_name or '—' }}</td>
+        <td class="num"><b>{{ g.serial | aindic }}</b></td>
+        <td class="name">{% for n in names_list[:3] %}{{ n }}{% if not loop.last %}، {% endif %}{% endfor %}{% if names_list | length > 3 %} + {{ names_list[3:] | length | aindic }} أصناف…{% endif %}</td>
+        <td>{{ g.supplier_name or '—' }}</td>
         <td class="no-print"><button type="button" class="rt-btn dim"
-              data-taf-open="wh1Dialog-{{ r.id }}">📄 عرض الإذن</button></td>
+              data-taf-open="wh1Dialog-{{ g.serial }}">📄 عرض الإذن</button></td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="empty">لا إذون إضافة بعد هذا الشهر — أضف أول إذن من الزر الأمبر فوق ➕</td></tr>
@@ -107,34 +135,40 @@
   </table>
   </div>
 
-{% for r in receipts %}
-<dialog class="wh-dialog" id="wh1Dialog-{{ r.id }}">
+{% for g in groups %}
+<dialog class="wh-dialog" id="wh1Dialog-{{ g.serial }}">
   <div class="wh-dialog-head">
-    <b>📥 إذن إضافة ١ مخازن رقم {{ r.serial | aindic }}</b>
-    <button type="button" class="icon-btn" data-taf-close="wh1Dialog-{{ r.id }}" title="إغلاق">✕</button>
+    <b>📥 إذن إضافة ١ مخازن رقم {{ g.serial | aindic }}</b>
+    <button type="button" class="icon-btn" data-taf-close="wh1Dialog-{{ g.serial }}" title="إغلاق">✕</button>
   </div>
   <div class="wh-dialog-body">
+    <p class="wh-note">اليوم: {{ g.wday or '—' }} • التاريخ: <bdi dir="ltr" class="date-display">{{ g.date_iso | datefmt }}</bdi>
+      • المورد: {{ g.supplier_name or '—' }} • المنتج: {{ g.producer or '—' }}
+      {% if g.notes %} • ملاحظات: {{ g.notes }}{% endif %}</p>
+    <div class="wh-scroll">
     <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>التغليف</th>
+        <th>المخازن</th><th>الإنتاج</th><th>الصلاحية</th><th>ملاحظات</th></tr></thead>
       <tbody>
-        <tr><th>اليوم</th><td>{{ r.wday }}</td></tr>
-        <tr><th>التاريخ</th><td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td></tr>
-        <tr><th>الصنف</th><td class="name"><b>{{ r.item_name }}</b></td></tr>
-        <tr><th>الكمية</th><td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}
-          {% if r.qty_base %}— يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td></tr>
-        <tr><th>التغليف</th><td class="wh-pack-cell">{{ r.pack_label or '—' }}</td></tr>
-        <tr><th>المخازن</th><td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td></tr>
-        <tr><th>الشركة المنتجة</th><td>{{ r.producer or '—' }}</td></tr>
-        <tr><th>الشركة الموردة</th><td>{{ r.supplier_name or '—' }}</td></tr>
-        <tr><th>الإنتاج</th><td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td></tr>
-        <tr><th>الصلاحية</th><td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}
-          {% if r.shelf_days is not none %} ({{ r.shelf_days | aindic }} يوم){% endif %}</td></tr>
-        <tr><th>ملاحظات</th><td>{{ r.notes or '—' }}</td></tr>
+        {% for r in g.lines %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ r.item_name }}</b></td>
+          <td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
+          <td>{{ r.unit or '—' }}</td>
+          <td class="wh-pack-cell">{{ r.pack_label or '—' }}</td>
+          <td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
+          <td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td>{{ r.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
   <div class="wh-dialog-foot no-print">
-    <button type="button" class="rt-btn dim" data-taf-close="wh1Dialog-{{ r.id }}">إغلاق</button>
+    <button type="button" class="rt-btn dim" data-taf-close="wh1Dialog-{{ g.serial }}">إغلاق</button>
   </div>
 </dialog>
 {% endfor %}
-</div>

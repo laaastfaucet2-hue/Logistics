@@ -78,52 +78,91 @@
     refresh();
   });
 
-  /* ١ مخازن: الصنف → وحدة التعامل + تحويل الكمية + مدة الصلاحية */
-  var itemInput = document.getElementById("whItemName");
-  var unitInput = document.getElementById("whUnitInput");
-  var qtyInput = document.getElementById("whQty");
-  var convHint = document.getElementById("whConvHint");
-
-  function currentUnit() {
-    if (!itemInput) return "";
-    var info = ITEMS[itemInput.value.trim()];
-    return info ? info.unit : (unitInput ? unitInput.value : "");
-  }
-
-  function refreshConv() {
-    if (!convHint) return;
-    var unit = currentUnit();
-    var qty = qtyInput ? toNum(qtyInput.value) : null;
-    if (!unit) { convHint.textContent = ""; return; }
-    var meta = baseOf(unit);
-    if (qty === null) {
-      convHint.textContent = "التعامل بوحدة: " + unit;
-      return;
-    }
-    if (meta.factor !== 1) {
-      convHint.textContent = fmt(qty) + " " + unit + " = " + fmt(qty * meta.factor) + " " + meta.base;
-    } else if (meta.base && meta.base !== unit) {
-      convHint.textContent = fmt(qty) + " " + unit + " = " + fmt(qty * meta.factor) + " " + meta.base;
-    } else {
-      convHint.textContent = fmt(qty) + " " + unit + " — وحدة القاعدة هي نفسها";
-    }
-  }
-
-  if (itemInput && unitInput) {
-    itemInput.addEventListener("change", function () {
+  /* كارت صنف: الصنف → وحدة التعامل + تحويل الكمية (لإذن ١ مخازن متعدد الأصناف) */
+  function wireLine(card) {
+    var itemInput = card.querySelector(".js-item-name");
+    var unitInput = card.querySelector(".js-unit");
+    var qtyInput = card.querySelector('input[name$="_qty"]');
+    var convHint = card.querySelector(".js-conv-hint");
+    function currentUnit() {
+      if (!itemInput) return "";
       var info = ITEMS[itemInput.value.trim()];
-      if (info && info.unit) {
-        unitInput.value = info.unit;
-        unitInput.disabled = true;
+      return info ? info.unit : (unitInput ? unitInput.value : "");
+    }
+    function refreshConv() {
+      if (!convHint) return;
+      var unit = currentUnit();
+      var qty = qtyInput ? toNum(qtyInput.value) : null;
+      if (!unit) { convHint.textContent = ""; return; }
+      var meta = baseOf(unit);
+      if (qty === null) { convHint.textContent = "التعامل بوحدة: " + unit; return; }
+      if (meta.base && meta.base !== unit) {
+        convHint.textContent = fmt(qty) + " " + unit + " = " + fmt(qty * meta.factor) + " " + meta.base;
       } else {
-        unitInput.disabled = false;
+        convHint.textContent = fmt(qty) + " " + unit + " — وحدة القاعدة هي نفسها";
       }
-      refreshConv();
-    });
+    }
+    if (itemInput && unitInput) {
+      itemInput.addEventListener("change", function () {
+        var info = ITEMS[itemInput.value.trim()];
+        if (info && info.unit) { unitInput.value = info.unit; unitInput.disabled = true; }
+        else { unitInput.disabled = false; }
+        refreshConv();
+      });
+    }
+    if (qtyInput) qtyInput.addEventListener("input", refreshConv);
+    if (unitInput) unitInput.addEventListener("change", refreshConv);
+    refreshConv();
   }
-  if (qtyInput) qtyInput.addEventListener("input", refreshConv);
-  if (unitInput) unitInput.addEventListener("change", refreshConv);
-  refreshConv();
+  Array.prototype.forEach.call(document.querySelectorAll(".wh-item-card"), wireLine);
+
+  /* إضافة/حذف كارت صنف (إذن ١ مخازن متعدد الأصناف — توجيه ٢٧/٠٩) */
+  function wireLineCard(card) {
+    wireLine(card);
+    wirePackaging(card, null);
+    Array.prototype.forEach.call(card.querySelectorAll(".js-split-box"), wireSplitBox);
+    wireShelfCard(card);
+    var del = card.querySelector(".js-line-del");
+    if (del && !del.dataset.wired) {
+      del.dataset.wired = "1";
+      del.addEventListener("click", function () {
+        card.remove();
+        renumberLines();
+      });
+    }
+  }
+  function renumberLines() {
+    Array.prototype.forEach.call(document.querySelectorAll("#whItemLines .wh-item-card"),
+      function (card, idx) {
+        var t = card.querySelector(".js-line-title");
+        if (t) t.textContent = "الصنف " + (idx + 1).toLocaleString("ar-EG");
+        var prefix = "l" + idx + "_";
+        card.dataset.linePrefix = prefix;
+        Array.prototype.forEach.call(card.querySelectorAll("[name]"), function (el) {
+          if (/^l\d+_/.test(el.name)) el.name = prefix + el.name.replace(/^l\d+_/, "");
+        });
+      });
+  }
+  var addLineBtn = document.getElementById("whAddLine");
+  var lineBox = document.getElementById("whItemLines");
+  if (addLineBtn && lineBox) {
+    addLineBtn.addEventListener("click", function () {
+      var tpl = document.getElementById("whLineTpl");
+      if (!tpl) return;
+      var idx = lineBox.querySelectorAll(".wh-item-card").length;
+      var html = tpl.innerHTML.split("__IDX__").join(String(idx));
+      var holder = document.createElement("div");
+      holder.innerHTML = html;
+      var card = holder.firstElementChild;
+      lineBox.appendChild(card);
+      wireLineCard(card);
+      if (window.LogisticsCombo) window.LogisticsCombo.enhance(card);
+      renumberLines();
+      var first = card.querySelector(".js-item-name");
+      if (first) first.focus();
+    });
+    if (!lineBox.children.length) addLineBtn.click();
+  }
 
   /* مدة الصلاحية تلقائيًا */
   var prodInput = document.getElementById("date-prod_date");
@@ -164,21 +203,26 @@
   }
 
   function wirePackaging(root, hintSel) {
-    var kindEl = root.querySelector('[name=pack_kind]');
+    /* كارت صنف إذن ١ مخازن: الحقول ل0_pack_kind… — نختار باللاحقة داخل الكارت */
+    var scoped = !!(root.classList && root.classList.contains("wh-item-card"));
+    function sfx(name) {
+      return scoped ? '[name$="_' + name + '"]' : '[name=' + name + ']';
+    }
+    var kindEl = root.querySelector(sfx("pack_kind"));
     if (!kindEl) return;
-    var countEl = root.querySelector('[name=pack_count]');
-    var capEl = root.querySelector('[name=pack_capacity]');
+    var countEl = root.querySelector(sfx("pack_count"));
+    var capEl = root.querySelector(sfx("pack_capacity"));
     var innerTog = root.querySelector(".js-inner-toggle");
     var innerRow = root.querySelector(".js-inner-row");
-    var innerCountEl = root.querySelector('[name=pack_inner_count]');
-    var innerCapEl = root.querySelector('[name=pack_inner_capacity]');
+    var innerCountEl = root.querySelector(sfx("pack_inner_count"));
+    var innerCapEl = root.querySelector(sfx("pack_inner_capacity"));
     var innerSum = root.querySelector(".js-inner-sum");
-    var looseEl = root.querySelector('[name=pack_loose]');
-    var looseUnitEl = root.querySelector('[name=pack_loose_unit]');
+    var looseEl = root.querySelector(sfx("pack_loose"));
+    var looseUnitEl = root.querySelector(sfx("pack_loose_unit"));
     var diffEl = root.querySelector(".js-pack-diff");
     var hint = hintSel ? document.querySelector(hintSel) : root.querySelector(".js-pack-hint");
-    var qtyEl = root.querySelector('input[name=qty]');
-    var localItem = root.querySelector('[name=item_name]');
+    var qtyEl = root.querySelector("input" + sfx("qty"));
+    var localItem = root.querySelector(sfx("item_name"));
 
     /* الصنف: من حقل النموذج نفسه، أو اسم كارت الصنف (data-item-name)، أو حقل ١ مخازن */
     function currentInfo() {
@@ -331,9 +375,7 @@
     refresh();
   }
 
-  var wh1Form = document.getElementById("whWh1Form");
-  if (wh1Form) wirePackaging(wh1Form, "#whPackHint");
-  wirePackaging(document, null);
+  wirePackaging(document, null);   /* احتياط للنماذج القديمة — الكروت تُربط في wireLineCard */
 
   /* توزيع الكمية على المخازن — صناديق متعددة (١ مخازن + رصيد أول المدة) بكومبو متمثّم */
 
@@ -343,13 +385,16 @@
     var hint = box.querySelector(".js-split-hint");
     if (!rows || !add || rows.dataset.wired) return;
     rows.dataset.wired = "1";
+    var card = box.closest(".wh-item-card");
+    var prefix = card ? card.getAttribute("data-line-prefix") || "" : "";
     var form = box.closest("form");
-    var qtyEl = form ? form.querySelector("input[name=qty]") : null;
+    var qtyEl = card ? card.querySelector('input[name$="_qty"]')
+                     : (form ? form.querySelector("input[name=qty]") : null);
 
     function splitSum() {
       var sum = 0, any = false;
       Array.prototype.forEach.call(
-        rows.querySelectorAll('[name=store_qty]'), function (el) {
+        rows.querySelectorAll('[name="' + prefix + 'store_qty"]'), function (el) {
           var n = toNum(el.value);
           if (n && n > 0) { sum += n; any = true; }
         });
@@ -372,18 +417,18 @@
       var row = document.createElement("div");
       row.className = "wh-split-row";
       row.innerHTML =
-        '<input type="hidden" name="store_id" value="">' +
-        '<input name="store_name" data-combo="whStoresList" autocomplete="off" placeholder="اختر المخزن">' +
-        '<input name="store_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية">' +
+        '<input type="hidden" name="' + prefix + 'store_id" value="">' +
+        '<input name="' + prefix + 'store_name" data-combo="whStoresList" autocomplete="off" placeholder="اختر المخزن">' +
+        '<input name="' + prefix + 'store_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية">' +
         '<button type="button" class="icon-btn del js-split-del" title="إزالة المخزن">' +
         '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
       rows.appendChild(row);
       if (window.LogisticsCombo) window.LogisticsCombo.enhance(row);
-      row.querySelector('[name=store_name]').addEventListener("change", function () {
-        row.querySelector('[name=store_id]').value = storeIdByName(this.value) || "";
+      row.querySelector('[name="' + prefix + 'store_name"]').addEventListener("change", function () {
+        row.querySelector('[name="' + prefix + 'store_id"]').value = storeIdByName(this.value) || "";
         refresh();
       });
-      row.querySelector('[name=store_qty]').addEventListener("input", refresh);
+      row.querySelector('[name="' + prefix + 'store_qty"]').addEventListener("input", refresh);
       row.querySelector(".js-split-del").addEventListener("click", function () {
         row.remove();
         refresh();
@@ -406,6 +451,26 @@
     if (parts.length !== 3 || parts.some(isNaN)) return null;
     return new Date(parts[2], parts[1] - 1, parts[0]);
   }
+
+  function wireShelfCard(card) {
+    var prod = card.querySelector('[name$="_prod_date"]');
+    var exp = card.querySelector('[name$="_exp_date"]');
+    var hint = card.querySelector(".js-shelf-hint");
+    if (!prod || !exp || !hint || prod.dataset.shelfWired) return;
+    prod.dataset.shelfWired = "1";
+    function refresh() {
+      var d1 = parseDate(prod.value), d2 = parseDate(exp.value);
+      if (!d1 || !d2) { hint.textContent = ""; return; }
+      var days = Math.round((d2 - d1) / 86400000);
+      hint.textContent = days >= 0
+        ? "مدة الصلاحية: " + days.toLocaleString("ar-EG") + " يوم"
+        : "تنبيه: الصلاحية قبل الإنتاج!";
+    }
+    prod.addEventListener("change", refresh);
+    exp.addEventListener("change", refresh);
+    refresh();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".wh-item-card"), wireShelfCard);
 
   function wireShelf(form) {
     var prod = form.querySelector('[name=prod_date]');
