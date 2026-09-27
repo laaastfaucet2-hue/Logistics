@@ -388,10 +388,10 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     """يحفظ إذن إضافة ١ مخازن ويفتح كارت الصنف — رقم يدوي، والتغليف يحسب
     الكمية تلقائيًا، وstores لتوزيع الكمية على مخزن أو أكثر."""
     from core import egtime
-    pack_kind = (pack_kind or "").strip()
-    pack_total = 0.0
-    pack_label_text = ""
-    extras = []
+    pack_kind = (pack_kind or "").strip(); pack_inner_kind = (pack_inner_kind or "").strip()
+    pack_total = 0.0; pack_label_text = ""; extras = []
+    if pack_kind and pack_kind != "بدون تغليف" and pack_inner_kind and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
+        handle_unit_hint = pack_inner_kind   # معيار بيُعدّ ⇒ وحدته هي المعيار
     if pack_kind and pack_kind != "بدون تغليف":
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
         if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item_probe["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
@@ -537,6 +537,8 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
     تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف، وأول سطور الكارت."""
     from core import egtime
+    if pack_kind and pack_kind != "بدون تغليف" and (pack_inner_kind or "").strip() and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
+        handle_unit_hint = pack_inner_kind.strip()   # معيار بيُعدّ ⇒ وحدته هي المعيار
     item, created = resolve_item(year, month, cycle, item_name, handle_unit_hint)
     if has_opener(year, month, item["id"]):
         raise ValueError(
