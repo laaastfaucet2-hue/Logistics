@@ -122,6 +122,11 @@ def unit_base(unit):
     return UNIT_BASE.get(key, (key or "وحدة", 1.0))
 
 
+def is_measure_unit(unit):
+    """هل الوحدة وزن/حجم (تتحول لكجم/لتر)؟ غير كده تعدّ وحدات — لا وزن مطلوب (توجيه ٢٧/٠٩)."""
+    return unit_base(unit)[0] in ("كجم", "لتر")
+
+
 def month_folder(number):
     """اسم مجلد الشهر: 01-يناير ... 12-ديسمبر"""
     return f"{number:02d}-{MONTH_NAMES[number - 1]}"
@@ -133,4 +138,4 @@ def section_folder(number, section_name):
 
 
 # إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
-STATIC_VER = 66
+STATIC_VER = 67

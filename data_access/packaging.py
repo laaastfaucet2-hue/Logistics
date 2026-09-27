@@ -111,12 +111,22 @@ def pack_summary(kind, count, capacity, loose, unit,
                         f"{iword if inner_kind else _box_word(loose)} × "
                         f"{arnum.fmt_qty_trim(inner_capacity)} {unit} = "
                         f"{arnum.fmt_qty_trim(loose_kg)} {unit} سائب")
+        elif _is_loose_boxes(loose_unit) and inner_kind:
+            # عدّ الوحدات: السائب بالعلب يُجمع كما هو — لا وزن مطلوب (توجيه ٢٧/٠٩)
+            total += loose
+            bits.append(f"{arnum.to_arabic_indic(f'{loose:g}')} {iword} سائب")
+        elif _is_loose_boxes(loose_unit):
+            total += loose
+            bits.append(f"{arnum.to_arabic_indic(f'{loose:g}')} "
+                        f"{_box_word(loose)} سائب")
         else:
             total += loose
             bits.append(f"{arnum.fmt_qty_trim(loose)} {unit} سائب")
     label = " + ".join(bits)
     if len(bits) > 1 and total > 0:
-        label += f" = {arnum.fmt_qty_trim(total)} {unit}"
+        sum_unit = iword if (inner_kind and capacity <= 0
+                             and inner_capacity <= 0) else unit
+        label += f" = {arnum.fmt_qty_trim(total)} {sum_unit}"
     return label, round(total, 6)
 
 

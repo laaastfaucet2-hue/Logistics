@@ -360,16 +360,24 @@
         }
       }
       if (loose) {
+        /* وحدة الصنف وزن/حجم؟ غير كده كله عدّ وحدات — لا وزن مطلوب (توجيه ٢٧/٠٩) */
+        var measure = (function () {
+          var b = baseOf(unit).base;
+          return b === "كجم" || b === "لتر";
+        })();
         if (looseBoxes && ica) {
           var lk = loose * ica;
           total += lk;
-          bits.push(fmt(loose) + " " + boxWord(loose) + " × " + fmt(ica) + " " +
+          bits.push(fmt(loose) + " " + word + " × " + fmt(ica) + " " +
             unit + " = " + fmt(lk) + " " + unit + " سائب");
-        } else if (looseBoxes && !ica) {
+        } else if (looseBoxes && measure) {
           bits.push("السائب بالعلب محتاج وزن العلبة!");
-        } else {
+        } else if (measure) {
           total += loose;
           bits.push(fmt(loose) + " " + unit + " سائب");
+        } else {
+          unitCount += loose;
+          bits.push(fmt(loose) + " " + word + " سائب");
         }
       }
       if (hint) {
@@ -383,11 +391,15 @@
         }
       }
       if (qtyEl) {
+        var isMeasure = (function () {
+          var b = baseOf(unit).base;
+          return b === "كجم" || b === "لتر";
+        })();
         if (total > 0) {
           qtyEl.value = fmt(total);
           qtyEl.readOnly = true;
-        } else if (unitCount > 0 && (!unit || (iw && unit === iw))) {
-          /* عدّ وحدات: وحدة التعامل هي نفسها الوحدة الداخلية (علبة/باكت) */
+        } else if (unitCount > 0 && !isMeasure) {
+          /* عدّ وحدات: عالم العدّ كله — الكمية الإجمالية بالوحدات من غير وزن */
           qtyEl.value = fmt(unitCount);
           qtyEl.readOnly = true;
         } else {
