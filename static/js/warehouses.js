@@ -155,8 +155,11 @@
       holder.innerHTML = html;
       var card = holder.firstElementChild;
       lineBox.appendChild(card);
-      wireLineCard(card);
-      if (window.LogisticsCombo) window.LogisticsCombo.enhance(card);
+      /* خطأ كارت واحد لا يوقف ربط الباقي — التحذير في الكونسول */
+      try { wireLineCard(card); }
+      catch (err) { if (window.console && console.warn) console.warn("كارت صنف:", err); }
+      try { if (window.LogisticsCombo) window.LogisticsCombo.enhance(card); }
+      catch (err) { if (window.console && console.warn) console.warn("كومبو الكارت:", err); }
       renumberLines();
       var first = card.querySelector(".js-item-name");
       if (first) first.focus();
@@ -335,7 +338,8 @@
         } else {
           qtyEl.readOnly = false;
         }
-        refreshConv();
+        /* تحديث تلميح التحويل عبر حدث input — refreshConv محلية في wireLine */
+        qtyEl.dispatchEvent(new Event("input", { bubbles: true }));
         SPLIT_REFRESH.forEach(function (fn) { fn(); });
       }
     }
