@@ -295,7 +295,8 @@ def taf3_pack_rows(year, month, cycle, item_id):
     _sp = specs.get(fb_name, {}) if specs else {}
     fb = {"pack_kind": fb_name, "pack_capacity": _sp.get("capacity", 0),
           "pack_inner_count": _sp.get("inner_count", 0),
-          "pack_inner_capacity": _sp.get("inner_capacity", 0)}
+          "pack_inner_capacity": _sp.get("inner_capacity", 0),
+          "pack_inner_kind": _sp.get("inner_kind", "")}
     led = packaging.PackLedger(fb.get("pack_kind"), fb.get("pack_capacity"), unit)
     # عبوة بعدّ المعيار فقط (جركن × ٢٠ لتر / كرتونة × ١٢ باكت) — مدير العبوات
     # بوزن ما يشتغلش عليها: الرصيد بالتغليف يتحسب بتفكيك الكمية نفسها (توجيه ٢٧/٠٩)
@@ -306,7 +307,7 @@ def taf3_pack_rows(year, month, cycle, item_id):
         spec = spec or {}
         return dw.pack_breakdown(spec.get("pack_kind"), spec.get("pack_capacity"),
                                  spec.get("pack_inner_count"), spec.get("pack_inner_capacity"),
-                                 q, unit, rest) or f"{arnum.fmt_qty_trim(q)} {unit}"
+                                 q, unit, rest, inner_kind=spec.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {unit}"
 
     rows, _i = [], 0
     for r in card["rows"]:

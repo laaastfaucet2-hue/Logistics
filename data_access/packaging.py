@@ -133,13 +133,14 @@ def pack_summary(kind, count, capacity, loose, unit,
 
 
 def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
-                   rest_word="سائب"):
+                   rest_word="سائب", inner_kind=""):
     """تفكيك كمية لعبوات + الباقي جوه عبوة مفتوحة (توجيه المستخدم ٢٦/٠٩).
 
     ١٧٠ كجم بشكارة ٥٠ ⇒ «٣ شكارة كاملة + شكارة مفتوحة (٢٠ كجم)»؛
     ١٥٠ كجم ⇒ «٣ شكارة»؛ صيغة المصروف (rest_word="") تبقى بدون «كاملة/مفتوحة»:
     «١ شكارة + ١٠ كجم». ٢٨ كجم بكرتونة ٦ علب × ٢ ⇒ «٢ كرتونة + ٢ علبة»؛
-    ١١٫٩٨٨ كجم ⇒ «٥ علب كاملة + علبة مفتوحة (١٫٩٨٨ كجم)». بلا مواصفات ⇒ «—».
+    والمعلّم باسم المعيار (بلتة × شكارة) يُذكر باسمه: «١ بلتة + ٢ شكارة»
+    لا «علبة» (تصحيح ٢٧/٠٩ ليلًا). بلا مواصفات ⇒ «—».
     """
     kind = (kind or "").strip()
     capacity = float(capacity or 0)
@@ -157,13 +158,15 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
         full_packs = int(rem // inner_capacity)
         rest = round(rem - full_packs * inner_capacity, 6)
         _fw = f" {_full_word(kind)}" if open_mode and rest > 0.000001 else ""
+        _iw = (inner_kind or "").strip()   # المعيار الداخلي المسمّى (شكارة/علبة...)
         if full_cartons > 0:
             parts.append(f"{arnum.to_arabic_indic(str(full_cartons))} {kind}{_fw}")
         if full_packs > 0:
-            parts.append(f"{arnum.to_arabic_indic(str(full_packs))} {_box_word(full_packs)}{_fw}")
+            parts.append(f"{arnum.to_arabic_indic(str(full_packs))} "
+                         f"{_iw or _box_word(full_packs)}{_fw}")
         if rest > 0.000001:
             if open_mode:
-                parts.append(f"{_open_pack(_box_word(1))} ({arnum.fmt_qty_trim(rest)} {unit})")
+                parts.append(f"{_open_pack(_iw or _box_word(1))} ({arnum.fmt_qty_trim(rest)} {unit})")
             else:
                 parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
     elif kind and inner_count > 0:

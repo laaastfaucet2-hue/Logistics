@@ -867,7 +867,7 @@ def _batch_pool(year, month, cycle):
 
 def _rem_label(batch, q, rest_word="سائب"):
     """تفكيك الكمية بعبوات الدفعة — الأرصدة بمفتوحة والمصروف بدونه."""
-    return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
+    return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word, inner_kind=batch.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
 
 
 def tafreeda_rows(year, month, cycle):
@@ -987,7 +987,7 @@ def stores_report(year, month):
             spec = spec_entry[pack_kind]
             note = pack_breakdown(pack_kind, spec.get("capacity"),
                                   spec.get("inner_count"), spec.get("inner_capacity"),
-                                  qty, units.get(item_name, ""))
+                                  qty, units.get(item_name, ""), inner_kind=spec.get("inner_kind"))
             if note:
                 target["pack_notes"][item_name] = note
     for target in all_targets:

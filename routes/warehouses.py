@@ -224,7 +224,8 @@ def page():
             _sp = _specs[_pk]
             card["pack_note"] = dw.pack_breakdown(
                 _pk, _sp.get("capacity"), _sp.get("inner_count"),
-                _sp.get("inner_capacity"), card["balance"], card["item"]["handle_unit"])
+                _sp.get("inner_capacity"), card["balance"], card["item"]["handle_unit"],
+                inner_kind=_sp.get("inner_kind"))
         # دفتر التفاريد الخاص بالصنف: مضاف/منصرف/الرصيد بالتغليف (توجيه ٢٧/٠٩)
         taf3 = wf.taf3_pack_rows(year, month, cycle, card["item"]["id"])
         if taf3:
