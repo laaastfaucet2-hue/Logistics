@@ -49,7 +49,7 @@
 
   /* رسّام العبوات: أيقونة SVG لكل عبوة/وحدة — الشاشة الحية بترسم بيها (توجيه ٢٧/٠٩) */
   var ICON_RULES = [["كجم", "weight"], ["جرام", "weight"], ["جم", "weight"], ["طن", "weight"],
-    ["كرتون", "carton"], ["شكار", "sack"], ["شيكار", "sack"], ["بلت", "pallet"],
+    ["كرتون", "carton"], ["ارتون", "carton"], ["شكار", "sack"], ["شيكار", "sack"], ["بلت", "pallet"],
     ["جركن", "jerrycan"], ["برميل", "barrel"], ["زجاج", "bottle"], ["لتر", "bottle"],
     ["مل", "bottle"], ["كيس", "bag"], ["شنط", "bag"], ["صيني", "tray"], ["طبق", "tray"],
     ["كوب", "cup"], ["ربط", "bundle"], ["فتل", "bundle"], ["باكت", "packet"],
@@ -69,10 +69,20 @@
     bundle: '<path d="M7 4v16M12 3v18M17 4v16"/><path d="M5 8h14M5 16h14"/>',
     weight: '<path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 7l7 13H5z"/>'
   };
-  function svgIcon(name, size) {
+  /* صور العبوات الحقيقية (ستايل أيزومتريك معتمد من المستخدم) + SVG احتياطي
+     لأي مفتاح مش موجود له صورة بعد — الشاشة الحية بترسم بيها (توجيه ٢٧/٠٩) */
+  var PACK_IMG = ["carton", "weight", "pouch", "bottle", "jerrycan",
+    "barrel", "bag", "tray", "cup", "bundle"];
+  var IMG_ALIAS = { packet: "pouch", box: "can" };
+  function packIcon(name, size) {
     var n = String(name || ""), key = "box";
     for (var i = 0; i < ICON_RULES.length; i++) {
       if (n.indexOf(ICON_RULES[i][0]) !== -1) { key = ICON_RULES[i][1]; break; }
+    }
+    var img = IMG_ALIAS[key] || key;
+    if (PACK_IMG.indexOf(img) !== -1) {
+      return '<img class="wh-pack-img" src="/static/img/pack/' + img +
+        '.png" width="' + size + '" height="' + size + '" alt="">';
     }
     return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none"' +
       ' stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
@@ -357,7 +367,19 @@
     var tvEl = root.querySelector(".js-tv");
 
     /* 📺 الشاشة الحية: كل معلومة بتكتبها تترسم فورًا — مثل أدوات التغليف المحترفة */
-    function drawTV(total, unitCount, tword) {
+    function brandLines() {
+      var form = root.closest ? root.closest("form") : null;
+      var sup = form ? (form.querySelector('[name="supplier_name"]') || {}) : {};
+      var pro = form ? (form.querySelector('[name="producer"]') || {}) : {};
+      var itEl = localItem || root.querySelector(".js-item-name");
+      var it = itEl ? itEl.value.trim() : "";
+      var bits = [];
+      if ((sup.value || "").trim()) bits.push((sup.value).trim());
+      if ((pro.value || "").trim()) bits.push((pro.value).trim());
+      if (it) bits.push(it);
+      return bits.join(" — ");
+    }
+    function drawTV(total, unitCount, tword, wUnit, cap, ica) {
       if (!tvEl) return;
       var k = kindEl.value.trim();
       var ik = innerKindEl ? innerKindEl.value.trim() : "";
@@ -368,19 +390,22 @@
         tvEl.innerHTML = '<span class="wh-tv-empty">📺 اكتب نوع العبوة — والشاشة هترسم قصة التغليف قدامك خطوة بخطوة</span>';
         return;
       }
+      var wchip = function (w) { return w > 0 ? ' <span class="wh-tv-w">· ' + fmt(w) + " " + wUnit + "</span>" : ""; };
       var h = "";
       if (k) {
-        h += '<span class="wh-tv-ic">' + svgIcon(k, 46) +
-          '<span class="wh-tv-badge">' + (cnt ? fmt(cnt) + " " + k : k) + "</span></span>";
+        var brand = brandLines();
+        h += '<span class="wh-tv-ic">' + packIcon(k, 46) +
+          '<span class="wh-tv-badge">' + (cnt ? fmt(cnt) + " " + k : k) + wchip(cap) + "</span>" +
+          (brand ? '<span class="wh-tv-brand">🏷 ' + brand + "</span>" : "") + "</span>";
       }
       if (ik) {
         if (k) h += '<span class="wh-tv-arrow">⬅</span>';
         var minis = "";
         var shown = Math.min(ic || 6, 12);
-        for (var mi = 0; mi < shown; mi++) minis += svgIcon(ik, 18);
+        for (var mi = 0; mi < shown; mi++) minis += packIcon(ik, 18);
         if (ic > 12) minis += '<span class="wh-tv-badge">+' + fmt(ic - 12) + "</span>";
         h += '<span class="wh-tv-ic"><span class="wh-tv-mini">' + minis + "</span>" +
-          '<span class="wh-tv-badge">' + (ic ? fmt(ic) + " " + ik : ik) + "</span></span>";
+          '<span class="wh-tv-badge">' + (ic ? fmt(ic) + " " + ik : ik) + wchip(ica) + "</span></span>";
       }
       var tot = total > 0 ? total : (unitCount > 0 ? unitCount : null);
       if (tot !== null) {
@@ -388,7 +413,7 @@
           fmt(tot) + " " + tword + "</span>";
       }
       if (lo) {
-        h += '<span class="wh-tv-ic">' + svgIcon(ik || k || "علبة", 22) +
+        h += '<span class="wh-tv-ic">' + packIcon(ik || k || "علبة", 22) +
           '<span class="wh-tv-badge">سائب ' + fmt(lo) + "</span></span>";
       }
       tvEl.innerHTML = h;
@@ -420,7 +445,10 @@
       var name = "";
       if (root.dataset && root.dataset.itemName) name = root.dataset.itemName;
       else if (localItem) name = localItem.value.trim();
-      else if (itemInput) name = itemInput.value.trim();
+      else {
+        var altItem = root.querySelector(".js-item-name");
+        if (altItem) name = altItem.value.trim();
+      }
       return name ? (ITEMS[name] || null) : null;
     }
 
@@ -459,12 +487,16 @@
       var looseBoxes = lu.indexOf("علب") === 0;
       var info = currentInfo();
       var unit = info ? info.unit : "";
+      /* وحدة الوزن: كجم/لتر من أساس الصنف نفسه — عمرها ما وحدة العدّ (كارتونة/شكارة)
+         «وزن العبوة هو المرجع»: العبوة بوزن ⇒ الحسبة والسجل بالوزن (توجيه ٢٧/٠٩) */
+      var wUnit = (info && info.base) ? info.base
+        : (isMeasureUnit(iw) ? baseOf(iw).base : "كجم");
 
       /* حاصل العلب + الفرق: الكرتونة كام مقابل عدد العلب × وزن العلبة */
       if (innerSum) {
         innerSum.textContent = (ic && ica)
-          ? fmt(ic) + " " + word + " × " + fmt(ica) + " " + unit +
-            " = " + fmt(ic * ica) + " " + unit : "";
+          ? fmt(ic) + " " + word + " × " + fmt(ica) + " " + wUnit +
+            " = " + fmt(ic * ica) + " " + wUnit : "";
       }
       if (diffEl) {
         diffEl.textContent = "";
@@ -472,12 +504,12 @@
         if (cap && ic && ica) {
           var sub = ic * ica, d = cap - sub;
           if (Math.abs(d) > 0.001) {
-            diffEl.textContent = "⚠️ في فرق: العبوة " + fmt(cap) + " " + unit +
-              " والعلب " + fmt(ic) + " × " + fmt(ica) + " = " + fmt(sub) + " " + unit +
-              " — الفرق " + fmt(Math.abs(d)) + " " + unit + " — صحّح اللي متأكد منه";
+            diffEl.textContent = "⚠️ في فرق: العبوة " + fmt(cap) + " " + wUnit +
+              " والعلب " + fmt(ic) + " × " + fmt(ica) + " = " + fmt(sub) + " " + wUnit +
+              " — الفرق " + fmt(Math.abs(d)) + " " + wUnit + " — صحّح اللي متأكد منه";
             diffEl.classList.add("bad");
           } else {
-            diffEl.textContent = "✓ العلب مطابقة لوزن العبوة (" + fmt(sub) + " " + unit + ")";
+            diffEl.textContent = "✓ العلب مطابقة لوزن العبوة (" + fmt(sub) + " " + wUnit + ")";
             diffEl.classList.add("good");
           }
         }
@@ -493,18 +525,18 @@
           var sub2 = count * cap;
           total += sub2;
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
-            " × وزن ال" + kindEl.value.trim() + " " + fmt(cap) + " " + unit +
-            " = " + fmt(sub2) + " " + unit +
+            " × وزن ال" + kindEl.value.trim() + " " + fmt(cap) + " " + wUnit +
+            " = " + fmt(sub2) + " " + wUnit +
             (ic ? " (بداخلها " + fmt(ic) + " " + word + ")" : ""));
         } else if (ic && ica) {
           var cw = ic * ica, sub3 = count * cw;
           total += sub3;
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
             " بداخلها " + fmt(ic) + " " + word + " × وزن ال" + word + " " +
-            fmt(ica) + " " + unit + " = " + fmt(sub3) + " " + unit);
+            fmt(ica) + " " + wUnit + " = " + fmt(sub3) + " " + wUnit);
         } else if (ic) {
           var q = count * ic;
-          var qUnit = weightMode ? (isMeasureUnit(iw) ? iw : (unit || iw)) : word;
+          var qUnit = weightMode ? wUnit : word;
           if (weightMode) {
             total += q;   /* ١٠ شكارة بداخلها ٥٠ كجم = ٥٠٠ كجم — وزن */
           } else {
@@ -521,26 +553,24 @@
           var lk = loose * ica;
           total += lk;
           bits.push(fmt(loose) + " " + word + " × " + fmt(ica) + " " +
-            unit + " = " + fmt(lk) + " " + unit + " سائب");
+            wUnit + " = " + fmt(lk) + " " + wUnit + " سائب");
         } else if (looseBoxes && weightMode) {
           bits.push("السائب بالعلب محتاج وزن العلبة!");
         } else if (weightMode) {
           total += loose;
-          bits.push(fmt(loose) + " " + (isMeasureUnit(iw) ? iw : (unit || iw)) + " سائب");
+          bits.push(fmt(loose) + " " + wUnit + " سائب");
         } else {
           unitCount += loose;
           bits.push(fmt(loose) + " " + word + " سائب");
         }
       }
       if (eqTotal) {
-        eqTotal.textContent = total > 0 ? fmt(total) + " " + unit
+        eqTotal.textContent = total > 0 ? fmt(total) + " " + wUnit
           : (unitCount > 0 ? fmt(unitCount) + " " + word : "—");
       }
       if (hint) {
         var sum = total || unitCount;
-        var sumUnit = total
-          ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasureUnit(iw) ? iw : (unit || iw)))
-          : word;
+        var sumUnit = total ? wUnit : word;
         if (bits.length === 1 && sum > 0) {
           hint.textContent = "الإجمالي: " + bits[0];
         } else {
@@ -548,9 +578,24 @@
             (bits.length > 1 && sum > 0 ? " — الإجمالي: " + fmt(sum) + " " + sumUnit : "");
         }
       }
-      drawTV(total, unitCount, (total > 0)
-        ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasureUnit(iw) ? iw : (unit || iw)))
-        : word);
+      drawTV(total, unitCount, total > 0 ? wUnit
+        : (unitCount > 0 ? (isMeasureUnit(iw) ? iw : word) : word),
+        wUnit, cap, ica);
+      /* وحدة التعامل بتتبني على ناتج التغليف: وزن ⇒ كجم/لتر، عدّ ⇒ المعيار نفسه —
+         وخانة وحدة التعامل قراءة بس وقتها (توجيه ٢٧/٠٩) */
+      var unitInput = root.querySelector(".js-unit");
+      if (unitInput) {
+        if (total > 0 || (unitCount > 0 && !isMeasureUnit(unit))) {
+          unitInput.disabled = false;
+          unitInput.readOnly = true;
+          unitInput.dataset.managed = "1";
+          unitInput.value = total > 0 ? wUnit : (iw || word);
+        } else if (unitInput.dataset.managed === "1") {
+          unitInput.readOnly = false;
+          delete unitInput.dataset.managed;
+          unitInput.value = info ? info.unit : "";
+        }
+      }
       if (qtyEl) {
         if (total > 0) {
           qtyEl.value = fmt(total);
@@ -574,6 +619,23 @@
         el.addEventListener("input", function () { reveal(); refresh(); });
         el.addEventListener("change", function () { dynLabels(); renderPresetsSafe(); reveal(); refresh(); });
       });
+    /* طباعة المورد/المنتج/الصنف على العبوة في الشاشة — أي تعديل يعيد الرسم فورًا */
+    var brandForm = root.closest ? root.closest("form") : null;
+    if (brandForm) {
+      ["supplier_name", "producer"].forEach(function (nm) {
+        var bel = brandForm.querySelector('[name="' + nm + '"]');
+        if (bel && !bel.dataset.tvWired) {
+          bel.dataset.tvWired = "1";
+          bel.addEventListener("input", function () { refresh(); });
+          bel.addEventListener("change", function () { refresh(); });
+        }
+      });
+    }
+    if (localItem && !localItem.dataset.tvWired) {
+      localItem.dataset.tvWired = "1";
+      localItem.addEventListener("input", function () { refresh(); });
+      localItem.addEventListener("change", function () { refresh(); });
+    }
     kindEl.addEventListener("change", function () { renderPresetsSafe(); });
 
     kindEl.addEventListener("change", function () {

@@ -210,6 +210,12 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   max-width: 150px; opacity: .95; }
 .wh-tv-total { font-size: 1.5rem; font-weight: 900; color: var(--brand-gold);
   text-shadow: 0 0 18px rgba(240, 185, 57, .25); }
+/* صور العبوات الحقيقية (أيزومتريك) + وزن جنب العدد + طباعة المورد/الصنف على العبوة */
+.wh-pack-img { vertical-align: middle; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .45)); }
+.wh-tv-w { color: var(--brand-gold); font-size: .74em; font-weight: 800; white-space: nowrap; }
+.wh-tv-brand { display: block; font-size: .68rem; font-weight: 600; color: #dbe4f0;
+  line-height: 1.6; max-width: 96px; text-align: center; overflow: hidden;
+  border-top: 1px dashed rgba(219, 228, 240, .35); padding-top: 2px; }
 
 /* معادلة التغليف: صناديق كبيرة بأسئلة تحتها + إجمالي ذهبي (توجيه ٢٧/٠٩) */
 .wh-eq { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
