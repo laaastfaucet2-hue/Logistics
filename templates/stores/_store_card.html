@@ -1,5 +1,7 @@
 {% from "partials/pack_story.html" import pack_chips %}
-{# كارت مخزن واحد: كشف جرد الأرصدة فقط — آخر رصيد لكل صنف بلا حركة (توجيه ٢٧/٠٩ ليلًا) #}
+{# كارت مخزن واحد — محتواه حسب التاب (توجيه ٢٧/٠٩ ليلًا):
+   «المخازن»: تابات لكل صنف — تضغط الصنف يعرض حركته هو بس بترتيب التواريخ.
+   «كشف جرد الأرصدة»: جدول واحد بآخر رصيد فقط لكل صنف بلا حركة. #}
 <section class="panel wh-store-card">
   <div class="panel-head">
     <h3>{{ '🏬' if target.store.id else '📦' }} {{ target.store.name }}</h3>
@@ -12,6 +14,57 @@
     </span>
   </div>
 
+  {% if tab == 'mains' %}
+  {# ================= تاب المخازن: تابات الأصناف + حركة الصنف المختار ================= #}
+  {% if target['items'] %}
+  <nav class="wh-subtabs no-print" aria-label="أصناف المخزن">
+    {% for name, it in target['items'].items() %}
+    <button type="button" class="wh-subtab {{ 'active' if loop.first }}" data-st-sub="{{ name }}">{{ name }}</button>
+    {% endfor %}
+  </nav>
+  {% for name, it in target['items'].items() %}
+  <div class="wh-subpanel" data-st-panel="{{ name }}" {% if not loop.first %}hidden{% endif %}>
+    <b class="wh-taf-title">حركة «{{ name }}» في {{ target.store.name }} — بترتيب التواريخ</b>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الدورة</th>
+        <th>الكمية</th><th>الوحدة</th><th>التغليف</th><th>المستند</th></tr></thead>
+      <tbody>
+        {% for mv in it.moves %}
+        <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
+              {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
+          <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
+          <td>{{ mv.cycle or '—' }}</td>
+          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }}</td>
+          <td>{{ it.unit }}</td>
+          <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
+          <td>{{ mv.doc }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty">لا حركة على هذا الصنف في المخزن بعد</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">الإجماليات</td>
+          <td class="num">+{{ it.in | qty3 }} / −{{ it.out | qty3 }}</td>
+          <td>{{ it.unit }}</td>
+          <td class="wh-pack-cell">{{ it.pack or '—' }}</td>
+          <td>الرصيد: <b>{{ it.balance | qty3 }}</b></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="empty">لا أصناف داخل هذا المخزن بعد.</p>
+  {% endif %}
+
+  {% else %}
+  {# ================= تاب كشف جرد الأرصدة: آخر رصيد فقط ================= #}
   <b class="wh-taf-title">جرد أرصدة المخزن — آخر رصيد فقط لكل صنف (يتجدد تلقائيًا)</b>
   <div class="wh-scroll">
   <table class="rt-table wh-table">
@@ -34,4 +87,5 @@
     </tbody>
   </table>
   </div>
+  {% endif %}
 </section>

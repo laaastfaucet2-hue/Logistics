@@ -808,6 +808,20 @@ document.addEventListener("click", function (ev) {
     if (ev.target instanceof HTMLDialogElement) ev.target.close();  /* ضغط بالخارج */
   });
 
+/* تابات الأصناف داخل كارت المخزن (تاب المخازن): تاب لكل صنف — الضغط يعرض حركته فقط (توجيه ٢٧/٠٩ ليلًا) */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-sub]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-sub]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-panel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-panel") !== btn.getAttribute("data-st-sub");
+  });
+});
+
 /* التابات الفرعية (٢ و٣ مخازن): تبديل بلا إعادة تحميل */
 document.addEventListener("click", function (ev) {
   var btn = ev.target.closest("[data-wh2sub],[data-wh3sub]");

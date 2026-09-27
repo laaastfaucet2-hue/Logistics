@@ -88,8 +88,8 @@ def _store_fields():
 
 
 def _enrich(target):
-    """كل صنف داخل المخزن: رصيده بالوحدة + تغليفه المتبقي + أقرب انتهاء
-    + حركته هو بالتفصيل (داخل/خارج بالمستند) — (توجيه ٢٧/٠٩)."""
+    """كل صنف داخل المخزن: رصيده وحركته بالتفصيل مرتبة بالتاريخ (تاب المخازن)
+    + آخر رصيد في كشف الجرد — تابات لكل صنف (توجيه ٢٧/٠٩ ليلًا)."""
     if not target:
         return target
     items = {}
@@ -99,6 +99,7 @@ def _enrich(target):
         it["in"] += float(row["qty"] or 0)
         it["moves"].append({
             "dir": "in", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "cycle": row.get("cycle") or "",
             "doc": ("إذن إضافة رقم " + str(row["serial"])) if row.get("serial")
                    else "رصيد أول المدة",
             "pack": row.get("pack_label") or ""})
@@ -110,6 +111,7 @@ def _enrich(target):
         it["out"] += float(row["qty"] or 0)
         it["moves"].append({
             "dir": "out", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "cycle": row.get("cycle") or "",
             "doc": "إذن صرف ٢ مخازن رقم " + str(row.get("permit_no") or ""),
             "pack": row.get("pack_label") or ""})
     for name, it in items.items():
