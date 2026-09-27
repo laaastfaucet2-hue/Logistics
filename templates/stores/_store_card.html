@@ -1,5 +1,5 @@
 {% from "partials/pack_story.html" import pack_chips %}
-{# كارت مخزن واحد: حركته الداخلية/الخارجية بالتغليف + كشف أرصدته — مستهدف بالحلقة #}
+{# كارت مخزن واحد: كشف جرد الأرصدة فقط — آخر رصيد لكل صنف بلا حركة (توجيه ٢٧/٠٩ ليلًا) #}
 <section class="panel wh-store-card">
   <div class="panel-head">
     <h3>{{ '🏬' if target.store.id else '📦' }} {{ target.store.name }}</h3>
@@ -12,95 +12,24 @@
     </span>
   </div>
 
-  <b class="wh-taf-title">الحركة الداخلية والخارجية</b>
+  <b class="wh-taf-title">جرد أرصدة المخزن — آخر رصيد فقط لكل صنف (يتجدد تلقائيًا)</b>
   <div class="wh-scroll">
   <table class="rt-table wh-table">
-    <thead><tr>
-      <th>النوع</th><th>التاريخ</th><th>الدورة</th><th>الصنف</th>
-      <th>الكمية</th><th>الوحدة</th><th>التغليف</th><th>المستند</th>
-    </tr></thead>
-    <tbody>
-      {% for row in target.inn %}
-      <tr>
-        <td class="wh-in">داخل</td>
-        <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
-        <td>{{ row.cycle }}</td>
-        <td class="name"><b>{{ row.item }}</b></td>
-        <td class="num">{{ row.qty | qty3 }}</td>
-        <td>{{ row.unit }}</td>
-        <td class="wh-pack-cell">{{ pack_chips(row.pack_label) }}</td>
-        <td>{% if row.serial %}إذن إضافة رقم {{ row.serial | aindic }}{% else %}رصيد أول المدة{% endif %}</td>
-      </tr>
-      {% endfor %}
-      {% for row in target.out %}
-      <tr class="wh-issue-row">
-        <td class="wh-out">خارج</td>
-        <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
-        <td>{{ row.cycle }}</td>
-        <td class="name"><b>{{ row.item }}</b></td>
-        <td class="num wh-issued">{{ row.qty | qty3 }}</td>
-        <td>{{ row.unit }}</td>
-        <td class="wh-pack-cell">{{ pack_chips(row.pack_label) }}</td>
-        <td>إذن صرف ٢ مخازن رقم {{ row.permit_no | aindic }}
-          {% if row.expiry %}(صلاحية <bdi dir="ltr" class="date-display">{{ row.expiry | datefmt }}</bdi>){% endif %}</td>
-      </tr>
-      {% else %}
-      {% if not target.inn %}
-      <tr><td colspan="8" class="empty">لا حركة بعد — أضف كمية لهذا المخزن من ١ مخازن (توزيع الكمية على المخازن)</td></tr>
-      {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  <b class="wh-taf-title">كل صنف داخل المخزن — رصيده وتغليفه وحركته بالتفصيل</b>
-  {% for name, it in target['items'].items() %}
-  <div class="wh-st-item">
-    <div class="wh-st-item-head">
-      <b class="wh-st-name">📦 {{ name }}</b>
-      <span class="wh-chip">الرصيد الحالي: <b>{{ it.balance | qty3 }}</b> {{ it.unit }}</span>
-      {% if it.pack %}<span class="wh-chip gold">التغليف المتبقي: {{ it.pack }}</span>{% endif %}
-      {% if it.expiry %}<span class="wh-chip dim">أقرب انتهاء:
-        <bdi dir="ltr" class="date-display">{{ it.expiry | datefmt }}</bdi></span>{% endif %}
-    </div>
-    <div class="wh-scroll">
-    <table class="rt-table wh-table wh-st-moves">
-      <thead><tr><th>م</th><th>الحركة</th><th>التاريخ</th><th>الكمية</th>
-        <th>التغليف</th><th>المستند</th></tr></thead>
-      <tbody>
-        {% for mv in it.moves %}
-        <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
-          <td class="num">{{ loop.index | aindic }}</td>
-          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
-              {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
-          <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
-          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }} {{ it.unit }}</td>
-          <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
-          <td>{{ mv.doc }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-  </div>
-  {% else %}
-  <p class="empty">لا أصناف داخل هذا المخزن بعد.</p>
-  {% endfor %}
-
-  <b class="wh-taf-title">جرد أرصدة المخزن — آخر رصيد بطريقة التغليف (يتجدد تلقائيًا)</b>
-  <div class="wh-scroll">
-  <table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th><th>التغليف المتبقي بالضبط</th></tr></thead>
+    <thead><tr><th>م</th><th>الصنف</th><th>آخر الرصيد</th><th>الوحدة</th>
+      <th>التغليف المتبقي بالضبط</th><th>أقرب انتهاء</th></tr></thead>
     <tbody>
       {% for item, qty in target.balances.items() %}
+      {% set _it = target['items'].get(item, {}) %}
       <tr>
         <td class="num">{{ loop.index | aindic }}</td>
         <td class="name"><b>{{ item }}</b></td>
         <td class="num"><b>{{ qty | qty3 }}</b></td>
+        <td>{{ _it.get('unit', '') or '—' }}</td>
         <td class="wh-pack-cell">{{ target.pack_notes.get(item) or '—' }}</td>
+        <td>{% if _it.get('expiry') %}<bdi dir="ltr" class="date-display">{{ _it.get('expiry') | datefmt }}</bdi>{% else %}—{% endif %}</td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
+      <tr><td colspan="6" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
       {% endfor %}
     </tbody>
   </table>

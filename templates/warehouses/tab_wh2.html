@@ -87,7 +87,7 @@
     <div class="wh-scroll">
     <table class="rt-table wh-table">
       <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>المنصرف بالوحدة</th>
-        <th>المنصرف بالتغليف</th><th>الرصيد بعد الخصم</th><th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
+        <th>المنصرف بالتغليف</th><th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
       <tbody>
         {% for iname, it in pg.lines.items() %}
         {% for t in it.stores %}
@@ -97,7 +97,6 @@
           <td>{{ t.unit or '—' }}</td>
           <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
           <td class="wh-pack-cell">{{ t.issued_label or '—' }}</td>
-          <td class="num"><b>{{ t.rem_after_label or '—' }}</b></td>
           <td>{{ t.store_name }}</td>
           <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
           <td>{{ t.notes or '—' }}</td>
@@ -158,7 +157,7 @@
     <div class="wh-scroll">
     <table class="rt-table wh-table">
       <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>المنصرف بالوحدة</th>
-        <th>الرصيد بعد الخصم</th><th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
+        <th>المخزن</th><th>تاريخ الانتهاء</th><th>ملاحظات</th></tr></thead>
       <tbody>
         {% for iname, it in pg.lines.items() %}
         {% for t in it.stores %}
@@ -167,7 +166,6 @@
           <td class="name"><b>{{ iname }}</b></td>
           <td>{{ t.unit or '—' }}</td>
           <td class="num"><b>{{ t.qty | qty3 }}</b> {{ t.unit }}</td>
-          <td class="num"><b>{{ t.rem_after_label or '—' }}</b></td>
           <td>{{ t.store_name }}</td>
           <td>{% if t.expiry %}<bdi dir="ltr" class="date-display">{{ t.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
           <td>{{ t.notes or '—' }}</td>

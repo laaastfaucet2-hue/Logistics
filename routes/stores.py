@@ -23,7 +23,7 @@ stores_bp = Blueprint("stores", __name__, url_prefix="/stores")
 
 TABS = [
     ("mains", "المخازن", "🏬"),
-    ("movement", "حركة وكشف الأرصدة", "📊"),
+    ("movement", "كشف جرد الأرصدة", "📋"),
 ]
 TAB_KEYS = {t[0] for t in TABS}
 
