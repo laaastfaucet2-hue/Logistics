@@ -840,6 +840,20 @@ document.addEventListener("click", function (ev) {
     }
   } catch (err) {}
 
+  /* ============ كارت الصنف على الموبايل: الضغط على صنف ينزل على الكارت على طول
+  (القائمة فوقه والكارت تحتها — من غيرها يبان «الجدول مختفي» وهو تحت) ============ */
+  try {
+    var q3 = new URLSearchParams(window.location.search);
+    if (q3.get("item")) {
+      var cardEl = document.getElementById("whCard");
+      if (cardEl && cardEl.scrollIntoView) {
+        window.setTimeout(function () {
+          cardEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 150);
+      }
+    }
+  } catch (err) {}
+
   /* ============ وضع تعديل إذن ١ مخازن: تعبئة الفورم ببياناته (توجيه ٢٧/٠٩) ============ */
   var editData = document.getElementById("whEditData");
   if (editData && addLineBtn && lineBox) {

@@ -28,6 +28,16 @@ def create_app():
                       DESKTOP=os.environ.get("LOGISTICS_DESKTOP") == "1")
     if preview:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+    @app.after_request
+    def _no_cache_html(resp):
+        """الصفحات ديناميكية دايمًا — ممنوع كاش المتصفح يعرض نسخة قديمة
+        (المستخدم شاف شاشات قديمة مرتين بسبب كاش الموبايل)."""
+        ct = resp.headers.get("Content-Type", "")
+        if ct.startswith("text/html"):
+            resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        return resp
+
     from core import web
     from routes import main
     from routes.rations import rations_bp
