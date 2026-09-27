@@ -121,11 +121,13 @@ def pack_summary(kind, count, capacity, loose, unit,
                         f"{_box_word(loose)} سائب")
         else:
             total += loose
-            bits.append(f"{arnum.fmt_qty_trim(loose)} {unit} سائب")
+            unit_word = iword if (inner_kind and not capacity and not inner_capacity) \
+                else (unit or iword)
+            bits.append(f"{arnum.fmt_qty_trim(loose)} {unit_word} سائب")
     label = " + ".join(bits)
     if len(bits) > 1 and total > 0:
         sum_unit = iword if (inner_kind and capacity <= 0
-                             and inner_capacity <= 0) else unit
+                             and inner_capacity <= 0) else (unit or iword)
         label += f" = {arnum.fmt_qty_trim(total)} {sum_unit}"
     return label, round(total, 6)
 

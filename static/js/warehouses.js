@@ -248,7 +248,12 @@
         var el = root.querySelector(cls);
         if (el) el.textContent = txt;
       }
-      set(".js-inner-kind-lbl", kind ? "نوع العبوة داخل " + kDef + "؟" : "نوع العبوة داخل العبوة؟");
+      set(".js-inner-kind-lbl", kind ? "نوع المعيار داخل " + kDef + "؟" : "نوع المعيار داخل العبوة؟");
+      var capRow = innerCapEl ? innerCapEl.closest(".wh-f") : null;
+      if (capRow) {
+        var iwm = (function () { var b = baseOf(inner).base; return !!inner && (b === "كجم" || b === "لتر"); })();
+        capRow.hidden = !!iwm;   /* كجم ما لهوش «وزن واحد» — الحقل يختفي */
+      }
       set(".js-count-lbl", !kind ? "عدد العبوات" : (km ? "كم " + kind + "؟" : "عدد ال" + plural(kind)));
       if (inner) {
         set(".js-inner-count-lbl", kind
@@ -334,6 +339,13 @@
         }
       }
 
+      /* وضع الحسبة موحّد: كله وزن (كجم/لتر) أو كله عدّ وحدات — ممنوع خلط مجهولين
+         (خطأ ٥٠٠ + ٤١ = ٤١ كان بسبب جمعهما في متغيرين مختلفين — توجيه ٢٧/٠٩) */
+      function isMeasure(u) {
+        var b = baseOf(u).base;
+        return b === "كجم" || b === "لتر";
+      }
+      var weightMode = (cap > 0) || (ica > 0) || isMeasure(iw) || isMeasure(unit);
       var bits = [], total = 0, unitCount = 0;
       if (isReal() && count) {
         if (cap) {
@@ -351,30 +363,30 @@
             " بداخلها " + fmt(ic) + " " + word + " × وزن ال" + word + " " +
             fmt(ica) + " " + unit + " = " + fmt(sub3) + " " + unit);
         } else if (ic) {
-          /* بعدّ الوحدات: ١٠ بلتة بداخلها ٢٧ باكت = ٢٧٠ باكت (توجيه ٢٧/٠٩) */
-          unitCount = count * ic;
+          var q = count * ic;
+          var qUnit = weightMode ? (isMeasure(iw) ? iw : (unit || iw)) : word;
+          if (weightMode) {
+            total += q;   /* ١٠ شكارة بداخلها ٥٠ كجم = ٥٠٠ كجم — وزن */
+          } else {
+            unitCount += q;   /* ١٠ بلتة بداخلها ٢٧ باكت = ٢٧٠ باكت — عدّ */
+          }
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
-            " بداخلها " + fmt(ic) + " " + word + " = " + fmt(unitCount) + " " + word);
+            " بداخلها " + fmt(ic) + " " + word + " = " + fmt(q) + " " + qUnit);
         } else {
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim());
         }
       }
       if (loose) {
-        /* وحدة الصنف وزن/حجم؟ غير كده كله عدّ وحدات — لا وزن مطلوب (توجيه ٢٧/٠٩) */
-        var measure = (function () {
-          var b = baseOf(unit).base;
-          return b === "كجم" || b === "لتر";
-        })();
         if (looseBoxes && ica) {
           var lk = loose * ica;
           total += lk;
           bits.push(fmt(loose) + " " + word + " × " + fmt(ica) + " " +
             unit + " = " + fmt(lk) + " " + unit + " سائب");
-        } else if (looseBoxes && measure) {
+        } else if (looseBoxes && weightMode) {
           bits.push("السائب بالعلب محتاج وزن العلبة!");
-        } else if (measure) {
+        } else if (weightMode) {
           total += loose;
-          bits.push(fmt(loose) + " " + unit + " سائب");
+          bits.push(fmt(loose) + " " + (isMeasure(iw) ? iw : (unit || iw)) + " سائب");
         } else {
           unitCount += loose;
           bits.push(fmt(loose) + " " + word + " سائب");
@@ -382,7 +394,9 @@
       }
       if (hint) {
         var sum = total || unitCount;
-        var sumUnit = (unitCount && !total) ? word : unit;
+        var sumUnit = total
+          ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasure(iw) ? iw : (unit || iw)))
+          : word;
         if (bits.length === 1 && sum > 0) {
           hint.textContent = "الإجمالي: " + bits[0];
         } else {

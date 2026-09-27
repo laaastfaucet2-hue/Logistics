@@ -394,7 +394,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     extras = []
     if pack_kind and pack_kind != "بدون تغليف":
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
-        if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and is_measure_unit(item_probe["handle_unit"])):
+        if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item_probe["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
             raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
         pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item_probe["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
         if pack_total <= 0:
@@ -542,7 +542,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
         raise ValueError(
             f"رصيد أول المدة مسجّل بالفعل لصنف «{item['name']}» — لا يُسجل مرتين")
     pack_kind = (pack_kind or "").strip()
-    if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and is_measure_unit(item["handle_unit"])):
+    if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
         raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
     label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
     qty = pack_total if pack_total > 0 else float(qty)
