@@ -222,7 +222,7 @@ def test_receipt_number_is_manual_with_sequence_rules(client):
     # فارغ يكمّل بعد الأكبر (٦) — ويدوي أكبر يصبح أصل التسلسل
     _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "day": "٧"})
-    assert dw.list_receipts(YEAR, MONTH, "supply")[0]["serial"] == 6
+    assert dw.list_receipts(YEAR, MONTH, "supply")[-1]["serial"] == 6
     _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "day": "٧",
         "receipt_no": "٩"})
@@ -247,8 +247,11 @@ def test_opener_balance_entered_with_full_details_once(client):
     card = dw.item_card(YEAR, MONTH, item["id"])
     assert card["has_opener"] and card["opener_row"]["added"] == 50.0
     assert card["balance"] == 70.0                     # ٥٠ افتتاح + ٢٠ إذن
-    assert "مطاحن الافتتاح" in card["opener_row"]["notes"]
-    assert "مورد الافتتاح" in card["opener_row"]["notes"]
+    # المنتج والمورد بيتقراو من بتات الدفعة الخام — والملاحظات المعروضة للمستخدم فقط
+    _pool = dw._batch_pool(YEAR, MONTH, "supply")
+    assert any(b.get("producer") == "مطاحن الافتتاح" for b in _pool)
+    assert "رصيد السنة الماضية" in card["opener_row"]["notes"]
+    assert "منتج: " not in card["opener_row"]["notes"] and "مورد: " not in card["opener_row"]["notes"]
     # التغليف له عموده المستقل — لا يُخلط في الملاحظات (قاعدة ٢٦/٠٩)
     assert "شكارة" in (card["opener_row"]["pack_label"] or "")
     assert "تغليف" not in card["opener_row"]["notes"]
@@ -316,6 +319,11 @@ def test_weekday_name_column_and_live_hint(client):
     page = _page(client, "/warehouses?cycle=supply&sub=wh1")
     assert expected in page and ">٢٥<" not in page     # الاسم بدل الرقم
     assert "wh-day-hint" in page                       # التلميح الحي في النموذج
+    # الترتيب تصاعدي: إذن ١ أول الجدول (توجيه ٢٧/٠٩)
+    import re as _re
+    _serials = _re.findall(r'data-taf-open="wh1Dialog-\d+" title=[^>]*>\s*<td class="num">[^<]*</td>\s*'
+                          r'<td class="num"><b>([^<]+)</b>', page)
+    assert _serials == sorted(_serials), _serials
     item = dw.list_items(YEAR, MONTH, "supply")[0]
     page = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={item['id']}")
     assert expected in page
@@ -766,6 +774,8 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     # قائمة التفاريد: سطر برقم الإذن + زرار عرض الإذن يفتح النافذة
     assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
     assert "عرض الإذن" in page
+    # أزرار إغلاق نافذة التفريدة تشاور على معرفها الصحيح (توجيه ٢٧/٠٩: كانت ميتة)
+    assert 'data-taf-close="tafDialog-1"' in page and 'data-taf-close="1"' not in page
     # «الجهة المستلمة»: الرئيسية فقط + دائرة ملحقات تفتح الجهات الأخرى
     assert "الجهة المستلمة" in page and "جهة التفاريد" in page
     assert 'data-taf-open="extrasDialog-1"' in page
@@ -773,6 +783,8 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
     # النافذة: الجدول ثمانية أعمدة بالظبط — بلا رصيد ولا شركة منتجة
     assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page and "ملاحظات" in page
+    # قائمة التفاريد بلا «من يوم/إلى يوم» — السجلات فقط فيهاها
+    assert page.count(">من يوم<") == 1 and page.count(">إلى يوم<") == 1
     assert "رصيد المخزن قبل" not in page and "الرصيد بعد الصرف" not in page
     assert "الشركة المنتجة" not in page
     # نافذتا التفاريد والسجلات مختلفتان: التفاريد فيها «المنصرف بالتغليف» والسجلات لأ
@@ -781,9 +793,12 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     _sij = _re2.search(r'id="sijDialog-1".*?</dialog>', page, _re2.S).group(0)
     assert "المنصرف بالتغليف" in _taf and "المنصرف بالتغليف" not in _sij
     assert "المنصرف بالوحدة" in _sij
+    # الملاحظات: مكتوبة بالمستخدم فقط — البتات التلقائية (مخازن:…) لا تُعرض
+    assert "مخازن: مخزن التفريدة" not in page
     # الشركة المنتجة مكانها الطبيعي سجل الإضافة
     page1 = _page(client, "/warehouses?cycle=supply&sub=wh1")
     assert "مطاحن الاختبار" in page1
+    assert "مخازن: مخزن التفريدة" not in page1
     # مفيش تابات مستقلة للتفاريد في الشريط
     assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
     # ٣ مخازن: القائمة بلا صنف مفتوح → إرشاد فقط

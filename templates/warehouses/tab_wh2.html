@@ -17,7 +17,7 @@
     {% if taf_popup %}
     <div class="wh-scroll">
     <table class="rt-table wh-table wh-taf-list">
-      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة المستلمة</th><th>من يوم</th><th>إلى يوم</th>
+      <thead><tr><th>م</th><th>رقم إذن الصرف</th><th>الجهة المستلمة</th>
         <th>عدد الأصناف</th><th>إجمالي المنصرف</th><th></th></tr></thead>
       <tbody>
         {% for no, pg in taf_popup.items() %}
@@ -27,8 +27,6 @@
           <td class="name"><b>{{ pg.main_entity or '—' }}</b>{% if pg.extras %}
             <button type="button" class="wh-extras-dot" data-taf-open="extrasDialog-{{ no }}"
               title="افتح الجهات الأخرى"><span class="dot"></span> ملحقات ({{ pg.extras | length | aindic }})</button>{% endif %}</td>
-          <td class="num">{{ pg.date_from | aindic }}</td>
-          <td class="num">{{ pg.date_to | aindic }}</td>
           <td class="num">{{ pg.lines | length | aindic }}</td>
           <td class="num wh-issued"><b>{{ pg.total | qty3 }}</b></td>
           <td class="no-print"><button type="button" class="rt-btn dim"
@@ -83,7 +81,7 @@
   <div class="wh-dialog-head">
     <b>🧾 التفريدة الكاملة — إذن صرف رقم {{ no | aindic }}
       (من يوم {{ pg.date_from | aindic }}{% if pg.date_to != pg.date_from %} إلى {{ pg.date_to | aindic }}{% endif %})</b>
-    <button type="button" class="icon-btn" data-taf-close="{{ no }}" title="إغلاق">✕</button>
+    <button type="button" class="icon-btn" data-taf-close="tafDialog-{{ no }}" title="إغلاق">✕</button>
   </div>
   <div class="wh-dialog-body">
     <div class="wh-scroll">
@@ -110,7 +108,7 @@
     </div>
   </div>
   <div class="wh-dialog-foot no-print">
-    <button type="button" class="rt-btn dim" data-taf-close="{{ no }}">إغلاق</button>
+    <button type="button" class="rt-btn dim" data-taf-close="tafDialog-{{ no }}">إغلاق</button>
   </div>
 </dialog>
 {% endfor %}

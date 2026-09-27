@@ -189,7 +189,7 @@ def snapshot_cycle(year, month, cycle):
           r["qty_handle"], r["unit"], r["qty_base"], r["base_unit"], _pack_cell(r),
           _stores_cell(r), r["producer"] or "—", r["supplier_name"] or "—",
           _date_or_dash(r["prod_date"]), _date_or_dash(r["exp_date"]),
-          r["shelf_days"] if r["shelf_days"] is not None else "—", r["notes"] or "—")
+          r["shelf_days"] if r["shelf_days"] is not None else "—", dw.user_notes(r["notes"]) or "—")
          for r in sorted(receipts, key=lambda x: x["serial"])])])
 
     # ---------- ٣ مخازن ----------

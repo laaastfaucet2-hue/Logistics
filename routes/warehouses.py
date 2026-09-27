@@ -151,6 +151,7 @@ def page():
     for r in receipts:
         r["item_name"] = names.get(r["item_id"], "—")
         r["wday"] = _wday(year, month, r["day"])
+        r["notes"] = dw.user_notes(r["notes"])   # ملاحظات المستخدم فقط — لا بتات تلقائية
 
     item_name_set = {it["name"].lower() for it in items}
     catalog_missing = [c for c in dw.ration_catalog(year, month, cycle)

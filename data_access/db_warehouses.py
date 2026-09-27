@@ -432,8 +432,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
         if abs(diff) > 0.000001:
             raise ValueError("مجموع الكميات على المخازن لا يساوي كمية الإذن — "
                              "وزّع الكمية كاملة على المخازن")
-        extras.append("مخازن: " + "، ".join(
-            f"{n} ({arnum.fmt_qty(q)} {item['handle_unit']})" for _s, n, q in parts))
+        extras.append("مخازن: " + "، ".join(f"{n} ({arnum.fmt_qty(q)} {item['handle_unit']})" for _s, n, q in parts))
     conn = _conn(year, month)
     if receipt_no:
         exists = conn.execute(
@@ -496,7 +495,7 @@ def list_receipts(year, month, cycle, limit=10000):
     """إذون الدورة مع تفاصيل التغليف وتوزيعها على المخازن (من الأحدث)."""
     conn = _conn(year, month)
     rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM wh_receipts WHERE cycle=? ORDER BY serial DESC, id DESC LIMIT ?",
+        "SELECT * FROM wh_receipts WHERE cycle=? ORDER BY serial ASC, id ASC LIMIT ?",
         (cycle, limit))]
     splits = {}
     for r in conn.execute(
@@ -742,6 +741,8 @@ def item_card(year, month, item_id):
     conn.close()
     for r in issue_rows_for_item(year, month, item["cycle"], item):
         rows.append(r)
+    for r in rows:                       # ملاحظات المستخدم فقط — لا بتات تلقائية
+        r["notes"] = user_notes(r.get("notes"))
 
     def sort_key(r):
         return (r["date_iso"], 0 if r["kind"] == "opener" else 1,
@@ -798,9 +799,14 @@ UNASSIGNED = "غير موزع على مخازن"
 NO_EXPIRY = "9999-12-31"
 
 
+def user_notes(notes):
+    """ملاحظات المستخدم فقط — البتات التلقائية (مخازن:/منتج:/مورد:) لا تُعرض أبدًا (توجيه ٢٧/٠٩)."""
+    segs = [seg.strip() for seg in (notes or "").split(" — ")]
+    return " — ".join(seg for seg in segs if seg and not seg.startswith(("مخازن:", "منتج:", "مورد:")))
+
+
 def _batch_pool(year, month, cycle):
-    """دفعات الدورة (إذون الإضافة + رصيد أول المدة) مقسومة على المخازن، مرتبة
-    وفق قرار المستخدم: الأقرب انتهاءً أولًا؛ وتساوي ⇒ الأقدم إضافةً (الأبعد في الإضافة)."""
+    """دفعات الدورة مرتبة: الأقرب صلاحية أولًا وتساوي ⇒ الأقدم إضافةً (قرار المستخدم)."""
     items = {it["id"]: it for it in list_items(year, month, cycle)}
     conn = _conn(year, month)
     openers = [dict(r) for r in conn.execute(
@@ -858,19 +864,18 @@ def _batch_pool(year, month, cycle):
 
 
 def _rem_label(batch, q, rest_word="سائب"):
-    """تفكيك كميات الدفعة — الأرصدة بعبوة مفتوحة، والمصروف (rest_word="") بدونه."""
+    """تفكيك الكمية بعبوات الدفعة — الأرصدة بمفتوحة والمصروف بدونه."""
     return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
 
 
 def tafreeda_rows(year, month, cycle):
-    """التفريدة التلقائية: الأقرب صلاحية أولًا ثم الأقدم إضافةً — لكل سطر
-    التفكيك والمنتج ورصيد المخزن كله (مجموع الدفعات) قبل الصرف وبعده."""
+    """التفريدة التلقائية: الأقرب صلاحية أولًا — لكل سطر التفكيك ورصيد المخزن كله قبل/بعد."""
     pool = _batch_pool(year, month, cycle)
     _seqs = {}                           # مسلسل السطر داخل التفريدة الواحدة
     store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
     for b in pool:
         _k = (b["item"]["name"], b["store_id"])
-        store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)
+        store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)  # رصيد المخزن كله
     rows = []
     for permit in permits_book(year, month, cycle):
         for entry in permit["cycle_items"]:
@@ -893,22 +898,16 @@ def tafreeda_rows(year, month, cycle):
                     "expiry": batch["expiry"] if batch["expiry"] != NO_EXPIRY else "",
                     "qty": round(take, 6), "pack_label": batch["pack_label"],
                 })
-                _inner, _outer = pack_split(
-                    batch.get("pack_kind"), batch.get("pack_count"), batch.get("pack_capacity"),
-                    batch.get("pack_loose"), batch["item"]["handle_unit"],
-                    batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), batch.get("pack_loose_unit"))
-                rows[-1]["pack_inner_label"] = _inner
-                rows[-1]["pack_outer_label"] = _outer
+                _inner, _outer = pack_split(batch.get("pack_kind"), batch.get("pack_count"), batch.get("pack_capacity"), batch.get("pack_loose"), batch["item"]["handle_unit"], batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), batch.get("pack_loose_unit"))
+                rows[-1]["pack_inner_label"], rows[-1]["pack_outer_label"] = _inner, _outer
                 rows[-1]["producer"] = batch.get("producer") or ""
                 # «١ شكارة + ١٠ كجم» أو «٣٠ كجم» — المنصرف مُفكَّك بعبوات الدفعة
                 rows[-1]["issued_label"] = _rem_label(batch, take, "")
                 # رصيد المخزن كله قبل الصرف وبعده (اختيار المستخدم — مجموع الدفعات)
                 _k = (batch["item"]["name"], batch["store_id"])
                 store_bal[_k] = round(store_bal.get(_k, 0.0) - take, 6)
-                rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6))
-                rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
-                rows[-1]["seq"] = _seqs[permit["number"]] = _seqs.get(permit["number"], 0) + 1
-                rows[-1]["notes"] = batch.get("notes") or ""
+                rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6)); rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
+                rows[-1]["seq"] = _seqs[permit["number"]] = _seqs.get(permit["number"], 0) + 1; rows[-1]["notes"] = user_notes(batch.get("notes"))
     return rows
 
 
