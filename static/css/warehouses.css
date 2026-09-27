@@ -193,6 +193,31 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 /* التغليف: مربعات تحت بعض (توجيه ٢٧/٠٩) — وكل حقل بعرض كامل */
 .wh-pack-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .wh-pack-row .wh-f input { max-width: 420px; }
+
+/* معادلة التغليف: صناديق كبيرة بأسئلة تحتها + إجمالي ذهبي (توجيه ٢٧/٠٩) */
+.wh-eq { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.wh-eq-cell { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 140px; }
+.wh-eq-cell input { width: 100%; padding: 12px 10px; font-size: 1.15rem; font-weight: 700;
+  border: 1.5px solid var(--gold-border); border-radius: 10px; background: var(--surface);
+  color: var(--text); }
+.wh-eq-cell input:focus { outline: none; border-color: var(--brand-gold); }
+.wh-eq-lbl { font-size: .8rem; color: var(--muted); }
+.wh-eq-total { flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  padding: 8px 16px; min-width: 110px; border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+  color: var(--brand-gold); background: var(--surface-gold); border: 1.5px dashed var(--gold-border); }
+
+/* قوالب جاهزة من الذاكرة */
+.wh-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+
+/* قصة التغليف كرقائق — نفس التوقيع في كل العروض */
+.pack-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .82rem;
+  background: var(--surface-gold); border: 1px solid var(--gold-border); color: var(--text);
+  white-space: nowrap; }
+.pack-chip.gold { background: var(--brand-gold); border-color: var(--brand-gold);
+  color: #1a1400; font-weight: 800; }
+.pack-chip.preset { cursor: pointer; }
+.pack-chip.preset:hover { border-color: var(--brand-gold); }
+.pack-plus { color: var(--muted); margin: 0 2px; }
 .wh-pack-inner-toggle { display: flex; align-items: center; gap: 8px;
   margin: 10px 2px 6px; font-size: .84rem; cursor: pointer; color: var(--text); }
 .wh-pack-inner-toggle input { width: 16px; height: 16px; accent-color: var(--brand-gold); }

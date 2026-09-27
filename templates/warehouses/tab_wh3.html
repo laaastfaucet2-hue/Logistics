@@ -1,3 +1,4 @@
+{% from "partials/pack_story.html" import pack_chips %}
 {# ٣ مخازن — كتالوج الأصناف ودفتر الحركة: كارت لكل صنف
    (مسلسل/اليوم بالاسم/التاريخ/رقم إذن/مضاف/منصرف/رصيد)
    رصيد أول المدة إدخال حقيقي بكل بياناته — والمنصرف يجي تلقائي من إذون ٢ مخازن #}
@@ -46,30 +47,44 @@
             <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
           <label class="wh-f">الشركة الموردة
             <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
-          <label class="wh-f"><span>نوع العبوة</span> <small>(اختياري)</small>
-            <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="شكارة، كرتونة، بلتة، جركن..."></label>
-          <label class="wh-f"><span class="js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span> <small>(باكت - كجم - لتر...)</small>
-            <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت - كجم - علبة...">
-            <span class="wh-hintline js-inner-mode-hint"></span></label>
-          <label class="wh-f"><span class="js-count-lbl">عدد العبوات</span>
-            <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ١٠"></label>
-          <label class="wh-f"><span class="js-inner-count-lbl">كم تحتوي الواحدة من العلب؟</span>
-            <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ٢٧"></label>
-          <label class="wh-f"><span class="js-inner-cap-lbl">وزن العلبة الواحدة</span> <small>(اختياري — للتحويل للوزن)</small>
-            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
-          <label class="wh-f"><span class="js-cap-lbl">العبوة الواحدة كام؟ (وزن/حجم)</span> <small>(لو مفيش تغليف داخلي)</small>
-            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
-        </div>
-        <div class="wh-pack-row wh-pack-loose">
-          <label class="wh-f">كمية سائبة
-            <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
-          <label class="wh-f">وحدة السائب
-            <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList"
-                   autocomplete="off" placeholder="كجم أو علب"></label>
-        </div>
-        <div class="wh-hintline js-inner-sum"></div>
-        <div class="wh-hintline js-pack-hint"></div>
-        <div class="wh-pack-diff js-pack-diff"></div>
+          <!-- قوالب جاهزة + معادلة التغليف (توجيه ٢٧/٠٩) -->
+          <div class="wh-presets js-pack-presets" hidden></div>
+          <div class="wh-eq">
+            <div class="wh-eq-cell">
+              <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="بلتة، شكارة، كرتونة...">
+              <span class="wh-eq-lbl">نوع العبوة</span>
+            </div>
+            <div class="wh-eq-cell js-count-cell" hidden>
+              <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="١٠">
+              <span class="wh-eq-lbl js-count-lbl">كم عبوة؟</span>
+            </div>
+            <div class="wh-eq-cell">
+              <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت، كجم، علبة...">
+              <span class="wh-eq-lbl js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span>
+              <span class="wh-hintline js-inner-mode-hint"></span>
+            </div>
+            <div class="wh-eq-cell js-innercount-cell" hidden>
+              <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
+              <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+            </div>
+            <div class="wh-eq-total js-eq-total">—</div>
+          </div>
+          <div class="wh-pack-row">
+            <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
+              <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+            <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
+              <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+          </div>
+          <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة</button>
+          <div class="wh-pack-row js-loose-row" hidden>
+            <label class="wh-f">كمية سائبة
+              <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+            <label class="wh-f">وحدة السائب
+              <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList" autocomplete="off" placeholder="كجم أو علب"></label>
+          </div>
+          <div class="wh-hintline js-inner-sum"></div>
+          <div class="wh-hintline js-pack-hint"></div>
+          <div class="wh-pack-diff js-pack-diff"></div>
         <div class="wh-grid">
           {{ date_field('prod_date', 'تاريخ الإنتاج') }}
           {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
@@ -144,30 +159,44 @@
           <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
         <label class="wh-f">الشركة الموردة
           <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
-        <label class="wh-f"><span>نوع العبوة</span> <small>(اختياري — والإجمالي يتحسب تلقائيًا)</small>
-          <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="شكارة، كرتونة، بلتة، جركن..."></label>
-        <label class="wh-f"><span class="js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span> <small>(باكت - كجم - لتر...)</small>
-          <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت - كجم - علبة...">
-          <span class="wh-hintline js-inner-mode-hint"></span></label>
-        <label class="wh-f"><span class="js-count-lbl">عدد العبوات</span>
-          <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ١٠"></label>
-        <label class="wh-f"><span class="js-inner-count-lbl">كم تحتوي الواحدة من العلب؟</span>
-          <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ٢٧"></label>
-        <label class="wh-f"><span class="js-inner-cap-lbl">وزن العلبة الواحدة</span> <small>(اختياري — للتحويل للوزن)</small>
-          <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f"><span class="js-cap-lbl">العبوة الواحدة كام؟ (وزن/حجم)</span> <small>(لو مفيش تغليف داخلي)</small>
-          <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
-      </div>
-      <div class="wh-pack-row wh-pack-loose">
-        <label class="wh-f">كمية سائبة
-          <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
-        <label class="wh-f">وحدة السائب
-          <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList"
-                 autocomplete="off" placeholder="كجم أو علب"></label>
-      </div>
-      <div class="wh-hintline js-inner-sum"></div>
-      <div class="wh-hintline js-pack-hint"></div>
-      <div class="wh-pack-diff js-pack-diff"></div>
+        <!-- قوالب جاهزة + معادلة التغليف (توجيه ٢٧/٠٩) -->
+        <div class="wh-presets js-pack-presets" hidden></div>
+        <div class="wh-eq">
+          <div class="wh-eq-cell">
+            <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="بلتة، شكارة، كرتونة...">
+            <span class="wh-eq-lbl">نوع العبوة</span>
+          </div>
+          <div class="wh-eq-cell js-count-cell" hidden>
+            <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="١٠">
+            <span class="wh-eq-lbl js-count-lbl">كم عبوة؟</span>
+          </div>
+          <div class="wh-eq-cell">
+            <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت، كجم، علبة...">
+            <span class="wh-eq-lbl js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span>
+            <span class="wh-hintline js-inner-mode-hint"></span>
+          </div>
+          <div class="wh-eq-cell js-innercount-cell" hidden>
+            <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
+            <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+          </div>
+          <div class="wh-eq-total js-eq-total">—</div>
+        </div>
+        <div class="wh-pack-row">
+          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
+            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
+            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+        </div>
+        <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة</button>
+        <div class="wh-pack-row js-loose-row" hidden>
+          <label class="wh-f">كمية سائبة
+            <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">وحدة السائب
+            <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList" autocomplete="off" placeholder="كجم أو علب"></label>
+        </div>
+        <div class="wh-hintline js-inner-sum"></div>
+        <div class="wh-hintline js-pack-hint"></div>
+        <div class="wh-pack-diff js-pack-diff"></div>
       <div class="wh-grid">
         {{ date_field('prod_date', 'تاريخ الإنتاج') }}
         {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
@@ -259,7 +288,7 @@
             <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
             <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
             <td>{{ r.label or '—' }}</td>
-            <td class="wh-pack-cell">{{ r.added_pack }}</td>
+            <td class="wh-pack-cell">{{ pack_chips(r.added_pack) }}</td>
             <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
             <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
             <td>{{ r.notes or '—' }}</td>

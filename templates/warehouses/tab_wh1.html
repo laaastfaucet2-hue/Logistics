@@ -1,4 +1,5 @@
 {# ١ مخازن — إذن إضافة صنف: الإدخال اليدوي الوحيد في الدورة المخزنية #}
+{% from "partials/pack_story.html" import pack_chips %}
 <button type="button" class="wh-newbtn no-print" id="whWh1Toggle"
         aria-expanded="false" aria-controls="whWh1Form">
   <span class="wh-newbtn-plus">＋</span> إذن إضافة جديد (١ مخازن)
@@ -62,22 +63,43 @@
       </div>
       <fieldset class="wh-pack wh-f-wide">
         <legend>📦 التغليف — اختياري (الإجمالي يتحسب تلقائيًا)</legend>
+
+        <!-- قوالب جاهزة من ذاكرتك: ضغطة واحدة تتملي -->
+        <div class="wh-presets js-pack-presets" hidden></div>
+
+        <!-- معادلة التغليف: صناديق كبيرة بأسئلة تحتها — كل إجابة تفتح اللي بعدها -->
+        <div class="wh-eq">
+          <div class="wh-eq-cell">
+            <input name="l__IDX___pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="بلتة، شكارة، كرتونة...">
+            <span class="wh-eq-lbl">نوع العبوة</span>
+          </div>
+          <div class="wh-eq-cell js-count-cell" hidden>
+            <input name="l__IDX___pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="١٠">
+            <span class="wh-eq-lbl js-count-lbl">كم عبوة؟</span>
+          </div>
+          <div class="wh-eq-cell">
+            <input name="l__IDX___pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت، كجم، علبة...">
+            <span class="wh-eq-lbl js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span>
+            <span class="wh-hintline js-inner-mode-hint"></span>
+          </div>
+          <div class="wh-eq-cell js-innercount-cell" hidden>
+            <input name="l__IDX___pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
+            <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+          </div>
+          <div class="wh-eq-total js-eq-total">—</div>
+        </div>
+
+        <!-- الوزن الاختياري: وزن المعيار (يحوّل العدّ لكجم) أو وزن العبوة نفسها -->
         <div class="wh-pack-row">
-          <label class="wh-f"><span>نوع العبوة</span>
-            <input name="l__IDX___pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="شكارة، كرتونة، بلتة، جركن..."></label>
-          <label class="wh-f"><span class="js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span> <small>(باكت - كجم - لتر...)</small>
-            <input name="l__IDX___pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت - كجم - علبة...">
-            <span class="wh-hintline js-inner-mode-hint"></span></label>
-          <label class="wh-f"><span class="js-count-lbl">عدد العبوات</span>
-            <input name="l__IDX___pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ١٠"></label>
-          <label class="wh-f"><span class="js-inner-count-lbl">كم تحتوي الواحدة من العلب؟</span>
-            <input name="l__IDX___pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="مثال: ٢٧"></label>
-          <label class="wh-f"><span class="js-inner-cap-lbl">وزن العلبة الواحدة</span> <small>(اختياري — للتحويل للوزن)</small>
+          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
             <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
-          <label class="wh-f"><span class="js-cap-lbl">العبوة الواحدة كام؟ (وزن/حجم)</span> <small>(لو مفيش تغليف داخلي)</small>
+          <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
             <input name="l__IDX___pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
         </div>
-        <div class="wh-pack-row wh-pack-loose">
+
+        <!-- السائب يظهر بس لما تحتاجه -->
+        <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة</button>
+        <div class="wh-pack-row js-loose-row" hidden>
           <label class="wh-f">كمية سائبة
             <input name="l__IDX___pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
           <label class="wh-f">وحدة السائب
@@ -152,7 +174,7 @@
           <td class="name"><b>{{ r.item_name }}</b></td>
           <td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
           <td>{{ r.unit or '—' }}</td>
-          <td class="wh-pack-cell">{{ r.pack_label or '—' }}</td>
+          <td class="wh-pack-cell">{{ pack_chips(r.pack_label) }}</td>
           <td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
           <td>{% if r.prod_date %}<bdi dir="ltr" class="date-display">{{ r.prod_date | datefmt }}</bdi>{% else %}—{% endif %}</td>
           <td>{% if r.exp_date %}<bdi dir="ltr" class="date-display">{{ r.exp_date | datefmt }}</bdi>{% else %}—{% endif %}</td>

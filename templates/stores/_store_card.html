@@ -1,3 +1,4 @@
+{% from "partials/pack_story.html" import pack_chips %}
 {# كارت مخزن واحد: حركته الداخلية/الخارجية بالتغليف + كشف أرصدته — مستهدف بالحلقة #}
 <section class="panel wh-store-card">
   <div class="panel-head">
@@ -27,7 +28,7 @@
         <td class="name"><b>{{ row.item }}</b></td>
         <td class="num">{{ row.qty | qty3 }}</td>
         <td>{{ row.unit }}</td>
-        <td>{{ row.pack_label or '—' }}</td>
+        <td class="wh-pack-cell">{{ pack_chips(row.pack_label) }}</td>
         <td>{% if row.serial %}إذن إضافة رقم {{ row.serial | aindic }}{% else %}رصيد أول المدة{% endif %}</td>
       </tr>
       {% endfor %}
@@ -39,7 +40,7 @@
         <td class="name"><b>{{ row.item }}</b></td>
         <td class="num wh-issued">{{ row.qty | qty3 }}</td>
         <td>{{ row.unit }}</td>
-        <td>{{ row.pack_label or '—' }}</td>
+        <td class="wh-pack-cell">{{ pack_chips(row.pack_label) }}</td>
         <td>إذن صرف ٢ مخازن رقم {{ row.permit_no | aindic }}
           {% if row.expiry %}(صلاحية <bdi dir="ltr" class="date-display">{{ row.expiry | datefmt }}</bdi>){% endif %}</td>
       </tr>

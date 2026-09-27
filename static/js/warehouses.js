@@ -281,6 +281,68 @@
       set(".js-cap-lbl", kind ? (km ? "كم تساوي " + kDef + "؟ (وزن/حجم)" : kDef + " الواحدة كام؟ (وزن/حجم)") : "العبوة الواحدة كام؟ (وزن/حجم)");
     }
     dynLabels();
+
+    /* قوالب جاهزة من ذاكرتك: ضغطة واحدة تتملي المعادلة كلها (توجيه ٢٧/٠٩) */
+    var presetsBox = root.querySelector(".js-pack-presets");
+    function renderPresets() {
+      if (!presetsBox) return;
+      var info = currentInfo();
+      var packs = (info && info.packs) || {};
+      var keys = Object.keys(packs);
+      if (!keys.length) { presetsBox.hidden = true; presetsBox.innerHTML = ""; return; }
+      presetsBox.hidden = false;
+      presetsBox.innerHTML = "";
+      keys.forEach(function (k) {
+        var sp = packs[k] || {};
+        var txt = k + " " + (sp.capacity ? "× " + Number(sp.capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 }) : "");
+        if (sp.inner_count) {
+          txt += " بداخلها " + Number(sp.inner_count).toLocaleString("ar-EG", { maximumFractionDigits: 3 })
+            + (sp.inner_kind ? " " + sp.inner_kind : "");
+        }
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "pack-chip preset";
+        chip.textContent = "⭐ " + txt;
+        chip.addEventListener("click", function (e) {
+          e.preventDefault();
+          if (kindEl) kindEl.value = k;
+          if (capEl && sp.capacity) capEl.value = Number(sp.capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+          if (innerKindEl) innerKindEl.value = sp.inner_kind || "";
+          if (innerCountEl && sp.inner_count) innerCountEl.value = Number(sp.inner_count).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+          if (innerCapEl && sp.inner_capacity) innerCapEl.value = Number(sp.inner_capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+          dynLabels(); reveal(); refresh();
+        });
+        presetsBox.appendChild(chip);
+      });
+    }
+    function renderPresetsSafe() {
+      try { renderPresets(); } catch (err) {}
+    }
+
+    /* الكشف التدريجي: كل إجابة تفتح السؤال اللي بعدها — والسائب خلف زراره */
+    var countCell = root.querySelector(".js-count-cell");
+    var innerCountCell = root.querySelector(".js-innercount-cell");
+    var innerCapCell = root.querySelector(".js-innercap-cell");
+    var looseRow = root.querySelector(".js-loose-row");
+    var looseToggle = root.querySelector(".js-loose-toggle");
+    var eqTotal = root.querySelector(".js-eq-total");
+    function reveal() {
+      if (countCell) countCell.hidden = !kindEl.value.trim();
+      if (innerCountCell) innerCountCell.hidden = !innerKindEl.value.trim();
+      if (innerCapCell) innerCapCell.hidden = !innerKindEl.value.trim() || isMeasureUnit(innerKindEl.value.trim());
+      if (looseRow) looseRow.hidden = !looseToggle ? !!((looseEl && looseEl.value)) : !(looseRow.dataset.on === "1" || (looseEl && looseEl.value));
+      if (looseToggle) looseToggle.hidden = !(looseRow && looseRow.hidden) && !!(looseEl && looseEl.value);
+    }
+    if (looseToggle && !looseToggle.dataset.wired) {
+      looseToggle.dataset.wired = "1";
+      looseToggle.addEventListener("click", function () {
+        looseRow.dataset.on = "1";
+        looseRow.hidden = false;
+        looseToggle.hidden = true;
+        if (looseEl) looseEl.focus();
+      });
+    }
+
     if (innerKindEl) {
       innerKindEl.addEventListener("input", dynLabels);
       innerKindEl.addEventListener("change", dynLabels);
@@ -403,6 +465,10 @@
           bits.push(fmt(loose) + " " + word + " سائب");
         }
       }
+      if (eqTotal) {
+        eqTotal.textContent = total > 0 ? fmt(total) + " " + unit
+          : (unitCount > 0 ? fmt(unitCount) + " " + word : "—");
+      }
       if (hint) {
         var sum = total || unitCount;
         var sumUnit = total
@@ -435,12 +501,14 @@
     [kindEl, countEl, capEl, innerKindEl, innerCountEl, innerCapEl, looseEl, looseUnitEl]
       .forEach(function (el) {
         if (!el) return;
-        el.addEventListener("input", refresh);
-        el.addEventListener("change", function () { dynLabels(); refresh(); });
+        el.addEventListener("input", function () { reveal(); refresh(); });
+        el.addEventListener("change", function () { dynLabels(); renderPresetsSafe(); reveal(); refresh(); });
       });
+    kindEl.addEventListener("change", function () { renderPresetsSafe(); });
 
     kindEl.addEventListener("change", function () {
       var info2 = currentInfo();
+      renderPresetsSafe();
       var specs = (info2 && info2.packs) || {};
       var remembered = specs[kindEl.value.trim()];
       if (remembered) {
@@ -468,6 +536,8 @@
       }
       refresh();
     });
+    renderPresetsSafe();
+    reveal();
     refresh();
   }
 

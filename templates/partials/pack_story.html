@@ -1,0 +1,16 @@
+{# قصة التغليف كرقائق ملونة — من الصيغة الكاملة المتولدة (توجيه ٢٧/٠٩) #}
+{% macro pack_chips(label) %}
+{%- if label -%}
+{%- set segs = label.split(" + ") -%}
+{%- for seg in segs -%}
+  {%- if loop.last and " = " in seg -%}
+    {%- set parts = seg.rsplit(" = ", 1) -%}
+    {%- if parts[0] -%}<span class="pack-chip">{{ parts[0] }}</span> {% endif -%}
+<span class="pack-chip gold">الإجمالي: {{ parts[1] }}</span>
+  {%- else -%}
+<span class="pack-chip">{{ seg }}</span>
+  {%- endif -%}
+  {%- if not loop.last -%} <span class="pack-plus">＋</span> {% endif -%}
+{%- endfor -%}
+{%- else -%}—{%- endif -%}
+{% endmacro %}
