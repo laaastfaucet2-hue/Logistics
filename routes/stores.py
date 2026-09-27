@@ -87,6 +87,39 @@ def _store_fields():
             request.form.get("equipment"), request.form.get("notes"))
 
 
+def _enrich(target):
+    """كل صنف داخل المخزن: رصيده بالوحدة + تغليفه المتبقي + أقرب انتهاء
+    + حركته هو بالتفصيل (داخل/خارج بالمستند) — (توجيه ٢٧/٠٩)."""
+    if not target:
+        return target
+    items = {}
+    for row in target["inn"]:
+        it = items.setdefault(row["item"], {"unit": row["unit"], "in": 0.0,
+                                            "out": 0.0, "moves": [], "expiry": ""})
+        it["in"] += float(row["qty"] or 0)
+        it["moves"].append({
+            "dir": "in", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "doc": ("إذن إضافة رقم " + str(row["serial"])) if row.get("serial")
+                   else "رصيد أول المدة",
+            "pack": row.get("pack_label") or ""})
+        if row.get("expiry") and (not it["expiry"] or row["expiry"] < it["expiry"]):
+            it["expiry"] = row["expiry"]
+    for row in target["out"]:
+        it = items.setdefault(row["item"], {"unit": row["unit"], "in": 0.0,
+                                            "out": 0.0, "moves": [], "expiry": ""})
+        it["out"] += float(row["qty"] or 0)
+        it["moves"].append({
+            "dir": "out", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "doc": "إذن صرف ٢ مخازن رقم " + str(row.get("permit_no") or ""),
+            "pack": row.get("pack_label") or ""})
+    for name, it in items.items():
+        it["balance"] = round(target["balances"].get(name, it["in"] - it["out"]), 6)
+        it["pack"] = target["pack_notes"].get(name) or ""
+        it["moves"].sort(key=lambda m: (m["date"] or "", m["dir"]))
+    target["items"] = dict(sorted(items.items(), key=lambda kv: -kv[1]["balance"]))
+    return target
+
+
 @stores_bp.route("")
 @stores_bp.route("/")
 @login_required
@@ -103,11 +136,12 @@ def page():
     editing = None
     if request.args.get("edit"):
         editing = db_stores.get_store(arnum.parse_int(request.args.get("edit")) or 0)
-    # تابات المخازن: تاب لكل مخزن — يفتح حركته وجرد أرصدته هو وحده (توجيه ٢٧/٠٩)
+    # تابات المخازن: تاب لكل مخزن في التابين معًا — «المخازن» و«حركة وكشف الأرصدة» —
+    # ويفتح التاب حركة المخزن وأرصدته وكل صنف داخله بالتفصيل (توجيه ٢٧/٠٩)
     store_tabs = []
     target = None
     store_sel = None
-    if tab == "movement":
+    if tab in ("mains", "movement"):
         report = dw.stores_report(year, month)
         store_tabs = [{"id": e["store"]["id"], "name": e["store"]["name"]}
                       for e in report["stores"]]
@@ -120,6 +154,7 @@ def page():
         else:
             target = report["stores"][0]
             store_sel = target["store"]["id"]
+        target = _enrich(target)
     return render_template(
         "stores/main.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],

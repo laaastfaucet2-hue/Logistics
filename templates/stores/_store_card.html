@@ -53,6 +53,40 @@
   </table>
   </div>
 
+  <b class="wh-taf-title">كل صنف داخل المخزن — رصيده وتغليفه وحركته بالتفصيل</b>
+  {% for name, it in target['items'].items() %}
+  <div class="wh-st-item">
+    <div class="wh-st-item-head">
+      <b class="wh-st-name">📦 {{ name }}</b>
+      <span class="wh-chip">الرصيد الحالي: <b>{{ it.balance | qty3 }}</b> {{ it.unit }}</span>
+      {% if it.pack %}<span class="wh-chip gold">التغليف المتبقي: {{ it.pack }}</span>{% endif %}
+      {% if it.expiry %}<span class="wh-chip dim">أقرب انتهاء:
+        <bdi dir="ltr" class="date-display">{{ it.expiry | datefmt }}</bdi></span>{% endif %}
+    </div>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table wh-st-moves">
+      <thead><tr><th>م</th><th>الحركة</th><th>التاريخ</th><th>الكمية</th>
+        <th>التغليف</th><th>المستند</th></tr></thead>
+      <tbody>
+        {% for mv in it.moves %}
+        <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
+              {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
+          <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
+          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }} {{ it.unit }}</td>
+          <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
+          <td>{{ mv.doc }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% else %}
+  <p class="empty">لا أصناف داخل هذا المخزن بعد.</p>
+  {% endfor %}
+
   <b class="wh-taf-title">جرد أرصدة المخزن — آخر رصيد بطريقة التغليف (يتجدد تلقائيًا)</b>
   <div class="wh-scroll">
   <table class="rt-table wh-table">

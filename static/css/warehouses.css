@@ -301,3 +301,11 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   margin-bottom: 10px; color: var(--gold-light); }
 .icon-btn.del { color: #f87171; }
 .wh-add-line { margin-top: 4px; }
+
+/* كل صنف داخل المخزن: كارت بحركته التفصيلية (توجيه ٢٧/٠٩) */
+.wh-st-item { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 10px 12px; margin: 10px 0; background: var(--surface); }
+.wh-st-item-head { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 8px; }
+.wh-st-name { color: var(--brand-gold); font-size: 1.05rem; }
+.wh-st-moves { font-size: .92rem; }

@@ -96,15 +96,16 @@
   </a>
 </div>
 
-<!-- تابات المخازن: تاب لكل مخزن — يفتح حركته وجرد أرصدته هو وحده (توجيه ٢٧/٠٩) -->
-{% if tab == 'movement' or stores %}
+<!-- تابات المخازن: تاب لكل مخزن — في تاب «المخازن» و«حركة وكشف الأرصدة» معًا:
+     يفتح حركته وجرد أرصدته وكل صنف داخله بالتفصيل (توجيه ٢٧/٠٩) -->
+{% if store_tabs or stores %}
 <nav class="wh-subtabs no-print" aria-label="تويبات كل مخزن">
   {% for st in store_tabs %}
-  <a class="wh-tab {{ 'on' if tab == 'movement' and store_sel == st.id }}"
-     href="{{ url_for('stores.page', tab='movement', store=st.id) }}">🏬 <span>{{ st.name }}</span></a>
+  <a class="wh-tab {{ 'on' if store_sel == st.id }}"
+     href="{{ url_for('stores.page', tab=tab, store=st.id) }}">🏬 <span>{{ st.name }}</span></a>
   {% endfor %}
-  <a class="wh-tab {{ 'on' if tab == 'movement' and store_sel == 0 }}"
-     href="{{ url_for('stores.page', tab='movement', store=0) }}">📦 <span>غير موزع</span></a>
+  <a class="wh-tab {{ 'on' if store_sel == 0 }}"
+     href="{{ url_for('stores.page', tab=tab, store=0) }}">📦 <span>غير موزع</span></a>
 </nav>
 {% endif %}
 
@@ -190,6 +191,9 @@
   </div>
 </div>
 
+{% if target %}
+{% include "stores/_store_card.html" %}
+{% endif %}
 {% else %}
 {% include "stores/_store_card.html" %}
 {% endif %}
