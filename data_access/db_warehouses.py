@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""الدورة المخزنية «مستودعات وسجلات» — دورتان منفصلتان (عمود cycle) وبنفس البنية:
-wh_suppliers (موردو الدورة، منفصلون عن فواتير المتعهد)، wh_items (كتالوج ٣
-مخازن)، wh_receipts (أذون ١ مخازن — الإدخال اليدوي الوحيد)، wh_ledger (دفتر ٣
-مخازن). دفتر ٢ مخازن يُقرأ من أذون آلة الحاسبة (db_permits) — والخصم مع ٤–٧.
-"""
+"""الدورة «مستودعات وسجلات» — دورتان (عمود cycle): wh_suppliers، wh_items
+(كتالوج ٣ مخازن)، wh_receipts (أذون ١ مخازن — الإدخال اليدوي الوحيد)،
+wh_ledger (دفتر ٣ مخازن). دفتر ٢ مخازن من أذون آلة الحاسبة (db_permits)."""
 import json
 
 from core import arabic_numbers as arnum, dates
@@ -178,8 +176,7 @@ def _conn(year, month):
 # ========== الشركات الموردة — لكل دورة سجلها المنفصل تمامًا ==========
 def list_suppliers(year, month, cycle):
     conn = _conn(year, month)
-    rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM wh_suppliers WHERE cycle=? ORDER BY id", (cycle,))]
+    rows = [dict(r) for r in conn.execute("SELECT * FROM wh_suppliers WHERE cycle=? ORDER BY id", (cycle,))]
     conn.close()
     return rows
 
@@ -251,8 +248,7 @@ def list_items(year, month, cycle):
     """أصناف الكتالوج مع أرصدتها من دفتر ٣ مخازن."""
     balances = item_balances(year, month, cycle)
     conn = _conn(year, month)
-    rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM wh_items WHERE cycle=? ORDER BY name", (cycle,))]
+    rows = [dict(r) for r in conn.execute("SELECT * FROM wh_items WHERE cycle=? ORDER BY name", (cycle,))]
     conn.close()
     for r in rows:
         r["balance"] = balances.get(r["id"], 0.0)
@@ -263,8 +259,7 @@ def item_balances(year, month, cycle):
     """{item_id: الرصيد النهائي} — رصيد أول المدة/الإضافات − منصرف إذون ٢ مخازن."""
     conn = _conn(year, month)
     items = [dict(r) for r in conn.execute(
-        "SELECT id, name, ration_unit, handle_unit FROM wh_items WHERE cycle=?",
-        (cycle,))]
+        "SELECT id, name, ration_unit, handle_unit FROM wh_items WHERE cycle=?", (cycle,))]
     rows = conn.execute(
         "SELECT item_id, added, issued FROM wh_ledger WHERE cycle=? ORDER BY id",
         (cycle,)).fetchall()
@@ -300,8 +295,7 @@ def set_handle_unit(year, month, item_id, handle_unit):
 
 
 def resolve_item(year, month, cycle, name, handle_unit_hint=""):
-    """يجلب صنف الكتالوج بالاسم أو ينشئه: وحدة التعامل من الكتالوج، وإلا وحدة
-    المقرر، وإلا الوحدة المختارة في النموذج. إنشاء الكارت هنا = فتح الصنف في ٣ مخازن تلقائيًا."""
+    """يجلب صنف الكتالوج بالاسم أو ينشئه — إنشاؤه يفتح كارته في ٣ مخازن تلقائيًا."""
     name = (name or "").strip()
     conn = _conn(year, month)
     row = conn.execute("SELECT * FROM wh_items WHERE cycle=? AND name=?",
@@ -335,7 +329,9 @@ def _remember_spec(conn, cycle, item_id, kind, capacity,
     """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها واسمها) للصنف تلقائيًا."""
     if not kind or kind == "بدون تغليف":
         return
-    if (not capacity or capacity <= 0) and not (inner_count > 0 and inner_capacity > 0):
+    # العبوة العدّية بمعيار فقط (جركن × ٢٠ لتر / شكارة × ٥٠ كجم بلا وزن) تُحفظ أيضًا —
+    # من غيرها يضيع التفكيك في تفاريد ٣ مخازن وكارت الصنف (شكوى ٢٧/٠٩: الفلفل والزيت)
+    if (not capacity or capacity <= 0) and not (inner_count and inner_count > 0):
         return
     from core import egtime
     conn.execute(
@@ -385,8 +381,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                 pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
                 pack_inner_kind="", stores=None, allow_same_serial=False):
-    """يحفظ إذن إضافة ١ مخازن ويفتح كارت الصنف — رقم يدوي، والتغليف يحسب
-    الكمية تلقائيًا، وstores لتوزيع الكمية على مخزن أو أكثر."""
+    """يحفظ إذن إضافة ١ مخازن — رقم يدوي والتغليف يحسب الكمية وstores للتوزيع."""
     from core import egtime
     pack_kind = (pack_kind or "").strip(); pack_inner_kind = (pack_inner_kind or "").strip()
     pack_total = 0.0; pack_label_text = ""; extras = []
@@ -533,9 +528,9 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
                pack_inner_kind="", prod_iso="", exp_iso="", stores=None):
-    """رصيد أول المدة: إدخال حقيقي بكل بياناته (توجيه ٢٥/٠٩ وتوسيع ٢٦/٠٩) —
+    """رصيد أول المدة: إدخال حقيقي بكل بياناته بتاريخه وتغليفه (توجيه ٢٥/٢٦/٠٩) —
     كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
-    تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف، وأول سطور الكارت."""
+    تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف وأول سطور الكارت."""
     from core import egtime
     if pack_kind and pack_kind != "بدون تغليف" and (pack_inner_kind or "").strip() and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
         handle_unit_hint = pack_inner_kind.strip()   # معيار بيُعدّ ⇒ وحدته هي المعيار
@@ -636,13 +631,9 @@ def store_has_movement(store_id):
 def item_has_movement(year, month, cycle, item_id):
     """هل للصنف أي حركة (إذن إضافة أو رصيد أول المدة أو صرف)؟"""
     conn = _conn(year, month)
-    row = conn.execute(
-        "SELECT 1 FROM wh_receipts WHERE cycle=? AND item_id=? LIMIT 1",
-        (cycle, item_id)).fetchone()
+    row = conn.execute("SELECT 1 FROM wh_receipts WHERE cycle=? AND item_id=? LIMIT 1", (cycle, item_id)).fetchone()
     if not row:
-        row = conn.execute(
-            "SELECT 1 FROM wh_ledger WHERE cycle=? AND item_id=? LIMIT 1",
-            (cycle, item_id)).fetchone()
+        row = conn.execute("SELECT 1 FROM wh_ledger WHERE cycle=? AND item_id=? LIMIT 1", (cycle, item_id)).fetchone()
     conn.close()
     return bool(row)
 
@@ -661,8 +652,7 @@ def item_name_in_use(year, month, name):
 
 
 def cascade_purge_item(year, month, cycle, name):
-    """حذف صنف يمسحه من كل حاجة (توجيه ٢٦/٠٩): الكارت والإيذانات والتوزيعات
-    ورصيد أول المدة والدفتر وسعة التغليف — والتفريدة تتجدد بدونه."""
+    """حذف صنف يمسحه من كل حاجة — والتفريدة تتجدد بدونه (توجيه ٢٦/٠٩)."""
     conn = _conn(year, month)
     with conn:
         ids = [r["id"] for r in conn.execute(
@@ -722,8 +712,7 @@ def issue_rows_for_item(year, month, cycle, item):
 
 
 def item_card(year, month, item_id):
-    """كارت الصنف: رصيد أول المدة + إضافات ١ مخازن + منصرف إذون ٢ مخازن،
-    مرتبة زمنيًا بالرصيد التراكمي — بوحدة تعامل الصنف."""
+    """كارت الصنف: أول المدة + إضافات + منصرف بالترتيب الزمني والرصيد التراكمي."""
     item = get_item(year, month, item_id)
     if not item:
         return None
@@ -759,8 +748,7 @@ def item_card(year, month, item_id):
 
 # ========== دفتر ٢ مخازن — إذون آلة الحاسبة (عرض؛ الخصم التلقائي مع ٤–٧ مخازن) ==========
 def permits_book(year, month, cycle):
-    """أذون ٢ مخازن وأصناف دورة {cycle} داخل كل إذن — مفاتيح actuals
-    «{section}_{الصنف}» تفصل التموين عن المتعهد (وحدات من الجدول مباشرة)."""
+    """أذون ٢ مخازن وأصناف دورة {cycle} — actuals تفصل التموين عن المتعهد."""
     from data_access import db_permits as dp
     prefix = SECTION_BY_CYCLE[cycle] + "_"
     conn = _conn(year, month)
@@ -784,6 +772,19 @@ def permits_book(year, month, cycle):
         items.sort(key=lambda x: x["name"])
         out.append({**permit, "cycle_items": items})
     return out
+
+def delete_receipt(year, month, cycle, serial):
+    """مسح إذن إضافة بسطوره وتوزيعه — تمهيدًا لإعادة حفظه بعد التعديل (توجيه ٢٧/٠٩)."""
+    conn = _conn(year, month)
+    ids = [r[0] for r in conn.execute(
+        "SELECT id FROM wh_receipts WHERE cycle=? AND serial=?", (cycle, int(serial)))]
+    for rid in ids:
+        conn.execute("DELETE FROM wh_receipt_stores WHERE receipt_id=?",(rid,))
+        conn.execute("DELETE FROM wh_receipts WHERE id=?",(rid,))
+    conn.execute("DELETE FROM wh_ledger WHERE cycle=? AND kind='add1' AND permit_no=?",(cycle,int(serial)))
+    conn.commit(); conn.close()
+    return bool(ids)
+
 
 # ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
 UNASSIGNED = "غير موزع على مخازن"
@@ -812,8 +813,7 @@ def _batch_pool(year, month, cycle):
     """دفعات الدورة مرتبة: الأقرب صلاحية أولًا وتساوي ⇒ الأقدم إضافةً (قرار المستخدم)."""
     items = {it["id"]: it for it in list_items(year, month, cycle)}
     conn = _conn(year, month)
-    openers = [dict(r) for r in conn.execute(
-        "SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
+    openers = [dict(r) for r in conn.execute("SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
     conn.close()
     opener_parts = opener_stores(year, month, cycle)
     pool = []
@@ -930,14 +930,12 @@ def stores_report(year, month):
         items = {it["id"]: it for it in list_items(year, month, cycle)}
         # رصيد أول المدة: كمية داخل موزعة على مخازنه (أو «غير موزع» بلا توزيع)
         conn = _conn(year, month)
-        openers = [dict(r) for r in conn.execute(
-            "SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
+        openers = [dict(r) for r in conn.execute("SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
         conn.close()
         opener_parts = opener_stores(year, month, cycle)
         for o in openers:
             item = items.get(o["item_id"])
-            if not item or not (o["added"] or 0):
-                continue
+            if not item or not (o["added"] or 0): continue
             for part in (opener_parts.get(o["item_id"]) or [
                     {"store_id": None, "store_name": UNASSIGNED,
                      "qty": float(o["added"])}]):
@@ -973,7 +971,8 @@ def stores_report(year, month):
                 "date_iso": f"{year:04d}-{month:02d}-{int(row['date_from']):02d}",
                 "cycle": cycle_name, "item": row["item"], "unit": row["unit"],
                 "qty": row["qty"], "permit_no": row["permit_no"],
-                "expiry": row["expiry"], "pack_label": row["pack_label"],
+                "expiry": row["expiry"],
+                "pack_label": row.get("issued_label") or row["pack_label"],
             })
             target["balances"][row["item"]] = \
                 target["balances"].get(row["item"], 0.0) - row["qty"]

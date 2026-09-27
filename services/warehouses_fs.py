@@ -297,6 +297,10 @@ def taf3_pack_rows(year, month, cycle, item_id):
           "pack_inner_count": _sp.get("inner_count", 0),
           "pack_inner_capacity": _sp.get("inner_capacity", 0)}
     led = packaging.PackLedger(fb.get("pack_kind"), fb.get("pack_capacity"), unit)
+    # عبوة بعدّ المعيار فقط (جركن × ٢٠ لتر / كرتونة × ١٢ باكت) — مدير العبوات
+    # بوزن ما يشتغلش عليها: الرصيد بالتغليف يتحسب بتفكيك الكمية نفسها (توجيه ٢٧/٠٩)
+    count_pack = (float(fb.get("pack_capacity") or 0) <= 0
+                  and float(fb.get("pack_inner_count") or 0) > 0)
 
     def _brk(q, spec=None, rest="سائب"):
         spec = spec or {}
@@ -324,6 +328,7 @@ def taf3_pack_rows(year, month, cycle, item_id):
                      "permit_no": r.get("permit_no"), "label": r.get("label"),
                      "kind": r["kind"], "added": r["added"], "added_pack": added_pack,
                      "issued": r["issued"], "issued_pack": issued_pack if r["kind"] == "issue2" else "—",
-                     "balance": r["balance"], "bal_pack": led.label(),
+                     "balance": r["balance"],
+                     "bal_pack": (_brk(r["balance"], fb, "سائب") if count_pack else led.label()),
                      "notes": r.get("notes") or ""})
     return {"item": item, "rows": rows, "balance_pack": rows[-1]["bal_pack"] if rows else ""}

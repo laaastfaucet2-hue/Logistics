@@ -166,6 +166,19 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
                 parts.append(f"{_open_pack(_box_word(1))} ({arnum.fmt_qty_trim(rest)} {unit})")
             else:
                 parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
+    elif kind and inner_count > 0:
+        # عبوة بعدّ المعيار فقط — جركن بداخلها ٢٠ لتر / كرتونة بداخلها ١٢ باكت:
+        # «المتبقي ١١٥ لتر ⇒ ٥ جركن + ١٥ لتر» و«٢٣٩٫٧ باكت ⇒ ١٩ كرتونة + ١١٫٧ باكت»
+        full = int(remaining // inner_count)
+        rest = round(remaining - full * inner_count, 6)
+        if full > 0:
+            _fw = f" {_full_word(kind)}" if open_mode and rest > 0.000001 else ""
+            parts.append(f"{arnum.to_arabic_indic(str(full))} {kind}{_fw}")
+        if rest > 0.000001:
+            if open_mode:
+                parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
+            else:
+                parts.append(f"{arnum.fmt_qty_trim(rest)} {unit}")
     elif kind and capacity > 0:
         full = int(remaining // capacity)
         rest = round(remaining - full * capacity, 6)

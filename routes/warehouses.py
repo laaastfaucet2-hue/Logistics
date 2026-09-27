@@ -153,6 +153,11 @@ def page():
         r["wday"] = _wday(year, month, r["day"])
         r["notes"] = dw.user_notes(r["notes"])   # ملاحظات المستخدم فقط — لا بتات تلقائية
     groups = dw.receipt_groups(year, month, cycle)   # إيذانات مجمعة (كذا صنف للإذن)
+    # تعديل إذن ١ مخازن: ?wh1edit=<رقم> يفتح نفس فورم الإضافة مُعبّيًا (توجيه ٢٧/٠٩)
+    wh1_edit = None
+    if sub == "wh1" and request.args.get("wh1edit"):
+        _eds = arnum.parse_int(request.args.get("wh1edit")) or 0
+        wh1_edit = next((g for g in groups if g["serial"] == _eds), None)
 
     item_name_set = {it["name"].lower() for it in items}
     catalog_missing = [c for c in dw.ration_catalog(year, month, cycle)
@@ -249,7 +254,7 @@ def page():
         subs=TABS, sub=sub, sub_name=dict((t[0], t[1]) for t in TABS)[sub],
         tab_file=tab_file, tab_folder=wf.SUB_FOLDERS[sub],
         counts=counts,
-        suppliers=suppliers, editing=editing, groups=groups,
+        suppliers=suppliers, editing=editing, groups=groups, wh1_edit=wh1_edit,
         items=items, catalog_missing=catalog_missing,
         receipts=receipts, permits=permits, card=card,
         units=__import__("data_access.db_rations", fromlist=["collect_units"])
@@ -322,14 +327,11 @@ def suppliers_delete():
 # ======================================================================
 # ١ مخازن — إذن إضافة صنف
 # ======================================================================
-@warehouses_bp.route("/wh1/add", methods=["POST"])
-@login_required
-def wh1_add():
-    """إذن إضافة ١ مخازن احترافي (توجيه ٢٧/٠٩): إذن واحد × كذا صنف × كذا تغليف —
-    مربعات: بيانات الإذن + كارت لكل صنف (تغليف موحد + تواريخ + توزيع مخازن)."""
-    year, month = _ctx()
-    cycle = _cycle()
-    receipt_no = arnum.parse_int(request.form.get("receipt_no"))
+def _save_wh1(year, month, cycle, fixed_serial=None):
+    """قلب حفظ إذن ١ مخازن — الإضافة والتعديل بيان نفس المنطق (توجيه ٢٧/٠٩):
+    إذن واحد × كذا صنف × كذا تغليف. fixed_serial ⇒ وضع التعديل: يُحفَظ بنفس
+    الرقم بعد اعتماد كل السطور (تحليل كامل قبل مسح الإذن القديم)."""
+    receipt_no = fixed_serial or arnum.parse_int(request.form.get("receipt_no"))
     if receipt_no is not None and receipt_no < 1:
         receipt_no = None
     day = _day(year, month, request.form.get("day"), _default_day(year, month))
@@ -369,49 +371,70 @@ def wh1_add():
         lines.append((i, name))
     lines = [(i, n) for i, n in lines if n]
     if not lines:
-        return _rb(cycle, "wh1", err="ضيف صنفًا واحدًا على الأقل في الإذن")
+        raise ValueError("ضيف صنفًا واحدًا على الأقل في الإذن")
 
+    # المرحلة ١: تحليل واعتماد كل السطور قبل مسح أي شيء (أمان التعديل)
+    staged = []
+    for order, (i, name) in enumerate(lines):
+        def _f(key, default=0.0):
+            return arnum.parse_float(request.form.get(f"l{i}_{key}")) or default
+        qty = arnum.parse_float(request.form.get(f"l{i}_qty"))
+        pack_kind = (request.form.get(f"l{i}_pack_kind") or "").strip()
+        has_pack = pack_kind and pack_kind != "بدون تغليف" and (
+            _f("pack_count") or _f("pack_loose"))
+        if (qty is None or qty <= 0) and not has_pack:
+            raise ValueError(f"الصنف «{name}»: اكتب الكمية أو بيانات التغليف")
+        try:
+            prod_iso = _opt_date(request.form.get(f"l{i}_prod_date"))
+            exp_iso = _opt_date(request.form.get(f"l{i}_exp_date"))
+        except ValueError:
+            raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه يوم/شهر/سنة صحيحًا")
+        if prod_iso and exp_iso and exp_iso < prod_iso:
+            raise ValueError(f"الصنف «{name}»: تاريخ الصلاحية قبل تاريخ الإنتاج")
+        stores_parts = []
+        for sid_raw, qty_raw in zip(request.form.getlist(f"l{i}_store_id"),
+                                    request.form.getlist(f"l{i}_store_qty")):
+            sid = arnum.parse_int(sid_raw)
+            sqty = arnum.parse_float(qty_raw)
+            store = db_stores.get_store(sid) if sid else None
+            if store and sqty and sqty > 0:
+                stores_parts.append((store["id"], store["name"], sqty))
+        staged.append(dict(
+            day=day, name=name, qty=qty,
+            handle_unit_hint=request.form.get(f"l{i}_handle_unit"),
+            producer=producer, supplier_id=supplier_id, supplier_name=supplier_name,
+            prod_iso=prod_iso, exp_iso=exp_iso,
+            notes=head_notes, date_iso=date_iso,
+            pack_kind=pack_kind, pack_count=_f("pack_count"),
+            pack_capacity=_f("pack_capacity"), pack_loose=_f("pack_loose"),
+            pack_inner_count=_f("pack_inner_count"),
+            pack_inner_capacity=_f("pack_inner_capacity"),
+            pack_inner_kind=(request.form.get(f"l{i}_pack_inner_kind") or "").strip(),
+            pack_loose_unit=(request.form.get(f"l{i}_pack_loose_unit") or "").strip(),
+            stores=stores_parts))
+
+    # المرحلة ٢: وضع التعديل — مسح الإذن القديم بعد اعتماد الجديد
+    if fixed_serial:
+        dw.delete_receipt(year, month, cycle, fixed_serial)
+
+    # المرحلة ٣: الحفظ — بنفس الرقم في التعديل، والتسلسل أو الرقم المكتوب في الإضافة
     saved = []
+    for order, args in enumerate(staged):
+        args["receipt_no"] = receipt_no
+        args["allow_same_serial"] = bool(fixed_serial) or order > 0
+        saved.append(dw.add_receipt(year, month, cycle, args.pop("day"),
+                                    args.pop("name"), args.pop("qty"), **args))
+    return saved
+
+
+@warehouses_bp.route("/wh1/add", methods=["POST"])
+@login_required
+def wh1_add():
+    """إذن إضافة ١ مخازن: إذن واحد يشمل كذا صنف — وكارت لكل صنف في ٣ مخازن."""
+    year, month = _ctx()
+    cycle = _cycle()
     try:
-        for order, (i, name) in enumerate(lines):
-            def _f(key, default=0.0):
-                return arnum.parse_float(request.form.get(f"l{i}_{key}")) or default
-            qty = arnum.parse_float(request.form.get(f"l{i}_qty"))
-            pack_kind = (request.form.get(f"l{i}_pack_kind") or "").strip()
-            has_pack = pack_kind and pack_kind != "بدون تغليف" and (
-                _f("pack_count") or _f("pack_loose"))
-            if (qty is None or qty <= 0) and not has_pack:
-                raise ValueError(f"الصنف «{name}»: اكتب الكمية أو بيانات التغليف")
-            try:
-                prod_iso = _opt_date(request.form.get(f"l{i}_prod_date"))
-                exp_iso = _opt_date(request.form.get(f"l{i}_exp_date"))
-            except ValueError:
-                raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه يوم/شهر/سنة صحيحًا")
-            if prod_iso and exp_iso and exp_iso < prod_iso:
-                raise ValueError(f"الصنف «{name}»: تاريخ الصلاحية قبل تاريخ الإنتاج")
-            stores_parts = []
-            for sid_raw, qty_raw in zip(request.form.getlist(f"l{i}_store_id"),
-                                        request.form.getlist(f"l{i}_store_qty")):
-                sid = arnum.parse_int(sid_raw)
-                sqty = arnum.parse_float(qty_raw)
-                store = db_stores.get_store(sid) if sid else None
-                if store and sqty and sqty > 0:
-                    stores_parts.append((store["id"], store["name"], sqty))
-            result = dw.add_receipt(
-                year, month, cycle, day, name, qty,
-                handle_unit_hint=request.form.get(f"l{i}_handle_unit"),
-                producer=producer, supplier_id=supplier_id, supplier_name=supplier_name,
-                prod_iso=prod_iso, exp_iso=exp_iso,
-                notes=head_notes, date_iso=date_iso,
-                receipt_no=receipt_no, allow_same_serial=order > 0,
-                pack_kind=pack_kind, pack_count=_f("pack_count"),
-                pack_capacity=_f("pack_capacity"), pack_loose=_f("pack_loose"),
-                pack_inner_count=_f("pack_inner_count"),
-                pack_inner_capacity=_f("pack_inner_capacity"),
-                pack_inner_kind=(request.form.get(f"l{i}_pack_inner_kind") or "").strip(),
-                pack_loose_unit=(request.form.get(f"l{i}_pack_loose_unit") or "").strip(),
-                stores=stores_parts)
-            saved.append(result)
+        saved = _save_wh1(year, month, cycle)
     except ValueError as exc:
         return _rb(cycle, "wh1", err=str(exc))
     snap_ok = _snapshot(cycle)
@@ -425,6 +448,27 @@ def wh1_add():
           f"{arnum.to_arabic_indic(str(len(saved)))} أصناف: {items_word}{conv} — وتسجيلها في البيانات المحلية") + (
         "" if snap_ok else " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة")
     return _rb(cycle, "wh3", item=first["item"]["id"], ok=ok)
+
+
+@warehouses_bp.route("/wh1/edit/<int:serial>", methods=["POST"])
+@login_required
+def wh1_edit(serial):
+    """تعديل إذن ١ مخازن (توجيه ٢٧/٠٩): نفس فورم الإضافة مُعبّيًا — يُحفظ بنفس
+    الرقم وتُعاد احتساب الأرصدة والكروت والتفريدة من أول وجديد."""
+    year, month = _ctx()
+    cycle = _cycle()
+    try:
+        saved = _save_wh1(year, month, cycle, fixed_serial=serial)
+    except ValueError as exc:
+        return _rb(cycle, "wh1", err=str(exc), wh1edit=serial)
+    snap_ok = _snapshot(cycle)
+    first = saved[0]
+    items_word = " + ".join(r["item"]["name"] for r in saved)
+    ok = (f"عُدّل إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(first['serial'])} — "
+          f"{arnum.to_arabic_indic(str(len(saved)))} أصناف: {items_word} — "
+          f"وأعيد احتساب الأرصدة والكروت والدفاتر") + (
+        "" if snap_ok else " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة")
+    return _rb(cycle, "wh1", ok=ok)
 
 
 # ======================================================================

@@ -93,6 +93,33 @@ def register(app):
         return arnum.fmt_qty(value)
 
 
+    @app.template_filter("wh1line_json")
+    def wh1line_json(row):
+        """سطر إذن ١ مخازن → JSON لتعبئة فورم التعديل (توجيه ٢٧/٠٩)."""
+        import json as _json
+        payload = {
+            "item_name": row.get("item_name") or "",
+            "handle_unit": row.get("unit") or "",
+            "qty": float(row.get("qty_handle") or 0),
+            "pack_kind": (row.get("pack_kind") or "").strip(),
+            "pack_count": row.get("pack_count") or None,
+            "pack_capacity": row.get("pack_capacity") or None,
+            "pack_loose": row.get("pack_loose") or None,
+            "pack_inner_kind": (row.get("pack_inner_kind") or "").strip(),
+            "pack_inner_count": row.get("pack_inner_count") or None,
+            "pack_inner_capacity": row.get("pack_inner_capacity") or None,
+            "pack_loose_unit": (row.get("pack_loose_unit") or "").strip(),
+            "prod_date": row.get("prod_date") or "",
+            "exp_date": row.get("exp_date") or "",
+            "stores": [{"store_id": st.get("store_id") or "",
+                        "store_name": st.get("store_name") or "",
+                        "qty": float(st.get("qty") or 0)}
+                       for st in (row.get("stores") or [])],
+        }
+        return _json.dumps(payload, ensure_ascii=False)
+
+
+
 
     @app.url_defaults
     def scoped_urls(endpoint, values):
