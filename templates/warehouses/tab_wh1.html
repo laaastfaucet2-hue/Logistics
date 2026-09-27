@@ -39,7 +39,7 @@
   <!-- مربع ٢: الأصناف — كارت لكل صنف -->
   <fieldset class="wh-fs">
     <legend>📦 الأصناف — كل صنف في كارت مستقل</legend>
-    {% if wh1_edit %}<script type="application/json" id="whEditData">[{{ wh1_edit.lines | map('wh1line_json') | join(',') }}]</script>{% endif %}
+    {% if wh1_edit %}<script type="application/json" id="whEditData">{{ wh1_edit.lines | wh1edit_json }}</script>{% endif %}
     <div id="whItemLines"></div>
     <button type="button" class="rt-btn gold wh-add-line" id="whAddLine">
       <span class="wh-newbtn-plus">＋</span> إضافة صنف آخر</button>

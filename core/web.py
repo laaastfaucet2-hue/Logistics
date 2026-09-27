@@ -93,11 +93,9 @@ def register(app):
         return arnum.fmt_qty(value)
 
 
-    @app.template_filter("wh1line_json")
-    def wh1line_json(row):
-        """سطر إذن ١ مخازن → JSON لتعبئة فورم التعديل (توجيه ٢٧/٠٩)."""
-        import json as _json
-        payload = {
+    def _wh1line_payload(row):
+        """سطر إذن ١ مخازن → قاموس تعبئة فورم التعديل (توجيه ٢٧/٠٩)."""
+        return {
             "item_name": row.get("item_name") or "",
             "handle_unit": row.get("unit") or "",
             "qty": float(row.get("qty_handle") or 0),
@@ -116,7 +114,24 @@ def register(app):
                         "qty": float(st.get("qty") or 0)}
                        for st in (row.get("stores") or [])],
         }
-        return _json.dumps(payload, ensure_ascii=False)
+
+
+    @app.template_filter("wh1edit_json")
+    def wh1edit_json(lines):
+        """سطور إذن التعديل → JSON سليم للتاج <script> (v82).
+
+        كان العيب: json.dumps بيرجّع نص عادي فالقالب بيتشفّله (&#34;)
+        والمتصفح مش بيفك التشفير جوّه script فكان JSON.parse بيفشل والفورم بيرجع فاضي.
+        """
+        import json as _json
+        from markupsafe import Markup
+        payload = [_wh1line_payload(row) for row in (lines or [])]
+        raw = _json.dumps(payload, ensure_ascii=False)
+        # نفس حيَل tojson: المحارف اللي ممكن تكسر التاج تتحول لتهريب يونيكود
+        raw = (raw.replace("<", "\\u003c").replace(">", "\\u003e")
+                  .replace("&", "\\u0026").replace("\u2028", "\\u2028")
+                  .replace("\u2029", "\\u2029"))
+        return Markup(raw)
 
 
 

@@ -60,7 +60,7 @@
     {% if current_user %}{% include "partials/official_print_foot.html" %}{% endif %}
   {% endblock %}
 </main>
-<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>معاينة ويب · احتفظ بنسختك الاحتياطية</span>{% endif %}</footer>
+<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>معاينة ويب · احتفظ بنسختك الاحتياطية</span>{% endif %}</footer>
 </div></div>
 {% include 'partials/notifications.html' %}
 <script type="application/json" id="dateConfig">{{ date_config | tojson }}</script>
