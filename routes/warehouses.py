@@ -211,6 +211,15 @@ def page():
         for row in card["rows"]:
             row["wday"] = _wday(year, month, row["day"])
         card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
+        # الحالة الكلية للصنف: الرصيد والمضاف والمنصرف والتغليف المتبقي (توجيه ٢٧/٠٩)
+        _specs = dw.pack_specs_map(year, month, cycle).get(card["item"]["name"], {})
+        card["pack_note"] = ""
+        if _specs and card["balance"] > 0:
+            _pk = list(_specs)[-1]
+            _sp = _specs[_pk]
+            card["pack_note"] = dw.pack_breakdown(
+                _pk, _sp.get("capacity"), _sp.get("inner_count"),
+                _sp.get("inner_capacity"), card["balance"], card["item"]["handle_unit"])
         # دفتر التفاريد الخاص بالصنف: مضاف/منصرف/الرصيد بالتغليف (توجيه ٢٧/٠٩)
         taf3 = wf.taf3_pack_rows(year, month, cycle, card["item"]["id"])
         if taf3:

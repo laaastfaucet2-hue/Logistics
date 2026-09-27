@@ -736,9 +736,8 @@ def item_card(year, month, item_id):
     for r in rows:                       # ملاحظات المستخدم فقط
         r["notes"] = user_notes(r.get("notes"))
 
-    def sort_key(r):
-        return (r["date_iso"], 0 if r["kind"] == "opener" else 1,
-                r.get("permit_no") or 0)
+    def sort_key(r):   # الإضافات قبل المنصرف في نفس اليوم — لا رصيد سالب بالخطأ
+        return (r["date_iso"], {"opener": 0, "add1": 1}.get(r["kind"], 2), r.get("permit_no") or 0)
     rows.sort(key=sort_key)
     running = 0.0
     out = []
@@ -795,11 +794,12 @@ def receipt_groups(year, month, cycle):
     """إيذانات ١ مخازن مجمعة: إذن واحد قد يشمل كذا صنف — صفوف نفس serial تتجمع."""
     from datetime import date as _date; from core import egtime as _eg
     out = {}
+    names = {it["id"]: it["name"] for it in list_items(year, month, cycle)}
     for r in list_receipts(year, month, cycle):
         try: wday = _eg.weekday_ar(_date.fromisoformat(r["date_iso"] or ""))
         except ValueError: wday = None
         g = out.setdefault(r["serial"], {"serial": r["serial"], "day": r["day"], "date_iso": r["date_iso"], "wday": wday, "supplier_name": r["supplier_name"], "producer": r["producer"], "notes": user_notes(r["notes"]), "lines": []})
-        rr = dict(r); rr["notes"] = user_notes(r["notes"]); g["lines"].append(rr)
+        rr = dict(r); rr["notes"] = user_notes(r["notes"]); rr["item_name"] = names.get(r["item_id"], "—"); g["lines"].append(rr)
     return [out[k] for k in sorted(out)]
 
 def user_notes(notes):

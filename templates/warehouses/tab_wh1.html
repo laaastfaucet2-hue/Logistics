@@ -138,11 +138,10 @@
       <th>الشركة الموردة</th><th></th></tr></thead>
     <tbody>
       {% for g in groups %}
-      {% set names_list = g.lines | map(attribute='item_name') | list %}
-      <tr class="wh-taf-row" data-taf-open="wh1Dialog-{{ g.serial }}" title="اضغط لعرض الإذن كامل">
+            <tr class="wh-taf-row" data-taf-open="wh1Dialog-{{ g.serial }}" title="اضغط لعرض الإذن كامل">
         <td class="num">{{ loop.index | aindic }}</td>
         <td class="num"><b>{{ g.serial | aindic }}</b></td>
-        <td class="name">{% for n in names_list[:3] %}{{ n }}{% if not loop.last %}، {% endif %}{% endfor %}{% if names_list | length > 3 %} + {{ names_list[3:] | length | aindic }} أصناف…{% endif %}</td>
+        <td class="name">{% for r in g.lines[:3] %}{{ r.item_name }} (<b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}){% if not loop.last %}، {% endif %}{% endfor %}{% if g.lines | length > 3 %} + {{ g.lines[3:] | length | aindic }} أصناف…{% endif %}</td>
         <td>{{ g.supplier_name or '—' }}</td>
         <td class="no-print"><button type="button" class="rt-btn dim"
               data-taf-open="wh1Dialog-{{ g.serial }}">📄 عرض الإذن</button></td>
