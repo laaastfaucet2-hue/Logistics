@@ -823,3 +823,20 @@ document.addEventListener("click", function (ev) {
     p.hidden = p.getAttribute(pan) !== btn.getAttribute(sub);
   });
 });
+
+/* من التاميدات: «عرض الإذن» يفتح ٢ مخازن على «سجلات ٢ مخازن» عند إذنها مباشرة (توجيه ٢٧/٠٩) */
+(function () {
+  try {
+    var q = new URLSearchParams(window.location.search);
+    var sub2 = q.get("wh2sub"), no = q.get("wh2permit");
+    if (!sub2 && !no) return;
+    if (sub2) {
+      var btn = document.querySelector('[data-wh2sub="' + sub2 + '"]');
+      if (btn) btn.click();
+    }
+    if (no) {
+      var row = document.querySelector('[data-taf-open="sijDialog-' + no + '"]');
+      if (row) row.click();
+    }
+  } catch (err) {}
+})();

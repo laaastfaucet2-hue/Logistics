@@ -230,7 +230,7 @@
                title="طباعة هذه التأميدة فقط (مستند رسمي)">🖨 طباعة مستند التأميدة</a>
             {% if r.permits %}
             <span class="tm-permit-done" title="حُفظ إذن صرف مربوط بهذه التأميدة">✔ تم عمل إذن ٢ مخازن{% if r.permits[0].number %} رقم {{ r.permits[0].number | aindic }}{% endif %}</span>
-            <a class="tm-permit-make dim" href="{{ url_for('calc2.page') }}&from={{ r.day }}&to={{ r.day_to or r.day }}&selected={{ 'main:' ~ r.id }}">عرض الإذن</a>
+            <a class="tm-permit-make dim" href="{{ url_for('warehouses.page', cycle='supply', sub='wh2') }}&wh2sub=sijlat&wh2permit={{ r.permits[0].number }}" title="فتح سجلات ٢ مخازن عند هذا الإذن">عرض الإذن</a>
             {% else %}
             <a class="tm-permit-make" href="{{ url_for('calc2.page') }}&from={{ r.day }}&to={{ r.day_to or r.day }}&selected={{ 'main:' ~ r.id }}"
                title="فتح حاسبة ٢ مخازن لإذن صرف هذه التأميدة">عمل إذن صرف ٢ مخازن</a>
