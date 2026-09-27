@@ -37,6 +37,15 @@
     var row = UNIT_BASE[key];
     return row ? { base: row[0], factor: row[1] } : { base: key, factor: 1 };
   }
+  /* التصنيف الرسمي (توجيه ٢٧/٠٩): الوزن والحجم بس هوما اللي بيتحولوا —
+     كجم/جم/جرام/طن → كجم، ولتر/مل → لتر. أي معيار تاني بيُعدّ بالعدد زي ما هو. */
+  function isMeasureUnit(u) {
+    var b = baseOf(u).base;
+    return b === "كجم" || b === "لتر";
+  }
+  function unitModeWord(u) {
+    return isMeasureUnit(u) ? "وزن/حجم — الحسبة بالكيلو أو اللتر" : "بيُعدّ بالعدد";
+  }
 
   /* فتح/قفل نماذج الزر الأمبر + فورمات رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
   [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"],
@@ -251,8 +260,14 @@
       set(".js-inner-kind-lbl", kind ? "نوع المعيار داخل " + kDef + "؟" : "نوع المعيار داخل العبوة؟");
       var capRow = innerCapEl ? innerCapEl.closest(".wh-f") : null;
       if (capRow) {
-        var iwm = (function () { var b = baseOf(inner).base; return !!inner && (b === "كجم" || b === "لتر"); })();
-        capRow.hidden = !!iwm;   /* كجم ما لهوش «وزن واحد» — الحقل يختفي */
+        capRow.hidden = isMeasureUnit(inner);   /* كجم ما لهوش «وزن واحد» — الحقل يختفي */
+      }
+      var modeEl = root.querySelector(".js-inner-mode-hint");
+      if (modeEl) {
+        modeEl.textContent = inner
+          ? "📌 «" + inner + "» = " + unitModeWord(inner) +
+            (isMeasureUnit(inner) ? "" : " — واكتب وزن الواحد لو حابب تحوّلها لكجم")
+          : "";
       }
       set(".js-count-lbl", !kind ? "عدد العبوات" : (km ? "كم " + kind + "؟" : "عدد ال" + plural(kind)));
       if (inner) {
@@ -341,11 +356,7 @@
 
       /* وضع الحسبة موحّد: كله وزن (كجم/لتر) أو كله عدّ وحدات — ممنوع خلط مجهولين
          (خطأ ٥٠٠ + ٤١ = ٤١ كان بسبب جمعهما في متغيرين مختلفين — توجيه ٢٧/٠٩) */
-      function isMeasure(u) {
-        var b = baseOf(u).base;
-        return b === "كجم" || b === "لتر";
-      }
-      var weightMode = (cap > 0) || (ica > 0) || isMeasure(iw) || isMeasure(unit);
+      var weightMode = (cap > 0) || (ica > 0) || isMeasureUnit(iw) || isMeasureUnit(unit);
       var bits = [], total = 0, unitCount = 0;
       if (isReal() && count) {
         if (cap) {
@@ -364,7 +375,7 @@
             fmt(ica) + " " + unit + " = " + fmt(sub3) + " " + unit);
         } else if (ic) {
           var q = count * ic;
-          var qUnit = weightMode ? (isMeasure(iw) ? iw : (unit || iw)) : word;
+          var qUnit = weightMode ? (isMeasureUnit(iw) ? iw : (unit || iw)) : word;
           if (weightMode) {
             total += q;   /* ١٠ شكارة بداخلها ٥٠ كجم = ٥٠٠ كجم — وزن */
           } else {
@@ -386,7 +397,7 @@
           bits.push("السائب بالعلب محتاج وزن العلبة!");
         } else if (weightMode) {
           total += loose;
-          bits.push(fmt(loose) + " " + (isMeasure(iw) ? iw : (unit || iw)) + " سائب");
+          bits.push(fmt(loose) + " " + (isMeasureUnit(iw) ? iw : (unit || iw)) + " سائب");
         } else {
           unitCount += loose;
           bits.push(fmt(loose) + " " + word + " سائب");
@@ -395,7 +406,7 @@
       if (hint) {
         var sum = total || unitCount;
         var sumUnit = total
-          ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasure(iw) ? iw : (unit || iw)))
+          ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasureUnit(iw) ? iw : (unit || iw)))
           : word;
         if (bits.length === 1 && sum > 0) {
           hint.textContent = "الإجمالي: " + bits[0];
@@ -405,14 +416,10 @@
         }
       }
       if (qtyEl) {
-        var isMeasure = (function () {
-          var b = baseOf(unit).base;
-          return b === "كجم" || b === "لتر";
-        })();
         if (total > 0) {
           qtyEl.value = fmt(total);
           qtyEl.readOnly = true;
-        } else if (unitCount > 0 && !isMeasure) {
+        } else if (unitCount > 0 && !isMeasureUnit(unit)) {
           /* عدّ وحدات: عالم العدّ كله — الكمية الإجمالية بالوحدات من غير وزن */
           qtyEl.value = fmt(unitCount);
           qtyEl.readOnly = true;
