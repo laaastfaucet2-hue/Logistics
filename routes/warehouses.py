@@ -399,6 +399,7 @@ def wh1_add():
                 pack_capacity=_f("pack_capacity"), pack_loose=_f("pack_loose"),
                 pack_inner_count=_f("pack_inner_count"),
                 pack_inner_capacity=_f("pack_inner_capacity"),
+                pack_inner_kind=(request.form.get(f"l{i}_pack_inner_kind") or "").strip(),
                 pack_loose_unit=(request.form.get(f"l{i}_pack_loose_unit") or "").strip(),
                 stores=stores_parts)
             saved.append(result)
@@ -447,6 +448,7 @@ def wh3_opener():
     pack_loose = arnum.parse_float(request.form.get("pack_loose")) or 0
     pack_inner_count = arnum.parse_float(request.form.get("pack_inner_count")) or 0
     pack_inner_capacity = arnum.parse_float(request.form.get("pack_inner_capacity")) or 0
+    pack_inner_kind = (request.form.get("pack_inner_kind") or "").strip()
     pack_loose_unit = (request.form.get("pack_loose_unit") or "").strip()
     supplier_id = None
     supplier_name = (request.form.get("supplier_name") or "").strip()
@@ -478,6 +480,7 @@ def wh3_opener():
                       pack_capacity=pack_capacity, pack_loose=pack_loose,
                       pack_inner_count=pack_inner_count,
                       pack_inner_capacity=pack_inner_capacity,
+                      pack_inner_kind=pack_inner_kind,
                       pack_loose_unit=pack_loose_unit,
                       prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:

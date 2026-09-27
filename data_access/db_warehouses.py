@@ -114,6 +114,7 @@ NEW_RECEIPT_COLUMNS = (
     ("pack_loose", "REAL"),
     ("pack_inner_count", "REAL"),
     ("pack_inner_capacity", "REAL"),
+    ("pack_inner_kind", "TEXT NOT NULL DEFAULT ''"),
     ("pack_loose_unit", "TEXT NOT NULL DEFAULT ''"),
 )
 
@@ -126,6 +127,7 @@ NEW_LEDGER_COLUMNS = (
 NEW_SPEC_COLUMNS = (
     ("inner_count", "REAL DEFAULT 0"),
     ("inner_capacity", "REAL DEFAULT 0"),
+    ("inner_kind", "TEXT DEFAULT ''"),
 )
 
 
@@ -152,13 +154,13 @@ def _migrate_tables(conn):
     # توحيد تسميات التغليف القديمة (قبل قاعدة «الصحيح صحيح والكسر بكسره»)
     rows = conn.execute(
         "SELECT id, unit, pack_kind, pack_count, pack_capacity, pack_loose, "
-        "pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_label "
+        "pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind, pack_label "
         "FROM wh_receipts WHERE pack_kind != ''").fetchall()
     for r in rows:
         label, _total = pack_summary(r["pack_kind"], r["pack_count"],
                                      r["pack_capacity"], r["pack_loose"], r["unit"],
                                      r["pack_inner_count"], r["pack_inner_capacity"],
-                                     r["pack_loose_unit"])
+                                     r["pack_loose_unit"], r["pack_inner_kind"])
         if label and label != r["pack_label"]:
             conn.execute("UPDATE wh_receipts SET pack_label=? WHERE id=?",
                          (label, r["id"]))
@@ -329,8 +331,8 @@ def resolve_item(year, month, cycle, name, handle_unit_hint=""):
 
 # ========== ١ مخازن — إذون إضافة الأصناف (الإدخال اليدوي الوحيد في الدورة) ==========
 def _remember_spec(conn, cycle, item_id, kind, capacity,
-                   inner_count=0, inner_capacity=0):
-    """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها) للصنف تلقائيًا."""
+                   inner_count=0, inner_capacity=0, inner_kind=""):
+    """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها واسمها) للصنف تلقائيًا."""
     if not kind or kind == "بدون تغليف":
         return
     if (not capacity or capacity <= 0) and not (inner_count > 0 and inner_capacity > 0):
@@ -338,12 +340,13 @@ def _remember_spec(conn, cycle, item_id, kind, capacity,
     from core import egtime
     conn.execute(
         "INSERT INTO wh_pack_specs (cycle,item_id,kind,capacity,inner_count,"
-        "inner_capacity,updated_at) VALUES (?,?,?,?,?,?,?)"
+        "inner_capacity,inner_kind,updated_at) VALUES (?,?,?,?,?,?,?,?)"
         " ON CONFLICT(cycle,item_id,kind)"
         " DO UPDATE SET capacity=excluded.capacity, inner_count=excluded.inner_count,"
-        " inner_capacity=excluded.inner_capacity, updated_at=excluded.updated_at",
+        " inner_capacity=excluded.inner_capacity, inner_kind=excluded.inner_kind,"
+        " updated_at=excluded.updated_at",
         (cycle, item_id, kind, float(capacity or 0), float(inner_count or 0),
-         float(inner_capacity or 0), egtime.now().isoformat(timespec="seconds")))
+         float(inner_capacity or 0), (inner_kind or "").strip(), egtime.now().isoformat(timespec="seconds")))
 
 
 def pack_specs_map(year, month, cycle):
@@ -351,14 +354,13 @@ def pack_specs_map(year, month, cycle):
     conn = _conn(year, month)
     rows = conn.execute(
         "SELECT wi.name n, ps.kind k, ps.capacity c, ps.inner_count ic,"
-        " ps.inner_capacity ica FROM wh_pack_specs ps"
+        " ps.inner_capacity ica, ps.inner_kind ik FROM wh_pack_specs ps"
         " JOIN wh_items wi ON wi.id=ps.item_id WHERE ps.cycle=? ORDER BY ps.updated_at",
         (cycle,)).fetchall()
     conn.close()
     out = {}
     for r in rows:
-        out.setdefault(r["n"], {})[r["k"]] = {
-            "capacity": r["c"], "inner_count": r["ic"], "inner_capacity": r["ica"]}
+        out.setdefault(r["n"], {})[r["k"]] = {"capacity": r["c"], "inner_count": r["ic"], "inner_capacity": r["ica"], "inner_kind": r["ik"] or ""}
     return out
 
 
@@ -382,7 +384,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 date_iso="", receipt_no=None,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                 pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
-                stores=None, allow_same_serial=False):
+                pack_inner_kind="", stores=None, allow_same_serial=False):
     """يحفظ إذن إضافة ١ مخازن ويفتح كارت الصنف — رقم يدوي، والتغليف يحسب
     الكمية تلقائيًا، وstores لتوزيع الكمية على مخزن أو أكثر."""
     from core import egtime
@@ -395,7 +397,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
         if (pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 \
                 and not (float(pack_inner_capacity or 0) > 0):
             raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
-        pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item_probe["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit)
+        pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item_probe["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
         if pack_total <= 0:
             raise ValueError("اكتب عدد العبوات ووزن العبوة (أو العلب بداخلها) أو الكمية السائبة — "
                              "لا يمكن إذن إضافة بكمية صفر")
@@ -448,14 +450,15 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 "qty_base,base_unit,pack,pack_label,producer,supplier_id,supplier_name,"
                 "prod_date,exp_date,shelf_days,notes,created_at,"
                 "pack_kind,pack_count,pack_capacity,pack_loose,"
-                "pack_inner_count,pack_inner_capacity,pack_loose_unit)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "pack_inner_count,pack_inner_capacity,pack_loose_unit,pack_inner_kind)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (cycle, serial, item["id"], day, date_iso, qty_handle, item["handle_unit"],
                  qty_base, base_unit, "{}", pack_label_text, (producer or "").strip(), supplier_id,
                  supplier_name, prod_iso, exp_iso, shelf_days, notes_text, stamp,
                  pack_kind, float(pack_count or 0), float(pack_capacity or 0),
                  float(pack_loose or 0), float(pack_inner_count or 0),
-                 float(pack_inner_capacity or 0), (pack_loose_unit or "").strip()))
+                 float(pack_inner_capacity or 0), (pack_loose_unit or "").strip(),
+                 (pack_inner_kind or "").strip()))
             receipt_id = cur.lastrowid
             for sid, sname, q in parts:
                 conn.execute(
@@ -474,7 +477,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                  qty_handle, 0.0, prev_balance + qty_handle, notes_text, stamp,
                  pack_label_text))
             _remember_spec(conn, cycle, item["id"], pack_kind, pack_capacity,
-                           pack_inner_count, pack_inner_capacity)
+                           pack_inner_count, pack_inner_capacity, pack_inner_kind)
     conn.close()
     return {
         "receipt_id": receipt_id, "serial": serial, "item": item, "created": created,
@@ -530,7 +533,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                notes="", date_iso="",
                pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
-               prod_iso="", exp_iso="", stores=None):
+               pack_inner_kind="", prod_iso="", exp_iso="", stores=None):
     """رصيد أول المدة: إدخال حقيقي بكل بياناته (توجيه ٢٥/٠٩ وتوسيع ٢٦/٠٩) —
     كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
     تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف، وأول سطور الكارت."""
@@ -543,10 +546,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     if (pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 \
             and not (float(pack_inner_capacity or 0) > 0):
         raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
-    label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity,
-                                          pack_loose, item["handle_unit"],
-                                          pack_inner_count, pack_inner_capacity,
-                                          pack_loose_unit)
+    label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
@@ -591,7 +591,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                 "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
                 " VALUES (?,?,?,?,?)", (cycle, item["id"], sid, sname, q))
         _remember_spec(conn, cycle, item["id"], pack_kind, pack_capacity,
-                       pack_inner_count, pack_inner_capacity)
+                       pack_inner_count, pack_inner_capacity, pack_inner_kind)
     conn.close()
     return {"item": item, "qty": qty, "created": created}
 

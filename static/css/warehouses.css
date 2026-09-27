@@ -190,8 +190,9 @@ fieldset.wh-pack { border: 1px solid var(--gold-border); border-radius: 12px;
   padding: 6px 14px 10px; margin: 2px 0 8px; }
 fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   padding: 0 8px; font-size: .85rem; }
-.wh-pack-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px; }
+/* التغليف: مربعات تحت بعض (توجيه ٢٧/٠٩) — وكل حقل بعرض كامل */
+.wh-pack-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.wh-pack-row .wh-f input { max-width: 420px; }
 .wh-pack-inner-toggle { display: flex; align-items: center; gap: 8px;
   margin: 10px 2px 6px; font-size: .84rem; cursor: pointer; color: var(--text); }
 .wh-pack-inner-toggle input { width: 16px; height: 16px; accent-color: var(--brand-gold); }

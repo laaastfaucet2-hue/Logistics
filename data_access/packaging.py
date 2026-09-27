@@ -55,20 +55,23 @@ def pack_diff_note(capacity, inner_count, inner_capacity, unit):
 
 
 def pack_summary(kind, count, capacity, loose, unit,
-                 inner_count=0, inner_capacity=0, loose_unit=""):
+                 inner_count=0, inner_capacity=0, loose_unit="", inner_kind=""):
     """(الملخص النصي الاحترافي، المجموع) — كل خطوة الحسبة ظاهرة بالكلام.
 
     - شكارة: «١٩ شكارة × وزن الشكارة ٥٠ كجم = ٩٥٠ كجم + ٥٠ كجم سائب = ١٠٠٠ كجم»
     - كرتونة بعleb: «١٠ كرتونة × وزن الكرتونة ١٢ كجم (بداخلها ٦ علب × ٢ كجم) = ١٢٠ كجم»
     - بلا وزن للعبوة: «٤ كرتونة بداخلها ٦ علب × وزن العلبة ٢ كجم = ٤٨ كجم»
+    - بعدّ الوحدات (توجيه ٢٧/٠٩): «١٠ بلتة بداخلها ٢٧ باكت = ٢٧٠ باكت»
     - سائب بالعلب: «٥ علب × ٢ كجم = ١٠ كجم سائب»
     """
     kind = (kind or "").strip()
+    inner_kind = (inner_kind or "").strip()
     count = float(count or 0)
     capacity = float(capacity or 0)
     loose = float(loose or 0)
     inner_count = float(inner_count or 0)
     inner_capacity = float(inner_capacity or 0)
+    iword = inner_kind or _box_word(inner_count)      # اسم الوحدة الداخلية
     total = 0.0
     bits = []
     if kind and kind != "بدون تغليف" and count > 0:
@@ -76,10 +79,11 @@ def pack_summary(kind, count, capacity, loose, unit,
             sub = count * capacity
             total += sub
             detail = ""
-            if inner_count > 0 and inner_capacity > 0:
+            if inner_count > 0:
                 detail = (f" (بداخلها {arnum.to_arabic_indic(f'{inner_count:g}')} "
-                          f"{_box_word(inner_count)} × "
-                          f"{arnum.fmt_qty_trim(inner_capacity)} {unit})")
+                          f"{iword}"
+                          + (f" × {arnum.fmt_qty_trim(inner_capacity)} {unit}"
+                             if inner_capacity > 0 else "") + ")")
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} × وزن "
                         f"ال{kind} {arnum.fmt_qty_trim(capacity)} {unit}{detail} = "
                         f"{arnum.fmt_qty_trim(sub)} {unit}")
@@ -88,9 +92,15 @@ def pack_summary(kind, count, capacity, loose, unit,
             total += sub
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} "
                         f"بداخلها {arnum.to_arabic_indic(f'{inner_count:g}')} "
-                        f"{_box_word(inner_count)} × وزن العلبة "
+                        f"{iword} × وزن ال{inner_kind or 'علبة'} "
                         f"{arnum.fmt_qty_trim(inner_capacity)} {unit} = "
                         f"{arnum.fmt_qty_trim(sub)} {unit}")
+        elif inner_count > 0:
+            sub = count * inner_count
+            total += sub
+            bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind} "
+                        f"بداخلها {arnum.to_arabic_indic(f'{inner_count:g}')} "
+                        f"{iword} = {arnum.fmt_qty_trim(sub)} {iword}")
         else:
             bits.append(f"{arnum.to_arabic_indic(f'{count:g}')} {kind}")
     if loose > 0:
@@ -98,7 +108,7 @@ def pack_summary(kind, count, capacity, loose, unit,
             loose_kg = loose * inner_capacity
             total += loose_kg
             bits.append(f"{arnum.to_arabic_indic(f'{loose:g}')} "
-                        f"{_box_word(loose)} × "
+                        f"{iword if inner_kind else _box_word(loose)} × "
                         f"{arnum.fmt_qty_trim(inner_capacity)} {unit} = "
                         f"{arnum.fmt_qty_trim(loose_kg)} {unit} سائب")
         else:

@@ -122,14 +122,7 @@
     wirePackaging(card, null);
     Array.prototype.forEach.call(card.querySelectorAll(".js-split-box"), wireSplitBox);
     wireShelfCard(card);
-    var del = card.querySelector(".js-line-del");
-    if (del && !del.dataset.wired) {
-      del.dataset.wired = "1";
-      del.addEventListener("click", function () {
-        card.remove();
-        renumberLines();
-      });
-    }
+    /* حذف الصنف بتفويض الأحداث على الحاوية — يشتغل دايمًا حتى لو فشل ربط الكارت */
   }
   function renumberLines() {
     Array.prototype.forEach.call(document.querySelectorAll("#whItemLines .wh-item-card"),
@@ -145,6 +138,15 @@
   }
   var addLineBtn = document.getElementById("whAddLine");
   var lineBox = document.getElementById("whItemLines");
+  if (lineBox && !lineBox.dataset.delDelegated) {
+    lineBox.dataset.delDelegated = "1";
+    lineBox.addEventListener("click", function (e) {
+      var del = e.target.closest ? e.target.closest(".js-line-del") : null;
+      if (!del) return;
+      var card = del.closest(".wh-item-card");
+      if (card) { card.remove(); renumberLines(); }
+    });
+  }
   if (addLineBtn && lineBox) {
     addLineBtn.addEventListener("click", function () {
       var tpl = document.getElementById("whLineTpl");
@@ -215,6 +217,7 @@
     if (!kindEl) return;
     var countEl = root.querySelector(sfx("pack_count"));
     var capEl = root.querySelector(sfx("pack_capacity"));
+    var innerKindEl = root.querySelector(sfx("pack_inner_kind"));
     var innerTog = root.querySelector(".js-inner-toggle");
     var innerRow = root.querySelector(".js-inner-row");
     var innerCountEl = root.querySelector(sfx("pack_inner_count"));
@@ -226,6 +229,32 @@
     var hint = hintSel ? document.querySelector(hintSel) : root.querySelector(".js-pack-hint");
     var qtyEl = root.querySelector("input" + sfx("qty"));
     var localItem = root.querySelector(sfx("item_name"));
+
+    /* التسميات الذكية: العبوة اسمها من المستخدم — بلتة → عدد البلاتات/داخل البلتة (توجيه ٢٧/٠٩) */
+    function plural(kind) {
+      kind = (kind || "").trim();
+      if (!kind) return "";
+      return kind.slice(-1) === "ة" ? kind.slice(0, -1) + "ات" : kind + "ات";
+    }
+    function dynLabels() {
+      var kind = (kindEl.value || "").trim();
+      var inner = innerKindEl ? (innerKindEl.value || "").trim() : "";
+      function set(cls, txt) {
+        var el = root.querySelector(cls);
+        if (el) el.textContent = txt;
+      }
+      set(".js-inner-kind-lbl", kind ? "نوع العبوة داخل ال" + kind + "؟" : "نوع العبوة داخلية؟");
+      set(".js-count-lbl", kind ? "عدد ال" + plural(kind) : "عدد العبوات");
+      if (inner) set(".js-inner-count-lbl", kind ? "كم تحتوي ال" + kind + " من ال" + inner + "؟" : "كم تحتوي الواحدة من ال" + inner + "؟");
+      else set(".js-inner-count-lbl", "كم تحتوي الواحدة من العلب؟");
+      set(".js-inner-cap-lbl", inner ? "وزن ال" + inner + " الواحد" : "وزن العلبة الواحدة");
+      set(".js-cap-lbl", kind ? "ال" + kind + " الواحدة كام؟ (وزن/حجم)" : "العبوة الواحدة كام؟ (وزن/حجم)");
+    }
+    dynLabels();
+    if (innerKindEl) {
+      innerKindEl.addEventListener("input", dynLabels);
+      innerKindEl.addEventListener("change", dynLabels);
+    }
 
     /* الصنف: من حقل النموذج نفسه، أو اسم كارت الصنف (data-item-name)، أو حقل ١ مخازن */
     function currentInfo() {
@@ -264,6 +293,8 @@
       var cap = toNum(capEl ? capEl.value : null) || 0;
       var ic = innerOn() ? (toNum(innerCountEl ? innerCountEl.value : null) || 0) : 0;
       var ica = innerOn() ? (toNum(innerCapEl ? innerCapEl.value : null) || 0) : 0;
+      var iw = innerKindEl ? innerKindEl.value.trim() : "";
+      var word = iw || boxWord(ic || 0);
       var loose = toNum(looseEl ? looseEl.value : null) || 0;
       var lu = (looseUnitEl && looseUnitEl.value.trim()) || "";
       var looseBoxes = lu.indexOf("علب") === 0;
@@ -273,7 +304,7 @@
       /* حاصل العلب + الفرق: الكرتونة كام مقابل عدد العلب × وزن العلبة */
       if (innerSum) {
         innerSum.textContent = (ic && ica)
-          ? fmt(ic) + " " + boxWord(ic) + " × " + fmt(ica) + " " + unit +
+          ? fmt(ic) + " " + word + " × " + fmt(ica) + " " + unit +
             " = " + fmt(ic * ica) + " " + unit : "";
       }
       if (diffEl) {
@@ -293,7 +324,7 @@
         }
       }
 
-      var bits = [], total = 0;
+      var bits = [], total = 0, unitCount = 0;
       if (isReal() && count) {
         if (cap) {
           /* وزن العبوة هو المرجع: ١٠ كرتونة × وزن الكرتونة ١٢ كجم = ١٢٠ كجم */
@@ -302,14 +333,18 @@
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
             " × وزن ال" + kindEl.value.trim() + " " + fmt(cap) + " " + unit +
             " = " + fmt(sub2) + " " + unit +
-            (ic && ica ? " (بداخلها " + fmt(ic) + " " + boxWord(ic) + " × " +
-              fmt(ica) + " " + unit + ")" : ""));
+            (ic ? " (بداخلها " + fmt(ic) + " " + word + ")" : ""));
         } else if (ic && ica) {
           var cw = ic * ica, sub3 = count * cw;
           total += sub3;
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
-            " بداخلها " + fmt(ic) + " " + boxWord(ic) + " × وزن العلبة " +
+            " بداخلها " + fmt(ic) + " " + word + " × وزن ال" + word + " " +
             fmt(ica) + " " + unit + " = " + fmt(sub3) + " " + unit);
+        } else if (ic) {
+          /* بعدّ الوحدات: ١٠ بلتة بداخلها ٢٧ باكت = ٢٧٠ باكت (توجيه ٢٧/٠٩) */
+          unitCount = count * ic;
+          bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim() +
+            " بداخلها " + fmt(ic) + " " + word + " = " + fmt(unitCount) + " " + word);
         } else {
           bits.push(count.toLocaleString("ar-EG") + " " + kindEl.value.trim());
         }
@@ -335,6 +370,10 @@
         if (total > 0) {
           qtyEl.value = fmt(total);
           qtyEl.readOnly = true;
+        } else if (unitCount > 0 && (!unit || (iw && unit === iw))) {
+          /* عدّ وحدات: وحدة التعامل هي نفسها الوحدة الداخلية (علبة/باكت) */
+          qtyEl.value = fmt(unitCount);
+          qtyEl.readOnly = true;
         } else {
           qtyEl.readOnly = false;
         }
@@ -344,11 +383,11 @@
       }
     }
 
-    [kindEl, countEl, capEl, innerCountEl, innerCapEl, looseEl, looseUnitEl]
+    [kindEl, countEl, capEl, innerKindEl, innerCountEl, innerCapEl, looseEl, looseUnitEl]
       .forEach(function (el) {
         if (!el) return;
         el.addEventListener("input", refresh);
-        el.addEventListener("change", refresh);
+        el.addEventListener("change", function () { dynLabels(); refresh(); });
       });
 
     kindEl.addEventListener("change", function () {
@@ -371,6 +410,10 @@
           if (innerCapEl && !innerCapEl.value) {
             innerCapEl.value = remembered.inner_capacity.toLocaleString("ar-EG",
               { maximumFractionDigits: 3 });
+          }
+          if (innerKindEl && !innerKindEl.value && remembered.inner_kind) {
+            innerKindEl.value = remembered.inner_kind;
+            dynLabels();
           }
         }
       }
