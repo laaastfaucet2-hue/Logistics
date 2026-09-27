@@ -47,6 +47,38 @@
     return isMeasureUnit(u) ? "وزن/حجم — الحسبة بالكيلو أو اللتر" : "بيُعدّ بالعدد";
   }
 
+  /* رسّام العبوات: أيقونة SVG لكل عبوة/وحدة — الشاشة الحية بترسم بيها (توجيه ٢٧/٠٩) */
+  var ICON_RULES = [["كجم", "weight"], ["جرام", "weight"], ["جم", "weight"], ["طن", "weight"],
+    ["كرتون", "carton"], ["شكار", "sack"], ["شيكار", "sack"], ["بلت", "pallet"],
+    ["جركن", "jerrycan"], ["برميل", "barrel"], ["زجاج", "bottle"], ["لتر", "bottle"],
+    ["مل", "bottle"], ["كيس", "bag"], ["شنط", "bag"], ["صيني", "tray"], ["طبق", "tray"],
+    ["كوب", "cup"], ["ربط", "bundle"], ["فتل", "bundle"], ["باكت", "packet"],
+    ["علب", "box"], ["عبو", "box"]];
+  var ICON_PATHS = {
+    carton: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
+    box: '<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M4 12h16M12 7v13"/>',
+    packet: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M6 9h12M9 13h6"/>',
+    sack: '<path d="M10 3h4l1.2 2.6C17.5 7.5 19 10 19 13a7 6.5 0 0 1-14 0c0-3 1.5-5.5 3.8-7.4z"/><path d="M9.5 5.5h5"/>',
+    pallet: '<rect x="3" y="3" width="7" height="6" rx="1"/><rect x="13" y="3" width="7" height="6" rx="1"/><rect x="8" y="11" width="8" height="6" rx="1"/><path d="M3 20h18M4 17h16"/>',
+    jerrycan: '<rect x="5" y="6" width="14" height="14" rx="2"/><path d="M8 6V4h8v2"/><path d="M9 11h6v5H9z"/>',
+    barrel: '<ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13"/><path d="M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>',
+    bottle: '<path d="M10 2h4v3l2 3v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8l2-3z"/><path d="M8 13h8"/>',
+    bag: '<path d="M6 8h12l1.5 12a1.8 1.8 0 0 1-1.8 2H6.3a1.8 1.8 0 0 1-1.8-2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    tray: '<rect x="3" y="8" width="18" height="10" rx="2"/><path d="M9 8v10M15 8v10"/>',
+    cup: '<path d="M6 4h12l-1.5 16a2 2 0 0 1-2 1.8h-5A2 2 0 0 1 7.5 20z"/><path d="M6.5 9h11"/>',
+    bundle: '<path d="M7 4v16M12 3v18M17 4v16"/><path d="M5 8h14M5 16h14"/>',
+    weight: '<path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 7l7 13H5z"/>'
+  };
+  function svgIcon(name, size) {
+    var n = String(name || ""), key = "box";
+    for (var i = 0; i < ICON_RULES.length; i++) {
+      if (n.indexOf(ICON_RULES[i][0]) !== -1) { key = ICON_RULES[i][1]; break; }
+    }
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none"' +
+      ' stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      ICON_PATHS[key] + "</svg>";
+  }
+
   /* فتح/قفل نماذج الزر الأمبر + فورمات رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
   [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"],
    ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"]].forEach(function (pair) {
@@ -264,21 +296,17 @@
       }
       var modeEl = root.querySelector(".js-inner-mode-hint");
       if (modeEl) {
-        modeEl.textContent = inner
-          ? "📌 «" + inner + "» = " + unitModeWord(inner) +
-            (isMeasureUnit(inner) ? "" : " — واكتب وزن الواحد لو حابب تحوّلها لكجم")
-          : "";
+        modeEl.textContent = inner ? "📌 «" + inner + "» " + unitModeWord(inner) : "";
       }
       set(".js-count-lbl", !kind ? "عدد العبوات" : (km ? "كم " + kind + "؟" : "عدد ال" + plural(kind)));
       if (inner) {
-        set(".js-inner-count-lbl", kind
-          ? "كم تحتوي " + kDef + " من " + (im ? inner : "ال" + inner) + "؟"
-          : "كم تحتوي الواحدة من ال" + inner + "؟");
+        /* صياغة المستخدم: «كم عدد العلب في الكارتونة؟» (توجيه ٢٧/٠٩) */
+        set(".js-inner-count-lbl", "كم " + inner + " في " + (kind ? (km ? kind : kDef) : "العبوة") + "؟");
       } else {
-        set(".js-inner-count-lbl", "كم تحتوي الواحدة من العلب؟");
+        set(".js-inner-count-lbl", "كم علبة في العبوة؟");
       }
       set(".js-inner-cap-lbl", inner ? (im ? "وزن " + inner + " الواحد" : "وزن ال" + inner + " الواحد") : "وزن العلبة الواحدة");
-      set(".js-cap-lbl", kind ? (km ? "كم تساوي " + kDef + "؟ (وزن/حجم)" : kDef + " الواحدة كام؟ (وزن/حجم)") : "العبوة الواحدة كام؟ (وزن/حجم)");
+      set(".js-cap-lbl", kind ? "وزن " + (km ? kind : kDef) + " الواحدة كاملة؟" : "وزن العبوة الواحدة كاملة؟");
     }
     dynLabels();
 
@@ -326,6 +354,45 @@
     var looseRow = root.querySelector(".js-loose-row");
     var looseToggle = root.querySelector(".js-loose-toggle");
     var eqTotal = root.querySelector(".js-eq-total");
+    var tvEl = root.querySelector(".js-tv");
+
+    /* 📺 الشاشة الحية: كل معلومة بتكتبها تترسم فورًا — مثل أدوات التغليف المحترفة */
+    function drawTV(total, unitCount, tword) {
+      if (!tvEl) return;
+      var k = kindEl.value.trim();
+      var ik = innerKindEl ? innerKindEl.value.trim() : "";
+      var cnt = toNum(countEl ? countEl.value : null) || 0;
+      var ic = toNum(innerCountEl ? innerCountEl.value : null) || 0;
+      var lo = toNum(looseEl ? looseEl.value : null) || 0;
+      if (!k && !ik && !lo) {
+        tvEl.innerHTML = '<span class="wh-tv-empty">📺 اكتب نوع العبوة — والشاشة هترسم قصة التغليف قدامك خطوة بخطوة</span>';
+        return;
+      }
+      var h = "";
+      if (k) {
+        h += '<span class="wh-tv-ic">' + svgIcon(k, 46) +
+          '<span class="wh-tv-badge">' + (cnt ? fmt(cnt) + " " + k : k) + "</span></span>";
+      }
+      if (ik) {
+        if (k) h += '<span class="wh-tv-arrow">⬅</span>';
+        var minis = "";
+        var shown = Math.min(ic || 6, 12);
+        for (var mi = 0; mi < shown; mi++) minis += svgIcon(ik, 18);
+        if (ic > 12) minis += '<span class="wh-tv-badge">+' + fmt(ic - 12) + "</span>";
+        h += '<span class="wh-tv-ic"><span class="wh-tv-mini">' + minis + "</span>" +
+          '<span class="wh-tv-badge">' + (ic ? fmt(ic) + " " + ik : ik) + "</span></span>";
+      }
+      var tot = total > 0 ? total : (unitCount > 0 ? unitCount : null);
+      if (tot !== null) {
+        h += '<span class="wh-tv-arrow">=</span><span class="wh-tv-total">' +
+          fmt(tot) + " " + tword + "</span>";
+      }
+      if (lo) {
+        h += '<span class="wh-tv-ic">' + svgIcon(ik || k || "علبة", 22) +
+          '<span class="wh-tv-badge">سائب ' + fmt(lo) + "</span></span>";
+      }
+      tvEl.innerHTML = h;
+    }
     function reveal() {
       if (countCell) countCell.hidden = !kindEl.value.trim();
       if (innerCountCell) innerCountCell.hidden = !innerKindEl.value.trim();
@@ -481,6 +548,9 @@
             (bits.length > 1 && sum > 0 ? " — الإجمالي: " + fmt(sum) + " " + sumUnit : "");
         }
       }
+      drawTV(total, unitCount, (total > 0)
+        ? ((cap > 0 || ica > 0) ? (unit || iw) : (isMeasureUnit(iw) ? iw : (unit || iw)))
+        : word);
       if (qtyEl) {
         if (total > 0) {
           qtyEl.value = fmt(total);
