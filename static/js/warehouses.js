@@ -230,7 +230,9 @@
     var qtyEl = root.querySelector("input" + sfx("qty"));
     var localItem = root.querySelector(sfx("item_name"));
 
-    /* التسميات الذكية: العبوة اسمها من المستخدم — بلتة → عدد البلاتات/داخل البلتة (توجيه ٢٧/٠٩) */
+    /* التسميات الذكية: كل كلمة على الشاشة من المستخدم نفسه —
+       بلتة → عدد البلتات/كم تحتوي البلتة من الباكيت (مثال ١) —
+       كارتونة كبيرة → كم كارتونة كبيرة؟/كم تحتويها من الكارتونة الصغيرة؟ (مثال ٢) */
     function plural(kind) {
       kind = (kind || "").trim();
       if (!kind) return "";
@@ -239,16 +241,24 @@
     function dynLabels() {
       var kind = (kindEl.value || "").trim();
       var inner = innerKindEl ? (innerKindEl.value || "").trim() : "";
+      var km = kind.indexOf(" ") !== -1;     /* اسم من كمتين: كارتونة كبيرة */
+      var im = inner.indexOf(" ") !== -1;
+      var kDef = km ? kind : (kind ? "ال" + kind : "");
       function set(cls, txt) {
         var el = root.querySelector(cls);
         if (el) el.textContent = txt;
       }
-      set(".js-inner-kind-lbl", kind ? "نوع العبوة داخل ال" + kind + "؟" : "نوع العبوة داخلية؟");
-      set(".js-count-lbl", kind ? "عدد ال" + plural(kind) : "عدد العبوات");
-      if (inner) set(".js-inner-count-lbl", kind ? "كم تحتوي ال" + kind + " من ال" + inner + "؟" : "كم تحتوي الواحدة من ال" + inner + "؟");
-      else set(".js-inner-count-lbl", "كم تحتوي الواحدة من العلب؟");
-      set(".js-inner-cap-lbl", inner ? "وزن ال" + inner + " الواحد" : "وزن العلبة الواحدة");
-      set(".js-cap-lbl", kind ? "ال" + kind + " الواحدة كام؟ (وزن/حجم)" : "العبوة الواحدة كام؟ (وزن/حجم)");
+      set(".js-inner-kind-lbl", kind ? "نوع العبوة داخل " + kDef + "؟" : "نوع العبوة داخل العبوة؟");
+      set(".js-count-lbl", !kind ? "عدد العبوات" : (km ? "كم " + kind + "؟" : "عدد ال" + plural(kind)));
+      if (inner) {
+        set(".js-inner-count-lbl", kind
+          ? "كم تحتوي " + kDef + " من " + (im ? inner : "ال" + inner) + "؟"
+          : "كم تحتوي الواحدة من ال" + inner + "؟");
+      } else {
+        set(".js-inner-count-lbl", "كم تحتوي الواحدة من العلب؟");
+      }
+      set(".js-inner-cap-lbl", inner ? (im ? "وزن " + inner + " الواحد" : "وزن ال" + inner + " الواحد") : "وزن العلبة الواحدة");
+      set(".js-cap-lbl", kind ? (km ? "كم تساوي " + kDef + "؟ (وزن/حجم)" : kDef + " الواحدة كام؟ (وزن/حجم)") : "العبوة الواحدة كام؟ (وزن/حجم)");
     }
     dynLabels();
     if (innerKindEl) {
@@ -363,8 +373,14 @@
         }
       }
       if (hint) {
-        hint.textContent = bits.join(" + ") +
-          (bits.length > 1 && total ? " = " + fmt(total) + " " + unit : "");
+        var sum = total || unitCount;
+        var sumUnit = (unitCount && !total) ? word : unit;
+        if (bits.length === 1 && sum > 0) {
+          hint.textContent = "الإجمالي: " + bits[0];
+        } else {
+          hint.textContent = bits.join(" + ") +
+            (bits.length > 1 && sum > 0 ? " — الإجمالي: " + fmt(sum) + " " + sumUnit : "");
+        }
       }
       if (qtyEl) {
         if (total > 0) {
