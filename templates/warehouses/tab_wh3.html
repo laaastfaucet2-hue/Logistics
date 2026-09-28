@@ -29,7 +29,7 @@
       <!-- رصيد أول المدة لصنف لم يُفتح كارته بعد: يفتح الكارت تلقائيًا — قائمة تفتح وتقفل -->
       <button type="button" class="wh-newbtn no-print" id="whOpenerNewToggle"
               aria-expanded="false" aria-controls="whOpenerNewForm">
-        <span class="wh-newbtn-plus">＋</span> رصيد أول المدة لصنف جديد
+        <span class="wh-newbtn-plus">＋</span> <span class="wh-newbtn-label">رصيد أول المدة لصنف جديد</span>
       </button>
       <form class="wh-opener no-print" id="whOpenerNewForm" method="post" hidden
             action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
@@ -146,7 +146,7 @@
     <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته — قائمة تفتح وتقفل (توجيه ٢٦/٠٩) -->
     <button type="button" class="wh-newbtn no-print" id="whOpenerToggle"
             aria-expanded="false" aria-controls="whOpenerForm">
-      <span class="wh-newbtn-plus">＋</span> رصيد أول المدة — «{{ card.item.name }}»
+      <span class="wh-newbtn-plus">＋</span> <span class="wh-newbtn-label">رصيد أول المدة — «{{ card.item.name }}»</span>
     </button>
     <form class="wh-opener no-print" id="whOpenerForm" method="post" hidden
           data-item-name="{{ card.item.name }}"

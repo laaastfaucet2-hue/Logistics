@@ -95,11 +95,17 @@
     var btn = document.getElementById(pair[0]);
     var form = document.getElementById(pair[1]);
     if (!btn || !form) return;
+    var lbl = btn.querySelector(".wh-newbtn-label");
+    var plus = btn.querySelector(".wh-newbtn-plus");
+    var closedTxt = lbl ? lbl.textContent : "";
     btn.addEventListener("click", function () {
       var open = form.hidden;
       form.hidden = !open;
       form.classList.toggle("wh-open", open);
       btn.setAttribute("aria-expanded", open ? "true" : "false");
+      /* الزر الأمبر يوضح حالته: لما الفورم يفتح يبقى «قفل… ✕» — وزرار الحفظ آخر الفورم جواه */
+      if (lbl) lbl.textContent = open ? ("قفل " + closedTxt) : closedTxt;
+      if (plus) plus.textContent = open ? "✕" : "＋";
       if (open) {
         var first = form.querySelector("input:not([type=hidden])");
         if (first) first.focus();
