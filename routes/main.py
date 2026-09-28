@@ -141,6 +141,10 @@ def register(app):
             # قسم «مستودعات وسجلات» = صفحة الدورة المخزنية الحقيقية (سجل الإمداد / سجل المتعهد)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("warehouses.page", **params))
+        if key == "health":
+            # قسم «الصحة» = صفحة الصحة الحقيقية (رش/كشف دوري/خزانات/مياه)
+            params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            return redirect(url_for("health.page", **params))
         section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
         if not section:
             abort(404)

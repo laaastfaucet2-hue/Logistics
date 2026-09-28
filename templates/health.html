@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}الصحة • منظومة التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>🏥 الصحة بوحدة التعيينات</span><span class="sep">•</span>
+  <span class="dim">السياق: <strong>{{ month_name }} {{ year | aindic }}</strong></span>
+  <span class="sep">•</span>
+  <span class="dim hl-folder" title="{{ folder_path }}">📁 13-الصحة</span>
+</div>
+
+<nav class="rc-tabs">
+  {% for key, name, icon in tabs %}
+  <a class="rc-tab {{ 'on' if tab == key }}" href="{{ url_for('health.page', tab=key) }}">
+    <span>{{ icon }}</span>{{ name }}
+  </a>
+  {% endfor %}
+</nav>
+
+{% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
+{% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
+
+<!-- الترويسة الرسمية المشتركة (قابلة للتعديل من كل التابات) -->
+<details class="panel hl-head-box">
+  <summary>📜 الترويسة الرسمية — محافظة / مديرية / إدارة (اضغط للتعديل)</summary>
+  <form method="post" action="{{ url_for('health.save_fields', report='header') }}" class="hl-form">
+    <input type="hidden" name="back" value="{{ tab }}">
+    {% for key, label, val in header_fields %}
+    <label class="hl-field"><span>{{ label }}</span>
+      <input type="text" name="{{ key }}" value="{{ val }}" dir="rtl"></label>
+    {% endfor %}
+    <div class="hl-actions">
+      <button class="rt-btn green" type="submit">💾 حفظ الترويسة</button>
+      <span class="hl-hint">تظهر أعلى كل التقارير الأربعة</span>
+    </div>
+  </form>
+</details>
+
+{% if tab == 'checkups' %}
+<!-- ==================== تاب الكشف الدوري ==================== -->
+<div class="panel">
+  <div class="panel-head"><h3>🩺 الكشف الطبي الدوري على المجندين — أيام الشهر</h3></div>
+  <form method="post" action="{{ url_for('health.save_days') }}" class="hl-days-form">
+    <span class="hl-hint">أيام الكشف الثلاثة:</span>
+    {% for d in days %}
+    <input class="hl-day-in" type="number" name="day{{ loop.index }}" min="1" max="31"
+           value="{{ d }}" title="يوم الكشف {{ loop.index | aindic }}">
+    {% endfor %}
+    <button class="rt-btn small navy" type="submit">💾 حفظ الأيام</button>
+  </form>
+  <nav class="hl-day-tabs">
+    {% for d in days %}
+    <a class="hl-day-tab {{ 'on' if d == day }}"
+       href="{{ url_for('health.page', tab='checkups', day=d) }}">
+      يوم {{ d | aindic }} {% if d == day %}· {{ checked_count | aindic }} مكتوش{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+  <form method="post" action="{{ url_for('health.select_checkup') }}">
+    <input type="hidden" name="day" value="{{ day }}">
+    <div class="hl-hint row">
+      <span>اختر المكتوشين ليوم <b>{{ day | aindic }} {{ month_name }}</b> —
+        المقترحون بالأخضر (حاضرو اليوم من اليومية، ولو مفيش يومية لليوم يُقترح الجميع):</span>
+      <button class="rt-btn small dim" type="button" id="hl-all">تحديد الكل</button>
+      <button class="rt-btn small dim" type="button" id="hl-sugg">تحديد المقترحين فقط</button>
+      <button class="rt-btn small dim" type="button" id="hl-none">إلغاء الكل</button>
+    </div>
+    <div class="hl-recruits">
+      {% for r in items %}
+      <label class="hl-rec {{ 'sugg' if r.suggested }} {{ 'picked' if r.checked }}">
+        <input type="checkbox" name="recruits" value="{{ r.id }}" {{ 'checked' if r.checked }}>
+        <span class="hl-name">{{ r.name }}</span>
+        {% if r.status %}<span class="hl-st {{ 'good' if r.status == 'حضور' else '' }}">{{ r.status }}</span>
+        {% else %}<span class="hl-st none">بدون يومية</span>{% endif %}
+        {% if r.checked %}<span class="hl-done">✔ مكتوش</span>{% endif %}
+      </label>
+      {% endfor %}
+      {% if not items %}<div class="hl-empty">لا يوجد مجندون في هذا الشهر بعد</div>{% endif %}
+    </div>
+    <div class="hl-actions">
+      <button class="rt-btn green" type="submit">💾 حفظ المكتوشين وتحديث الكشف</button>
+      <a class="rt-btn navy" href="{{ url_for('health.docx_download', report='checkup', day=day) }}">
+        ⬇️ تنزيل كشف يوم {{ day | aindic }} (وورد)</a>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>✍️ نصوص تقرير الكشف (مشتركة بين الأيام — التاريخ يتولد ليوم كل كشف)</h3></div>
+  {% with report='checkup' %}{% include "health_fields.html" %}{% endwith %}
+</div>
+
+{% else %}
+<!-- ==================== تابات الرش / الخزانات / المياه ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>{{ tab_icon }} {{ tab_title }}</h3>
+    <a class="rt-btn small navy" href="{{ url_for('health.docx_download', report=tab) }}">⬇️ تنزيل (وورد)</a>
+  </div>
+  {% if tab == 'tanks' %}
+  <div class="hl-hint">جدول الخزانات ({{ tank_rows | length | aindic }} خزان) — كل خلية قابلة للتعديل:</div>
+  {% endif %}
+  <form method="post" action="{{ url_for('health.save_fields', report=tab) }}" class="hl-form">
+    {% for key, label, kind, val in field_rows %}
+    <label class="hl-field"><span>{{ label }}</span>
+      {% if kind == 'area' %}
+      <textarea name="{{ key }}" rows="6" dir="rtl">{{ val }}</textarea>
+      {% else %}
+      <input type="text" name="{{ key }}" value="{{ val }}" dir="rtl"
+             {% if kind == 'date' %}placeholder="فارغ = تاريخ اليوم تلقائيًا"{% endif %}>
+      {% endif %}
+    </label>
+    {% endfor %}
+    {% if tab == 'tanks' %}
+    <div class="hl-tanks-wrap">
+      <table class="hl-tanks">
+        <thead><tr><th>م</th>{% for cell in tank_rows[0] %}<th>{{ cell[1] }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in tank_rows %}
+          <tr><td class="hl-tnum">{{ loop.index | aindic }}</td>
+            {% for key, label, val in row %}<td><input type="text" name="{{ key }}" value="{{ val }}" dir="rtl"></td>{% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    <div class="hl-actions">
+      <button class="rt-btn green" type="submit">💾 حفظ وتحديث ملف الوورد</button>
+    </div>
+  </form>
+  <form method="post" action="{{ url_for('health.reset_fields', report=tab) }}" class="inline-f">
+    <button class="rt-btn small dim" type="submit">↺ إرجاع النص الرسمي الافتراضي</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="panel hl-folders">
+  <div class="panel-head"><h3>📁 مكان الملفات المحلية</h3></div>
+  <pre dir="ltr">{{ folder_path }}</pre>
+  <span class="hl-hint">├── الرش والتعقيم/محضر رش وتقفيم.docx · ├── الكشف الدوري على المجندين/يوم ١ · يوم ١٥ · يوم ٣٠/كشف الدوري.docx ·
+├── تطهير الخزانات/محضر تطهير خزانات.docx · └── فحص مياة الشرب/تقرير فحص عينة مياة الشرب.docx
+— كل تعديل من الصفحة يُحدّث ملف الفولدر فورًا، ويمكن فتح الملفات من الفولدر مباشرة.</span>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/health.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

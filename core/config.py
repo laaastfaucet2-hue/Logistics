@@ -26,9 +26,13 @@ SECTIONS = [
     {"key": "cold_stores",         "name": "المخازن والثلاجات",    "icon": "🧊"},
     {"key": "tarfea",              "name": "الترفية",              "icon": "🎖️"},
     {"key": "contractor_invoices", "name": "فواتير المتعهد",       "icon": "🧾"},
+    {"key": "health",              "name": "الصحة",                "icon": "🏥"},
 ]
 
 SECTION_MAP = {s["key"]: s for s in SECTIONS}
+
+# فهرس قسم «الصحة» في SECTIONS (يحدد اسم فولدره الشهري 13-الصحة — لا يُغيَّر)
+HEALTH_SECTION_INDEX = len(SECTIONS)  # آخر قسم مضاف
 
 # أدوات إضافية: الدباجة شهرية، والنسخ الاحتياطية عامة للنظام
 # «المجندين» ليست هنا: قسم «المجندين» في SECTIONS يفتح الصفحة الحقيقية مباشرة

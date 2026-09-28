@@ -1,0 +1,79 @@
+/* قسم «الصحة» — نفس الهوية البصرية (كحلي/ذهبي) مع لمسات خاصة */
+.hl-flash { display: flex; align-items: center; gap: 8px; padding: 11px 16px;
+  border-radius: 12px; margin: 10px 0; font-weight: 700; font-size: .92rem; }
+.hl-flash.ok { background: rgba(var(--success-rgb, 25, 135, 84), .12);
+  color: var(--green, #15803d); border: 1px solid rgba(var(--success-rgb, 25, 135, 84), .4); }
+.hl-flash.bad { background: rgba(220, 53, 69, .1); color: #b02a37;
+  border: 1px solid rgba(220, 53, 69, .4); }
+
+.hl-head-box { margin: 10px 0; }
+.hl-head-box summary { cursor: pointer; font-weight: 700; color: var(--gold, #b8860b);
+  padding: 4px 6px; user-select: none; }
+.hl-head-box[open] summary { margin-bottom: 8px; }
+
+.hl-form { display: grid; gap: 12px; padding: 8px 4px; }
+.hl-field { display: grid; gap: 5px; }
+.hl-field > span { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.hl-field input[type="text"], .hl-field textarea {
+  width: 100%; border: 1px solid var(--card-border); border-radius: 10px;
+  padding: 10px 12px; background: var(--bg, transparent); color: var(--text);
+  font: inherit; }
+.hl-field textarea { resize: vertical; line-height: 1.9; }
+.hl-field input:focus, .hl-field textarea:focus { outline: 2px solid var(--gold, #b8860b); }
+
+.hl-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hl-hint { color: var(--muted); font-size: .84rem; }
+.hl-hint.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin: 8px 0 12px; }
+.inline-f { display: inline-block; margin-top: 10px; }
+
+/* أيام الكشف */
+.hl-days-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 10px 4px; border-bottom: 1px dashed var(--card-border); }
+.hl-day-in { width: 74px; text-align: center; border: 1px solid var(--card-border);
+  border-radius: 10px; padding: 9px 6px; background: var(--bg, transparent);
+  color: var(--text); font: inherit; font-weight: 700; }
+.hl-day-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 4px; }
+.hl-day-tab { padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: .88rem;
+  border: 1px solid var(--card-border); color: var(--muted); background: var(--bg, transparent); }
+.hl-day-tab.on { background: var(--gold, #b8860b); color: #fff; border-color: var(--gold, #b8860b); }
+
+/* قائمة المجندين */
+.hl-recruits { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px; }
+.hl-rec { display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  border: 1px solid var(--card-border); border-radius: 12px; padding: 9px 11px;
+  cursor: pointer; background: var(--bg, transparent); transition: .15s; }
+.hl-rec:hover { border-color: var(--gold, #b8860b); }
+.hl-rec.sugg { border-color: rgba(var(--success-rgb, 25, 135, 84), .55);
+  background: rgba(var(--success-rgb, 25, 135, 84), .07); }
+.hl-rec.picked { outline: 2px solid var(--gold, #b8860b); outline-offset: -2px; }
+.hl-rec input { accent-color: var(--gold, #b8860b); width: 17px; height: 17px; }
+.hl-name { font-weight: 700; font-size: .9rem; }
+.hl-st { font-size: .7rem; padding: 2px 8px; border-radius: 999px;
+  background: var(--card-border); color: var(--muted); }
+.hl-st.good { background: rgba(var(--success-rgb, 25, 135, 84), .15); color: var(--green, #15803d); }
+.hl-st.none { opacity: .65; }
+.hl-done { font-size: .72rem; color: var(--gold, #b8860b); font-weight: 800; }
+.hl-empty { padding: 18px; text-align: center; color: var(--muted); }
+
+/* جدول الخزانات */
+.hl-tanks-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.hl-tanks { border-collapse: collapse; min-width: 860px; }
+.hl-tanks th, .hl-tanks td { border: 1px solid var(--card-border); padding: 6px; }
+.hl-tanks th { background: rgba(var(--gold-rgb, 184, 134, 11), .1); color: var(--gold, #b8860b);
+  font-size: .78rem; }
+.hl-tanks td input { width: 100%; min-width: 86px; border: 1px solid transparent;
+  border-radius: 8px; padding: 7px 8px; background: var(--bg, transparent);
+  color: var(--text); font: inherit; text-align: center; }
+.hl-tanks td input:focus { border-color: var(--gold, #b8860b); outline: none; }
+.hl-tnum { text-align: center; font-weight: 800; color: var(--gold, #b8860b); }
+
+.hl-folders pre { background: var(--bg, transparent); border: 1px dashed var(--card-border);
+  border-radius: 10px; padding: 10px 14px; font-size: .8rem; margin: 6px 0; }
+.hl-folders .hl-hint { line-height: 2; }
+
+@media (max-width: 640px) {
+  .hl-recruits { grid-template-columns: 1fr; }
+  .hl-actions .rt-btn { flex: 1; justify-content: center; }
+}
