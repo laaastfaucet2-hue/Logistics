@@ -21,15 +21,20 @@ from core.config import MONTH_NAMES
 from core import egtime
 from data_access import db_health
 from data_access import db_recruits
+from data_access import db_letterhead as lhdb
+from data_access import storage
 from documents import docx_health
 from services import health_fs
+from services.images import save_logo
 
 health_bp = Blueprint("health", __name__, url_prefix="/health")
 
 TABS = [("spray", "الرش والتعقيم", "🧴"),
         ("checkups", "الكشف الدوري على المجندين", "🩺"),
         ("tanks", "تطهير الخزانات", "🚰"),
-        ("water", "فحص مياة الشرب", "💧")]
+        ("water", "فحص مياة الشرب", "💧"),
+        ("letter", "الدباجة والتوقيعات", "📜")]
+TAB_KEYS = tuple(k for k, _n, _i in TABS)
 
 
 def _ctx():
@@ -44,12 +49,19 @@ def _rb(tab, day=0, ok=None, err=None):
 
 
 def _field_rows(year, month, report):
-    """حقول التقرير جاهزة للعرض: (key, label, kind, value)."""
+    """حقول التقرير جاهزة للعرض: (key, label, kind, value) — التوقيعات الفارغة
+    ترجع للافتراضي من الدباجة."""
     stored = db_health.get_fields(year, month, report)
+    hdr_defs = db_health.get_fields(year, month, "header")
     rows = []
     for key, label, kind, default in docx_health.FIELDS[report]:
-        rows.append((key, label, kind, stored.get(key, "") or default
-                     if kind != "date" else stored.get(key, "")))
+        val = (stored.get(key) or "").strip()
+        if not val and key.startswith("sig_"):
+            val = (hdr_defs.get("def_" + key[4:]) or "").strip()
+        if kind == "date":
+            rows.append((key, label, kind, stored.get(key, "")))
+        else:
+            rows.append((key, label, kind, val or default))
     return rows
 
 
@@ -91,16 +103,20 @@ def page():
     # صفحة القسم على /health/ وتُفتح من القائمة عبر /sections/health.
     year, month = _ctx()
     tab = request.args.get("tab", "spray")
-    if tab not in ("spray", "checkups", "tanks", "water"):
+    if tab not in TAB_KEYS:
         tab = "spray"
     health_fs.ensure_month(year, month)
+    hdr_vals = docx_health.header_values(year, month)
+    logo = lhdb.logo_path(year, month)
     v = {"tab": tab, "tabs": TABS, "year": year, "month": month,
          "month_name": MONTH_NAMES[month - 1],
          "tab_title": dict((k, n) for k, n, _i in TABS).get(tab, ""),
          "tab_icon": dict((k, i) for k, _n, i in TABS).get(tab, ""),
          "folder_path": docx_health.folder_hint(year, month),
-         "header_fields": [(k, l, db_health.get_fields(year, month, "header").get(k, "") or d)
+         "header_fields": [(k, l, (db_health.get_fields(year, month, "header").get(k, "") or "").strip() or d)
                            for k, l, d in docx_health.HEADER_FIELDS],
+         "logo_exists": bool(logo),
+         "pv": {"logo": url_for("letterhead.logo_view") if logo else "", "h": hdr_vals},
          "ok": request.args.get("ok"), "err": request.args.get("err")}
     if tab == "checkups":
         days = db_health.get_days(year, month)
@@ -111,11 +127,54 @@ def page():
         v.update(days=days, day=day, items=items,
                  checked_count=len(db_health.get_day_recruits(year, month, day)),
                  field_rows=_field_rows(year, month, "checkup"))
+        v["pv"].update(f=docx_health.field_values(year, month, "checkup", day),
+                       is_checkup=True,
+                       names=[it["name"] for it in items if it["checked"]])
+    elif tab == "tanks":
+        v.update(field_rows=_field_rows(year, month, "tanks"),
+                 tank_rows=_tank_rows(year, month))
+        stored_t = db_health.get_fields(year, month, "tanks")
+        tank_cells = [[("t%d_%s" % (t, key),
+                        (stored_t.get("t%d_%s" % (t, key)) or "").strip()
+                        or docx_health.TANK_DEFAULT[key])
+                       for key, _l in docx_health.TANK_COLS]
+                      for t in range(1, docx_health.TANK_COUNT + 1)]
+        v["pv"].update(f=docx_health.field_values(year, month, "tanks"),
+                       tanks=True,
+                       tank_labels=[l for _k, l in docx_health.TANK_COLS],
+                       tank_cells=tank_cells)
+    elif tab == "letter":
+        v["pv"]["sample"] = True  # معاينة الدباجة: ترويسة + توقيعات افتراضية
     else:
         v.update(field_rows=_field_rows(year, month, tab))
-        if tab == "tanks":
-            v["tank_rows"] = _tank_rows(year, month)
+        v["pv"].update(f=docx_health.field_values(year, month, tab))
     return render_template("health.html", **v)
+
+
+# ======================================================================
+# اللوجو الرسمي (نفس لوجو الدباجة — يظهر أعلى يسار الورق الصحي)
+# ======================================================================
+@health_bp.route("/logo", methods=["POST"])
+@login_required
+def logo_upload():
+    year, month = _ctx()
+    f = request.files.get("logo")
+    if f and f.filename:
+        try:
+            name = save_logo(f.stream, storage.letterhead_dir(year, month))
+        except ValueError as exc:
+            return _rb("letter", err=str(exc))
+        lhdb.save(year, month, {"logo_file": name})
+        return _rb("letter", ok="تم حفظ اللوجو الرسمي ✓")
+    return _rb("letter", err="اختر صورة اللوجو أولًا")
+
+
+@health_bp.route("/logo/delete", methods=["POST"])
+@login_required
+def logo_delete():
+    year, month = _ctx()
+    lhdb.save(year, month, {"logo_file": ""})
+    return _rb("letter", ok="تم حذف اللوجو ✓")
 
 
 # ======================================================================

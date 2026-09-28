@@ -1,4 +1,4 @@
-/* قسم «الصحة» — نفس الهوية البصرية (كحلي/ذهبي) مع لمسات خاصة */
+/* قسم «الصحة» — تابات مربعات + ورق معاينة حية بنفس هوية النظام */
 .hl-flash { display: flex; align-items: center; gap: 8px; padding: 11px 16px;
   border-radius: 12px; margin: 10px 0; font-weight: 700; font-size: .92rem; }
 .hl-flash.ok { background: rgba(var(--success-rgb, 25, 135, 84), .12);
@@ -6,15 +6,70 @@
 .hl-flash.bad { background: rgba(220, 53, 69, .1); color: #b02a37;
   border: 1px solid rgba(220, 53, 69, .4); }
 
-.hl-head-box { margin: 10px 0; }
-.hl-head-box summary { cursor: pointer; font-weight: 700; color: var(--gold, #b8860b);
-  padding: 4px 6px; user-select: none; }
-.hl-head-box[open] summary { margin-bottom: 8px; }
+.hl-month-chip strong { color: var(--gold, #b8860b); }
 
+/* ================== التابات المربعات ================== */
+.hl-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin: 12px 0; }
+.hl-tab { display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px 12px; border-radius: 16px; text-decoration: none;
+  background: var(--card); border: 2px solid var(--card-border);
+  color: var(--text); font-weight: 800; font-size: .86rem; text-align: center;
+  transition: .15s; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+.hl-tab:hover { transform: translateY(-2px); border-color: var(--gold, #b8860b); }
+.hl-tab.on { background: linear-gradient(160deg, rgba(var(--info-rgb, 13, 110, 253), .16),
+  rgba(var(--info-rgb, 13, 110, 253), .05)); border-color: var(--gold, #b8860b);
+  box-shadow: 0 4px 14px rgba(184, 134, 11, .25); }
+.hl-tab-ico { font-size: 1.7rem; line-height: 1; }
+.hl-tab.on .hl-tab-name { color: var(--gold, #b8860b); }
+
+/* ================== تقسيم فورم/معاينة ================== */
+.hl-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+  gap: 14px; align-items: start; }
+.hl-pv-head { font-weight: 800; font-size: .86rem; color: var(--gold, #b8860b);
+  padding: 4px 2px 8px; position: sticky; }
+@media (max-width: 980px) {
+  .hl-split { grid-template-columns: 1fr; }
+  .hl-paper-col { order: -1; position: sticky; top: 8px; z-index: 5; }
+}
+
+/* ================== ورق المعاينة (شكل A4) ================== */
+.hl-paper { background: #fff; color: #0a1230; border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .3); padding: 26px 24px 30px;
+  font-weight: 700;
+  min-height: 420px; }
+.hl-paper-top { display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 10px; border-bottom: 2px solid rgba(184, 134, 11, .35); padding-bottom: 8px;
+  margin-bottom: 12px; }
+.hl-paper-logo { width: 74px; height: auto; object-fit: contain; }
+.hl-paper-lines { text-align: right; line-height: 1.7; font-size: .95rem; }
+.hl-pl1 { font-size: 1.1rem; }
+.hl-paper-title { text-align: center; color: #b8860b; font-size: 1.15rem;
+  text-decoration: underline; margin: 10px 0 14px; }
+.hl-paper-date { margin: 4px 0; font-size: .95rem; }
+.hl-paper-body { line-height: 2; font-size: .95rem; margin: 10px 0; }
+.hl-paper-names { margin: 8px 24px; line-height: 2; font-size: .95rem; }
+.hl-paper-none { color: #b8860b; font-size: .85rem; padding: 6px 0; }
+.hl-paper-tail { margin-top: 10px; }
+.hl-paper-note { background: rgba(184, 134, 11, .08); border: 1px dashed #b8860b;
+  border-radius: 10px; padding: 10px 12px; font-size: .85rem; margin: 10px 0 16px; }
+.hl-paper-tanks { border-collapse: collapse; width: 100%; margin: 10px 0; }
+.hl-paper-tanks th, .hl-paper-tanks td { border: 1px solid #0a1230; padding: 4px 5px;
+  font-size: .68rem; text-align: center; font-weight: 700; }
+.hl-paper-tanks th { background: rgba(184, 134, 11, .12); }
+.hl-ptnum { color: #b8860b; }
+.hl-paper-appr { margin-top: 18px; font-size: 1rem; }
+.hl-paper-sigs { width: 100%; margin-top: 14px; border-collapse: collapse; }
+.hl-paper-sigs td { text-align: center; padding: 6px 8px; font-size: .95rem; }
+.hl-paper-approve { text-align: center; margin-top: 12px; }
+.hl-live-dirty { background: rgba(184, 134, 11, .1); }
+
+/* ================== نموذج التعديل ================== */
 .hl-form { display: grid; gap: 12px; padding: 8px 4px; }
 .hl-field { display: grid; gap: 5px; }
 .hl-field > span { font-size: .82rem; font-weight: 700; color: var(--muted); }
-.hl-field input[type="text"], .hl-field textarea {
+.hl-field input[type="text"], .hl-field textarea,
+.hl-field input[type="file"] {
   width: 100%; border: 1px solid var(--card-border); border-radius: 10px;
   padding: 10px 12px; background: var(--bg, transparent); color: var(--text);
   font: inherit; }
@@ -25,7 +80,6 @@
 .hl-hint { color: var(--muted); font-size: .84rem; }
 .hl-hint.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   margin: 8px 0 12px; }
-.inline-f { display: inline-block; margin-top: 10px; }
 
 /* أيام الكشف */
 .hl-days-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -73,14 +127,16 @@
   border-radius: 10px; padding: 10px 14px; font-size: .8rem; margin: 6px 0; }
 .hl-folders .hl-hint { line-height: 2; }
 
-@media (max-width: 640px) {
-  .hl-recruits { grid-template-columns: 1fr; }
-  .hl-actions .rt-btn { flex: 1; justify-content: center; }
-}
-
 /* إحصائية «لم يُكشفوا طبيًا» في تاب المجندين */
 .hl-stat-link { text-decoration: none; }
 .hl-no-checkup { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 2px 10px; }
 .hl-nc-name { border: 1px solid rgba(220, 53, 69, .45); color: #b02a37;
   background: rgba(220, 53, 69, .06); border-radius: 999px; padding: 6px 14px;
   font-weight: 700; font-size: .86rem; }
+
+@media (max-width: 640px) {
+  .hl-recruits { grid-template-columns: 1fr; }
+  .hl-actions .rt-btn { flex: 1; justify-content: center; }
+  .hl-tab-ico { font-size: 1.4rem; }
+  .hl-paper { padding: 18px 14px 22px; }
+}

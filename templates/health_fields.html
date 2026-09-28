@@ -4,9 +4,9 @@
   {% for key, label, kind, val in field_rows %}
   <label class="hl-field"><span>{{ label }}</span>
     {% if kind == 'area' %}
-    <textarea name="{{ key }}" rows="6" dir="rtl">{{ val }}</textarea>
+    <textarea name="{{ key }}" rows="6" dir="rtl" data-hkey="{{ key }}">{{ val }}</textarea>
     {% else %}
-    <input type="text" name="{{ key }}" value="{{ val }}" dir="rtl"
+    <input type="text" name="{{ key }}" value="{{ val }}" dir="rtl" data-hkey="{{ key }}"
            {% if kind == 'date' %}placeholder="فارغ = تاريخ يوم الكشف تلقائيًا"{% endif %}>
     {% endif %}
   </label>

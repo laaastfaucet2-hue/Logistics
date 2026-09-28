@@ -30,7 +30,11 @@ GOLD = RGBColor(0xB8, 0x86, 0x0B)
 # ==================== الترويسة الرسمية (قابلة للتعديل) ====================
 HEADER_FIELDS = [("h1", "السطر الأول", "محافظة شمال سيناء"),
                  ("h2", "السطر الثاني", "مديرية الصحة والإسكان"),
-                 ("h3", "السطر الثالث", "إدارة نخل الصحة")]
+                 ("h3", "السطر الثالث", "إدارة نخل الصحة"),
+                 ("def_right_rank", "الرتبة الافتراضية يمين (التوقيع)", "المراقب الصحي"),
+                 ("def_right_name", "الاسم الافتراضي يمين", ""),
+                 ("def_left_rank", "الرتبة الافتراضية شمال (الاعتماد)", ""),
+                 ("def_left_name", "الاسم الافتراضي شمال", "")]
 
 # نصوص النماذج الورقية الحرفية (كل حقل قابل للتعديل من الصفحة)
 BODY_SPRAY = ("تم رش وتقفيم قسم التعيينات بالكامل التابع للإدارة العامة للأمن المركزى "
@@ -112,11 +116,15 @@ def _long_date(d):
 
 
 def field_values(year, month, report, day=None):
-    """{fkey: قيمة فعلية} — المخزَّن يعلو الافتراضي، وdate_text الفارغ يتولد تلقائيًا."""
+    """{fkey: قيمة فعلية} — المخزَّن يعلو الافتراضي، وdate_text الفارغ يتولد تلقائيًا،
+    والتوقيعات الفارغة ترجع للقيم الافتراضية للدباجة."""
     stored = db_health.get_fields(year, month, report)
+    hdr = header_values(year, month)
     vals = {}
     for key, _label, _kind, default in FIELDS[report]:
         raw = (stored.get(key) or "").strip()
+        if not raw and key.startswith("sig_"):
+            raw = (hdr.get("def_" + key[4:]) or "").strip()
         vals[key] = raw if raw else default
         if key in ("date_text", "day_text") and not raw:
             if report == "checkup" and day:
@@ -159,7 +167,13 @@ def _cell(cell, text, size=9, color=NAVY):
 
 
 def _health_header(doc, year, month):
-    """ترويسة الورق الصحي: محافظة / مديرية / إدارة — ثلاثة أسطر يمين أعلى."""
+    """ترويسة الورق الصحي: اللوجو شمالًا + محافظة/مديرية/إدارة يمينًا."""
+    from data_access import db_letterhead as lhdb
+    logo = lhdb.logo_path(year, month)
+    if logo and logo.exists():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.add_run().add_picture(str(logo), width=Cm(3))
     hdr = header_values(year, month)
     for i, key in enumerate(("h1", "h2", "h3")):
         _para(doc, hdr[key], 14 if i == 0 else 12, True, NAVY)

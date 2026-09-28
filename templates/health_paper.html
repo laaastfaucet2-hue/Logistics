@@ -1,0 +1,61 @@
+{# ورق المعاينة الحية — نفس شكل ملف الوورد بالظبط (يُحدَّث مع الكتابة عبر health.js).
+   المتغيرات: pv = {logo, h{h1..h3,def_*}, f{حقول التقرير}, is_checkup?, names?, tanks?, tank_labels?, sample?} #}
+<div class="hl-paper" dir="rtl" id="hl-paper">
+  <div class="hl-paper-top">
+    {% if pv.logo %}<img class="hl-paper-logo" src="{{ pv.logo }}" alt="اللوجو">{% endif %}
+    <div class="hl-paper-lines">
+      <div class="hl-pl1" data-hval="h1">{{ pv.h.h1 }}</div>
+      <div data-hval="h2">{{ pv.h.h2 }}</div>
+      <div data-hval="h3">{{ pv.h.h3 }}</div>
+    </div>
+  </div>
+  {% if pv.sample %}
+  <div class="hl-paper-note">📝 ورقة الدباجة دي بتظهر أعلى كل التقارير الأربعة — والتوقيعين الافتراضيين بيملوا أي توقيع فاضي في التقارير.</div>
+  <div class="hl-paper-appr">يعتمد،،</div>
+  <table class="hl-paper-sigs"><tr>
+    <td data-hval="def_right_rank">{{ pv.h.def_right_rank or '................' }}</td>
+    <td data-hval="def_left_rank">{{ pv.h.def_left_rank or '................' }}</td>
+  </tr><tr>
+    <td data-hval="def_right_name">{{ pv.h.def_right_name or '................' }}</td>
+    <td data-hval="def_left_name">{{ pv.h.def_left_name or '................' }}</td>
+  </tr></table>
+  {% else %}
+  <div class="hl-paper-title" data-hval="title">{{ pv.f.title }}</div>
+  {% if pv.is_checkup %}
+  <div class="hl-paper-date"><span data-hval="day_label">{{ pv.f.day_label }}</span> <span data-hval="day_text">{{ pv.f.day_text }}</span>،</div>
+  <p class="hl-paper-body" data-hval="body">{{ pv.f.body }}</p>
+  <ol class="hl-paper-names" data-hnames>
+    {% for n in pv.names %}<li>{{ n }}</li>{% endfor %}
+  </ol>
+  {% if not pv.names %}<div class="hl-paper-none">(لم يُحدَّد مكتوشون لهذا اليوم بعد)</div>{% endif %}
+  <div class="hl-paper-tail" data-hval="tail">{{ pv.f.tail }}</div>
+  {% else %}
+  <div class="hl-paper-date" data-hval="date_text">{{ pv.f.date_text }}</div>
+  {% if pv.f.time_text is defined and pv.f.time_text %}
+  <div class="hl-paper-date" data-hval="time_text">{{ pv.f.time_text }}</div>{% endif %}
+  <p class="hl-paper-body" data-hval="body">{{ pv.f.body }}</p>
+  {% if pv.tanks %}
+  <table class="hl-paper-tanks">
+    <thead><tr><th>م</th>{% for l in pv.tank_labels %}<th>{{ l }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in pv.tank_cells %}
+      <tr><td class="hl-ptnum">{{ loop.index | aindic }}</td>
+        {% for key, val in row %}<td data-hval="{{ key }}">{{ val }}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% endif %}
+  <div class="hl-paper-appr">يعتمد،،</div>
+  <table class="hl-paper-sigs"><tr>
+    <td data-hval="sig_right_rank">{{ pv.f.sig_right_rank }}</td>
+    <td data-hval="sig_left_rank">{{ pv.f.sig_left_rank or '................' }}</td>
+  </tr><tr>
+    <td data-hval="sig_right_name">{{ pv.f.sig_right_name or '................' }}</td>
+    <td data-hval="sig_left_name">{{ pv.f.sig_left_name or '................' }}</td>
+  </tr></table>
+  {% if pv.f.approve_rank is defined and pv.f.approve_rank %}
+  <div class="hl-paper-approve" data-hval="approve_rank">{{ pv.f.approve_rank }}</div>{% endif %}
+  {% endif %}
+</div>
