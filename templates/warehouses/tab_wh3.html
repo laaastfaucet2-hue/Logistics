@@ -71,12 +71,12 @@
             <div class="wh-eq-total js-eq-total">—</div>
           </div>
           <div class="wh-pack-row wh-pack-weights">
-            <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
-              <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+            <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وزن المعيار الواحد (وزن العلبة مثلًا)</span> <small>(بيحوّل العدّ لكجم — وبيحسب السائب بالعلب)</small>
+              <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢"></label>
             <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
-              <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+              <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off" placeholder="١٢"></label>
           </div>
-          <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة</button>
+          <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة (علب أو كجم)</button>
           <div class="wh-pack-row js-loose-row" hidden>
             <label class="wh-f">كمية سائبة
               <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
@@ -88,9 +88,9 @@
           <div class="wh-pack-diff js-pack-diff"></div>
         </div>
         <div class="wh-grid">
-          {{ date_field('prod_date', 'تاريخ الإنتاج') }}
-          {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
-          <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
+          <div class="wh-f wh-datecell">{{ date_field('prod_date', 'تاريخ الإنتاج') }}</div>
+          <div class="wh-f wh-datecell">{{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}</div>
+          <div class="wh-f wh-f-wide"><span class="wh-hintline js-shelf-hint"></span></div>
         </div>
         <div class="js-split-box" data-auto-row="1">
           <b class="wh-split-title">توزيع الرصيد على المخازن (اختياري — والمجموع يجب أن يطابق الكمية)</b>
@@ -188,12 +188,12 @@
           <div class="wh-eq-total js-eq-total">—</div>
         </div>
         <div class="wh-pack-row wh-pack-weights">
-          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
-            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وزن المعيار الواحد (وزن العلبة مثلًا)</span> <small>(بيحوّل العدّ لكجم — وبيحسب السائب بالعلب)</small>
+            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢"></label>
           <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
-            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
+            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off" placeholder="١٢"></label>
         </div>
-        <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة</button>
+        <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة (علب أو كجم)</button>
         <div class="wh-pack-row js-loose-row" hidden>
           <label class="wh-f">كمية سائبة
             <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
@@ -205,9 +205,9 @@
         <div class="wh-pack-diff js-pack-diff"></div>
       </div>
       <div class="wh-grid">
-        {{ date_field('prod_date', 'تاريخ الإنتاج') }}
-        {{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}
-        <div class="wh-f wh-f-hint"><span class="wh-hintline js-shelf-hint"></span></div>
+        <div class="wh-f wh-datecell">{{ date_field('prod_date', 'تاريخ الإنتاج') }}</div>
+        <div class="wh-f wh-datecell">{{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}</div>
+        <div class="wh-f wh-f-wide"><span class="wh-hintline js-shelf-hint"></span></div>
         <label class="wh-f wh-f-wide">ملاحظات
           <textarea name="notes" rows="2"></textarea></label>
       </div>

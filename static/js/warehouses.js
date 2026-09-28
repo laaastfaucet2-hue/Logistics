@@ -421,7 +421,9 @@
     function reveal() {
       if (countCell) countCell.hidden = !kindEl.value.trim();
       if (innerCountCell) innerCountCell.hidden = !innerKindEl.value.trim();
-      if (innerCapCell) innerCapCell.hidden = !innerKindEl.value.trim() || isMeasureUnit(innerKindEl.value.trim());
+      /* وزن المعيار الواحد ظاهر دايمًا (توجيه ٢٨/٠٩): المستخدم محتاجه خاصًة للسائب بالعلب —
+         كان بيختفي مع الكشف التدريجي فمش بيلاقي مكان يحدد وزن العلبة */
+      if (innerCapCell) innerCapCell.hidden = false;
       if (looseRow) looseRow.hidden = !looseToggle ? !!((looseEl && looseEl.value)) : !(looseRow.dataset.on === "1" || (looseEl && looseEl.value));
       if (looseToggle) looseToggle.hidden = !(looseRow && looseRow.hidden) && !!(looseEl && looseEl.value);
     }

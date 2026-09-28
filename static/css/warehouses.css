@@ -316,3 +316,39 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   margin-bottom: 8px; }
 .wh-st-name { color: var(--brand-gold); font-size: 1.05rem; }
 .wh-st-moves { font-size: .92rem; }
+
+/* ⭐ فورم رصيد أول المدة الاحترافي (توجيه ٢٨/٠٩): المربعات جنب بعض في صفوف منتظمة */
+.wh-opener .wh-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wh-opener .wh-grid > .wh-tv, .wh-opener .wh-grid > .wh-presets,
+.wh-opener .wh-grid > .wh-eq, .wh-opener .wh-grid > .wh-pack-row,
+.wh-opener .wh-grid > .js-loose-toggle, .wh-opener .wh-grid > .wh-hintline,
+.wh-opener .wh-grid > .wh-pack-diff, .wh-opener .wh-grid > .js-split-box { grid-column: 1 / -1; }
+/* مربع معادلة التغليف: ٤ خانات جنب بعض + الإجمالي الذهبي صف كامل تحتهم */
+.wh-opener .wh-eq { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px; align-items: start; border: 1px solid var(--gold-border);
+  border-radius: 12px; padding: 12px 14px; background: var(--surface-soft); }
+.wh-opener .wh-eq-cell { flex: none; min-width: 0; }
+.wh-opener .wh-eq-total { grid-column: 1 / -1; }
+/* صف الأوزان والسائب: خانتان جنب بعض */
+.wh-opener .wh-pack-weights, .wh-opener .js-loose-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* زر الحفظ: عريض ذهبي بارز آخر الفورم */
+.wh-opener .wh-form-actions { display: block; margin-top: 16px; }
+.wh-opener .wh-form-actions .rt-btn { width: 100%; padding: 13px 20px; font-size: 16px; }
+/* خانة التاريخ: الليبل فوق الخانة زي باقي الحقول بالظبط */
+.wh-datecell { display: flex; flex-direction: column; gap: 6px; font-size: .86rem;
+  color: var(--muted); min-width: 0; }
+.wh-datecell .rc-lbl { font-size: .86rem; color: var(--muted); }
+.wh-datecell .date-field { display: flex; gap: 8px; align-items: center; }
+.wh-datecell .date-field input { flex: 1; min-width: 0; background: var(--field-bg);
+  border: 1px solid var(--field-border); border-radius: 9px; color: var(--text);
+  padding: 9px 12px; font-family: var(--font-ui); font-size: .95rem; width: 100%; }
+.wh-datecell .date-trigger { background: none; border: none; color: var(--gold-light); }
+/* فورم «صنف جديد» جوه العمود الجانبي: عمودين مريحين بدل أربعة ضيقين */
+.wh-items-col .wh-opener .wh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wh-items-col .wh-opener .wh-eq { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 980px) {
+  .wh-opener .wh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-opener .wh-eq { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-items-col .wh-opener .wh-grid,
+  .wh-items-col .wh-opener .wh-eq { grid-template-columns: 1fr; }
+}
