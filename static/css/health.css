@@ -77,3 +77,10 @@
   .hl-recruits { grid-template-columns: 1fr; }
   .hl-actions .rt-btn { flex: 1; justify-content: center; }
 }
+
+/* إحصائية «لم يُكشفوا طبيًا» في تاب المجندين */
+.hl-stat-link { text-decoration: none; }
+.hl-no-checkup { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 2px 10px; }
+.hl-nc-name { border: 1px solid rgba(220, 53, 69, .45); color: #b02a37;
+  background: rgba(220, 53, 69, .06); border-radius: 999px; padding: 6px 14px;
+  font-weight: 700; font-size: .86rem; }

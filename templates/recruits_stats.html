@@ -5,6 +5,7 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
 {% endblock %}
 {% block content %}
 {% include "recruits_tabs.html" %}
@@ -26,7 +27,21 @@
   {% endif %}
   {% if missing %}<div class="bk-chip bad"><span class="bk-ico">📝</span>
     <div><b>{{ missing | length | aindic }} يومية ناقصة</b><small>اضغط تبويب اليومية لاستكمالها</small></div></div>{% endif %}
+  {% if no_checkup %}<a class="bk-chip bad hl-stat-link" href="{{ url_for('health.page', tab='checkups') }}">
+    <span class="bk-ico">⚕️</span>
+    <div><b>{{ no_checkup | length | aindic }} لم يُكشفوا طبيًا</b><small>اضغط لقائمة الأسماء وقسم الصحة</small></div></a>{% endif %}
 </div>
+
+{% if no_checkup %}
+<!-- الصحة: قائمة من لم يُعمل له كشف طبي دوري هذا الشهر -->
+<div class="panel">
+  <div class="panel-head"><h3>⚕️ لم يُعمل لهم كشف طبي دوري هذا الشهر — {{ no_checkup | length | aindic }} مجند</h3></div>
+  <div class="hl-no-checkup">
+    {% for r in no_checkup %}<span class="hl-nc-name">{{ r.name }}</span>{% endfor %}
+  </div>
+  <span class="panel-hint">يُعتمد الكشف الدوري من قسم «الصحة» 🏥 — العدد ينقص تلقائيًا بعد كل كشف حتى لو المجند في إجازة لحين يومه</span>
+</div>
+{% endif %}
 
 <!-- كشوف الوورد اللحظية -->
 <div class="panel rt-toolbar">

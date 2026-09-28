@@ -17,6 +17,7 @@ from data_access import database as db
 from data_access import dataguard
 from data_access import db_attendance as da
 from data_access import db_recruits as dr
+from data_access import db_health
 from documents import docx_recruits
 from core import egtime, dates
 from services import notifications
@@ -385,6 +386,9 @@ def _stats(v):
     v["sheet_matrix"], v["sheet_leaves"] = docx_recruits.month_sheets(year, month)
     v["missing"] = da.days_without_journal(year, month, rd or v["eom"])
     v["info"] = info
+    # الصحة: كل من لم يُعمل له كشف طبي دوري هذا الشهر — حتى لو إجازة، لحين يومه
+    done = db_health.month_checkup_ids(year, month)
+    v["no_checkup"] = [r for r in v["recruits"] if r["id"] not in done]
     return render_template("recruits_stats.html", **v)
 
 
