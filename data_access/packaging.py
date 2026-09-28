@@ -147,8 +147,14 @@ def pack_breakdown(kind, capacity, inner_count, inner_capacity, remaining, unit,
     inner_count = float(inner_count or 0)
     inner_capacity = float(inner_capacity or 0)
     remaining = float(remaining or 0)
-    if remaining <= 0:
+    if remaining == 0:
         return ""
+    if remaining < 0:
+        # أرصدة سالبة بالتغليف (توجيه ٢٨/٠٩): «سالب ٢ كارتونة» بدل إعادة رقم الكجم —
+        # تفكيك القيمة المطلقة بصيغة الصرف ثم «سالب » قبلها.
+        neg = pack_breakdown(kind, capacity, inner_count, inner_capacity,
+                             -remaining, unit, rest_word="", inner_kind=inner_kind)
+        return f"سالب {neg}" if neg else ""
     open_mode = (rest_word == "سائب")          # الأرصدة تُظهر العبوة المفتوحة
     parts = []
     if inner_count > 0 and inner_capacity > 0:
@@ -278,18 +284,36 @@ class PackLedger:
         self.full = 0.0      # عبوات كاملة مقفولة
         self.loose = 0.0     # سائب حر بوحدة التعامل
         self.rest = 0.0      # باقي عبوة مفتوحة
+        self.deficit = 0.0   # صرف من غير رصيد — يُعرض بالتغليف «سالب ٢ كارتونة» (توجيه ٢٨/٠٩)
 
     def set_kind(self, kind, capacity):
         if not self.kind and (kind or "").strip():
             self.kind = (kind or "").strip()
             self.capacity = float(capacity or 0)
 
+    def _pay_deficit(self, total_qty):
+        """تسديد عجز قديم من كمية داخلة جديدة — والباقي يبقى رصيد عادي."""
+        if self.deficit <= 0 or total_qty <= 0:
+            return total_qty
+        pay = min(self.deficit, total_qty)
+        self.deficit = round(self.deficit - pay, 6)
+        return round(total_qty - pay, 6)
+
     def add(self, count, loose):
+        if self.deficit > 0 and self.capacity > 0:
+            rem = self._pay_deficit(float(count or 0) * self.capacity + float(loose or 0))
+            if rem > 0:
+                fulls = int(rem // self.capacity)
+                self.full += fulls
+                self.loose += round(rem - fulls * self.capacity, 6)
+            return
         self.full += float(count or 0)
         self.loose += float(loose or 0)
 
     def add_qty(self, q):
-        self.loose += float(q or 0)
+        rem = self._pay_deficit(float(q or 0))
+        if rem > 0:
+            self.loose += rem
 
     def take(self, q):
         q = float(q or 0)
@@ -307,8 +331,17 @@ class PackLedger:
                 q = 0
             else:
                 q = round(q - self.capacity, 6)
+        if q > 0:
+            # صرف من غير تغطية — لا يضيع: يتسجل كرصيد سالب بالتغليف (توجيه ٢٨/٠٩)
+            self.deficit = round(self.deficit + q, 6)
 
     def label(self):
+        if self.deficit > 0.000001:
+            neg = pack_breakdown(self.kind, self.capacity, 0, 0,
+                                 self.deficit, self.unit, rest_word="")
+            if neg:
+                return f"سالب {neg}"
+            return f"سالب {arnum.fmt_qty_trim(round(self.deficit, 6))} {self.unit}".strip()
         if not self.kind:
             return f"{arnum.fmt_qty_trim(round(self.loose, 6))} {self.unit}".strip()
         parts = []
