@@ -164,4 +164,11 @@ def snapshot(year, month):
           r["details"], r["responsible"] or "—")
          for idx, r in enumerate(t5, 1)])])
 
+    try:   # فولدرات الأيام والتفاريد وشيتات التغليف (توجيه ٢٨/٠٩ مساءً)
+        from services import cycle_xlsx
+        cycle_xlsx.build_tarfea(year, month)
+    except Exception:
+        import logging
+        logging.exception("tarfea cycle structure failed")
+
     return base_dir(year, month)

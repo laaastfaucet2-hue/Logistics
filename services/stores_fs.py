@@ -92,6 +92,17 @@ def snapshot(year, month):
               "الكمية", "الوحدة", "التغليف", "المستند"], move_rows),
             ("كشف الأرصدة",
              ["المخزن", "الصنف", "الرصيد", "التغليف المتبقي بالضبط"], balance_rows)])
+
+        # فولدر لكل مخزن: حركة المخزن + كشف جرد الأرصدة (توجيه ٢٨/٠٩ مساءً)
+        from services import cycle_xlsx
+        units = {}
+        for _c in ("supply", "contractor", "tarfea"):
+            try:
+                for _it in dw.list_items(year, month, _c):
+                    units[_it["name"]] = _it["handle_unit"]
+            except Exception:
+                continue
+        cycle_xlsx.build_store_folders(base_dir(year, month), rep, units)
     except Exception:
         logging.exception("stores snapshot failed")
 

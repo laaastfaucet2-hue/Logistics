@@ -163,27 +163,6 @@ def snapshot_cycle(year, month, cycle):
             "مدة الصلاحية (يوم)": r["shelf_days"] if r["shelf_days"] is not None else "—",
             "ملاحظات": r["notes"] or "—",
         } for r in receipts]})
-    def _pack_cell(r):
-        if r.get("pack_label"):
-            return r["pack_label"]          # التسمية العربية الموحدة
-        if not r.get("pack_kind") or r["pack_kind"] == "بدون تغليف":
-            return "—"
-        bits = []
-        if r.get("pack_count"):
-            cell = "{} {}".format(arnum.fmt_qty(r["pack_count"]).rstrip("0").rstrip("٫") or "٠", r["pack_kind"])
-            if r.get("pack_capacity"):
-                cell += " × {}".format(arnum.fmt_qty(r["pack_capacity"]).rstrip("0").rstrip("٫") or "٠")
-            bits.append(cell)
-        if r.get("pack_loose"):
-            bits.append("{} سائب".format(arnum.fmt_qty(r["pack_loose"]).rstrip("0").rstrip("٫") or "٠"))
-        return " + ".join(bits) or "—"
-
-    def _stores_cell(r):
-        cells = []
-        for p in r["stores"]:
-            cells.append("{} ({})".format(p["store_name"], arnum.fmt_qty(p["qty"])))
-        return "، ".join(cells) or "—"
-
     _save_xlsx(cycle_dir(year, month, cycle, "wh1") / TAB_XLSX["wh1"], [(
         "إذون إضافة ١ مخازن",
         ["رقم الإذن", "اليوم", "يوم الشهر", "التاريخ", "الصنف", "الكمية", "وحدة التعامل",
@@ -263,8 +242,37 @@ def snapshot_cycle(year, month, cycle):
          ["م", "الصنف", "الوحدة", "المنصرف بالوحدة", "المنصرف بالتغليف",
           "المخزن", "تاريخ الانتهاء", "ملاحظات"], taf_rows)])
 
+    try:   # الهيكل اليومي والشيتات الجديدة (توجيه ٢٨/٠٩ مساءً)
+        from services import cycle_xlsx
+        cycle_xlsx.build_cycle(year, month, cycle)
+    except Exception:
+        logging.exception("cycle xlsx structure failed for %s", cycle)
     dataguard.auto_backup("write", min_minutes=20)
     return True
+
+
+def _pack_cell(r):
+    """عمود «التغليف» المختصر في جدول ١ مخازن — التسمية العربية الموحدة."""
+    if r.get("pack_label"):
+        return r["pack_label"]          # التسمية العربية الموحدة
+    if not r.get("pack_kind") or r["pack_kind"] == "بدون تغليف":
+        return "—"
+    bits = []
+    if r.get("pack_count"):
+        cell = "{} {}".format(arnum.fmt_qty(r["pack_count"]).rstrip("0").rstrip("٫") or "٠", r["pack_kind"])
+        if r.get("pack_capacity"):
+            cell += " × {}".format(arnum.fmt_qty(r["pack_capacity"]).rstrip("0").rstrip("٫") or "٠")
+        bits.append(cell)
+    if r.get("pack_loose"):
+        bits.append("{} سائب".format(arnum.fmt_qty(r["pack_loose"]).rstrip("0").rstrip("٫") or "٠"))
+    return " + ".join(bits) or "—"
+
+
+def _stores_cell(r):
+    cells = []
+    for p in r["stores"]:
+        cells.append("{} ({})".format(p["store_name"], arnum.fmt_qty(p["qty"])))
+    return "، ".join(cells) or "—"
 
 
 def _item_name(items, item_id):

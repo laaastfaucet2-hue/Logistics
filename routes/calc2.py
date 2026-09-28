@@ -228,5 +228,11 @@ def save():
           f"من يوم {arnum.to_arabic_indic(day_from)} "
           f"لمدة {arnum.to_arabic_indic(issue_days)} يومًا.")
     ok += _impact_report(before, _impact_snapshot(year, month))
+    try:   # مرايا دورات المستودعات تلاحق الإيذان الجديد فورًا (توجيه ٢٨/٠٩)
+        from services import warehouses_fs
+        warehouses_fs.snapshot_all(year, month)
+    except Exception:
+        import logging
+        logging.exception("calc2 warehouses mirrors failed")
     keys = ",".join(p["key"] for p in selected)
     return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys, "days": issue_days})
