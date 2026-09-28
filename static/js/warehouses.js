@@ -797,6 +797,73 @@
     refresh();
   }
   Array.prototype.forEach.call(document.querySelectorAll("form"), wireShelf);
+
+  /* ============ وضع تعديل إذن ١ مخازن: تعبئة الفورم ببياناته (توجيه ٢٧/٠٩ —
+     إصلاح ٢٨/٠٩: البلوك كان في آخر الملف جوه IIFE روابط التأميدات و«return»
+     المبكرة كان بيقفزه + متغيراتة بره نطاقه ⇒ التعبئة ما كانت بتشتغل أبدًا.
+     نُقل جوه النطاق ده ليرى fmt/AR/SPLIT_REFRESH/addLineBtn/lineBox) ============ */
+  var editData = document.getElementById("whEditData");
+  if (editData && addLineBtn && lineBox) {
+    var editLines = [];
+    try { editLines = JSON.parse(editData.textContent || "[]"); }
+    catch (err) { if (window.console && console.warn) console.warn("داتا التعديل:", err); }
+    lineBox.innerHTML = "";   /* الكارت الفاضي التلقائي يتشال — الكروت تُبنى من الداتا */
+    Array.prototype.forEach.call(editLines, function () { addLineBtn.click(); });
+    function dmy(iso) {
+      var p = String(iso || "").split("-");
+      if (p.length !== 3) return "";
+      var ar = function (n) { return String(n).replace(/[0-9]/g, function (d) { return AR[+d]; }); };
+      return ar(+p[2]) + "/" + ar(+p[1]) + "/" + ar(+p[0]);
+    }
+    Array.prototype.forEach.call(lineBox.querySelectorAll(".wh-item-card"),
+      function (card, idx) {
+        var ln = editLines[idx];
+        if (!ln) return;
+        function set(name, val) {
+          var el = card.querySelector('[name="l' + idx + "_" + name + '"]');
+          if (el) el.value = (val === null || val === undefined) ? "" : String(val);
+        }
+        set("item_name", ln.item_name);
+        set("handle_unit", ln.handle_unit);
+        set("qty", ln.qty ? fmt(ln.qty) : "");
+        set("pack_kind", ln.pack_kind);
+        set("pack_count", ln.pack_count ? fmt(ln.pack_count) : "");
+        set("pack_inner_kind", ln.pack_inner_kind);
+        set("pack_inner_count", ln.pack_inner_count ? fmt(ln.pack_inner_count) : "");
+        set("pack_inner_capacity", ln.pack_inner_capacity ? fmt(ln.pack_inner_capacity) : "");
+        set("pack_capacity", ln.pack_capacity ? fmt(ln.pack_capacity) : "");
+        set("pack_loose", ln.pack_loose ? fmt(ln.pack_loose) : "");
+        set("pack_loose_unit", ln.pack_loose_unit);
+        set("prod_date", dmy(ln.prod_date));
+        set("exp_date", dmy(ln.exp_date));
+        /* المخازن: صف توزيع لكل مخزن محفوظ */
+        var rowsBox = card.querySelector(".js-split-rows");
+        var addBtn = card.querySelector(".js-split-add");
+        if (rowsBox && addBtn) {
+          rowsBox.innerHTML = "";
+          Array.prototype.forEach.call(ln.stores || [], function (st) {
+            addBtn.click();
+            var row = rowsBox.children[rowsBox.children.length - 1];
+            if (!row) return;
+            row.querySelector('[name$="store_id"]').value = st.store_id || "";
+            var nameEl = row.querySelector('[name$="store_name"]');
+            nameEl.value = st.store_name || "";
+            row.querySelector('[name$="store_qty"]').value = st.qty ? fmt(st.qty) : "";
+            nameEl.dispatchEvent(new Event("input", { bubbles: true }));
+            nameEl.dispatchEvent(new Event("change", { bubbles: true }));
+          });
+        }
+        /* إطلاق الأحداث: الكومبو والشرائح والحسابات تتجدد بالقيم المعبأة */
+        Array.prototype.forEach.call(card.querySelectorAll("input, textarea"), function (el) {
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+        Array.prototype.forEach.call(card.querySelectorAll("input"), function (el) {
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        var qtyEl = card.querySelector(".js-line-qty");
+        if (qtyEl && SPLIT_REFRESH) SPLIT_REFRESH.forEach(function (f) { f(); });
+      });
+  }
 })();
 
 /* نوافذ التفاريد المنبثقة: فتح من أي سطر/زر، وإغلاق بزر أو Esc أو الضغط بالخارج */
@@ -861,7 +928,9 @@ document.addEventListener("click", function (ev) {
       if (row) row.click();
     }
   } catch (err) {}
+})();
 
+(function () {
   /* ============ كارت الصنف على الموبايل: الضغط على صنف ينزل على الكارت على طول
   (القائمة فوقه والكارت تحتها — من غيرها يبان «الجدول مختفي» وهو تحت) ============ */
   try {
@@ -876,65 +945,4 @@ document.addEventListener("click", function (ev) {
     }
   } catch (err) {}
 
-  /* ============ وضع تعديل إذن ١ مخازن: تعبئة الفورم ببياناته (توجيه ٢٧/٠٩) ============ */
-  var editData = document.getElementById("whEditData");
-  if (editData && addLineBtn && lineBox) {
-    var editLines = [];
-    try { editLines = JSON.parse(editData.textContent || "[]"); }
-    catch (err) { if (window.console && console.warn) console.warn("داتا التعديل:", err); }
-    lineBox.innerHTML = "";   /* الكارت الفاضي التلقائي يتشال — الكروت تُبنى من الداتا */
-    Array.prototype.forEach.call(editLines, function () { addLineBtn.click(); });
-    function dmy(iso) {
-      var p = String(iso || "").split("-");
-      return p.length === 3 ? AR[+p[2]] + "/" + AR[+p[1]] + "/" + AR[+p[0]] : "";
-    }
-    Array.prototype.forEach.call(lineBox.querySelectorAll(".wh-item-card"),
-      function (card, idx) {
-        var ln = editLines[idx];
-        if (!ln) return;
-        function set(name, val) {
-          var el = card.querySelector('[name="l' + idx + "_" + name + '"]');
-          if (el) el.value = (val === null || val === undefined) ? "" : String(val);
-        }
-        set("item_name", ln.item_name);
-        set("handle_unit", ln.handle_unit);
-        set("qty", ln.qty ? fmt(ln.qty) : "");
-        set("pack_kind", ln.pack_kind);
-        set("pack_count", ln.pack_count ? fmt(ln.pack_count) : "");
-        set("pack_inner_kind", ln.pack_inner_kind);
-        set("pack_inner_count", ln.pack_inner_count ? fmt(ln.pack_inner_count) : "");
-        set("pack_inner_capacity", ln.pack_inner_capacity ? fmt(ln.pack_inner_capacity) : "");
-        set("pack_capacity", ln.pack_capacity ? fmt(ln.pack_capacity) : "");
-        set("pack_loose", ln.pack_loose ? fmt(ln.pack_loose) : "");
-        set("pack_loose_unit", ln.pack_loose_unit);
-        set("prod_date", dmy(ln.prod_date));
-        set("exp_date", dmy(ln.exp_date));
-        /* المخازن: صف توزيع لكل مخزن محفوظ */
-        var rowsBox = card.querySelector(".js-split-rows");
-        var addBtn = card.querySelector(".js-split-add");
-        if (rowsBox && addBtn) {
-          rowsBox.innerHTML = "";
-          Array.prototype.forEach.call(ln.stores || [], function (st) {
-            addBtn.click();
-            var row = rowsBox.children[rowsBox.children.length - 1];
-            if (!row) return;
-            row.querySelector('[name$="store_id"]').value = st.store_id || "";
-            var nameEl = row.querySelector('[name$="store_name"]');
-            nameEl.value = st.store_name || "";
-            row.querySelector('[name$="store_qty"]').value = st.qty ? fmt(st.qty) : "";
-            nameEl.dispatchEvent(new Event("input", { bubbles: true }));
-            nameEl.dispatchEvent(new Event("change", { bubbles: true }));
-          });
-        }
-        /* إطلاق الأحداث: الكومبو والشرائح والحسابات تتجدد بالقيم المعبأة */
-        Array.prototype.forEach.call(card.querySelectorAll("input, textarea"), function (el) {
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-        });
-        Array.prototype.forEach.call(card.querySelectorAll("input"), function (el) {
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-        });
-        var qtyEl = card.querySelector(".js-line-qty");
-        if (qtyEl && SPLIT_REFRESH) SPLIT_REFRESH.forEach(function (f) { f(); });
-      });
-  }
 })();
