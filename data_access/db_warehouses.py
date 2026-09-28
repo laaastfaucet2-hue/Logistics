@@ -962,8 +962,7 @@ def stores_report(year, month):
                     "item": item["name"], "unit": item["handle_unit"],
                     "qty": qty, "pack_label": r["pack_label"],
                     "serial": r["serial"], "expiry": r["exp_date"] or "",
-                    "producer": (r.get("producer") or "").strip(),
-                    "supplier": (r.get("supplier_name") or "").strip(),
+                    "producer": (r.get("producer") or "").strip(), "supplier": (r.get("supplier_name") or "").strip(),
                 })
                 target["balances"][item["name"]] = \
                     target["balances"].get(item["name"], 0.0) + qty
