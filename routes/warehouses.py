@@ -138,6 +138,13 @@ def _open_path(path):
 def page():
     year, month = _ctx()
     cycle, sub = _cycle(), _sub()
+    if cycle == "tarfea":
+        # دورة الترفية ليها صفحتها الخاصة (٥ تابات بلا ٤ مخازن) — لا تُعرض بكروم المستودعات
+        from urllib.parse import quote
+        keep = {k: v for k, v in request.args.items()
+                if k in ("sub", "item", "wh1edit", "ok", "err", "serial", "issue")}
+        qs = "&".join(f"{k}={quote(str(v))}" for k, v in keep.items())
+        return redirect(url_for("tarfea.page") + ("?" + qs if qs else ""))
     try:
         wf.ensure_folders(year, month)
         wf.snapshot_all(year, month)      # الإذون قد تُحفظ من آلة الحاسبة — نبقي المرايا صادقة
