@@ -15,6 +15,8 @@ from datetime import date as _date
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from core import arabic_numbers as arnum
@@ -61,7 +63,24 @@ TANK_COLS = [("place", "مكان الخزان"), ("cap", "سعة الخزان"),
              ("vent", "بفتحة التهوية"), ("cl", "نسبة الكلور الحر المتبقى")]
 TANK_DEFAULT = {"place": "بجوار مطبخ", "cap": "3×3 م³", "mat": "فايبر جلاكس",
                 "cover": "نعم", "man": "نعم", "wash": "نعم", "vent": "نعم", "cl": "—"}
-TANK_COUNT = 4
+TANK_COUNT_DEFAULT = 4
+TANK_MAX = 12
+
+
+def tank_count(year, month):
+    """عدد الخزانات المعروض (افتراضي ٤ — يُخزَّن في health_fields)."""
+    stored = db_health.get_fields(year, month, "tanks")
+    try:
+        n = int((stored.get("tank_count") or "").strip() or TANK_COUNT_DEFAULT)
+    except ValueError:
+        n = TANK_COUNT_DEFAULT
+    return max(1, min(TANK_MAX, n))
+
+
+def set_tank_count(year, month, n):
+    n = max(1, min(TANK_MAX, int(n)))
+    db_health.set_fields(year, month, "tanks", {"tank_count": str(n)})
+    return n
 
 # مواصفات حقول كل تقرير: (fkey, label, kind, default) — kind: line/area/date
 FIELDS = {
@@ -142,6 +161,42 @@ def header_values(year, month):
 
 
 # ==================== بناء المستند المشترك ====================
+def _bidi(p):
+    """اتجاه الفقرة من اليمين لليسار في الوورد (مطابقة الكتابة العربية)."""
+    pPr = p._p.get_or_add_pPr()
+    pPr.insert(0, OxmlElement("w:bidi"))
+    return p
+
+
+def _rule(p, color="B8860B", sz="8"):
+    """خط سفلي ذهبي تحت فقرة (فاصل الترويسة)."""
+    pPr = p._p.get_or_add_pPr()
+    pbdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), sz)
+    bottom.set(qn("w:space"), "6")
+    bottom.set(qn("w:color"), color)
+    pbdr.append(bottom)
+    pPr.append(pbdr)
+    return p
+
+
+def _page_frame(doc):
+    """فريم مزدوج كحلي حول صفحة الوورد كلها (زي الأوراق الرسمية)."""
+    sect = doc.sections[0]._sectPr
+    pg = OxmlElement("w:pgBorders")
+    pg.set(qn("w:offsetFrom"), "page")
+    for side in ("top", "left", "bottom", "right"):
+        el = OxmlElement("w:" + side)
+        el.set(qn("w:val"), "double")
+        el.set(qn("w:sz"), "18")
+        el.set(qn("w:space"), "24")
+        el.set(qn("w:color"), "0A1230")
+        pg.append(el)
+    sect.append(pg)
+
+
 def _run(p, text, size=12, bold=True, color=NAVY):
     r = p.add_run(text)
     r.font.name = "Cairo"
@@ -155,6 +210,7 @@ def _para(doc, text, size=12, bold=True, color=NAVY,
           align=WD_ALIGN_PARAGRAPH.RIGHT):
     p = doc.add_paragraph()
     p.alignment = align
+    _bidi(p)
     if text:
         _run(p, text, size, bold, color)
     return p
@@ -163,20 +219,23 @@ def _para(doc, text, size=12, bold=True, color=NAVY,
 def _cell(cell, text, size=9, color=NAVY):
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _bidi(p)
     _run(p, text, size, True, color)
 
 
 def _health_header(doc, year, month):
-    """ترويسة الورق الصحي: اللوجو شمالًا + محافظة/مديرية/إدارة يمينًا."""
+    """ترويسة الورق: اللوجو شمالًا + أسطر الدباجة يمينًا + خط ذهبي فاصل."""
     from data_access import db_letterhead as lhdb
     logo = lhdb.logo_path(year, month)
     if logo and logo.exists():
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        p.add_run().add_picture(str(logo), width=Cm(3))
+        p.add_run().add_picture(str(logo), width=Cm(2.6))
     hdr = header_values(year, month)
+    last = None
     for i, key in enumerate(("h1", "h2", "h3")):
-        _para(doc, hdr[key], 14 if i == 0 else 12, True, NAVY)
+        last = _para(doc, hdr[key], 14 if i == 0 else 12, True, NAVY)
+    _rule(last)
 
 
 def _approve(doc, right_rank, right_name, left_rank, left_name):
@@ -185,8 +244,8 @@ def _approve(doc, right_rank, right_name, left_rank, left_name):
     doc.add_paragraph("\n")
     table = doc.add_table(rows=1, cols=2)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    for idx, (rank, name) in enumerate(((right_rank, right_name),
-                                        (left_rank, left_name))):
+    for idx, (rank, name) in enumerate(((left_rank, left_name),
+                                        (right_rank, right_name))):
         cell = table.cell(0, idx)
         cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         for text in (rank, name or "........................"):
@@ -199,6 +258,7 @@ def _approve(doc, right_rank, right_name, left_rank, left_name):
 def build_spray(year, month):
     v = field_values(year, month, "spray")
     doc = Document()
+    _page_frame(doc)
     _health_header(doc, year, month)
     _para(doc, v["title"], 15, True, GOLD, WD_ALIGN_PARAGRAPH.CENTER)
     doc.add_paragraph("")
@@ -214,6 +274,7 @@ def build_spray(year, month):
 def build_water(year, month):
     v = field_values(year, month, "water")
     doc = Document()
+    _page_frame(doc)
     _health_header(doc, year, month)
     _para(doc, v["title"], 15, True, GOLD, WD_ALIGN_PARAGRAPH.CENTER)
     doc.add_paragraph("")
@@ -229,7 +290,9 @@ def build_water(year, month):
 def build_tanks(year, month):
     v = field_values(year, month, "tanks")
     stored = db_health.get_fields(year, month, "tanks")
+    count = tank_count(year, month)
     doc = Document()
+    _page_frame(doc)
     _health_header(doc, year, month)
     _para(doc, v["title"], 15, True, GOLD, WD_ALIGN_PARAGRAPH.CENTER)
     doc.add_paragraph("")
@@ -243,7 +306,7 @@ def build_tanks(year, month):
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     for i, (_key, label) in enumerate(TANK_COLS):
         _cell(table.rows[0].cells[i], label, 9)
-    for t in range(1, TANK_COUNT + 1):
+    for t in range(1, count + 1):
         cells = table.add_row().cells
         for i, (key, _label) in enumerate(TANK_COLS):
             raw = (stored.get(f"t{t}_{key}") or "").strip()
@@ -260,6 +323,7 @@ def build_checkup(year, month, day):
     ids = db_health.get_day_recruits(year, month, day)
     recruits = {r["id"]: r["name"] for r in db_recruits.list_recruits(year, month)}
     doc = Document()
+    _page_frame(doc)
     _health_header(doc, year, month)
     _para(doc, v["title"], 15, True, GOLD, WD_ALIGN_PARAGRAPH.CENTER)
     doc.add_paragraph("")

@@ -19,6 +19,7 @@ from flask import (Blueprint, abort, redirect, render_template, request,
 from core.auth_core import login_required, current_session, current_context
 from core.config import MONTH_NAMES
 from core import egtime
+from core import arabic_numbers as arnum
 from data_access import db_health
 from data_access import db_recruits
 from data_access import db_letterhead as lhdb
@@ -66,10 +67,10 @@ def _field_rows(year, month, report):
 
 
 def _tank_rows(year, month):
-    """مصفوفة الخزانات للتعديل: صف لكل خزان × 8 خلايا."""
+    """مصفوفة الخزانات للتعديل: صف لكل خزان × 8 خلايا (العدد ديناميكي)."""
     stored = db_health.get_fields(year, month, "tanks")
     out = []
-    for t in range(1, docx_health.TANK_COUNT + 1):
+    for t in range(1, docx_health.tank_count(year, month) + 1):
         row = []
         for key, label in docx_health.TANK_COLS:
             row.append((f"t{t}_{key}", label,
@@ -134,11 +135,13 @@ def page():
         v.update(field_rows=_field_rows(year, month, "tanks"),
                  tank_rows=_tank_rows(year, month))
         stored_t = db_health.get_fields(year, month, "tanks")
+        count_t = docx_health.tank_count(year, month)
+        v["tank_count"] = count_t
         tank_cells = [[("t%d_%s" % (t, key),
                         (stored_t.get("t%d_%s" % (t, key)) or "").strip()
                         or docx_health.TANK_DEFAULT[key])
                        for key, _l in docx_health.TANK_COLS]
-                      for t in range(1, docx_health.TANK_COUNT + 1)]
+                      for t in range(1, count_t + 1)]
         v["pv"].update(f=docx_health.field_values(year, month, "tanks"),
                        tanks=True,
                        tank_labels=[l for _k, l in docx_health.TANK_COLS],
@@ -223,6 +226,36 @@ def reset_fields(report):
     db_health.reset_report(year, month, report)
     docx_health.rebuild(year, month, report)
     return _rb(report, ok="أُعيدت نصوص النموذج الرسمي الافتراضية ✓")
+
+
+# ======================================================================
+# الخزانات: إضافة / حذف (العدد ديناميكي ١-١٢ ويُحفظ مع بيانات الشهر)
+# ======================================================================
+@health_bp.route("/tanks/add", methods=["POST"])
+@login_required
+def tanks_add():
+    year, month = _ctx()
+    n = docx_health.set_tank_count(year, month,
+                                   docx_health.tank_count(year, month) + 1)
+    docx_health.rebuild(year, month, "tanks")
+    return _rb("tanks", ok="أُضيف خزان — صار العدد {} خزانًا ✓".format(
+        arnum.to_arabic_indic(n)))
+
+
+@health_bp.route("/tanks/delete", methods=["POST"])
+@login_required
+def tanks_delete():
+    year, month = _ctx()
+    cur = docx_health.tank_count(year, month)
+    if cur <= 1:
+        return _rb("tanks", err="لازم يفضل خزان واحد على الأقل في الجدول")
+    last = cur
+    db_health.set_fields(year, month, "tanks",
+                         {f"t{last}_{k}": "" for k, _l in docx_health.TANK_COLS})
+    n = docx_health.set_tank_count(year, month, cur - 1)
+    docx_health.rebuild(year, month, "tanks")
+    return _rb("tanks", ok="اتحذف الخزان رقم {} — صار العدد {} خزانًا ✓".format(
+        arnum.to_arabic_indic(last), arnum.to_arabic_indic(n)))
 
 
 # ======================================================================

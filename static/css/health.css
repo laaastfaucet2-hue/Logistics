@@ -33,35 +33,39 @@
   .hl-paper-col { order: -1; position: sticky; top: 8px; z-index: 5; }
 }
 
-/* ================== ورق المعاينة (شكل A4) ================== */
-.hl-paper { background: #fff; color: #0a1230; border-radius: 6px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .3); padding: 26px 24px 30px;
-  font-weight: 700;
-  min-height: 420px; }
+/* ================== ورق المعاينة — مطابق لملف الوورد ================== */
+.hl-paper { background: #fff; color: #0a1230; border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35); padding: 26px 22px;
+  font-weight: 700; }
+.hl-frame { border: 4px double #0a1230; padding: 26px 22px 30px; min-height: 480px; }
 .hl-paper-top { display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 10px; border-bottom: 2px solid rgba(184, 134, 11, .35); padding-bottom: 8px;
-  margin-bottom: 12px; }
-.hl-paper-logo { width: 74px; height: auto; object-fit: contain; }
-.hl-paper-lines { text-align: right; line-height: 1.7; font-size: .95rem; }
-.hl-pl1 { font-size: 1.1rem; }
-.hl-paper-title { text-align: center; color: #b8860b; font-size: 1.15rem;
-  text-decoration: underline; margin: 10px 0 14px; }
-.hl-paper-date { margin: 4px 0; font-size: .95rem; }
-.hl-paper-body { line-height: 2; font-size: .95rem; margin: 10px 0; }
-.hl-paper-names { margin: 8px 24px; line-height: 2; font-size: .95rem; }
-.hl-paper-none { color: #b8860b; font-size: .85rem; padding: 6px 0; }
-.hl-paper-tail { margin-top: 10px; }
+  gap: 10px; padding-bottom: 6px; margin-bottom: 14px; }
+.hl-paper-logo { width: 98px; height: auto; object-fit: contain; }
+.hl-paper-lines { text-align: right; line-height: 1.6; }
+.hl-pl1 { font-size: 14pt; }
+.hl-paper-lines div { font-size: 12pt; }
+.hl-pl3 { border-bottom: 2px solid #b8860b; padding-bottom: 4px; }
+.hl-paper-title { text-align: center; color: #b8860b; font-size: 15pt;
+  margin: 14px 0 16px; }
+.hl-paper-date { margin: 3px 0; font-size: 12pt; }
+.hl-paper-body { line-height: 2.05; font-size: 12pt; margin: 10px 0;
+  text-align: justify; white-space: pre-wrap; }
+.hl-paper-names { margin: 12px 6px 12px 0; }
+.hl-paper-name { font-size: 12pt; line-height: 1.95; }
+.hl-paper-none { color: #b8860b; font-size: 11pt; padding: 6px 0; }
+.hl-paper-tail { margin-top: 10px; font-size: 12pt; }
 .hl-paper-note { background: rgba(184, 134, 11, .08); border: 1px dashed #b8860b;
-  border-radius: 10px; padding: 10px 12px; font-size: .85rem; margin: 10px 0 16px; }
-.hl-paper-tanks { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  border-radius: 10px; padding: 10px 12px; font-size: 10.5pt; margin: 10px 0 16px; }
+.hl-paper-tanks { border-collapse: collapse; width: 100%; margin: 12px 0; }
 .hl-paper-tanks th, .hl-paper-tanks td { border: 1px solid #0a1230; padding: 4px 5px;
-  font-size: .68rem; text-align: center; font-weight: 700; }
+  font-size: 9pt; text-align: center; font-weight: 700; }
 .hl-paper-tanks th { background: rgba(184, 134, 11, .12); }
-.hl-ptnum { color: #b8860b; }
-.hl-paper-appr { margin-top: 18px; font-size: 1rem; }
-.hl-paper-sigs { width: 100%; margin-top: 14px; border-collapse: collapse; }
-.hl-paper-sigs td { text-align: center; padding: 6px 8px; font-size: .95rem; }
-.hl-paper-approve { text-align: center; margin-top: 12px; }
+.hl-ptnum { color: #b8860b; width: 30px; }
+.hl-paper-appr { margin-top: 20px; font-size: 12pt; text-align: right; }
+.hl-paper-sigs { width: 100%; margin-top: 16px; border-collapse: collapse; }
+.hl-paper-sigs td { text-align: center; padding: 6px 8px; font-size: 12pt; }
+.hl-pv-def { min-width: 40%; }
+.hl-paper-approve { text-align: center; margin-top: 14px; font-size: 12pt; }
 .hl-live-dirty { background: rgba(184, 134, 11, .1); }
 
 /* ================== نموذج التعديل ================== */
@@ -140,3 +144,8 @@
   .hl-tab-ico { font-size: 1.4rem; }
   .hl-paper { padding: 18px 14px 22px; }
 }
+
+/* شريط إدارة الخزانات */
+.hl-tank-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 10px 4px; border-bottom: 1px dashed var(--card-border); margin-bottom: 8px; }
+.hl-tank-bar b { color: var(--gold, #b8860b); }

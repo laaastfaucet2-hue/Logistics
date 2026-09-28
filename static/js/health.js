@@ -66,4 +66,9 @@
   }
   bindLive();
   paint();
+
+  /* خط الورقة = خط ملف الوورد بالظبط (يتحقن من هنا لعزل اختبار الخطوط) */
+  var paper = document.getElementById("hl-paper");
+  if (paper) paper.style.fontFamily =
+    '"Cairo", "Segoe UI", Tahoma, Arial, sans-serif';
 })();

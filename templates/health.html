@@ -134,7 +134,17 @@
         <a class="rt-btn small navy" href="{{ url_for('health.docx_download', report=tab) }}">⬇️ تنزيل (وورد)</a>
       </div>
       {% if tab == 'tanks' %}
-      <div class="hl-hint">جدول الخزانات ({{ tank_rows | length | aindic }} خزان) — كل خلية قابلة للتعديل:</div>
+      <div class="hl-tank-bar">
+        <span class="hl-hint">عدد الخزانات: <b>{{ tank_count | aindic }}</b></span>
+        <form method="post" action="{{ url_for('health.tanks_add') }}" class="inline-f">
+          <button class="rt-btn small green" type="submit">➕ إضافة خزان</button>
+        </form>
+        <form method="post" action="{{ url_for('health.tanks_delete') }}" class="inline-f">
+          <button class="rt-btn small dim" type="submit">➖ حذف الخزان الأخير</button>
+        </form>
+        <span class="hl-hint">الصفوف تظهر في الجدول وفي الورق فورًا</span>
+      </div>
+      <div class="hl-hint">جدول الخزانات — كل خلية قابلة للتعديل:</div>
       {% endif %}
       <form method="post" action="{{ url_for('health.save_fields', report=tab) }}" class="hl-form">
         {% for key, label, kind, val in field_rows %}
