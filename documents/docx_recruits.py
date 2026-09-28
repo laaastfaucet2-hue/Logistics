@@ -32,10 +32,16 @@ DATE_EXPORT_VERSION = "2.1-day-first-dates"
 STATUS_LETTER = {"حضور": "ح", "إجازة": "إ", "غياب": "غ", "مأمورية": "م", "مستشفى": "ط", "أخرى": "أ"}
 
 
-def docs_dir(year, month):
-    p = storage.recruits_dir(year, month, "مستندات")
+def docs_dir(year, month, which="journal"):
+    """مجلدات التويبات: كشف الحالات → اليومية العامة، كشف الإجازات والتصاريح → الإجازات."""
+    folders = {"journal": "اليومية العامة", "leaves": "الإجازات"}
+    p = storage.recruits_dir(year, month, folders.get(which, folders["journal"]))
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def leaves_dir(year, month):
+    return docs_dir(year, month, "leaves")
 
 
 def _run(p, text, size=12, bold=True, color=NAVY):
@@ -151,7 +157,7 @@ def rebuild_month(year, month):
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _run(p, "لا توجد إجازات مسجلة هذا الشهر", 12, True, GOLD)
     _signatures(doc2, year, month)
-    path2 = docs_dir(year, month) / "كشف-الإجازات-{}-{:02d}.docx".format(year, month)
+    path2 = leaves_dir(year, month) / "كشف-الإجازات-{}-{:02d}.docx".format(year, month)
     dataguard.atomic_save(doc2.save, path2)
     return path1, path2
 
@@ -187,7 +193,7 @@ def build_leave_permit(recruit, from_day, to_day, year, month):
         _run(p, text, 13)
     _signatures(doc, year, month)
     safe = "".join(ch for ch in recruit["name"] if ch.isalnum() or ch in " _-").strip().replace(" ", "_")
-    path = docs_dir(year, month) / "تصاريح" / "تصريح-{}-{}-{:02d}-{:02d}.docx".format(
+    path = leaves_dir(year, month) / "تصاريح" / "تصريح-{}-{}-{:02d}-{:02d}.docx".format(
         safe, year, month, from_day)
     path.parent.mkdir(parents=True, exist_ok=True)
     dataguard.atomic_save(doc.save, path)
@@ -195,10 +201,9 @@ def build_leave_permit(recruit, from_day, to_day, year, month):
 
 
 def month_sheets(year, month):
-    """مسارات كشفي الشهر إن وُجدا (لأزرار التنزيل)."""
-    base = docs_dir(year, month)
-    p1 = base / "كشف-الحالات-{}-{:02d}.docx".format(year, month)
-    p2 = base / "كشف-الإجازات-{}-{:02d}.docx".format(year, month)
+    """مسارات كشفي الشهر إن وُجدا (لأزرار التنزيل) — كل كشف في مجلد تويبه."""
+    p1 = docs_dir(year, month) / "كشف-الحالات-{}-{:02d}.docx".format(year, month)
+    p2 = leaves_dir(year, month) / "كشف-الإجازات-{}-{:02d}.docx".format(year, month)
     return (p1 if p1.exists() else None), (p2 if p2.exists() else None)
 
 

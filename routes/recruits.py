@@ -14,6 +14,7 @@ from flask import (Blueprint, abort, redirect, render_template, request,
 
 from core import arabic_numbers as arnum
 from data_access import database as db
+from services import recruits_fs
 from data_access import dataguard
 from data_access import db_attendance as da
 from data_access import db_recruits as dr
@@ -95,6 +96,10 @@ def _cert_badge(r, today):
 @login_required
 def page():
     tab = request.args.get("tab", "registry")
+    try:
+        recruits_fs.ensure_folders(*_ctx())   # ٧ مجلدات بأسماء التويبات (توجيه ٢٨/٠٩)
+    except OSError:
+        pass
     v = _base_vars(tab)
     if tab == "journal":
         return _journal(v)
@@ -167,6 +172,10 @@ def save():
     else:
         rid = dr.add_recruit(*_ctx(), data)
         msg = "تم تسجيل المجند «{}» في أصل القوة ✔".format(data["name"])
+    try:
+        recruits_fs.snapshot_all(*_ctx())   # أصل القوة تغيّر — حدّث مرايا التويبات
+    except OSError:
+        pass
     dataguard.auto_backup("write", min_minutes=20)
     return _rb(ok=msg, tab="registry")
 
@@ -181,6 +190,10 @@ def delete(rid):
         dr.delete_recruit(*_ctx(), rid)
     except ValueError as exc:
         return _rb(err=str(exc))
+    try:
+        recruits_fs.snapshot_all(*_ctx())
+    except OSError:
+        pass
     dataguard.auto_backup("write", min_minutes=20)
     return _rb(ok="حُذف «{}» من أصل القوة من الشهر الحالي فقط".format(r["name"]),
                tab="registry")
@@ -259,6 +272,7 @@ def journal_unlock():
     year, month = _ctx()
     day = arnum.parse_int(request.form.get("day")) or 1
     da.unlock_day(year, month, day)
+    _after_attendance_change(year, month)
     return _rb(ok="فُتحت يومية يوم {} للتعديل (بتأكيدك الصريح)".format(arnum.to_arabic_indic(day)), tab="journal", day=day)
 
 
@@ -312,7 +326,12 @@ def journal_delete_entry():
 
 
 def _after_attendance_change(year, month):
-    """كشوف الوورد اللحظية + نسخة احتياطية مخنوقة بعد أي تعديل يومية/سجل."""
+    """مرايا Excel السبعة + كشوف الوورد اللحظية + نسخة احتياطية مخنوقة."""
+    try:
+        recruits_fs.snapshot_all(year, month)
+    except Exception:  # noqa: BLE001 — المرايا لا تُسقط الحفظ
+        import logging
+        logging.exception("recruits mirrors failed")
     try:
         docx_recruits.rebuild_month(year, month)
     except Exception as exc:  # noqa: BLE001 — الوورد لا يُسقط الحفظ
@@ -459,11 +478,11 @@ def docx_download(name):
             docx_recruits.ensure_month_sheets(year, month)
         except OSError:
             return _rb(err="أغلق ملف الوورد المفتوح ثم أعد التنزيل لتحديث تنسيق التواريخ", tab="stats")
-    base = docx_recruits.docs_dir(year, month)
-    path = base / name
-    if not path.exists():
-        path = base / "تصاريح" / name
-    if not path.exists():
+    path = next((p for p in (docx_recruits.docs_dir(year, month) / name,
+                             docx_recruits.leaves_dir(year, month) / name,
+                             docx_recruits.leaves_dir(year, month) / "تصاريح" / name)
+                 if p.exists()), None)
+    if path is None:
         abort(404)
     return attachment(path, "recruits-report.docx")
 
