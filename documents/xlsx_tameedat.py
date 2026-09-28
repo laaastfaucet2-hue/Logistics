@@ -19,7 +19,7 @@ from data_access import db_tameedat as dt
 from documents.official_xlsx import add_letterhead, TITLE_ROW, TABLE_ROW, DATA_ROW, EXPORT_VERSION
 from services import tameedat_fs
 
-NAVY, GOLD, GOLD_L, WHITE = "0A1230", "B8860B", "F6D47C", "FFFFFF"
+NAVY, GOLD, GOLD_L, WHITE = "0A1230", "BDD7EE", "BDD7EE", "132638"
 SUBTOTAL = "E9EDF7"
 CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True, readingOrder=2)
 _BORDER = Border(*[Side(style="thin", color="9AA6C7")] * 4)

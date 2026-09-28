@@ -40,6 +40,9 @@ TAB_XLSX = {
     "dict": "قاموس الجهات.xlsx",
 }
 
+# الأزرق الفاتح المعتمد لكل تصميمات Excel — بدل البرتقالي (توجيه ٢٨/٠٩)
+XLSX_BLUE = "BDD7EE"
+
 HEADER_1 = "منطقة وسط وجنوب للأمن المركزي"
 HEADER_2 = "قطاع وسط سيناء - قسم التميينات"
 
@@ -179,7 +182,7 @@ def _save_xlsx(path, sheets):
         first = False
         sheet.append(headers)
         for cell in sheet[sheet.max_row]:
-            cell.fill = PatternFill("solid", fgColor="F59E0B")
+            cell.fill = PatternFill("solid", fgColor=XLSX_BLUE)
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal="center")
         for row in rows:
@@ -190,33 +193,97 @@ def _save_xlsx(path, sheets):
     book.save(path)
 
 
+def _save_day_xlsx(path, year, month, records):
+    """«تأميدات اليوم المحدد» — ورقة رأسية عمودية (توجيه ٢٨/٠٩): كل تأميدة بلوك
+    صفوف «البيان | القيمة» بدل الجدول العرضي، وأعلى الورقة إجمالي كل التأميدات
+    في الشهر (ضباط/أفراد/مجندين بملحقاتها) — يتجدد تلقائيًا مع كل حفظ."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "تأميدات الشهر"
+    sheet.sheet_view.rightToLeft = True
+    head = Font(bold=True, size=12)
+    label = Font(bold=True, size=11)
+    blue = PatternFill("solid", fgColor=XLSX_BLUE)
+    center = Alignment(horizontal="center", vertical="center")
+    right = Alignment(horizontal="right", vertical="center", readingOrder=2)
+
+    def banner(row, text):
+        cell = sheet.cell(row, 1, text)
+        cell.font = head
+        cell.fill = blue
+        cell.alignment = right
+        sheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+
+    def block(title, pairs):
+        banner(sheet.max_row + 1, title)
+        for k, v in pairs:
+            sheet.append([k, v])
+            sheet.cell(sheet.max_row, 1).font = label
+        sheet.append([None, None])
+
+    sheet.append(["البيان", "القيمة"])
+    for cell in sheet[1]:
+        cell.font = head
+        cell.fill = blue
+        cell.alignment = center
+
+    def _sum(field):
+        return (sum(r[field] for r in records)
+                + sum(a[field] for r in records for a in r.get("attachments", [])))
+
+    block("إجمالي التأميدات في الشهر — {} {}".format(MONTH_NAMES[month - 1], year), [
+        ("عدد التأميدات", len(records)),
+        ("إجمالي الضباط", _sum("officers")),
+        ("إجمالي الأفراد", _sum("individuals")),
+        ("إجمالي المجندين", _sum("recruits")),
+        ("الإجمالي العام", sum(r["grand_total"] for r in records)),
+    ])
+    for rec in records:
+        pairs = [
+            ("الجهة", rec["entity_name"]),
+            ("النوع", rec["entity_type"] or "—"),
+            ("من يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")),
+            ("إلى يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day_to']:02d}")),
+            ("عدد أيام المدة", rec["range_days"]),
+            ("ضباط", rec["officers"]),
+            ("أفراد", rec["individuals"]),
+            ("مجندين", rec["recruits"]),
+            ("إجمالي التأميدة", rec["total"]),
+            ("إجمالي التأميدة مع الملحقات", rec["grand_total"]),
+        ]
+        for a in rec.get("attachments", []):
+            pairs.append(("ملحقة: {} ({})".format(a["name"], a["entity_type"] or "—"),
+                          "ضباط {} · أفراد {} · مجندين {}".format(
+                              a["officers"], a["individuals"], a["recruits"])))
+        pairs.append(("ملاحظات", rec.get("notes") or "—"))
+        block("تأميدة رقم {} — {}".format(rec["id"], rec["entity_name"]), pairs)
+    sheet.column_dimensions["A"].width = 34
+    sheet.column_dimensions["B"].width = 46
+    book.save(path)
+
+
 def _snapshot_xlsx(year, month, records, entities, summary):
     """نسخ Excel من جداول التويبات الثلاثة — توجيه المستخدم (٢٣/٠٩): الملفات كلها Excel.
     أي عطل هنا لا يوقف الحفظ: مرآة JSON تظل سليمة ويُسجَّل التحذير."""
     try:
-        day_rows = []
-        for idx, rec in enumerate(records, 1):
-            atts = "، ".join(f"{a['name']} ({a['entity_type'] or '—'}): "
-                            f"{a['officers'] + a['individuals'] + a['recruits']}"
-                            for a in rec.get("attachments", []))
-            day_rows.append((idx, rec["entity_name"], rec["entity_type"],
-                             dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}"),
-                             dates.format_date(f"{year:04d}-{month:02d}-{rec['day_to']:02d}"),
-                             rec["officers"], rec["individuals"], rec["recruits"],
-                             rec["grand_total"], atts or "—", rec.get("notes") or "—"))
-        _save_xlsx(tab_dir(year, month, "day") / TAB_XLSX["day"], [(
-            "سجلات التأميدات",
-            ["م", "الجهة", "النوع", "من يوم", "إلى يوم", "ضباط", "أفراد", "مجندين",
-             "إجمالي التأميدة", "الملحقات", "ملاحظات"], day_rows)])
+        _save_day_xlsx(tab_dir(year, month, "day") / TAB_XLSX["day"],
+                       year, month, records)
 
         stats = dt.dict_month_stats(year, month)   # المصدر الموحد — لا منطق متوازٍ هنا
         dict_rows = []
         for e in entities:
             st = stats.get(e["id"], {})
-            own = st.get("own")
+            own, att = st.get("own"), st.get("att")
+            tot_officers = ((own["total_officers"] if own else 0)
+                            + (att["total_officers"] if att else 0))
+            tot_individuals = ((own["total_individuals"] if own else 0)
+                               + (att["total_individuals"] if att else 0))
+            has = bool(st.get("records_total"))
             dict_rows.append((e["serial"], e["name"], e["entity_type"],
-                              e["rag_officers"] if e["rag_officers"] is not None else "—",
-                              e["rag_individuals"] if e["rag_individuals"] is not None else "—",
+                              tot_officers if has else "—",
+                              tot_individuals if has else "—",
                               round(own["avg_officers"], 3) if own else "—",
                               round(own["avg_individuals"], 3) if own else "—",
                               round(own["avg_recruits"], 3) if own else "—",
@@ -226,7 +293,7 @@ def _snapshot_xlsx(year, month, records, entities, summary):
                               e.get("notes") or "—"))
         _save_xlsx(tab_dir(year, month, "dict") / TAB_XLSX["dict"], [(
             "قاموس الجهات",
-            ["م", "الجهة", "النوع", "راغبين ضباط", "راغبين أفراد",
+            ["م", "الجهة", "النوع", "إجمالي الضباط", "إجمالي الأفراد",
              "متوسط ضباط", "متوسط أفراد", "متوسط مجندين", "عدد التأميدات", "ملحقة على", "ملاحظات"],
             dict_rows)])
 

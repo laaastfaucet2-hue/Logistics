@@ -22,7 +22,7 @@ from core.config import (SECTIONS, RATION_KINDS, RATION_KIND_MAP,
                     MONTH_NAMES, DAYS, MEAL_MAP)
 from core import arabic_numbers as arnum
 
-NAVY, GOLD, GOLD_L, GREEN, WHITE = "0A1230", "B8860B", "F6D47C", "1E7F4F", "FFFFFF"
+NAVY, GOLD, GOLD_L, GREEN, WHITE = "0A1230", "BDD7EE", "BDD7EE", "1E7F4F", "132638"
 CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _BORDER = Border(*[Side(style="thin", color="9AA6C7")] * 4)
 
