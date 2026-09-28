@@ -8,6 +8,7 @@
 - ٥ مخازن: سجل يومي **مشتقّ** من رصيد أول المدة وأذون ١ مخازن وصرف ٢ مخازن —
   الكميات بالمعيار (وحدة التعامل) وليس بالتغليف، ومرتبط بالتابات الأخرى (توجيه ٢٩/٠٩).
 """
+from core.arabic_numbers import fmt_qty, to_arabic_indic
 from data_access import months
 from data_access import db_warehouses as dw
 
@@ -237,7 +238,7 @@ def t5_rows(year, month):
 
     def _a(x):
         """الرقم بأرقام عربية منسوبة للعرض في تفاصيل السجل."""
-        return arnum.fmt_qty(float(x)).rstrip("0").rstrip("٫")
+        return fmt_qty(float(x)).rstrip("0").rstrip("٫")
 
     groups = {}
     for r in list_receipts(year, month):
@@ -259,7 +260,7 @@ def t5_rows(year, month):
                      else "مختلط" if g["units"] else "",
                      "kind": "wh1", "serial": serial,
                      "details": "إذن إضافة ١ مخازن ({}): {}".format(
-                         arnum.to_arabic_indic(len(g["names"])),
+                         to_arabic_indic(str(len(g["names"]))),
                          " + ".join(g["names"])),
                      "responsible": "", "issue_id": 0})
     # إذون صرف ٢ مخازن
