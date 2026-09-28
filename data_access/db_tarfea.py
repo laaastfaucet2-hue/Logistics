@@ -206,25 +206,36 @@ def t5_rows(year, month):
         for r in card.get("rows") or []:
             if r.get("kind") == "opener":
                 rows.append({"day": r["day"], "permit_no": 0,
-                             "party": "رصيد أول المدة", "added": r.get("added") or 0,
+                             "party": "رصيد أول المدة",
+                             "added": int(r["added"]) if float(r["added"] or 0).is_integer()
+                             else round(float(r["added"] or 0), 3),
                              "issued": 0.0, "unit": it["handle_unit"],
                              "kind": "opener", "serial": 0,
                              "details": "افتتاحي «{}»".format(it["name"]),
                              "responsible": "", "issue_id": 0})
     # أذون ١ مخازن — تجميع بإذن (سطر واحد لكل إذن بالكمية الكلية بالمعيار)
+    def _n(x):
+        x = float(x or 0)
+        return int(x) if x.is_integer() else round(x, 3)
+
     groups = {}
     for r in list_receipts(year, month):
         g = groups.setdefault(r["serial"], {"day": r["day"], "added": 0.0,
-                                            "names": [], "party": "", "notes": ""})
+                                            "names": [], "units": [],
+                                            "party": "", "notes": ""})
         g["added"] += r["qty_handle"] or 0
-        g["names"].append("{} {}".format(r["qty_handle"], r["unit"]))
+        g["names"].append("{} {}".format(_n(r["qty_handle"]), r["unit"]))
+        if r["unit"] and r["unit"] not in g["units"]:
+            g["units"].append(r["unit"])
         g["party"] = r["supplier_name"] or r["producer"] or "إذن إضافة"
         g["notes"] = r["notes"] or ""
     for serial in sorted(groups):
         g = groups[serial]
         rows.append({"day": g["day"], "permit_no": serial,
-                     "party": "وارد من: " + g["party"], "added": g["added"],
-                     "issued": 0.0, "unit": "مختلط" if len(g["names"]) > 1 else "",
+                     "party": "وارد من: " + g["party"], "added": _n(g["added"]),
+                     "issued": 0.0,
+                     "unit": g["units"][0] if len(g["units"]) == 1
+                     else "مختلط" if g["units"] else "",
                      "kind": "wh1", "serial": serial,
                      "details": "إذن إضافة ١ مخازن ({}): {}".format(
                          len(g["names"]), " + ".join(g["names"])),
@@ -233,7 +244,8 @@ def t5_rows(year, month):
     for i in list_issues(year, month):
         rows.append({"day": i["day"], "permit_no": i["serial"],
                      "party": "منصرف إلى: " + (i["receiver"] or "—"),
-                     "added": 0.0, "issued": i["qty"],
+                     "added": 0.0, "issued": int(i["qty"]) if float(i["qty"]).is_integer()
+                     else round(float(i["qty"]), 3),
                      "unit": i["unit"] or (items.get(i["item_id"], {})
                                            .get("handle_unit", "")),
                      "kind": "wh2", "serial": i["serial"],
