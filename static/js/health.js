@@ -48,30 +48,41 @@
     if (!input || input.dataset.acBound) return;
     input.dataset.acBound = "1";
 
-    input.addEventListener("input", function () {
-      rid.value = "";                       // كتابة يدوية تلغي الربط
-      closeMenus();
-      renderNames();
-      var q = norm(input.value);
-      if (!q) return;
-      var matches = RECRUITS.map(function (r) {
+    /* المطابقة: كل كلمة من اللي كتبته تكون موجودة في الاسم،
+       والبادئة الأول أقوى — والحاضرين اليوم بينزلوا الأول دايمًا */
+    function pick(q) {
+      var toks = norm(q).split(" ").filter(Boolean);
+      var out = [];
+      RECRUITS.forEach(function (r) {
         var n = norm(r.name);
-        var score = n === q ? 0 : n.indexOf(q) === 0 ? 1 :
-                    n.indexOf(q) >= 0 ? 2 : 9;
-        return { r: r, score: score + (r.present ? 0 : 10) };
-      }).filter(function (m) { return m.score < 9; })
-        .sort(function (a, b) { return a.score - b.score; })
-        .slice(0, 8);
-      if (!matches.length) return;
+        if (toks.length && !toks.every(function (t) { return n.indexOf(t) >= 0; })) {
+          return;
+        }
+        var prefix = toks.length === 1 && n.indexOf(toks[0]) === 0;
+        out.push({ r: r, s: (prefix ? 0 : 1) + (r.present ? 0 : 10) });
+      });
+      out.sort(function (a, b) { return a.s - b.s; });
+      return out.slice(0, 9).map(function (x) { return x.r; });
+    }
+
+    function openMenu(list, hint) {
+      closeMenus();
+      if (!list.length) return;
       var menu = document.createElement("div");
       menu.className = "hl-ac";
-      matches.forEach(function (m) {
+      if (hint) {
+        var head = document.createElement("div");
+        head.className = "hl-ac-hint";
+        head.textContent = hint;
+        menu.appendChild(head);
+      }
+      list.forEach(function (r) {
         var item = document.createElement("div");
         item.className = "hl-ac-item";
         var nm = document.createElement("span");
-        nm.textContent = m.r.name;
+        nm.textContent = r.name;
         item.appendChild(nm);
-        if (m.r.present) {
+        if (r.present) {
           var b = document.createElement("span");
           b.className = "hl-ac-pres";
           b.textContent = "✅ حاضر اليوم";
@@ -79,15 +90,34 @@
         }
         item.addEventListener("mousedown", function (ev) {
           ev.preventDefault();
-          input.value = m.r.name;
-          rid.value = m.r.id;
+          input.value = r.name;
+          rid.value = r.id;
           closeMenus();
           renderNames();
         });
         menu.appendChild(item);
       });
       row.appendChild(menu);
-    });
+    }
+
+    function refresh() {
+      var q = input.value.trim();
+      if (!q) {
+        /* المربع فاضي: أظهر الحاضرين اليوم الأول وبعدين الباقي */
+        var all = RECRUITS.slice(0).sort(function (a, b) {
+          return (b.present ? 1 : 0) - (a.present ? 1 : 0);
+        }).slice(0, 9);
+        openMenu(all, "✅ الحاضرون اليوم الأول — اختار أو كمّل كتابة");
+        return;
+      }
+      rid.value = "";                         // كتابة يدوية تلغي الربط
+      openMenu(pick(q), "");
+      renderNames();
+    }
+
+    input.addEventListener("focus", refresh);
+    input.addEventListener("click", refresh);
+    input.addEventListener("input", refresh);
     input.addEventListener("blur", function () {
       setTimeout(closeMenus, 150);
       renderNames();
