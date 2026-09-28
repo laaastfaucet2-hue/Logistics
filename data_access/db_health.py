@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS health_days (
 );
 CREATE TABLE IF NOT EXISTS health_checkups (
     day INTEGER NOT NULL,
-    recruit_id INTEGER NOT NULL,
-    created_at TEXT DEFAULT '',
-    UNIQUE(day, recruit_id)
+    recruit_id INTEGER NOT NULL DEFAULT 0,
+    name TEXT DEFAULT '',
+    created_at TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS health_fields (
     report TEXT NOT NULL,
@@ -31,6 +31,20 @@ CREATE TABLE IF NOT EXISTS health_fields (
 
 def ensure_tables(conn):
     conn.executescript(_MIGRATE_SQL)
+    # ترقية الجداول القديمة: عمود الاسم + إسقاط قيد UNIQUE
+    row = conn.execute("PRAGMA table_info(health_checkups)").fetchall()
+    cols = {r["name"] for r in row}
+    if "name" not in cols:
+        with conn:
+            conn.executescript("""
+                CREATE TABLE health_checkups_new (
+                    day INTEGER NOT NULL, recruit_id INTEGER NOT NULL DEFAULT 0,
+                    name TEXT DEFAULT '', created_at TEXT DEFAULT '');
+                INSERT INTO health_checkups_new(day, recruit_id, name, created_at)
+                    SELECT day, recruit_id, '', created_at FROM health_checkups;
+                DROP TABLE health_checkups;
+                ALTER TABLE health_checkups_new RENAME TO health_checkups;
+            """)
 
 
 # ==================== أيام الكشف الدوري الثلاثة ====================
@@ -76,37 +90,39 @@ def set_days(year, month, days):
     return days
 
 
-# ==================== المكتوشون في كل يوم ====================
-def get_day_recruits(year, month, day):
-    """ids المجندين المكتوشين في يوم كشف محدد."""
+# ==================== المكتوشون في كل يوم (مربعات أسماء) ====================
+def get_day_entries(year, month, day):
+    """مكتوشو يوم محدد بترتيب الإدخال: [{name, recruit_id}] —
+    recruit_id=0 لاسم مكتوب يدويًا مش موجود في البرنامج."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
-    rows = [r["recruit_id"] for r in conn.execute(
-        "SELECT recruit_id FROM health_checkups WHERE day=? ORDER BY recruit_id",
-        (day,)).fetchall()]
+    rows = conn.execute(
+        "SELECT recruit_id, name FROM health_checkups WHERE day=? ORDER BY rowid",
+        (day,)).fetchall()
     conn.close()
-    return rows
+    return [{"recruit_id": r["recruit_id"] or 0,
+             "name": (r["name"] or "").strip()} for r in rows]
 
 
-def set_day_recruits(year, month, day, recruit_ids):
-    """استبدال قائمة مكتوشي يوم محدد ذرّيًا."""
+def set_day_entries(year, month, day, entries):
+    """استبدال مكتوشي يوم محدد ذرّيًا — entries = [(name, recruit_id|0)]."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
     with conn:
         conn.execute("DELETE FROM health_checkups WHERE day=?", (day,))
-        for rid in recruit_ids:
+        for name, rid in entries:
             conn.execute(
-                "INSERT OR IGNORE INTO health_checkups(day, recruit_id, created_at)"
-                " VALUES (?, ?, datetime('now'))", (day, int(rid)))
+                "INSERT INTO health_checkups(day, recruit_id, name, created_at)"
+                " VALUES (?, ?, ?, datetime('now'))", (day, int(rid or 0), name))
     conn.close()
 
 
 def month_checkup_ids(year, month):
-    """كل ids اتم كشفه في الشهر (مصدر إحصائية «لم يُكشفوا»)."""
+    """كل ids مجند اتم كشفه في الشهر (مصدر إحصائية «لم يُكشفوا»)."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
     rows = {r["recruit_id"] for r in conn.execute(
-        "SELECT DISTINCT recruit_id FROM health_checkups").fetchall()}
+        "SELECT DISTINCT recruit_id FROM health_checkups WHERE recruit_id > 0").fetchall()}
     conn.close()
     return rows
 

@@ -10,6 +10,7 @@
 
 التعديل من الصفحة يحدّث ملف الفولدر المحلي فورًا (مصدر حقيقة واحد).
 """
+import json
 from datetime import date as _date
 
 from flask import g
@@ -80,21 +81,13 @@ def _tank_rows(year, month):
     return out
 
 
-def _checkup_state(year, month, day):
-    """حالة تاب الكشف: القائمة الكاملة بحالة كل مجند (مكتوش؟ مقترح؟ حالته اليوم؟)."""
-    checked = set(db_health.get_day_recruits(year, month, day))
+def _suggest_data(year, month, day):
+    """بيانات البحث الذكي: كل المجندين وعلامة «حاضر اليوم» من اليومية."""
     day_map = db_health.day_map_full(year, month, day)
-    suggested = {rid for rid, st in day_map.items() if st == "حضور"}
-    if not day_map:
-        suggested = {r["id"] for r in db_recruits.list_recruits(year, month)}
-    real = egtime.today().replace(day=1) == _date(year, month, 1)
-    items = []
-    for r in sorted(db_recruits.list_recruits(year, month), key=lambda x: x["name"]):
-        items.append({"id": r["id"], "name": r["name"],
-                      "status": day_map.get(r["id"], ""),
-                      "checked": r["id"] in checked,
-                      "suggested": r["id"] in suggested})
-    return items, real
+    return [{"id": r["id"], "name": r["name"],
+             "present": day_map.get(r["id"]) == "حضور"}
+            for r in sorted(db_recruits.list_recruits(year, month),
+                            key=lambda x: x["name"])]
 
 
 @health_bp.route("/")
@@ -124,13 +117,15 @@ def page():
         day = int(request.args.get("day") or (days[0] if days else 1))
         if day not in days:
             day = days[0]
-        items, _real = _checkup_state(year, month, day)
-        v.update(days=days, day=day, items=items,
-                 checked_count=len(db_health.get_day_recruits(year, month, day)),
+        entries = db_health.get_day_entries(year, month, day)
+        v.update(days=days, day=day, day_entries=entries,
+                 suggest_json=json.dumps(_suggest_data(year, month, day),
+                                         ensure_ascii=False),
+                 checked_count=len(entries),
                  field_rows=_field_rows(year, month, "checkup"))
         v["pv"].update(f=docx_health.field_values(year, month, "checkup", day),
                        is_checkup=True,
-                       names=[it["name"] for it in items if it["checked"]])
+                       names=[e["name"] for e in entries])
     elif tab == "tanks":
         v.update(field_rows=_field_rows(year, month, "tanks"),
                  tank_rows=_tank_rows(year, month))
@@ -284,6 +279,8 @@ def save_days():
 @health_bp.route("/checkup/select", methods=["POST"])
 @login_required
 def select_checkup():
+    """حفظ مربعات أسماء المكتوشين — الاسم مصدر الكشف، والربط بالمعرف
+    (لما الاختيار من البحث الذكي) بيغذي إحصائية «لم يُكشفوا»."""
     year, month = _ctx()
     days = db_health.get_days(year, month)
     try:
@@ -292,11 +289,29 @@ def select_checkup():
         day = days[0]
     if day not in days:
         day = days[0]
-    ids = [int(x) for x in request.form.getlist("recruits")]
-    known = {r["id"] for r in db_recruits.list_recruits(year, month)}
-    db_health.set_day_recruits(year, month, day, [i for i in ids if i in known])
+    names = request.form.getlist("names")
+    rids = request.form.getlist("recruit_ids")
+    known = {r["id"]: r["name"] for r in db_recruits.list_recruits(year, month)}
+    entries, seen = [], set()
+    for i, raw in enumerate(names):
+        name = " ".join((raw or "").split())
+        if not name:
+            continue
+        rid = 0
+        if i < len(rids):
+            rid = arnum.parse_int(rids[i]) or 0
+            if rid not in known:
+                rid = 0
+        key = (name, rid)
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append((name, rid))
+    db_health.set_day_entries(year, month, day, entries)
     docx_health.rebuild(year, month, "checkup", day)
-    return _rb("checkups", day, ok="تم تحديد المكتوشين وتحديث الكشف ✓")
+    msg = "تم حفظ {} مكتوش وتحديث كشف يوم {} ✓".format(
+        arnum.to_arabic_indic(len(entries)), arnum.to_arabic_indic(day))
+    return _rb("checkups", day, ok=msg)
 
 
 # ======================================================================

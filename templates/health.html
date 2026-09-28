@@ -85,23 +85,20 @@
   <form method="post" action="{{ url_for('health.select_checkup') }}">
     <input type="hidden" name="day" value="{{ day }}">
     <div class="hl-hint row">
-      <span>اختر المكتوشين ليوم <b>{{ day | aindic }} {{ month_name }}</b> —
-        المقترحون بالأخضر (حاضرو اليوم من اليومية، ولو مفيش يومية لليوم يُقترح الجميع):</span>
-      <button class="rt-btn small dim" type="button" id="hl-all">تحديد الكل</button>
-      <button class="rt-btn small dim" type="button" id="hl-sugg">تحديد المقترحين فقط</button>
-      <button class="rt-btn small dim" type="button" id="hl-none">إلغاء الكل</button>
+      <span>اكتب أسماء المكتوشين ليوم <b>{{ day | aindic }} {{ month_name }}</b> في المربعات —
+        <b>بحث ذكي</b> بيفتّش مع الكتابة ويقترح المجندين، <b>✅ الحاضرين اليوم بيظهروا الأول</b>.
+        وتقدر تكتب اسم مش مسجل خالص (يتسجل في الكشف من غير ربط):</span>
+      <button class="rt-btn small dim" type="button" id="hl-addbox">➕ إضافة مربع اسم</button>
     </div>
-    <div class="hl-recruits">
-      {% for r in items %}
-      <label class="hl-rec {{ 'sugg' if r.suggested }} {{ 'picked' if r.checked }}">
-        <input type="checkbox" name="recruits" value="{{ r.id }}" {{ 'checked' if r.checked }}>
-        <span class="hl-name">{{ r.name }}</span>
-        {% if r.status %}<span class="hl-st {{ 'good' if r.status == 'حضور' else '' }}">{{ r.status }}</span>
-        {% else %}<span class="hl-st none">بدون يومية</span>{% endif %}
-        {% if r.checked %}<span class="hl-done">✔ مكتوش</span>{% endif %}
-      </label>
+    <div id="hl-nameboxes">
+      {% for e in day_entries %}
+      <div class="hl-namebox-row">
+        <input type="text" name="names" value="{{ e.name }}" dir="rtl" autocomplete="off"
+               placeholder="اكتب اسم المجند…">
+        <input type="hidden" name="recruit_ids" value="{{ e.recruit_id or '' }}">
+        <button type="button" class="hl-box-x" title="حذف المربع">✕</button>
+      </div>
       {% endfor %}
-      {% if not items %}<div class="hl-empty">لا يوجد مجندون في هذا الشهر بعد</div>{% endif %}
     </div>
     <div class="hl-actions">
       <button class="rt-btn green" type="submit">💾 حفظ المكتوشين وتحديث الكشف</button>
@@ -194,5 +191,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script>window.HL_RECRUITS = {{ (suggest_json or '[]') | safe }};</script>
 <script src="{{ url_for('static', filename='js/health.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

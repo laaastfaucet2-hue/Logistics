@@ -149,3 +149,26 @@
 .hl-tank-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   padding: 10px 4px; border-bottom: 1px dashed var(--card-border); margin-bottom: 8px; }
 .hl-tank-bar b { color: var(--gold, #b8860b); }
+
+/* مربعات أسماء المكتوشين + قائمة البحث الذكي */
+.hl-namebox-row { display: flex; gap: 8px; align-items: center;
+  position: relative; margin-bottom: 9px; }
+.hl-namebox-row input[type="text"] { flex: 1; min-width: 0;
+  border: 1px solid var(--card-border); border-radius: 10px; padding: 11px 13px;
+  background: var(--bg, transparent); color: var(--text); font: inherit;
+  font-weight: 700; }
+.hl-namebox-row input[type="text"]:focus { outline: 2px solid var(--gold, #b8860b); }
+.hl-box-x { border: 1px solid rgba(220, 53, 69, .4); color: #b02a37;
+  background: rgba(220, 53, 69, .06); border-radius: 10px; width: 42px; height: 42px;
+  font-size: 1rem; cursor: pointer; flex-shrink: 0; }
+.hl-box-x:hover { background: rgba(220, 53, 69, .15); }
+.hl-ac { position: absolute; top: 100%; right: 0; left: 50px; z-index: 40;
+  background: var(--card); border: 1px solid var(--gold, #b8860b); border-radius: 12px;
+  max-height: 264px; overflow-y: auto; box-shadow: 0 10px 24px rgba(0, 0, 0, .4);
+  margin-top: 4px; }
+.hl-ac-item { padding: 10px 14px; cursor: pointer; display: flex; gap: 10px;
+  align-items: center; justify-content: space-between; font-weight: 700;
+  border-bottom: 1px dashed var(--card-border); }
+.hl-ac-item:last-child { border-bottom: 0; }
+.hl-ac-item:hover { background: rgba(184, 134, 11, .15); }
+.hl-ac-pres { color: var(--green, #15803d); font-size: .74rem; white-space: nowrap; }

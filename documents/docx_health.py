@@ -320,8 +320,9 @@ def build_tanks(year, month):
 
 def build_checkup(year, month, day):
     v = field_values(year, month, "checkup", day)
-    ids = db_health.get_day_recruits(year, month, day)
+    entries = db_health.get_day_entries(year, month, day)
     recruits = {r["id"]: r["name"] for r in db_recruits.list_recruits(year, month)}
+    ids = [(e["name"] or recruits.get(e["recruit_id"], "—")) for e in entries]
     doc = Document()
     _page_frame(doc)
     _health_header(doc, year, month)
@@ -332,9 +333,8 @@ def build_checkup(year, month, day):
     for line in v["body"].splitlines():
         _para(doc, line, 12)
     doc.add_paragraph("")
-    for i, rid in enumerate(ids, 1):
-        _para(doc, "{}- {}".format(arnum.to_arabic_indic(i),
-                                   recruits.get(rid, "—")), 12)
+    for i, name in enumerate(ids, 1):
+        _para(doc, "{}- {}".format(arnum.to_arabic_indic(i), name), 12)
     if not ids:
         _para(doc, "(لم يُحدَّد مكتوشون لهذا اليوم بعد)", 11, False, GOLD)
     doc.add_paragraph("")
