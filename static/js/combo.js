@@ -30,12 +30,35 @@
       });
     }
 
+    /* بحث ذكي (توجيه ٢٩/٠٩ زي كشف الدوري): مطابقة كل كلمات البحث + ترتيب
+       الأقرب أولًا (تطابق تام ← يبدأ بـ ← يحتويه ← مطابقة مبعثرة) */
+    function toks(q) {
+      return q.split(/\s+/).filter(Boolean);
+    }
+    function matches(v, tk) {
+      if (!tk.length) return true;
+      var lv = v.toLowerCase();
+      return tk.every(function (t) { return lv.indexOf(t.toLowerCase()) !== -1; });
+    }
+    function smartSort(list, q) {
+      var lq = q.toLowerCase();
+      function score(v) {
+        var lv = v.toLowerCase();
+        if (lv === lq) return 0;
+        if (lq && lv.indexOf(lq) === 0) return 1;
+        if (lq && lv.indexOf(lq) !== -1) return 2;
+        return 3;
+      }
+      return list.map(function (v, i) { return [v, i]; })
+        .sort(function (a, b) { return (score(a[0]) - score(b[0])) || (a[1] - b[1]); })
+        .map(function (p) { return p[0]; });
+    }
+
     function render() {
       var q = input.value.trim();
       if (input.id === "ctxYear" || input.id === "ctxMonth") q = "";
       list.innerHTML = "";
-      items = options()
-        .filter(function (v) { return !q || v.indexOf(q) !== -1; })
+      items = smartSort(options().filter(function (v) { return matches(v, toks(q)); }), q)
         .map(function (v) {
           var d = document.createElement("div");
           d.className = "combo-item" + (v === q && q ? " sel" : "");

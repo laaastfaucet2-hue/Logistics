@@ -24,16 +24,32 @@
 {% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
 {% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
 
+<!-- زرارا الملفات المحلية للتاب — نفس شكل المستودعات وعلى مجلدات 11-الترفية المنفصلة -->
+<div class="wh-fsbar no-print">
+  <a class="rt-btn dim" href="{{ url_for('tarfea.open_folder', sub=sub) }}">📂 فتح مجلد «{{ sub_name }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('tarfea.open_file', sub=sub) }}">📗 فتح ملف «{{ tab_file }}»</a>
+  <a class="icon-btn down" title="تنزيل ملف «{{ tab_file }}» إكسل"
+     href="{{ url_for('tarfea.file', sub=sub) }}">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+  </a>
+</div>
+
 <!-- ==================== تاب الأصناف ==================== -->
 {% if sub == 'items' %}
 <div class="panel">
-  <div class="panel-head"><h3>📦 كتالوج أصناف الترفية — الاسم + المعيار</h3>
-    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='items') }}">📄 فتح الملف</a></div>
-  <form method="post" action="{{ url_for('tarfea.items_save') }}" class="hl-form">
-    <div class="hl-hint row">
-      <input type="text" name="name" placeholder="اسم الصنف (مثال: تونة)" dir="rtl" required>
-      <input type="text" name="handle_unit" placeholder="وحدة التعامل / المعيار (علبة، عدد، قطعة…)" dir="rtl" required>
-      <button class="rt-btn green" type="submit">💾 إضافة صنف</button>
+  <div class="panel-head"><h3>📦 كتالوج أصناف الترفية — الاسم + المعيار</h3></div>
+  <form method="post" action="{{ url_for('tarfea.items_save') }}" class="wh-form" autocomplete="off">
+    <fieldset class="wh-fs">
+      <legend>📦 صنف جديد</legend>
+      <div class="wh-grid">
+        <label class="wh-f">اسم الصنف
+          <input name="name" data-combo="whItemsList" autocomplete="off" placeholder="مثال: تونة" dir="rtl" required></label>
+        <label class="wh-f">وحدة التعامل (المعيار)
+          <input name="handle_unit" data-combo="whUnitsList" autocomplete="off" placeholder="علبة، عدد، قطعة…" dir="rtl" required></label>
+      </div>
+    </fieldset>
+    <div class="wh-form-actions no-print">
+      <button class="rt-btn green" type="submit">💾 إضافة صنف — وكارته يتفتح في ٣ مخازن</button>
     </div>
   </form>
   {% if items %}
@@ -69,25 +85,35 @@
 <!-- ==================== تاب ٢ مخازن ==================== -->
 {% elif sub == 'wh2' %}
 <div class="panel">
-  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3>
-    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh2') }}">📄 فتح الملف</a></div>
-  <form method="post" action="{{ url_for('tarfea.wh2_add') }}" class="hl-form">
-    <div class="hl-hint row">
-      <input type="text" name="serial" value="{{ next_serial | aindic }}" placeholder="رقم الإذن" dir="rtl" class="w-sm">
-      <input type="text" name="day" value="{{ default_day | aindic }}" placeholder="اليوم" dir="rtl" class="w-sm">
-      <select name="item_id" required>
-        <option value="">— اختر الصنف —</option>
-        {% for it in items %}<option value="{{ it.id }}">{{ it.name }} — المتاح {{ it.balance | qty3 }} {{ it.handle_unit }}</option>{% endfor %}
-      </select>
-      <input type="text" name="qty" placeholder="الكمية المنصرفة (بوحدة التعامل)" dir="rtl" class="w-sm" required>
+  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3></div>
+  <form method="post" action="{{ url_for('tarfea.wh2_add') }}" class="wh-form" autocomplete="off">
+    <fieldset class="wh-fs">
+      <legend>📤 بيانات إذن الصرف</legend>
+      <div class="wh-grid">
+        <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
+          <input name="serial" value="{{ next_serial | aindic }}" inputmode="numeric" autocomplete="off"></label>
+        <label class="wh-f">يوم الإذن (داخل الشهر النشط)
+          <input name="day" value="{{ default_day | aindic }}" inputmode="numeric" autocomplete="off">
+          <span class="wh-hintline wh-day-hint"></span></label>
+        <label class="wh-f">الصنف
+          <select name="item_id" required>
+            <option value="">— اختر الصنف —</option>
+            {% for it in items %}<option value="{{ it.id }}">{{ it.name }} — المتاح {{ it.balance | qty3 }} {{ it.handle_unit }}</option>{% endfor %}
+          </select></label>
+        <label class="wh-f">الكمية المنصرفة (بوحدة التعامل)
+          <input name="qty" inputmode="decimal" autocomplete="off" required></label>
+        <label class="wh-f">منصرف إلى (الجهة/الشخص)
+          <input name="receiver" autocomplete="off" dir="rtl"></label>
+        <label class="wh-f">المسؤول عن الصرف
+          <input name="responsible" autocomplete="off" dir="rtl"></label>
+        <label class="wh-f">ملاحظات
+          <input name="notes" autocomplete="off" dir="rtl"></label>
+      </div>
+    </fieldset>
+    <div class="wh-form-actions no-print">
+      <button class="rt-btn green" type="submit">💾 حفظ إذن الصرف</button>
+      <span class="wh-hintline">بيخصم من كارت ٣ مخازن تلقائيًا وينزل في سجل ٥ مخازن — مفيش رصيد سالب</span>
     </div>
-    <div class="hl-hint row">
-      <input type="text" name="receiver" placeholder="منصرف إلى (الجهة/الشخص)" dir="rtl">
-      <input type="text" name="responsible" placeholder="المسؤول عن الصرف" dir="rtl">
-      <input type="text" name="notes" placeholder="ملاحظات" dir="rtl">
-    </div>
-    <div class="hl-actions"><button class="rt-btn green" type="submit">💾 حفظ إذن الصرف</button>
-      <span class="hl-hint">بيخصم من كارت ٣ مخازن تلقائيًا وينزل في سجل ٥ مخازن — مفيش رصيد سالب</span></div>
   </form>
   {% if issues %}
   <div class="wh-scroll"><table class="rt-table wh-table">
@@ -108,8 +134,7 @@
 {% elif sub == 'wh3' %}
 {% include "warehouses/tab_wh3.html" %}
 <div class="panel">
-  <div class="panel-head"><h3>📊 كشف جرد الأرصدة — آخر رصيد لكل صنف</h3>
-    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh3') }}">📄 فتح ملف الدفتر</a></div>
+  <div class="panel-head"><h3>📊 كشف جرد الأرصدة — آخر رصيد لكل صنف</h3></div>
   {% if stock %}
   <div class="wh-scroll"><table class="rt-table wh-table">
     <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>آخر رصيد</th></tr></thead>
@@ -124,8 +149,7 @@
 <!-- ==================== تاب ٥ مخازن ==================== -->
 {% elif sub == 'wh5' %}
 <div class="panel">
-  <div class="panel-head"><h3>📋 سجل ٥ مخازن اليومي — مشتق تلقائيًا من ١ و٢ و٣ مخازن</h3>
-    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh5') }}">📄 فتح الملف</a></div>
+  <div class="panel-head"><h3>📋 سجل ٥ مخازن اليومي — مشتق تلقائيًا من ١ و٢ و٣ مخازن</h3></div>
   <div class="hl-hint row"><span>الكميات بتظهر <b>بالمعيار (وحدة التعامل)</b> وليس بالتغليف — وبيتحدث تلقائيًا مع كل رصيد افتتاحي أو إذن إضافة أو صرف.</span></div>
   {% if t5 %}
   <div class="wh-scroll"><table class="rt-table wh-table">

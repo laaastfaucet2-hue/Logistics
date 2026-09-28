@@ -132,19 +132,48 @@ def _open_path(path):
 # ======================================================================
 # الصفحة الرئيسية للقسم
 # ======================================================================
+# مسارات محرك الترفية المسموح تمررها عبر المستودعات (الحفظ نفسه) — الباقي يتوجّه
+_TARFEA_ENGINE = {"wh1_add", "wh1_edit", "wh3_opener", "wh3_unit"}
+
+
+@warehouses_bp.before_request
+def _tarfea_gate():
+    """الترفية ليها صفحتها ومجلداتها الخاصة (توجيه ٢٩/٠٩: ملفات منفصلة) —
+    أي طلب لمسارات المستودعات بـcycle=tarfea يتوجّه فورًا لمكانه الصح:
+    صفحاتها في tarfea.page وملفاتها في 11-الترفية لا في مجلدات المستودعات."""
+    cyc = (request.args.get("cycle") or request.form.get("cycle")
+           or (request.view_args or {}).get("cycle"))
+    if cyc != "tarfea":
+        return None
+    name = (request.endpoint or "").rsplit(".", 1)[-1]
+    if name in _TARFEA_ENGINE:
+        return None
+    if name in ("open_folder", "open_file", "download"):
+        sub = (request.view_args or {}).get("sub", "")
+        from services import tarfea_fs as _tf
+        if sub in _tf.SUB_FOLDERS:
+            if name == "open_folder":
+                return redirect(url_for("tarfea.open_folder", sub=sub))
+            if name == "open_file":
+                return redirect(url_for("tarfea.open_file", sub=sub))
+            return redirect(url_for("tarfea.file", sub=sub))
+    if name == "page":
+        keep = {k: v for k, v in request.args.items()
+                if k in ("sub", "item", "wh1edit", "ok", "err", "serial", "issue")}
+        from urllib.parse import quote
+        qs = "&".join(f"{k}={quote(str(v))}" for k, v in keep.items())
+        return redirect(url_for("tarfea.page") + ("?" + qs if qs else ""))
+    return redirect(url_for("tarfea.page"))
+
+
 @warehouses_bp.route("")
 @warehouses_bp.route("/")
 @login_required
 def page():
     year, month = _ctx()
     cycle, sub = _cycle(), _sub()
-    if cycle == "tarfea":
-        # دورة الترفية ليها صفحتها الخاصة (٥ تابات بلا ٤ مخازن) — لا تُعرض بكروم المستودعات
-        from urllib.parse import quote
-        keep = {k: v for k, v in request.args.items()
-                if k in ("sub", "item", "wh1edit", "ok", "err", "serial", "issue")}
-        qs = "&".join(f"{k}={quote(str(v))}" for k, v in keep.items())
-        return redirect(url_for("tarfea.page") + ("?" + qs if qs else ""))
+    if cycle == "tarfea":   # احتياط — البوابة before_request تغطي هذا مسبقًا
+        return redirect(url_for("tarfea.page", sub=sub))
     try:
         wf.ensure_folders(year, month)
         wf.snapshot_all(year, month)      # الإذون قد تُحفظ من آلة الحاسبة — نبقي المرايا صادقة

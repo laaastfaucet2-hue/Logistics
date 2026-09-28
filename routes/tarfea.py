@@ -89,6 +89,8 @@ def page():
          "has_move": {it["id"]: dw.item_has_movement(year, month, CYCLE, it["id"])
                       for it in items},
          "folder_path": tf.folder_hint(year, month),
+         "sub_name": dict((k, n) for k, n, _i in TABS).get(sub, ""),
+         "tab_file": tf.TAB_XLSX.get(sub, ""),
          "ok": request.args.get("ok"), "err": request.args.get("err")}
 
     if sub == "wh1":
@@ -161,6 +163,34 @@ def file(sub):
         abort(404)
     tf.snapshot(year, month)
     return send_file(str(tf.file_path(year, month, sub)), as_attachment=True)
+
+
+# ======================================================================
+# فتح مجلد/ملف التاب محليًا (نفس سلوك المستودعات — على مجلدات الترفية فقط)
+# ======================================================================
+@tarfea_bp.route("/open-folder/<sub>")
+@login_required
+def open_folder(sub):
+    from routes.warehouses import _open_path
+    year, month = _ctx()
+    if sub not in SUB_KEYS:
+        abort(404)
+    if _open_path(tf.sub_dir(year, month, sub)):
+        return _rb(sub, ok="تم فتح مجلد «{}» 📂".format(tf.SUB_FOLDERS[sub]))
+    return _rb(sub, err="فتح المجلد متاح عند تشغيل البرنامج على جهازك — استخدم زر التنزيل هنا")
+
+
+@tarfea_bp.route("/open-file/<sub>")
+@login_required
+def open_file(sub):
+    from routes.warehouses import _open_path
+    year, month = _ctx()
+    if sub not in SUB_KEYS:
+        abort(404)
+    tf.snapshot(year, month)
+    if tf.file_path(year, month, sub).exists() and _open_path(tf.file_path(year, month, sub)):
+        return _rb(sub, ok="تم فتح ملف «{}» 📗".format(tf.TAB_XLSX[sub]))
+    return redirect(url_for("tarfea.file", sub=sub))
 
 
 # ======================================================================
