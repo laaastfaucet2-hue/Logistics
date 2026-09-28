@@ -322,3 +322,34 @@
     {% endif %}
   </section>
 </div>
+<script>
+/* تشخيص مؤقت (بناء ٨٣): شريط أعلى الشاشة يقول حالة جدول الدفتر جوّه متصفح المستخدم نفسه */
+window.setTimeout(function () {
+  try {
+    var t = document.querySelector('[data-wh3panel="daftar"] table.wh-ledger');
+    var bits = ["فحص الجدول:"];
+    if (!t) { bits.push("الجدول مفقود من الصفحة!"); }
+    else {
+      var r = t.getBoundingClientRect();
+      var rows = t.querySelectorAll("tr").length;
+      bits.push("موجود | صفوف: " + rows + " | ارتفاع: " + Math.round(r.height) + "px | عرض: " + Math.round(r.width) + "px");
+      if (r.height < 5) {
+        var el = t, culprit = "ارتفاع صفر بلا سبب ظاهر";
+        while (el && el !== document.documentElement) {
+          var cs = getComputedStyle(el);
+          if (cs.display === "none" || cs.visibility === "hidden") {
+            culprit = el.tagName + "." + String(el.className).slice(0, 50) + " ← display:" + cs.display + "/visibility:" + cs.visibility;
+            break;
+          }
+          el = el.parentElement;
+        }
+        bits.push(culprit);
+      }
+    }
+    var d = document.createElement("div");
+    d.style.cssText = "position:fixed;top:0;right:0;left:0;z-index:99999;background:#7c2d12;color:#fff;padding:7px 10px;font-size:13px;text-align:center;box-shadow:0 2px 8px #000a;direction:rtl";
+    d.textContent = bits.join(" ");
+    document.body.appendChild(d);
+  } catch (e) {}
+}, 2500);
+</script>
