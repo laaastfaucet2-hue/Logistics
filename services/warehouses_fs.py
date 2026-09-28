@@ -106,6 +106,9 @@ from services.tameedat_fs import _save_xlsx  # noqa: E402
 
 def snapshot_cycle(year, month, cycle):
     """يعيد كتابة مرايا دورة واحدة بعد أي حفظ/تعديل/حذف ناجح — محليًا وذرّيًا."""
+    if cycle == "tarfea":               # دورة الترفية: مراياها في 11-الترفية
+        from services import tarfea_fs
+        return tarfea_fs.snapshot(year, month)
     cycle_name = CYCLE_FOLDERS[cycle]
     ensure_folders(year, month)
     suppliers = dw.list_suppliers(year, month, cycle)

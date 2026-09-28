@@ -73,7 +73,7 @@ def _rb(cycle="supply", sub="wh1", ok=None, err=None, warn=None, item=None, **ex
 
 def _cycle():
     raw = request.args.get("cycle") or request.form.get("cycle") or "supply"
-    return raw if raw in WAREHOUSE_MAP else "supply"
+    return raw if (raw in WAREHOUSE_MAP or raw == "tarfea") else "supply"
 
 
 def _sub():
@@ -232,7 +232,8 @@ def page():
             for row in taf3["rows"]:
                 row["wday"] = _wday(year, month, row["day"])
 
-    cycle_cfg = WAREHOUSE_MAP[cycle]
+    cycle_cfg = WAREHOUSE_MAP.get(cycle) or {
+        "key": "tarfea", "name": "سجل الترفية", "icon": "🎖️", "section": "tarfea"}
     tab_file = wf.TAB_XLSX[sub]
     counts = {"suppliers": len(suppliers), "wh1": len(receipts),
               "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items)}

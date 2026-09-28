@@ -101,14 +101,20 @@ def snapshot(year, month):
     def _pack_cell(r):
         return r.get("pack_label") or "—"
 
+    def _stores_cell(r):
+        cells = ["{} ({})".format(p["store_name"],
+                                  arnum.fmt_qty(p["qty"]).rstrip("0").rstrip("٫") or "٠")
+                 for p in (r.get("stores") or [])]
+        return "، ".join(cells) or "—"
+
     _save_xlsx(file_path(year, month, "wh1"), [(
         "إذون إضافة ١ مخازن ترفية",
         ["رقم الإذن", "اليوم", "التاريخ", "الصنف", "الكمية", "وحدة التعامل",
-         "يعادل (قاعدة)", "وحدة القاعدة", "التغليف", "الشركة المنتجة", "المورد",
-         "تاريخ الإنتاج", "تاريخ الصلاحية", "ملاحظات"],
+         "يعادل (قاعدة)", "وحدة القاعدة", "التغليف", "المخازن",
+         "الشركة المنتجة", "المورد", "تاريخ الإنتاج", "تاريخ الصلاحية", "ملاحظات"],
         [(r["serial"], _wday(r["day"], year, month), _d(r["day"], year, month),
           names.get(r["item_id"], "—"), r["qty_handle"], r["unit"],
-          r["qty_base"], r["base_unit"], _pack_cell(r),
+          r["qty_base"], r["base_unit"], _pack_cell(r), _stores_cell(r),
           r["producer"] or "—", r["supplier_name"] or "—",
           wf._date_or_dash(r["prod_date"]), wf._date_or_dash(r["exp_date"]),
           dw.user_notes(r["notes"]) or "—")

@@ -67,13 +67,30 @@ def rename_item(year, month, item_id, name):
 
 
 def delete_item(year, month, item_id):
-    if dw.item_has_movement(year, month, CYCLE, item_id):
-        raise ValueError("عليه حركة — لا يُحذف. أفرغ رصيده أولًا أو احذف حركاته")
+    """حذف الصنف **بدورته كاملة** (توجيه ٢٩/٠٩): الإيذانات والحركات والافتتاحي
+    والتغليف المسجل وإذون صرف ٢ مخازن — كل حاجة بتاعته تتمسح."""
+    item = dw.get_item(year, month, item_id, CYCLE)
+    if not item:
+        raise ValueError("الصنف غير موجود في كتالوج الترفية")
+    name = item["name"]
     conn = _conn(year, month)
     with conn:
+        conn.execute("DELETE FROM tarfea_issues WHERE item_id=?", (item_id,))
+        conn.execute("DELETE FROM wh_ledger WHERE cycle=? AND item_id=?",
+                     (CYCLE, item_id))
+        conn.execute("DELETE FROM wh_opener_stores WHERE cycle=? AND item_id=?",
+                     (CYCLE, item_id))
+        conn.execute("DELETE FROM wh_receipt_stores WHERE receipt_id IN"
+                     " (SELECT id FROM wh_receipts WHERE cycle=? AND item_id=?)",
+                     (CYCLE, item_id))
+        conn.execute("DELETE FROM wh_receipts WHERE cycle=? AND item_id=?",
+                     (CYCLE, item_id))
+        conn.execute("DELETE FROM wh_pack_specs WHERE cycle=? AND item_id=?",
+                     (CYCLE, item_id))
         conn.execute("DELETE FROM wh_items WHERE id=? AND cycle=?",
                      (item_id, CYCLE))
     conn.close()
+    return name
 
 
 def list_items(year, month):
@@ -218,13 +235,17 @@ def t5_rows(year, month):
         x = float(x or 0)
         return int(x) if x.is_integer() else round(x, 3)
 
+    def _a(x):
+        """الرقم بأرقام عربية منسوبة للعرض في تفاصيل السجل."""
+        return arnum.fmt_qty(float(x)).rstrip("0").rstrip("٫")
+
     groups = {}
     for r in list_receipts(year, month):
         g = groups.setdefault(r["serial"], {"day": r["day"], "added": 0.0,
                                             "names": [], "units": [],
                                             "party": "", "notes": ""})
         g["added"] += r["qty_handle"] or 0
-        g["names"].append("{} {}".format(_n(r["qty_handle"]), r["unit"]))
+        g["names"].append("{} {}".format(_a(r["qty_handle"]), r["unit"] or ""))
         if r["unit"] and r["unit"] not in g["units"]:
             g["units"].append(r["unit"])
         g["party"] = r["supplier_name"] or r["producer"] or "إذن إضافة"
@@ -238,7 +259,8 @@ def t5_rows(year, month):
                      else "مختلط" if g["units"] else "",
                      "kind": "wh1", "serial": serial,
                      "details": "إذن إضافة ١ مخازن ({}): {}".format(
-                         len(g["names"]), " + ".join(g["names"])),
+                         arnum.to_arabic_indic(len(g["names"])),
+                         " + ".join(g["names"])),
                      "responsible": "", "issue_id": 0})
     # إذون صرف ٢ مخازن
     for i in list_issues(year, month):
