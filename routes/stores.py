@@ -100,6 +100,8 @@ def _enrich(target):
         it["moves"].append({
             "dir": "in", "date": row["date_iso"], "qty": float(row["qty"] or 0),
             "cycle": row.get("cycle") or "",
+            "producer": row.get("producer") or "",
+            "supplier": row.get("supplier") or "",
             "doc": ("إذن إضافة رقم " + str(row["serial"])) if row.get("serial")
                    else "رصيد أول المدة",
             "pack": row.get("pack_label") or ""})
@@ -112,6 +114,8 @@ def _enrich(target):
         it["moves"].append({
             "dir": "out", "date": row["date_iso"], "qty": float(row["qty"] or 0),
             "cycle": row.get("cycle") or "",
+            "producer": row.get("producer") or "",
+            "supplier": row.get("supplier") or "",
             "doc": "إذن صرف ٢ مخازن رقم " + str(row.get("permit_no") or ""),
             "pack": row.get("pack_label") or ""})
     for name, it in items.items():

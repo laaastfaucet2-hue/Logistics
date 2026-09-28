@@ -352,3 +352,6 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
   .wh-items-col .wh-opener .wh-grid,
   .wh-items-col .wh-opener .wh-eq { grid-template-columns: 1fr; }
 }
+
+/* خلايا الشركات في كروت المخازن: نص هادئ محسوم (توجيه ٢٨/٠٩) */
+.wh-table td.wh-co { font-size: .8rem; color: var(--muted); white-space: normal; min-width: 110px; }

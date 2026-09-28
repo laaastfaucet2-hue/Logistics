@@ -27,8 +27,8 @@
     <b class="wh-taf-title">حركة «{{ name }}» في {{ target.store.name }} — بترتيب التواريخ</b>
     <div class="wh-scroll">
     <table class="rt-table wh-table">
-      <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الدورة</th>
-        <th>الكمية</th><th>الوحدة</th><th>التغليف</th><th>المستند</th></tr></thead>
+      <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الشركة المنتجة</th>
+        <th>الشركة الموردة</th><th>الكمية</th><th>التغليف</th><th>المستند</th></tr></thead>
       <tbody>
         {% for mv in it.moves %}
         <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
@@ -36,9 +36,9 @@
           <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
               {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
           <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
-          <td>{{ mv.cycle or '—' }}</td>
-          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }}</td>
-          <td>{{ it.unit }}</td>
+          <td class="wh-co">{{ mv.producer or '—' }}</td>
+          <td class="wh-co">{{ mv.supplier or '—' }}</td>
+          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }} {{ it.unit }}</td>
           <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
           <td>{{ mv.doc }}</td>
         </tr>
@@ -48,11 +48,10 @@
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="4">الإجماليات</td>
-          <td class="num">+{{ it.in | qty3 }} / −{{ it.out | qty3 }}</td>
-          <td>{{ it.unit }}</td>
+          <td colspan="5">الإجماليات</td>
+          <td class="num">+{{ it.in | qty3 }} / −{{ it.out | qty3 }} {{ it.unit }}</td>
           <td class="wh-pack-cell">{{ it.pack or '—' }}</td>
-          <td>الرصيد: <b>{{ it.balance | qty3 }}</b></td>
+          <td>الرصيد: <b>{{ it.balance | qty3 }}</b> {{ it.unit }}</td>
         </tr>
       </tfoot>
     </table>
