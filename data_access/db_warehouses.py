@@ -11,7 +11,7 @@ from data_access import months
 from data_access.packaging import (pack_summary, pack_split,
                                          pack_breakdown)  # صيغ التغليف اللفظية
 
-SECTION_BY_CYCLE = {"supply": "tamween", "contractor": "contractor"}
+SECTION_BY_CYCLE = {"supply": "tamween", "contractor": "contractor", "tarfea": "tarfea"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS wh_suppliers (

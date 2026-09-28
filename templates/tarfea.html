@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}الترفية • منظومة التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>🎖️ الترفية — دورة مستقلة زي الإمداد والمتعهد</span><span class="sep">•</span>
+  <span class="dim hl-month-chip">📅 شهر <strong>{{ month_name }} {{ year | aindic }}</strong> — ملفات منفصلة شهر بشهر</span>
+</div>
+
+<nav class="hl-tabs">
+  {% for key, name, icon in tabs %}
+  <a class="hl-tab {{ 'on' if sub == key }}" href="{{ url_for('tarfea.page', sub=key) }}">
+    <span class="hl-tab-ico">{{ icon }}</span>
+    <span class="hl-tab-name">{{ name }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+{% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
+{% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
+
+<!-- ==================== تاب الأصناف ==================== -->
+{% if sub == 'items' %}
+<div class="panel">
+  <div class="panel-head"><h3>📦 كتالوج أصناف الترفية — الاسم + المعيار</h3>
+    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='items') }}">📄 فتح الملف</a></div>
+  <form method="post" action="{{ url_for('tarfea.items_save') }}" class="hl-form">
+    <div class="hl-hint row">
+      <input type="text" name="name" placeholder="اسم الصنف (مثال: كورة قدم)" dir="rtl" required>
+      <input type="text" name="handle_unit" placeholder="وحدة التعامل / المعيار (عدد، قطعة، علبة…)" dir="rtl" required>
+      <button class="rt-btn green" type="submit">💾 إضافة صنف</button>
+    </div>
+  </form>
+  {% if items %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th><th>وحدة القاعدة</th><th>عليه حركة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td class="hl-tnum">{{ loop.index | aindic }}</td>
+        <td><b>{{ it.name }}</b></td>
+        <td>{{ it.handle_unit }}</td>
+        <td>{{ it.base_unit }}</td>
+        <td>{{ 'نعم' if it.id in has_move else 'لا' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('tarfea.items_delete') }}" class="inline-f">
+            <input type="hidden" name="id" value="{{ it.id }}">
+            <button class="rt-btn small dim" type="submit">🗑️ حذف</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أصناف ترفية لسه — ابدأ بإضافة أول صنف فوق 👆</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ١ مخازن ==================== -->
+{% elif sub == 'wh1' %}
+<div class="panel">
+  <div class="panel-head"><h3>📥 إذن إضافة ١ مخازن ترفية — بالتغليف زي المخازن بالظبط</h3>
+    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh1') }}">📄 فتح الملف</a></div>
+  <form method="post" action="{{ url_for('tarfea.wh1_add') }}" class="hl-form">
+    <div class="hl-hint row">
+      <input type="text" name="receipt_no" placeholder="رقم الإذن (فاضي = تسلسل تلقائي)" dir="rtl" class="w-sm">
+      <input type="text" name="day" placeholder="اليوم (١-٣١)" dir="rtl" class="w-sm">
+      <input type="text" name="producer" placeholder="الشركة المنتجة" dir="rtl">
+      <input type="text" name="supplier_name" placeholder="الشركة الموردة / الوارد من" dir="rtl">
+    </div>
+    {% for i in range(3) %}
+    <div class="hl-hint row tf-line" data-line="{{ i }}">
+      <input type="text" name="l{{ i }}_item_name" placeholder="الصنف {{ loop.index | aindic }} (من كتالوج الأصناف)" dir="rtl" list="tf-items">
+      <input type="text" name="l{{ i }}_qty" placeholder="الكمية (أو بالتغليف تحت)" dir="rtl" class="w-sm">
+      <input type="text" name="l{{ i }}_pack_kind" placeholder="نوع التغليف" dir="rtl" class="w-sm" list="tf-packs">
+      <input type="text" name="l{{ i }}_pack_count" placeholder="عدد العبوات" dir="rtl" class="w-sm">
+      <input type="text" name="l{{ i }}_pack_capacity" placeholder="سعة العبوة" dir="rtl" class="w-sm">
+      <input type="text" name="l{{ i }}_prod_date" placeholder="إنتاج ي/ش/س" dir="rtl" class="w-sm">
+      <input type="text" name="l{{ i }}_exp_date" placeholder="صلاحية ي/ش/س" dir="rtl" class="w-sm">
+    </div>
+    {% endfor %}
+    <datalist id="tf-items">{% for it in items %}<option value="{{ it.name }}">{% endfor %}</datalist>
+    <datalist id="tf-packs"><option value="بدون تغليف"><option value="كرتونة"><option value="علبة"><option value="شكارة"><option value="بلتة"><option value="عبوة"></datalist>
+    <input type="text" name="notes" placeholder="ملاحظات الإذن (اختياري)" dir="rtl">
+    <div class="hl-actions"><button class="rt-btn green" type="submit">💾 حفظ إذن الإضافة</button>
+      <span class="hl-hint">الكمية تتحسب من التغليف تلقائيًا — وتقدر تسيب التغليف فاضي وتكتب الكمية مباشرة</span></div>
+  </form>
+  {% if groups %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>رقم</th><th>اليوم</th><th>الأصناف</th><th>الشركة المنتجة</th><th>المورد</th><th>إجراءات</th></tr></thead>
+    <tbody>{% for g in groups %}
+      <tr><td class="hl-tnum">{{ g.serial | aindic }}</td><td>{{ g.day | aindic }} {{ month_name }}</td>
+        <td>{% for r in g.lines %}<span class="hl-nc-name">{{ r.item_name }} — {{ r.qty_handle | aindic }} {{ r.unit }}</span> {% endfor %}</td>
+        <td>{{ g.producer or '—' }}</td><td>{{ g.supplier_name or '—' }}</td>
+        <td><form method="post" action="{{ url_for('tarfea.wh1_delete', serial=g.serial) }}" class="inline-f">
+          <button class="rt-btn small dim" type="submit">🗑️ حذف</button></form></td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش إذون إضافة لسه</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ٢ مخازن ==================== -->
+{% elif sub == 'wh2' %}
+<div class="panel">
+  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3>
+    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh2') }}">📄 فتح الملف</a></div>
+  <form method="post" action="{{ url_for('tarfea.wh2_add') }}" class="hl-form">
+    <div class="hl-hint row">
+      <input type="text" name="serial" value="{{ next_serial | aindic }}" placeholder="رقم الإذن" dir="rtl" class="w-sm">
+      <input type="text" name="day" placeholder="اليوم (١-٣١)" dir="rtl" class="w-sm">
+      <select name="item_id" required>
+        <option value="">— اختر الصنف —</option>
+        {% for it in items %}<option value="{{ it.id }}">{{ it.name }} (المتاح من الكارت)</option>{% endfor %}
+      </select>
+      <input type="text" name="qty" placeholder="الكمية المنصرفة (بوحدة التعامل)" dir="rtl" class="w-sm" required>
+    </div>
+    <div class="hl-hint row">
+      <input type="text" name="receiver" placeholder="منصرف إلى (الجهة/الشخص)" dir="rtl">
+      <input type="text" name="responsible" placeholder="المسؤول عن الصرف" dir="rtl">
+      <input type="text" name="notes" placeholder="ملاحظات" dir="rtl">
+    </div>
+    <div class="hl-actions"><button class="rt-btn green" type="submit">💾 حفظ إذن الصرف</button>
+      <span class="hl-hint">بيخصم من كارت ٣ مخازن تلقائيًا — مفيش رصيد سالب</span></div>
+  </form>
+  {% if issues %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>رقم</th><th>اليوم</th><th>الصنف</th><th>الكمية</th><th>منصرف إلى</th><th>المسؤول</th><th>ملاحظات</th><th>إجراءات</th></tr></thead>
+    <tbody>{% for i in issues %}
+      <tr><td class="hl-tnum">{{ i.serial | aindic }}</td><td>{{ i.day | aindic }} {{ month_name }}</td>
+        <td><b>{{ i.item_name or '—' }}</b></td><td>{{ i.qty | aindic }} {{ i.unit }}</td>
+        <td>{{ i.receiver or '—' }}</td><td>{{ i.responsible or '—' }}</td><td>{{ i.notes or '—' }}</td>
+        <td><form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=i.id) }}" class="inline-f">
+          <button class="rt-btn small dim" type="submit">🗑️ حذف</button></form></td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش إذون صرف لسه</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ٣ مخازن ==================== -->
+{% elif sub == 'wh3' %}
+<div class="panel">
+  <div class="panel-head"><h3>📒 دفتر ٣ مخازن الترفية — كارت لكل صنف</h3>
+    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh3') }}">📄 فتح الملف</a></div>
+  <form method="get" action="{{ url_for('tarfea.page') }}" class="hl-hint row">
+    <input type="hidden" name="sub" value="wh3">
+    <select name="item" onchange="this.form.submit()">
+      <option value="">— اختر صنفًا لعرض كارته —</option>
+      {% for it in items %}<option value="{{ it.id }}" {{ 'selected' if sel_item and sel_item.item.id == it.id }}>{{ it.name }}</option>{% endfor %}
+    </select>
+  </form>
+  {% if sel_item %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th><th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>التغليف</th></tr></thead>
+    <tbody>{% for r in sel_item.rows %}
+      <tr><td class="hl-tnum">{{ loop.index | aindic }}</td><td>{{ r.day | aindic }}</td><td>{{ r.date_iso }}</td>
+        <td>{{ r.permit_no | aindic if r.permit_no else '—' }}</td>
+        <td>{{ {'opener': 'رصيد أول المدة', 'add1': 'إذن إضافة', 'issue2': 'إذن صرف ٢ مخازن'}.get(r.kind, r.kind) }}</td>
+        <td>{{ r.added | aindic }}</td><td>{{ r.issued | aindic }}</td><td><b>{{ r.balance | aindic }}</b></td>
+        <td>{{ r.pack_label or '—' }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="panel-head"><h3>🌅 رصيد أول المدة (مرة واحدة لكل صنف)</h3></div>
+  <form method="post" action="{{ url_for('tarfea.wh3_opener') }}" class="hl-hint row">
+    <input type="text" name="item_name" placeholder="اسم الصنف (من الكتالوج)" dir="rtl" list="tf-items2" required>
+    <datalist id="tf-items2">{% for it in items %}<option value="{{ it.name }}">{% endfor %}</datalist>
+    <input type="text" name="handle_unit" placeholder="وحدة التعامل (لصنف جديد)" dir="rtl" class="w-sm">
+    <input type="text" name="qty" placeholder="الكمية" dir="rtl" class="w-sm" required>
+    <input type="text" name="day" placeholder="اليوم" dir="rtl" class="w-sm">
+    <button class="rt-btn green" type="submit">💾 حفظ الرصيد</button>
+  </form>
+</div>
+<div class="panel">
+  <div class="panel-head"><h3>📊 كشف جرد الأرصدة — آخر رصيد لكل صنف</h3></div>
+  {% if stock %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>آخر رصيد</th></tr></thead>
+    <tbody>{% for s in stock %}
+      <tr><td class="hl-tnum">{{ loop.index | aindic }}</td><td><b>{{ s.name }}</b></td>
+        <td>{{ s.unit }}</td><td><b>{{ s.balance | aindic }}</b></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أصناف</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ٥ مخازن ==================== -->
+{% elif sub == 'wh5' %}
+<div class="panel">
+  <div class="panel-head"><h3>📋 سجل ٥ مخازن اليومي — مشتق تلقائيًا من ١ و٢ و٣ مخازن (بالكميات المعيارية)</h3>
+    <a class="rt-btn small navy" href="{{ url_for('tarfea.file', sub='wh5') }}">📄 فتح الملف</a></div>
+  <div class="hl-hint row"><span>الكميات بتظهر <b>بالمعيار (وحدة التعامل)</b> وليس بالتغليف — وبيتحدث تلقائيًا مع كل إذن إضافة أو صرف.</span></div>
+  {% if t5 %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>التاريخ</th><th>رقم الإذن</th><th>وارد من / منصرف إلى</th>
+      <th>قيمة الأصناف المضافة</th><th>قيمة الأصناف المنصرفة</th>
+      <th>البيان والملحوظات والتفاصيل</th><th>المسؤول عن الصرف</th><th>إجراءات</th></tr></thead>
+    <tbody>{% for r in t5 %}
+      <tr>
+        <td class="hl-tnum">{{ loop.index | aindic }}</td>
+        <td>{{ r.day | aindic }} {{ month_name }}</td>
+        <td>{{ r.permit_no | aindic if r.permit_no else 'رصيد' }}</td>
+        <td>{{ r.party }}</td>
+        <td class="tf-add">{% if r.added %}{{ r.added | aindic }} {{ r.unit }}{% else %}—{% endif %}</td>
+        <td class="tf-iss">{% if r.issued %}{{ r.issued | aindic }} {{ r.unit }}{% else %}—{% endif %}</td>
+        <td class="tf-det">{{ r.details }}</td>
+        <td>{{ r.responsible or '—' }}</td>
+        <td>{% if r.kind == 'wh2' %}
+          <form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=r.issue_id) }}" class="inline-f">
+            <button class="rt-btn small dim" type="submit">🗑️</button></form>
+        {% elif r.kind == 'wh1' %}<span class="hl-hint">إذن ١ مخازن</span>
+        {% else %}<span class="hl-hint">افتتاحي</span>{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">السجل فاضي — أول ما تسجل رصيد افتتاحي أو إذن إضافة أو صرف هينزل هنا تلقائيًا</div>{% endif %}
+</div>
+{% endif %}
+
+<div class="panel hl-folders">
+  <div class="panel-head"><h3>📁 مكان الملفات المحلية — منفصلة شهر بشهر</h3></div>
+  <pre dir="ltr">{{ folder_path }}</pre>
+  <span class="hl-hint">├── الأصناف/كشف الأصناف.xlsx · ├── ١ مخازن إذون الإضافة/ · ├── ٢ مخازن إذون الصرف/ ·
+├── ٣ مخازن دفتر الأصناف/ · └── ٥ مخازن السجل اليومي/ — كل حفظ بيحدّث الملفات فورًا.</span>
+</div>
+{% endblock %}
