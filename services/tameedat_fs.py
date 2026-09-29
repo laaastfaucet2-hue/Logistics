@@ -261,7 +261,7 @@ def _save_xlsx(path, sheets):
         for column_cells in sheet.columns:
             width = max((len(str(c.value)) for c in column_cells if c.value is not None), default=10)
             sheet.column_dimensions[column_cells[0].column_letter].width = min(max(width + 4, 12), 46)
-    book.save(path)
+    dataguard.atomic_save(book.save, path)   # ذرّي + لحظي لو الملف مفتوح عند المستخدم
 
 
 def _save_day_xlsx(path, year, month, records):
@@ -332,7 +332,8 @@ def _save_day_xlsx(path, year, month, records):
         block("تأميدة رقم {} — {}".format(rec["id"], rec["entity_name"]), pairs)
     sheet.column_dimensions["A"].width = 34
     sheet.column_dimensions["B"].width = 46
-    book.save(path)
+    from data_access import dataguard
+    dataguard.atomic_save(book.save, path)   # لحظي (توجيه ٢٨/٠٩ ليلًا)
 
 
 def _snapshot_xlsx(year, month, records, entities, summary):

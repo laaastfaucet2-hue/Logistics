@@ -29,7 +29,8 @@ TABS = [("items", "الأصناف", "📦"),
         ("wh1", "١ مخازن", "📥"),
         ("wh2", "٢ مخازن", "📤"),
         ("wh3", "٣ مخازن", "📒"),
-        ("wh5", "٥ مخازن", "📋")]
+        ("wh5", "٥ مخازن", "📋"),
+        ("store", "مخزن الترفية", "🏠")]
 SUB_KEYS = tuple(k for k, _n, _i in TABS)
 CYCLE = "tarfea"
 CYCLE_NAME = "سجل الترفية"
@@ -101,8 +102,50 @@ def page():
         v["wh1_edit"] = wh1_edit
         v["prefill"] = request.args.get("item_name") or ""
     elif sub == "wh2":
-        v.update(issues=dt.list_issues(year, month),
-                 next_serial=dt.next_issue_serial(year, month))
+        issues = dt.list_issues(year, month)
+        specs = dw.pack_specs_map(year, month, CYCLE)
+        by_name = {it["name"]: it for it in items}
+
+        def _spec_of(name):
+            entry = specs.get(name) or {}
+            if not entry:
+                return "", {}
+            kind = list(entry)[-1]
+            return kind, (entry[kind] or {})
+
+        def _issued_pack(i):
+            it = by_name.get(i["item_name"])
+            if not it:
+                return "—"
+            kind, sp = _spec_of(it["name"])
+            fallback = "{} {}".format(arnum.fmt_qty(i["qty"]), it["handle_unit"])
+            if not kind:
+                return fallback
+            return dw.pack_breakdown(kind, sp.get("capacity"),
+                                     sp.get("inner_count"), sp.get("inner_capacity"),
+                                     i["qty"], it["handle_unit"], "",
+                                     inner_kind=sp.get("inner_kind")) or fallback
+        v.update(issues=issues, next_serial=dt.next_issue_serial(year, month),
+                 issues_pack=[{"i": i, "pack": _issued_pack(i),
+                               "kind": (_spec_of(i["item_name"])[0] or "بدون تغليف")}
+                              for i in issues])
+    elif sub == "store":
+        rep = dt.store_report(year, month)
+        specs = dw.pack_specs_map(year, month, CYCLE)
+        units = {it["name"]: it["handle_unit"] for it in items}
+        per_item = {}
+        for row in rep["inn"]:
+            per_item.setdefault(row["item"], {"inn": [], "out": []})["inn"].append(row)
+        for row in rep["out"]:
+            per_item.setdefault(row["item"], {"inn": [], "out": []})["out"].append(row)
+        for name, g in per_item.items():
+            entry = specs.get(name) or {}
+            g["kind"] = (list(entry)[-1] if entry else "بدون تغليف")
+        balance_rows = [(name, qty, rep["pack_notes"].get(name) or "—",
+                         units.get(name, "—"))
+                        for name, qty in sorted(rep["balances"].items())]
+        v.update(store=rep, store_per_item=per_item,
+                 store_balances=balance_rows)
     elif sub == "wh3":
         card = None
         if request.args.get("item"):
@@ -127,6 +170,10 @@ def page():
                 for row in taf3["rows"]:
                     row["wday"] = _wday(year, month, row["day"])
             v["taf3"] = taf3
+            try:   # تاب «٣ مخازن تغليف» (توجيه ٢٨/٠٩ ليلًا)
+                card["pack_rows"] = dw.card_pack_rows(year, month, CYCLE, card)
+            except Exception:
+                card["pack_rows"] = []
         v["card"] = card
         v["stock"] = dt.stock_report(year, month)
         v["catalog_missing"] = []

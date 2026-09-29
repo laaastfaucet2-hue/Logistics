@@ -86,6 +86,11 @@
 {% elif sub == 'wh2' %}
 <div class="panel">
   <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3></div>
+  <div class="wh-subtabs no-print">
+    <button type="button" class="wh-subtab active" data-wh2sub="day">📤 ٢ مخازن</button>
+    <button type="button" class="wh-subtab" data-wh2sub="ghilaf">📦 ٢ مخازن تغليف</button>
+  </div>
+  <div class="wh-subpanel" data-wh2panel="day">
   <form method="post" action="{{ url_for('tarfea.wh2_add') }}" class="wh-form" autocomplete="off">
     <fieldset class="wh-fs">
       <legend>📤 بيانات إذن الصرف</legend>
@@ -128,6 +133,22 @@
     </tbody>
   </table></div>
   {% else %}<div class="hl-empty">مفيش إذون صرف لسه</div>{% endif %}
+  </div>
+  <div class="wh-subpanel" data-wh2panel="ghilaf" hidden>
+    {% if issues_pack %}
+    <div class="wh-scroll"><table class="rt-table wh-table">
+      <thead><tr><th>رقم</th><th>اليوم</th><th>الصنف</th><th>الكمية المنصرفة</th>
+        <th>المنصرف بالتغليف</th><th>نوع التغليف</th><th>منصرف إلى</th><th>المسؤول</th></tr></thead>
+      <tbody>{% for p in issues_pack %}
+        <tr><td class="num">{{ p.i.serial | aindic }}</td><td>{{ p.i.day | aindic }} {{ month_name }}</td>
+          <td class="name"><b>{{ p.i.item_name or '—' }}</b></td>
+          <td class="num">{{ p.i.qty | qty3 }} {{ p.i.unit }}</td>
+          <td>{{ p.pack }}</td><td>{{ p.kind }}</td>
+          <td>{{ p.i.receiver or '—' }}</td><td>{{ p.i.responsible or '—' }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="hl-empty">مفيش إذون صرف لسه — أول إذن هيظهر هنا بالتغليف</div>{% endif %}
+  </div>
 </div>
 
 <!-- ==================== تاب ٣ مخازن — قالب المستودعات الحقيقي ==================== -->
@@ -175,6 +196,62 @@
     </tbody>
   </table></div>
   {% else %}<div class="hl-empty">السجل فاضي — أول ما تسجل رصيد افتتاحي أو إذن إضافة أو صرف هينزل هنا تلقائيًا</div>{% endif %}
+</div>
+
+<!-- ==================== تاب مخزن الترفية — مخزن منفصل تمامًا ==================== -->
+{% elif sub == 'store' %}
+<div class="panel">
+  <div class="panel-head"><h3>🏠 مخزن الترفية — حركة المخزن مجمعه</h3></div>
+  {% if store.inn or store.out %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th>
+      <th>الوحدة</th><th>التغليف</th><th>المستند</th></tr></thead>
+    <tbody>{% for row in store.inn %}
+      <tr><td class="num">{{ loop.index | aindic }}</td>
+        <td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td><td>إضافة</td>
+        <td class="name"><b>{{ row.item }}</b></td><td class="num">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td><td>{{ row.pack_label or '—' }}</td><td>{{ row.doc }}</td></tr>
+    {% endfor %}{% for row in store.out %}
+      <tr class="wh-issue-row"><td class="num">{{ (store.inn | length + loop.index) | aindic }}</td>
+        <td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td><td>صرف</td>
+        <td class="name"><b>{{ row.item }}</b></td><td class="num">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td><td>{{ row.pack_label or '—' }}</td><td>{{ row.doc }} — إلى: {{ row.receiver }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش حركة لسه — سجّل رصيد افتتاحي أو إذن إضافة من ١ مخازن</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>🧾 حركة كل صنف — مخزن الترفية</h3></div>
+  {% if store_per_item %}
+    {% for name, g in store_per_item.items() %}
+    <h4 style="margin:12px 0 4px;color:var(--gold-light)">▪ {{ name }} <small>({{ g.kind }})</small></h4>
+    <div class="wh-scroll"><table class="rt-table wh-table">
+      <thead><tr><th>النوع</th><th>التاريخ</th><th>الكمية</th><th>المستند</th></tr></thead>
+      <tbody>{% for row in g.inn %}
+        <tr><td>إضافة</td><td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{{ row.qty | qty3 }} {{ row.unit }}</td><td>{{ row.doc }}</td></tr>
+      {% endfor %}{% for row in g.out %}
+        <tr class="wh-issue-row"><td>صرف</td><td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{{ row.qty | qty3 }} {{ row.unit }}</td><td>{{ row.doc }} — إلى: {{ row.receiver }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% endfor %}
+  {% else %}<div class="hl-empty">مفيش أصناف بحركة لسه</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>📊 كشف جرد أرصدة مخزن الترفية</h3></div>
+  {% if store_balances %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th><th>الوحدة</th><th>الرصيد بالتغليف</th></tr></thead>
+    <tbody>{% for name, qty, pack, unit in store_balances %}
+      <tr><td class="num">{{ loop.index | aindic }}</td><td class="name"><b>{{ name }}</b></td>
+        <td class="num"><b>{{ qty | qty3 }}</b> {{ unit }}</td><td>{{ unit }}</td>
+        <td>{{ pack }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أرصدة لسه</div>{% endif %}
 </div>
 {% endif %}
 

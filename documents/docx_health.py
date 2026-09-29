@@ -346,11 +346,8 @@ def build_checkup(year, month, day):
 
 # ==================== الحفظ الذرّي + إعادة البناء ====================
 def _save(path, doc):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    doc.save(str(tmp))
-    tmp.replace(path)
-    return path
+    from data_access import dataguard
+    return dataguard.atomic_save(doc.save, path)   # لحظي: لو مفتوح يتحدث عند القفل
 
 
 def rebuild(year, month, report, day=None):

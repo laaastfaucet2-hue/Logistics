@@ -360,20 +360,6 @@ def pack_specs_map(year, month, cycle):
     return out
 
 
-def collect_pack_kinds():
-    """قائمة أنواع التغليف: الثوابت + ما كتبه المستخدم (قاموس مشترك pack_kind)."""
-    kinds = []
-    from core.config import PACK_KINDS
-    from data_access import database as db
-    for kind in list(PACK_KINDS):
-        if kind not in kinds:
-            kinds.append(kind)
-    for kind in db.vocab_list("pack_kind"):
-        if kind not in kinds:
-            kinds.append(kind)
-    return kinds
-
-
 def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 handle_unit_hint="", producer="", supplier_id=None,
                 supplier_name="", prod_iso="", exp_iso="", notes="",
@@ -998,3 +984,7 @@ def stores_report(year, month):
                               if abs(v) > 1e-9}
         target["total"] = round(sum(target["balances"].values()), 6)
     return {"stores": list(report.values()), "unassigned": unassigned}
+
+
+# إعادة تصدير — دوال التغليف عاشت في db_pack (قاعدة الملف ≤1000 سطر)
+from data_access.db_pack import card_pack_rows, collect_pack_kinds  # noqa: E402,F401

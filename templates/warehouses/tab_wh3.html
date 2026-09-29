@@ -138,6 +138,7 @@
 
     <div class="wh-subtabs no-print">
       <button type="button" class="wh-subtab active" data-wh3sub="daftar">📒 دفتر ٣ مخازن</button>
+      <button type="button" class="wh-subtab" data-wh3sub="ghilaf">📦 ٣ مخازن تغليف</button>
       <button type="button" class="wh-subtab" data-wh3sub="tafared">📋 دفتر ٣ مخازن تفاريد</button>
     </div>
     <div class="wh-subpanel" data-wh3panel="daftar">
@@ -280,6 +281,35 @@
       </tfoot>
     </table>
     </div>
+    </div>
+    <div class="wh-subpanel" data-wh3panel="ghilaf" hidden>
+      {% if card.pack_rows %}
+      <div class="wh-scroll">
+      <table class="rt-table wh-table wh-ledger">
+        <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+          <th>مضاف</th><th>مضاف بالتغليف</th><th>منصرف</th><th>منصرف بالتغليف</th>
+          <th>الرصيد</th><th>الرصيد بالتغليف</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+        {% for r in card.pack_rows %}
+        <tr {% if r.label and r.label.startswith('صرف') %}class="wh-issue-row"{% endif %}>
+          <td class="num">{{ r.seq | aindic if r.seq is number else r.seq }}</td>
+          <td>{{ r.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+          <td class="num">{% if r.permit_no and r.permit_no != '—' %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
+          <td>{{ r.label or '—' }}</td>
+          <td class="num">{% if r.added %}{{ r.added | qty3 }}{% else %}—{% endif %}</td>
+          <td>{{ r.added_pack }}</td>
+          <td class="num {% if r.issued %}wh-issued{% endif %}">{% if r.issued %}{{ r.issued | qty3 }}{% else %}—{% endif %}</td>
+          <td>{{ r.issued_pack }}</td>
+          <td class="num"><b>{{ r.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td>{{ r.balance_pack }}</td>
+          <td>{{ r.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="empty">افتح كارت الصنف أولًا ليظهر الدفتر بالتغليف.</p>{% endif %}
     </div>
     <div class="wh-subpanel" data-wh3panel="tafared" hidden>
       {% if taf3 and taf3.rows %}

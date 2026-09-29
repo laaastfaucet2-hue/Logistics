@@ -8,6 +8,7 @@
 - ٥ مخازن: سجل يومي **مشتقّ** من رصيد أول المدة وأذون ١ مخازن وصرف ٢ مخازن —
   الكميات بالمعيار (وحدة التعامل) وليس بالتغليف، ومرتبط بالتابات الأخرى (توجيه ٢٩/٠٩).
 """
+from core import arabic_numbers as arnum
 from core.arabic_numbers import fmt_qty, to_arabic_indic
 from data_access import months
 from data_access import db_warehouses as dw
@@ -280,3 +281,98 @@ def t5_rows(year, month):
     rows.sort(key=lambda x: (x["day"], x["kind"] != "opener",
                              x["permit_no"], x["kind"]))
     return rows
+
+
+# ==================== مخزن الترفية — مخزن مستقل تمامًا (توجيه ٢٨/٠٩ ليلًا) ====================
+STORE_NAME = "مخزن الترفية"
+
+
+def store_report(year, month):
+    """تقرير مخزن الترفية: وارد (افتتاحي/إيذانات الإضافة بتوزيعها) + منصرف
+    (إيذان صرف ٢ مخازن ترفية) + الأرصدة بالكمية والتغليف — منفصل عن كل الدورات."""
+    conn = months.get_db(year, month)
+    openers = [dict(r) for r in conn.execute(
+        "SELECT * FROM wh_ledger WHERE cycle='tarfea' AND kind='opener'")]
+    receipts = [dict(r) for r in conn.execute(
+        "SELECT * FROM wh_receipts WHERE cycle='tarfea' ORDER BY day, serial")]
+    conn.close()
+    items = {it["id"]: it for it in list_items(year, month)}
+    opener_parts = dw.opener_stores(year, month, CYCLE)
+
+    inn = []
+    for o in openers:
+        it = items.get(o["item_id"])
+        if not it or not (o["added"] or 0):
+            continue
+        parts = opener_parts.get(o["item_id"]) or [
+            {"store_id": None, "store_name": STORE_NAME, "qty": float(o["added"])}]
+        for p in parts:
+            inn.append({"date_iso": o["date_iso"], "item": it["name"],
+                        "unit": it["handle_unit"], "qty": float(p["qty"] or 0),
+                        "pack_label": o["pack_label"] or "",
+                        "doc": "رصيد أول المدة"})
+    receipt_stores = {}
+    if receipts:
+        conn = months.get_db(year, month)
+        marks = ",".join("?" for _ in receipts)
+        for r in conn.execute(
+                "SELECT * FROM wh_receipt_stores WHERE receipt_id IN ({})".format(marks),
+                [x["id"] for x in receipts]).fetchall():
+            receipt_stores.setdefault(r["receipt_id"], []).append(dict(r))
+        conn.close()
+    for r in receipts:
+        it = items.get(r["item_id"])
+        if not it:
+            continue
+        parts = receipt_stores.get(r["id"]) or [
+            {"store_name": STORE_NAME, "qty": r["qty_handle"]}]
+        for p in parts:
+            inn.append({"date_iso": r["date_iso"], "item": it["name"],
+                        "unit": it["handle_unit"], "qty": float(p["qty"] or 0),
+                        "pack_label": r["pack_label"] or "",
+                        "doc": "إذن إضافة رقم {}".format(
+                            arnum.to_arabic_indic(str(r["serial"])))})
+    inn.sort(key=lambda x: x["date_iso"])
+
+    out = []
+    for i in list_issues(year, month):
+        out.append({"date_iso": "NaT", "item": i["item_name"] or "—",
+                    "unit": i["unit"] or "", "qty": i["qty"],
+                    "pack_label": "", "doc": "إذن صرف رقم {}".format(
+                        arnum.to_arabic_indic(str(i["serial"]))),
+                    "receiver": i["receiver"] or "—"})
+    # رتّب المنصرف باليوم الحقيقي من الدفتر (issue2)
+    conn = months.get_db(year, month)
+    issue_ledger = [dict(r) for r in conn.execute(
+        "SELECT * FROM wh_ledger WHERE cycle='tarfea' AND kind='issue2' ORDER BY date_iso, id")]
+    conn.close()
+    if len(issue_ledger) == len(out):
+        for row, led in zip(out, issue_ledger):
+            row["date_iso"] = led["date_iso"]
+            row["pack_label"] = led.get("pack_label") or ""
+    out.sort(key=lambda x: x["date_iso"])
+
+    balances = {}
+    for row in inn:
+        balances[row["item"]] = balances.get(row["item"], 0.0) + row["qty"]
+    for row in out:
+        balances[row["item"]] = balances.get(row["item"], 0.0) - row["qty"]
+    balances = {k: round(v, 6) for k, v in balances.items() if abs(v) > 1e-9}
+
+    specs = dw.pack_specs_map(year, month, CYCLE)
+    pack_notes = {}
+    for name, qty in balances.items():
+        if qty <= 0 or name not in specs:
+            continue
+        entry = specs[name]
+        kind = list(entry)[-1]
+        sp = entry[kind] or {}
+        note = dw.pack_breakdown(kind, sp.get("capacity"), sp.get("inner_count"),
+                                 sp.get("inner_capacity"), qty,
+                                 next((it["handle_unit"] for it in items.values()
+                                       if it["name"] == name), ""),
+                                 "سائب", inner_kind=sp.get("inner_kind"))
+        if note:
+            pack_notes[name] = note
+    return {"store_name": STORE_NAME, "inn": inn, "out": out,
+            "balances": balances, "pack_notes": pack_notes}

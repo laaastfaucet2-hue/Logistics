@@ -59,10 +59,56 @@ def valid_name(name):
     return bool(name) and bool(_NAME_RE.match(name))
 
 
+# ==================== اللحظية: ملف مفتوح في Excel/Word (توجيه ٢٨/٠٩ ليلًا) ====================
+# لو المستخدم فاتح الملف، ويندوز يمنع الاستبدال — نحتفظ بالمحتوى ونكتبه أول ما يقفل.
+RETRY_SECONDS = 2
+RETRY_MAX_TRIES = 2700          # ~90 دقيقة — وبعدها تُكتب عند أول حفظ تالٍ على أي حال
+_PENDING = {}
+_PENDING_LOCK = threading.Lock()
+
+
+def pending_paths():
+    with _PENDING_LOCK:
+        return sorted(_PENDING)
+
+
+def _retry_worker(path_str):
+    for _ in range(RETRY_MAX_TRIES):
+        time.sleep(RETRY_SECONDS)
+        with _PENDING_LOCK:
+            data = _PENDING.get(path_str)
+        if data is None:
+            return                     # كُتب من تحديث أحدث له
+        try:
+            _atomic_write_bytes(path_str, data)
+        except (PermissionError, OSError):
+            continue                   # لسه مقفولش — نجرب تاني
+        with _PENDING_LOCK:
+            cur = _PENDING.get(path_str)
+            if cur is None:
+                return
+            if cur is data:
+                _PENDING.pop(path_str, None)
+                return
+            # دخل تحديث أحدث أثناء الكتابة — الحلقة تكمل بيه
+
+
+def _schedule_retry(path_str, data):
+    first = False
+    with _PENDING_LOCK:
+        first = path_str not in _PENDING
+        _PENDING[path_str] = data      # الأحدث دايمًا هو اللي ينزل
+    if first:
+        threading.Thread(target=_retry_worker, args=(path_str,),
+                         daemon=True, name="live-sync-" + Path(path_str).name).start()
+
+
 # ==================== الكتابة الذرّية ====================
 def atomic_save(writer, path, zip_check=True):
     """يكتب عبر ملف مؤقت ثم استبدال ذرّي. writer دالة تستقبل مسار الملف المؤقت.
-    zip_check يتحقق من سلامة ملفات الإكسل/الوورد (ZIP) قبل الاعتماد."""
+    zip_check يتحقق من سلامة ملفات الإكسل/الوورد (ZIP) قبل الاعتماد.
+    لو الملف مفتوح في Excel/Word (ويندوز يقفله) يُحتفظ بالمحتوى ويُكتب تلقائيًا
+    أول ما المستخدم يقفل الملف — التحديث اللحظي لا يضيع (توجيه ٢٨/٠٩ ليلًا)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name("{}.tmp-{}".format(path.name, os.getpid()))
@@ -74,7 +120,13 @@ def atomic_save(writer, path, zip_check=True):
                     bad = zf.testzip()
                     if bad:
                         raise IOError("ملف تالف بعد الكتابة: {}".format(bad))
-            os.replace(str(tmp), str(path))   # استبدال ذرّي — القديم لا يضيع إلا بعد اكتمال الجديد
+            try:
+                os.replace(str(tmp), str(path))   # استبدال ذرّي
+            except (PermissionError, OSError) as exc:
+                # الملف مفتوح عند المستخدم — نخزن المحتوى ونكمل أول ما يقفل
+                data = tmp.read_bytes()
+                _schedule_retry(str(path), data)
+                return path
         finally:
             if tmp.exists():
                 try:

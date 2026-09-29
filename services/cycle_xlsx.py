@@ -508,3 +508,48 @@ def build_store_folders(base, rep, units, year=2026, month=9):
         (_sheet_unique(used, "حركة المخازن تغليف مجمع"),
          ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
           "الوحدة", "التغليف", "المستند"], all_move_pack)])
+
+
+# ======================================================================
+# مخزن الترفية — مجلد Excel منفصل تمامًا داخل 11-الترفية
+# ======================================================================
+def build_tarfea_store(base, rep):
+    """مخزن الترفية/: حركة المخزن.xlsx (مجمّع + شيت لكل صنف)
+    + كشف جرد الأرصدة.xlsx (الكميات + التغليف)."""
+    store_dir = base / _safe_file(rep["store_name"])
+    store_dir.mkdir(parents=True, exist_ok=True)
+    move_rows, per_item = [], {}
+    idx = 0
+    for row in rep["inn"]:
+        idx += 1
+        line = (idx, "إضافة", dates.format_date(row["date_iso"]) or row["date_iso"],
+                row["item"], _q(row["qty"]), row["unit"],
+                row.get("pack_label") or "—", row.get("doc") or "—")
+        move_rows.append(line)
+        per_item.setdefault(row["item"], []).append(
+            (len(per_item.get(row["item"], [])) + 1,) + line[1:])
+    for row in rep["out"]:
+        idx += 1
+        line = (idx, "صرف", dates.format_date(row["date_iso"]) or row["date_iso"],
+                row["item"], _q(row["qty"]), row["unit"],
+                row.get("pack_label") or "—",
+                "{} — إلى: {}".format(row.get("doc") or "—", row.get("receiver") or "—"))
+        move_rows.append(line)
+        per_item.setdefault(row["item"], []).append(
+            (len(per_item.get(row["item"], [])) + 1,) + line[1:])
+    used = set()
+    book = [(_sheet_unique(used, "حركة المخزن مجمعه"),
+             ["م", "النوع", "التاريخ", "الصنف", "الكمية", "الوحدة", "التغليف",
+              "المستند"], move_rows)]
+    for name, rows in sorted(per_item.items()):
+        book.append((_sheet_unique(used, name),
+                     ["م", "النوع", "التاريخ", "الصنف", "الكمية", "الوحدة",
+                      "التغليف", "المستند"], rows))
+    _save_xlsx(store_dir / _file_name("حركة المخزن"), book)
+    bal_rows = [(i, name, _q(qty), rep["pack_notes"].get(name) or "—")
+                for i, (name, qty) in enumerate(sorted(rep["balances"].items()), 1)]
+    used = set()
+    _save_xlsx(store_dir / _file_name("كشف جرد الأرصدة"), [
+        (_sheet_unique(used, "كشف جرد الأرصدة"),
+         ["م", "الصنف", "الرصيد", "التغليف"], bal_rows)])
+    return store_dir
