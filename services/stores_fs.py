@@ -102,7 +102,8 @@ def snapshot(year, month):
                     units[_it["name"]] = _it["handle_unit"]
             except Exception:
                 continue
-        cycle_xlsx.build_store_folders(base_dir(year, month), rep, units)
+        cycle_xlsx.build_store_folders(base_dir(year, month), rep, units,
+                                       year, month)
     except Exception:
         logging.exception("stores snapshot failed")
 

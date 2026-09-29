@@ -17,14 +17,14 @@ from services import warehouses_fs as wf  # HEADER_1/2 + مساعدات التا
 SUB_FOLDERS = {
     "items": "الأصناف",
     "wh1": "١ مخازن إذون الإضافة",
-    "wh2": "٢ مخازن إذون الصرف",
+    "wh2": "٢ مخازن",
     "wh3": "٣ مخازن دفتر الأصناف",
     "wh5": "٥ مخازن السجل اليومي",
 }
 TAB_XLSX = {
     "items": "كشف الأصناف.xlsx",
     "wh1": "إذون إضافة ١ مخازن ترفية.xlsx",
-    "wh2": "دفتر صرف ٢ مخازن ترفية.xlsx",
+    "wh2": "٢ مخازن مجمع.xlsx",
     "wh3": "دفتر ٣ مخازن ترفية.xlsx",
     "wh5": "سجل ٥ مخازن.xlsx",
 }
@@ -57,6 +57,10 @@ def file_path(year, month, sub):
 
 
 def ensure_folders(year, month):
+    import shutil
+    old = base_dir(year, month) / "٢ مخازن إذون الصرف"
+    if old.is_dir():
+        shutil.rmtree(old, ignore_errors=True)
     for sub in SUB_FOLDERS:
         sub_dir(year, month, sub)
     return base_dir(year, month)

@@ -23,14 +23,14 @@ CYCLE_FOLDERS = {"supply": "سجل الإمداد", "contractor": "سجل الم
 SUB_FOLDERS = {
     "suppliers": "الشركات الموردة",
     "wh1": "١ مخازن إذون الإضافة",
-    "wh2": "٢ مخازن إذون الصرف",
+    "wh2": "٢ مخازن",
     "wh3": "٣ مخازن دفتر الأصناف",
 }
 # ملفات Excel التي يفتحها المستخدم بزر «فتح ملف» — كلها Excel (توجيه ٢٣/٠٩)
 TAB_XLSX = {
     "suppliers": "الشركات الموردة.xlsx",
     "wh1": "إذون إضافة ١ مخازن.xlsx",
-    "wh2": "دفتر إذون صرف ٢ مخازن.xlsx",
+    "wh2": "٢ مخازن مجمع.xlsx",
     "wh3": "دفتر ٣ مخازن.xlsx",
 }
 
@@ -69,7 +69,17 @@ def ensure_folders(year, month):
     for cycle in CYCLE_FOLDERS:
         for sub in SUB_FOLDERS:
             cycle_dir(year, month, cycle, sub)
+        _migrate_old_names(year, month, cycle)
     return base_dir(year, month, "supply").parent
+
+
+def _migrate_old_names(year, month, cycle):
+    """أسماء قديمة اتجددت — المرايا تتبع الهيكل الجديد فقط (توجيه ٢٨/٠٩ ليلًا)."""
+    import shutil
+    root = base_dir(year, month, cycle)
+    old = root / "٢ مخازن إذون الصرف"
+    if old.is_dir():
+        shutil.rmtree(old, ignore_errors=True)
 
 
 def _save_json(path, payload):

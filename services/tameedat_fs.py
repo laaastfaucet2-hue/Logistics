@@ -35,7 +35,7 @@ TAB_FILES = {
 }
 # الملفات التي يفتحها المستخدم بزر «فتح الملف» — كلها Excel (توجيه المستخدم ٢٣/٠٩)
 TAB_XLSX = {
-    "day": "سجلات التأميدات.xlsx",
+    "day": "إجمالي الشهر.xlsx",
     "momoda": "ملخص الجهات المومدة.xlsx",
     "dict": "قاموس الجهات.xlsx",
 }
@@ -165,8 +165,79 @@ def snapshot_all(year, month):
         "أيام التميد الفعلية": totals["active_days"],
     })
     _snapshot_xlsx(year, month, records, entities, summary)   # مرآة Excel التي يفتحها المستخدم (قاعدة)
+    try:   # فولدرات الأيام: كل يوم ملف بتأميداته (توجيه ٢٨/٠٩ ليلًا)
+        _snapshot_day_folders(year, month, records)
+    except Exception:
+        logging.exception("tameedat day folders failed")
     dataguard.auto_backup("write", min_minutes=20)
     return True
+
+
+def _snapshot_day_folders(year, month, records):
+    """سجلات التأميدات: فولدر «يوم N» من ١ لآخر الشهر، كل يوم ملف بتأميداته
+    بنفس البطاقات الرأسية — والأيام بلا سجلات تظل فولدرات فاضية."""
+    import shutil
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from core import arabic_numbers as arnum
+    root = tab_dir(year, month, "day")
+    old = root / "سجلات التأميدات.xlsx"
+    if old.exists():
+        old.unlink()
+    for sub in tuple(root.glob("يوم *")):
+        shutil.rmtree(sub, ignore_errors=True) if sub.is_dir() else sub.unlink()
+    by_day = {}
+    for rec in records:
+        by_day.setdefault(rec["day"], []).append(rec)
+    for day in range(1, egtime.days_in_month(year, month) + 1):
+        folder = root / "يوم {}".format(arnum.to_arabic_indic(str(day)))
+        folder.mkdir(exist_ok=True)
+        if not by_day.get(day):
+            continue
+        book = Workbook()
+        sheet = book.active
+        sheet.title = "تأميدات يوم {}".format(arnum.to_arabic_indic(str(day)))
+        sheet.sheet_view.rightToLeft = True
+        head = Font(bold=True, size=12)
+        label = Font(bold=True, size=11)
+        blue = PatternFill("solid", fgColor=XLSX_BLUE)
+        right = Alignment(horizontal="right", vertical="center", readingOrder=2)
+        banner = sheet.cell(1, 1, "تأميدات يوم {} {} {}".format(
+            arnum.to_arabic_indic(str(day)), MONTH_NAMES[month - 1], year))
+        banner.font = head
+        banner.fill = blue
+        banner.alignment = right
+        sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+        sheet.append([None, None])
+        for rec in by_day[day]:
+            sheet.append([None, None])
+            sheet.append(["تأميدة رقم {} — {}".format(rec["id"], rec["entity_name"]), None])
+            sheet.cell(sheet.max_row, 1).font = head
+            sheet.cell(sheet.max_row, 1).fill = blue
+            sheet.merge_cells(start_row=sheet.max_row, start_column=1,
+                              end_row=sheet.max_row, end_column=2)
+            pairs = [
+                ("النوع", rec["entity_type"] or "—"),
+                ("من يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")),
+                ("إلى يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day_to']:02d}")),
+                ("عدد أيام المدة", rec["range_days"]),
+                ("ضباط", rec["officers"]), ("أفراد", rec["individuals"]),
+                ("مجندين", rec["recruits"]), ("إجمالي التأميدة", rec["total"]),
+                ("إجمالي التأميدة مع الملحقات", rec["grand_total"]),
+            ]
+            for a in rec.get("attachments", []):
+                pairs.append(("ملحقة: {} ({})".format(a["name"], a["entity_type"] or "—"),
+                              "ضباط {} · أفراد {} · مجندين {}".format(
+                                  a["officers"], a["individuals"], a["recruits"])))
+            pairs.append(("ملاحظات", rec.get("notes") or "—"))
+            for k, v in pairs:
+                sheet.append([k, v])
+                sheet.cell(sheet.max_row, 1).font = label
+        sheet.column_dimensions["A"].width = 34
+        sheet.column_dimensions["B"].width = 46
+        dataguard.atomic_save(book.save,
+                              folder / "تاميدات اليوم {}.xlsx".format(
+                                  arnum.to_arabic_indic(str(day))), zip_check=False)
 
 
 def _save_xlsx(path, sheets):

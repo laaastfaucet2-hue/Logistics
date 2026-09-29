@@ -190,7 +190,7 @@ def test_delete_record_cascades_attachments_and_updates_local_files(client):
                          / tameedat_fs.TAB_FOLDERS["day"] / "سجلات التأميدات.json")
                         .read_text(encoding="utf-8"))
     assert mirror["عدد السجلات"] == 0  # المرآة المحلية تتحدث مع الحذف
-    xlsx_mirror = tameedat_fs.base_dir(YEAR, MONTH) / tameedat_fs.TAB_FOLDERS["day"] / "سجلات التأميدات.xlsx"
+    xlsx_mirror = tameedat_fs.base_dir(YEAR, MONTH) / tameedat_fs.TAB_FOLDERS["day"] / "إجمالي الشهر.xlsx"
     assert xlsx_mirror.is_file() and xlsx_mirror.read_bytes()[:2] == b"PK"   # ملف Excel حقيقي
     again = client.post("/tameedat/records/delete/9999")
     assert "غير موجودة" in _toast(again)
@@ -454,7 +454,7 @@ def test_each_tab_has_named_open_folder_and_file_buttons(client):
     """قاعدة أزرار الملفات: كل تويب بزرّي فتح المجلد/الملف باسميهما الصريحين."""
     _ctx()
     expectations = {
-        "day": ("فتح مجلد «تأميدات اليوم المحدد»", "فتح ملف «سجلات التأميدات.xlsx»"),
+        "day": ("فتح مجلد «تأميدات اليوم المحدد»", "فتح ملف «إجمالي الشهر.xlsx»"),
         "momoda": ("فتح مجلد «الجهات المومدة بالشهر الحالي»",
                    "فتح ملف «ملخص الجهات المومدة.xlsx»"),
         "dict": ("فتح مجلد «قاموس ودليل الجهات»", "فتح ملف «قاموس الجهات.xlsx»"),
@@ -480,11 +480,11 @@ def test_tab_open_routes_behave_in_web_preview_and_desktop(client, monkeypatch):
     page = client.get("/tameedat/open-folder/day", follow_redirects=True).data.decode()
     assert "نسخة سطح المكتب" in page and "تأميدات اليوم المحدد" in page
     page = client.get("/tameedat/open-file/day", follow_redirects=True).data.decode()
-    assert "سجلات التأميدات.xlsx" in page and "نسخة سطح المكتب" in page
+    assert "إجمالي الشهر.xlsx" in page and "نسخة سطح المكتب" in page
     # سطح المكتب: يعلن نجاحه بأنوثة صريحة مع اسم الملف
     monkeypatch.setattr(routes_tameedat, "_open_path", lambda path: True)
     page = client.get("/tameedat/open-file/day", follow_redirects=True).data.decode()
-    assert "تم فتح ملف «سجلات التأميدات.xlsx»" in page
+    assert "تم فتح ملف «إجمالي الشهر.xlsx»" in page
     page = client.get("/tameedat/open-file/report", follow_redirects=True).data.decode()
     assert "لا يوجد ملف تقرير محفوظ بعد" in page                # قبل بناء التقرير
     response = client.get("/tameedat/open-folder/not_a_tab")
