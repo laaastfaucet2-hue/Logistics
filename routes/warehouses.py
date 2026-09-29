@@ -159,7 +159,8 @@ def _tarfea_gate():
             return redirect(url_for("tarfea.file", sub=sub))
     if name == "page":
         keep = {k: v for k, v in request.args.items()
-                if k in ("sub", "item", "wh1edit", "ok", "err", "serial", "issue")}
+                if k in ("sub", "item", "wh1edit", "ok", "err", "serial", "issue",
+                         "sid", "year", "month")}
         from urllib.parse import quote
         qs = "&".join(f"{k}={quote(str(v))}" for k, v in keep.items())
         return redirect(url_for("tarfea.page") + ("?" + qs if qs else ""))
@@ -173,7 +174,10 @@ def page():
     year, month = _ctx()
     cycle, sub = _cycle(), _sub()
     if cycle == "tarfea":   # احتياط — البوابة before_request تغطي هذا مسبقًا
-        return redirect(url_for("tarfea.page", sub=sub))
+        # نحافظ على كل باراميترات الرابط (كارت الصنف ورسائل الحفظ) — توجيه ٢٨/٠٩ ليلًا
+        keep = {k: val for k, val in request.args.items() if k != "cycle"}
+        keep.setdefault("sub", sub)
+        return redirect(url_for("tarfea.page", **keep))
     try:
         wf.ensure_folders(year, month)
         wf.snapshot_all(year, month)      # الإذون قد تُحفظ من آلة الحاسبة — نبقي المرايا صادقة
