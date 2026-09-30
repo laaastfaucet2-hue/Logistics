@@ -93,10 +93,24 @@
 
   function fetchText(url, options) {
     fetch(url, Object.assign({ credentials: "same-origin" }, options || {}))
-      .then(function (r) { return r.text(); })
-      .then(swap)
-      .catch(function () {
-        body.innerHTML = '<p class="rg-note err">⛔ تعذر التنفيذ — جرّب تاني</p>';
+      .then(function (r) {
+        /* لو الجلسة انتهت والطلب راح للوجين — رسالة واضحة بدل رسم صفحة الدخول */
+        if (r.redirected || (r.url && r.url.indexOf("/login") !== -1)) {
+          throw new Error("expired");
+        }
+        return r.text();
+      })
+      .then(function (html) {
+        if (html.indexOf("LOGISTICS WORKSPACE") !== -1 ||
+            html.indexOf("سجل الدخول") !== -1) {
+          throw new Error("expired");
+        }
+        swap(html);
+      })
+      .catch(function (err) {
+        body.innerHTML = (err && err.message === "expired")
+          ? '<p class="rg-note warn">⏳ انتهت الجلسة — اعمل تحديث للصفحة (F5) وافتح المودال تاني</p>'
+          : '<p class="rg-note err">⛔ تعذر التنفيذ — جرّب تاني</p>';
       });
   }
 
