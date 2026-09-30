@@ -1,0 +1,125 @@
+{# جسم مودال «كشف وتسجيل أسماء الضباط والأفراد الراغبين» — نفس تصميم النظام المرجعي:
+   الجهة المختارة من التأميدة + إضافة عضو سريع للقوة + قائمة القوة بتشيكات (تشيك = راغب اليوم)
+   + قسمة الأسماء في كشوفات التجهيز اليومية (مربعات بعدد التأميدة) + حفظ وأعتماد. #}
+{% set dlist = 'rgForceOfficers' if fcat == 'officers' else 'rgForceIndividuals' %}
+{% set group = slots[fcat] %}
+<form method="post" action="/raghibin/daily/save" class="rg-modal-form" data-ragboxes>
+  <input type="hidden" name="e" value="{{ entity.id if entity else '' }}">
+  <input type="hidden" name="d" value="{{ sel_day }}">
+  <input type="hidden" name="cat" value="{{ fcat }}">
+  <input type="hidden" name="back" value="tameedat">
+  <input type="hidden" name="source" value="tamida">
+  {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+  <input type="hidden" name="new_names" value="" class="rg-new-names">
+
+  <!-- الجهة المختارة الحالية للتعبين -->
+  <div class="rg-entity-box">
+    <div class="rg-entity-cap">الجهة المختارة الحالية للتعبين</div>
+    {% if entity %}
+    <b class="rg-entity-title">{{ entity.name }}</b>
+    <span class="rg-type-chip">✓ نوع الجهة: جهة {{ entity.entity_type }} معتمدة</span>
+    {% else %}
+    <b class="rg-dim">اكتب اسم الجهة في فورم التأميدة أولًا ثم أعد فتح المودال</b>
+    {% endif %}
+  </div>
+
+  <!-- إضافة عضو جديد سريع إلى قوة الجهة -->
+  {% if entity %}
+  <div class="rg-quickadd">
+    <b class="rg-qa-title">➕ إضافة عضو جديد سريع إلى قوة الجهة</b>
+    <div class="rg-qa-grid">
+      <div class="fld"><label>فئة العضو</label>
+        <select name="qa_cat" class="rg-qa-cat">
+          <option value="officers" {{ 'selected' if fcat == 'officers' }}>ضباط</option>
+          <option value="individuals" {{ 'selected' if fcat == 'individuals' }}>أفراد وصف</option>
+        </select>
+      </div>
+      <div class="fld"><label>الرتبة / الدرجة</label>
+        <select name="qa_rank" class="rg-qa-rank">
+          {% for r in (officer_ranks if fcat == 'officers' else individual_ranks) %}
+          <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fld rg-grow"><label>الاسم الرتبعي بالكامل</label>
+        <input name="qa_name" class="rg-qa-name" placeholder="مثال: ملازم / مصطفى السيد عبدالحميد">
+      </div>
+    </div>
+    <div class="rg-qa-grid">
+      <div class="fld rg-grow"><label>ملاحظات / سبب الاستثناء (اختياري)</label>
+        <input name="qa_note" placeholder="مثال: لا يوجد تظلمات بجل نفق">
+      </div>
+      <button class="rt-btn gold rg-qa-add" type="button">➕ إضافة للقائمة</button>
+    </div>
+  </div>
+
+  <div class="rg-day-inline">ضبط اليوم: <b>{{ sel_day | aindic }}</b></div>
+
+  <!-- تويبات الفئتين (عددهم = قوة الجهة المسجلة) -->
+  <div class="rg-ctabs">
+    <button type="button" class="rg-ctab {{ 'on' if fcat == 'officers' }}" data-cat="officers">
+      👮 الضباط المسجلون ({{ force['officers'] | length | aindic }})
+    </button>
+    <button type="button" class="rg-ctab {{ 'on' if fcat == 'individuals' }}" data-cat="individuals">
+      👥 الأفراد والصفة ({{ force['individuals'] | length | aindic }})
+    </button>
+  </div>
+
+  <!-- قائمة القوة المعتمدة: التشيك = راغب بالوجبة اليوم -->
+  <div class="rg-forcebox">
+    <b>قائمة قوة {{ group.label }} المعتمدة ({{ force[fcat] | length | aindic }}):</b>
+    <input class="rg-force-search" placeholder="🔍 بحث في القوة..." aria-label="بحث في القوة">
+    <div class="rg-force-list">
+      {% for p in force_persons %}
+      <div class="rg-force-item" data-name="{{ p.full_name }}">
+        <label class="rg-force-check" title="{{ p.exclude_note or '' }}">
+          <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
+                 data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
+          <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b></span>
+        </label>
+        <button type="button" class="rg-force-del" data-person="{{ p.id }}"
+                data-name="{{ p.full_name }}" title="حذف من القوة نهائيًا">🗑</button>
+      </div>
+      {% else %}
+      <p class="rg-dim">لا يوجد {{ 'ضباط' if fcat == 'officers' else 'أفراد وصف' }} مسجلين حاليًا في هذه الجهة الشرطية — أضفهم من «إضافة عضو جديد سريع» فوق.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- قسمة الأسماء في كشوفات التجهيز اليومية -->
+  <div class="rg-slotsbox">
+    <div class="rg-slotshead">
+      <b>🏖 قسمة الأسماء في كشوفات التجهيز اليومية:</b>
+      <span class="rg-updated-chip">تم تحديث (<span class="rg-filled-count">{{ group.count | aindic }}</span> من أصل {{ group.tameeda | aindic }} اسم)</span>
+    </div>
+    {% if group.boxes %}
+    <div class="rg-slots-list">
+      {% for name in group.boxes %}
+      <div class="rg-slotrow">
+        <span class="rg-slotnum">{{ loop.index | aindic }} -</span>
+        <input class="rag-slot" name="names" value="{{ name or '' }}" list="{{ dlist }}"
+               data-combo="{{ dlist }}" autocomplete="off"
+               placeholder="اكتب {{ 'رتبة أو اسم الضابط' if fcat == 'officers' else 'درجة أو اسم الفرد' }}...">
+      </div>
+      {% endfor %}
+    </div>
+    <p class="rg-dim rg-slots-hint">التشيك من قائمة القوة يملأ المربعات تلقائيًا، والكتابة بالبحث الذكي —
+    وأي اسم جديد هيسألك: هل تريد إضافته كقوة دائمة للجهة؟</p>
+    {% else %}
+    <p class="rg-dim">لا توجد مربعات — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }} أولًا
+    (عدد المربعات = أعداد التأميدة).</p>
+    {% endif %}
+  </div>
+
+  <div class="rg-modal-foot">
+    <button class="rt-btn gold" type="submit">💾 حفظ وأعتماد التجهيزات</button>
+    <button class="rt-btn" type="button" data-rgcancel>إلغاء</button>
+    <span class="rg-dim">الحفظ يتزامن لحظيًا مع تاب الراغبين وكل ملفات الشهر (ربط بالاتجاهين)</span>
+  </div>
+  {% endif %}
+
+  <datalist id="{{ dlist }}">
+    {% for n in force[fcat] %}<option value="{{ n }}"></option>{% endfor %}
+  </datalist>
+  <script type="application/json" class="rg-ranks-map">{{ ranks_map | tojson }}</script>
+</form>

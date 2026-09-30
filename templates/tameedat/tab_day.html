@@ -211,26 +211,18 @@
   </div>
 </div>
 
-<!-- مودال الراغبين: نفس جزء تاب الراغبين — ربط ١٠٠٪ بالاتجاهين -->
+<!-- مودال الراغبين: نفس تصميم النظام المرجعي — ربط ١٠٠٪ بالاتجاهين -->
 <div class="tm-modal" id="rgModal" hidden role="dialog" aria-modal="true"
      aria-labelledby="rgModalTitle" data-day="{{ sel_date_iso }}" data-sid="{{ save_token }}">
   <div class="tm-modal-card rg-modal-card">
     <div class="tm-modal-head">
-      <b id="rgModalTitle">كشف وتسجيل أسماء الضباط والأفراد الراغبين</b>
+      <b id="rgModalTitle">👮 كشف وتسجيل أسماء الضباط والأفراد الراغبين</b>
       <button type="button" class="tm-modal-x" id="rgModalClose" aria-label="إغلاق">✕</button>
     </div>
-    <p class="tm-hint">المربعات بعدد تأميدة اليوم للجهة المختارة — اكتب الاسم بالبحث الذكي
-    من «الجهات والكوادر»، وأي اسم جديد هيسألك: هل تريد إضافته كقوة دائمة للجهة؟
-    الحفظ هنا هو الحفظ نفسه في تاب الراغبين (ربط بالاتجاهين).</p>
-    <div class="rg-modal-bar">
-      <select id="rgModalEntity" aria-label="الجهة">
-        {% for n in entity_names %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
-      </select>
-      <span class="rg-day-chip">يوم التأميدة «من يوم»: <b id="rgModalDay">{{ sel_day | aindic }}</b></span>
-      <button type="button" class="rt-btn rg-cat-btn gold" data-cat="officers">🎖 الضباط</button>
-      <button type="button" class="rt-btn rg-cat-btn" data-cat="individuals">👥 الأفراد</button>
-    </div>
-    <div id="rgModalBody"><p class="rg-dim">اختار الجهة لعرض المربعات…</p></div>
+    <p class="tm-hint">مزامنة كاملة بين أقسام الجهات وبوابة التجهيزات المعتمدة —
+    المودال مربوط بجهة ويوم التأميدة المكتوبين في الفورم، والحفظ هنا هو الحفظ نفسه
+    في تاب الراغبين وكل ملفات الشهر (ربط بالاتجاهين).</p>
+    <div id="rgModalBody"><p class="rg-dim">اضغط فتح المودال لتحميل كشف الجهة…</p></div>
   </div>
 </div>
 

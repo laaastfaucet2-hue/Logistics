@@ -164,21 +164,51 @@ def test_daily_save_back_to_tameedat(app, client):
 
 
 def test_panel_fragment(app, client):
-    """جزء المربعات: عدد المربعات من التأميدة + hidden back/source للمودال."""
+    """جسم المودال المرجعي: الجهة المختارة + قوة بتشيكات + مربعات بعدد التأميدة."""
     eid, name = _entity()
-    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    drg.set_daily(YEAR, MONTH, pid, 22, True)
     dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
                   10, 10, 10, notes="تأميدة اعتيادية")
-    r = client.get(f"/raghibin/panel?en={name}&d=22&c=officers&back=tameedat&source=tamida")
+    r = client.get(f"/raghibin/panel?en={name}&d=22&c=officers&sid=tok")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert body.count('name="names"') == 10       # ١٠ مربعات حسب التأميدة
     assert 'value="tameedat"' in body and 'value="tamida"' in body
-    assert 'data-combo="rgForceOfficers"' in body
+    assert "الجهة المختارة الحالية للتعبين" in body
+    assert "جهة شرطية معتمدة" in body
+    assert "الضباط المسجلون" in body and "الأفراد والصفة" in body
+    assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
+    assert "قائمة قوة الضباط المعتمدة" in body
+    assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
+    assert "حفظ وأعتماد التجهيزات" in body
+    assert "ضبط اليوم" in body
+    assert 'checked>' in body                      # محمد محمود مشيك (راغب اليوم)
     # بدون تأميدة: لا مربعات مع رسالة إرشادية
     r2 = client.get(f"/raghibin/panel?en={name}&d=5&c=officers")
-    assert 'name="names"' not in r2.get_data(as_text=True)
-    assert "سجّل تأميدة" in r2.get_data(as_text=True)
+    body2 = r2.get_data(as_text=True)
+    assert 'name="names"' not in body2
+    assert "سجّل تأميدة" in body2
+
+
+def test_panel_quick_add_and_delete(app, client):
+    """إضافة عضو سريع للقوة من المودال + حذف 🗑 — الجزء يتحدث فورًا."""
+    eid, name = _entity()
+    r = client.post("/raghibin/panel/quick_add", data={
+        "e": eid, "qa_cat": "officers", "qa_rank": "عقيد",
+        "qa_name": "طارق منير عبد اللطيف", "qa_note": "ملاحظة تجربة", "d": "22"})
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "طارق منير عبد اللطيف" in body          # ظهر في قائمة القوة فورًا
+    person = drg.find_person(YEAR, MONTH, eid, "officers", "طارق منير عبد اللطيف")
+    assert person is not None and person["rank"] == "عقيد"
+    assert person["exclude_note"] == "ملاحظة تجربة"
+    assert drg.get_person(YEAR, MONTH, person["id"]) is not None
+    # حذف من المودال
+    r2 = client.post(f"/raghibin/panel/delete/{person['id']}", data={"e": eid, "d": "22"})
+    assert r2.status_code == 200
+    assert "طارق منير عبد اللطيف" not in r2.get_data(as_text=True)
+    assert drg.get_person(YEAR, MONTH, person["id"]) is None
 
 
 def test_exclude_clears_daily_marks(app):

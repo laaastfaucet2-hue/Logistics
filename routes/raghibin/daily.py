@@ -19,6 +19,7 @@ from flask import render_template, request
 from core import arabic_numbers as arnum
 from core.auth_core import login_required
 from data_access import db_raghibin as dr
+from data_access import db_tameedat as dt
 from services import raghibin as rfs
 
 from . import raghibin_bp
@@ -29,18 +30,70 @@ from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
 @raghibin_bp.route("/panel")
 @login_required
 def panel():
-    """جزء مربعات الراغبين — للتضمين في التاب اليومي وللمودال في التأميدات."""
+    """جسم مودال الراغبين في التأميدات — نفس تصميم النظام المرجعي للمستخدم:
+    الجهة المختارة + إضافة سريعة + قائمة القوة بتشيكات + قسمة المربعات."""
     year, month = _ctx()
     entity = _selected_entity(year, month, by_name=True)
     day = _selected_day(year, month)
-    cat = _category()
+    return _modal_fragment(year, month, entity, day, _category())
+
+
+@raghibin_bp.route("/panel/quick_add", methods=["POST"])
+@login_required
+def panel_quick_add():
+    """«إضافة عضو جديد سريع إلى قوة الجهة» من داخل المودال — يرجع الجزء محدثًا."""
+    year, month = _ctx()
+    entity, back = _entity_or_back(year, month)
+    if back:
+        return back
+    day = _selected_day(year, month)
+    cat = request.form.get("qa_cat") if request.form.get("qa_cat") in dr.CATEGORY_KEYS \
+        else _category()
+    name = " ".join((request.form.get("qa_name") or "").split())
+    if name:
+        dr.add_person(year, month, entity["id"], cat, name,
+                      rank=(request.form.get("qa_rank") or "").strip(),
+                      exclude_note=(request.form.get("qa_note") or "").strip())
+        rfs.write_entity_files(year, month, entity["id"], entity["name"], day=day)
+    return _modal_fragment(year, month, entity, day, cat)
+
+
+@raghibin_bp.route("/panel/delete/<int:person_id>", methods=["POST"])
+@login_required
+def panel_delete(person_id):
+    """حذف اسم من القوة من داخل المودال (🗑) — يرجع الجزء محدثًا."""
+    year, month = _ctx()
+    person = dr.get_person(year, month, person_id)
+    if person:
+        dr.delete_person(year, month, person_id)
+        rfs.write_entity_files(year, month, person["entity_id"], person["entity_name"])
+        entity = dt.get_entity(year, month, person["entity_id"])
+        return _modal_fragment(year, month, entity, _selected_day(year, month),
+                               person["category"])
+    entity, back = _entity_or_back(year, month)
+    return back if back else _modal_fragment(year, month, entity,
+                                             _selected_day(year, month), _category())
+
+
+def _modal_fragment(year, month, entity, day, cat):
+    """بناء جزء المودال الموحد: قوة الفئة بعلامات اليوم + المربعات + الإضافة السريعة."""
     variables = _slots_vars(year, month, entity, day)
+    state = dr.day_state(year, month, day, entity["id"]) if entity else {}
+    persons = dr.list_persons(year, month, entity_id=entity["id"], category=cat) \
+        if entity else []
+    for person in persons:
+        person["willing_today"] = state.get(person["id"])
     variables.update({
         "fcat": cat, "entity": entity, "sel_day": day,
-        "back": request.args.get("back", "raghibin"),
-        "source": request.args.get("source", "manual"),
+        "force_persons": persons,
+        "categories": dr.CATEGORIES,
+        "officer_ranks": dr.RANKS["officers"],
+        "individual_ranks": dr.RANKS["individuals"],
+        "ranks_map": {"officers": dr.RANKS["officers"],
+                      "individuals": dr.RANKS["individuals"]},
+        "sid": request.values.get("sid", ""),
     })
-    return render_template("raghibin/panel_slots.html", **variables)
+    return render_template("raghibin/modal_body.html", **variables)
 
 
 @raghibin_bp.route("/daily/save", methods=["POST"])
