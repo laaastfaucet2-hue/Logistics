@@ -85,7 +85,7 @@ def write_day_file(year, month, day, entity_id, entity_name):
         category_label = "ضابط" if person["category"] == "officers" else "فرد"
         values = [arnum.to_arabic_indic(str(serial)), person["rank"] or "—",
                   person["full_name"], category_label, mark,
-                  person["exclude_note"] if person["excluded"] else ""]
+                  person["exclude_note"] or ""]
         for col, value in enumerate(values, start=1):
             cell = ws.cell(row, col, value)
             cell.alignment = CENTER

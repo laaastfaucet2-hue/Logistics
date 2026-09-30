@@ -73,6 +73,24 @@ def cadres_delete(person_id):
                ok=f"تم حذف {person['full_name']} من القوة")
 
 
+@raghibin_bp.route("/cadres/note/<int:person_id>", methods=["POST"])
+@login_required
+def cadres_note(person_id):
+    """📝 تحرير ملاحظة اسم من القوة — من غير تغيير حالته (راغب/غير راغب)."""
+    year, month = _ctx()
+    person = dr.get_person(year, month, person_id)
+    if not person:
+        return _rb("cadres", err="الاسم غير موجود")
+    note = " ".join((request.form.get("note") or "").split())
+    dr.set_note(year, month, person_id, note)
+    rfs.write_entity_files(year, month, person["entity_id"], person["entity_name"])
+    if note:
+        return _rb("cadres", e=person["entity_id"], c=person["category"],
+                   ok=f"📝 تم حفظ ملاحظة {person['full_name']}: {note}")
+    return _rb("cadres", e=person["entity_id"], c=person["category"],
+               ok=f"تم حذف ملاحظة {person['full_name']}")
+
+
 @raghibin_bp.route("/cadres/copy", methods=["POST"])
 @login_required
 def cadres_copy():

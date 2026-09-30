@@ -75,7 +75,24 @@
       <thead><tr><th>م</th><th>الرتبة</th><th>الاسم الرتبعي الكامل</th><th>الحالة</th><th>ملاحظات / حالة الغياب</th><th>إجراءات</th></tr></thead>
       <tbody>
       {% for p in persons %}
-        {% if exclude_person and exclude_person.id == p.id %}
+        {% if note_person and note_person.id == p.id %}
+        <tr class="rg-excl-edit">
+          <td>{{ loop.index | aindic }}</td>
+          <td>{{ p.rank or '—' }}</td>
+          <td colspan="4">
+            <form method="post" action="/raghibin/cadres/note/{{ p.id }}" class="rg-exclform">
+              <input type="hidden" name="e" value="{{ entity.id }}">
+              <input type="hidden" name="c" value="{{ fcat }}">
+              <input type="hidden" name="sid" value="{{ sid }}">
+              <b>📝 ملاحظة {{ p.full_name }}:</b>
+              <input name="note" value="{{ p.exclude_note or '' }}" class="rg-note-input"
+                     placeholder="اكتب الملاحظة (هلاكات / مأمورية / مريض / ...)">
+              <button class="rt-btn gold" type="submit">حفظ الملاحظة</button>
+              <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}">إلغاء</a>
+            </form>
+          </td>
+        </tr>
+        {% elif exclude_person and exclude_person.id == p.id %}
         <tr class="rg-excl-edit">
           <td>{{ loop.index | aindic }}</td>
           <td>{{ p.rank or '—' }}</td>
@@ -101,7 +118,10 @@
           <td>{{ p.rank or '—' }}</td>
           <td class="rg-name">{{ p.full_name }}</td>
           <td>{% if p.excluded %}<span class="rg-state off">⊘ غير راغب</span>{% else %}<span class="rg-state on">✓ راغب</span>{% endif %}</td>
-          <td>{{ p.exclude_note if p.excluded else '—' }}</td>
+          <td>
+            {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝 {{ p.exclude_note }}</span>{% else %}<span class="rg-dim">—</span>{% endif %}
+            <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}{{ '&n=' + (p.id | string) }}">✏️</a>
+          </td>
           <td class="rg-actions">
             <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}{{ '&x=' + (p.id | string) }}"> {% if p.excluded %}↩ إرجاع / تعديل{% else %}⊘ غير راغب{% endif %}</a>
             <form method="post" action="/raghibin/cadres/delete/{{ p.id }}" class="rg-inline" onsubmit="return confirm('حذف {{ p.full_name }} من القوة نهائيًا؟')">

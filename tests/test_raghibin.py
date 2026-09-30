@@ -360,6 +360,36 @@ def test_rag_check_range_warning_excess_only(app, client):
     assert "warn=" not in loc2
 
 
+def test_note_marker_and_inline_edit(app, client):
+    """📝 الملاحظات: علامة في الجدول + تحرير حر من غير تغيير حالة الرغبة."""
+    eid, name = _entity()
+    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    drg.set_excluded(YEAR, MONTH, pid, True, "هلاكات")
+    p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    drg.set_daily(YEAR, MONTH, p2, 22, True)
+    # العلامة ظاهرة لمن عليه ملاحظة
+    body = client.get(f"/raghibin?tab=cadres&e={eid}&c=officers").get_data(as_text=True)
+    assert "rg-note-badge" in body and "هلاكات" in body
+    # تحرير ملاحظة اسم راغب من غير تغيير رغبته
+    r = client.post(f"/raghibin/cadres/note/{p2}", data={
+        "e": eid, "c": "officers", "note": "مأمورية شرطة"})
+    assert r.status_code == 302 and "ok=" in r.headers["Location"]
+    person = drg.get_person(YEAR, MONTH, p2)
+    assert person["exclude_note"] == "مأمورية شرطة"
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {p2: True}   # الرغبة زي ما هي
+    assert not person["excluded"]
+    # الملاحظة ظهرت في الملف الرسمي
+    ws = load_workbook(rfs.cadres_dir(YEAR, MONTH) / f"{name} (ضباط).xlsx").active
+    notes = [ws.cell(r_, 5).value for r_ in range(8, 12)]
+    assert "مأمورية شرطة" in notes
+    # حذف الملاحظة بكتابتها فاضية
+    client.post(f"/raghibin/cadres/note/{p2}", data={"e": eid, "note": ""})
+    assert drg.get_person(YEAR, MONTH, p2)["exclude_note"] == ""
+    # صف تحرير الملاحظة (?n=)
+    body2 = client.get(f"/raghibin?tab=cadres&e={eid}&c=officers&n={pid}").get_data(as_text=True)
+    assert "حفظ الملاحظة" in body2
+
+
 def test_page_and_section_redirect(client):
     r = client.get("/raghibin?tab=cadres")
     assert r.status_code == 200

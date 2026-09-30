@@ -201,6 +201,11 @@ def _page_vars(tab):
         exclude_id = int(request.args.get("x", "0") or 0)
     except ValueError:
         exclude_id = 0
+    note_id = 0
+    try:
+        note_id = int(request.args.get("n", "0") or 0)
+    except ValueError:
+        note_id = 0
     persons = []
     if entity:
         persons = dr.list_persons(year, month, entity_id=entity["id"],
@@ -215,6 +220,7 @@ def _page_vars(tab):
         "counts": counts,
         "persons": persons,
         "exclude_person": dr.get_person(year, month, exclude_id) if exclude_id else None,
+        "note_person": dr.get_person(year, month, note_id) if note_id else None,
         "all_ranks": dr.ALL_RANKS,
         "officer_ranks": dr.RANKS["officers"],
         "individual_ranks": dr.RANKS["individuals"],

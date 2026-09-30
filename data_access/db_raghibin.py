@@ -208,6 +208,15 @@ def set_excluded(year, month, person_id, excluded, note=""):
     conn.close()
 
 
+def set_note(year, month, person_id, note):
+    """تحرير ملاحظة الاسم مباشرة (من غير تغيير حالة الرغبة/الاستثناء)."""
+    conn = _conn(year, month)
+    conn.execute("UPDATE ragh_persons SET exclude_note = ? WHERE id = ?",
+                 ((note or "").strip(), person_id))
+    conn.commit()
+    conn.close()
+
+
 def delete_person(year, month, person_id):
     conn = _conn(year, month)
     conn.execute("DELETE FROM ragh_persons WHERE id = ?", (person_id,))

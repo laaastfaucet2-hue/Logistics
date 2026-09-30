@@ -75,7 +75,8 @@
         <label class="rg-force-check" title="{{ p.exclude_note or '' }}">
           <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
                  data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
-          <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b></span>
+          <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b>
+            {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}</span>
         </label>
         <button type="button" class="rg-force-del" data-person="{{ p.id }}"
                 data-name="{{ p.full_name }}" title="حذف من القوة نهائيًا">🗑</button>

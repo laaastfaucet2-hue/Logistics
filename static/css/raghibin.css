@@ -51,6 +51,10 @@
 .rg-daybtns button.on-w { background: #16a34a; border-color: #16a34a; color: #fff; }
 .rg-daybtns button.on-n { background: #dc2626; border-color: #dc2626; color: #fff; }
 .rg-total-row td { background: rgba(245, 158, 11, .12); font-size: 1rem; }
+.rg-note-badge { display: inline-block; max-width: 220px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
+  padding: 2px 9px; border-radius: 8px; font-size: .82rem; font-weight: 700;
+  background: rgba(245, 158, 11, .14); border: 1px solid rgba(245, 158, 11, .45); }
 .rg-cat-switch { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
   margin-bottom: 4px; }
 .rg-slots-head { display: flex; justify-content: space-between; align-items: baseline;

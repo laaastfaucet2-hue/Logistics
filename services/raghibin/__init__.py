@@ -138,7 +138,7 @@ def _cadres_sheet(ws, year, month, entity_name, category_key, category_label, pe
     for serial, person in enumerate(persons, start=1):
         excluded = bool(person["excluded"])
         state = "⊘ غير راغب" if excluded else "✓ راغب"
-        note = person["exclude_note"] if excluded else ""
+        note = person["exclude_note"] or ""
         fill = FILL_EXCLUDED if excluded else ("F4F6FB" if row % 2 == 0 else None)
         values = [arnum.to_arabic_indic(serial), person["rank"] or "—",
                   person["full_name"], state, note or ""]
