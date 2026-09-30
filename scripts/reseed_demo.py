@@ -72,9 +72,10 @@ with app.app_context():
     _conn.close()
     if not has_supply_opener:
         dw.add_opener(Y, M, "supply", "ملح طعام", 100.0, 1,
+                      handle_unit_hint="كجم",
                       producer="شركة ملح الإسكندرية",
                       supplier_name="الشركة المصرية للتوريدات",
-                      date_iso="%04d-%02d-%01d" % (Y, M, 1),
+                      date_iso="%04d-%02d-%02d" % (Y, M, 1),
                       exp_iso="%04d-09-01" % (Y + 1),
                       stores=[(supply_store["id"], supply_store["name"], 100.0)])
     print("ملح افتتاحي ١٠٠ على مخزن التموين ✓")
@@ -101,9 +102,10 @@ with app.app_context():
     _conn.close()
     if not has_tuna_opener:
         dw.add_opener(Y, M, "tarfea", "تونة", 10.0, 1,
+                      handle_unit_hint="علبة",
                       producer="الشركة المصرية للحفظ",
                       supplier_name="الشركة المصرية للتوريدات",
-                      date_iso="%04d-%02d-%01d" % (Y, M, 1),
+                      date_iso="%04d-%02d-%02d" % (Y, M, 1),
                       exp_iso="%04d-09-01" % (Y + 2))
         dw.add_receipt(Y, M, "tarfea", 8, "تونة", 48.0,
                        handle_unit_hint="علبة",
