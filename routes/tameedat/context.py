@@ -292,6 +292,15 @@ def _page_vars(tab):
         "save_token": secrets.token_urlsafe(16),
         "days_in_month": egtime.days_in_month(year, month),
     }
+    # مودال الراغبين مدمج في الصفحة (يُفتح فورًا بلا جلب خارجي — والجلب تحديث اختياري)
+    try:
+        from services.raghibin import modal as rg_modal
+        modal_entity = edits or (dt.list_entities(year, month) or [None])[0]
+        modal_day = selected if tab == "day" else 1
+        variables.update(rg_modal.build(year, month, modal_entity, modal_day,
+                                        "officers", sid=variables["save_token"]))
+    except Exception:
+        pass
     return variables
 
 

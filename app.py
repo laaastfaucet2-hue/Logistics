@@ -60,6 +60,8 @@ def create_app():
         app.register_blueprint(bp)
     app.add_url_rule("/health", "health", lambda: {"status": "ready", "version": APP_VERSION})
 
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0   # JS/CSS تتأكد من السيرفر دايمًا
+
     @app.after_request
     def _no_store_html(response):
         # صفحات المنظومة ديناميكية دايمًا — يمنع تصفح صفحة قديمة من كاش المتصفح

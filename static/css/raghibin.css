@@ -135,6 +135,8 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-modal-foot { justify-content: flex-start; }
 .rg-modal-foot .rt-btn.gold { min-width: 230px; }
 .rg-qa-add { white-space: nowrap; }
+.rg-build-chip { float: left; font-size: .75rem; color: var(--muted);
+  border: 1px solid var(--card-border); border-radius: 8px; padding: 3px 10px; }
 .rg-slotsbox { border: 1px solid var(--gold-border); border-radius: 12px;
   padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; }
 .rg-slotshead { display: flex; justify-content: space-between; align-items: center;
