@@ -163,6 +163,26 @@ def test_daily_save_back_to_tameedat(app, client):
     assert "day=" in loc and "ok=" in loc
 
 
+def test_panel_never_redirects_to_login(app, client):
+    """جلسة ساقطة/غلط في نقاط المودال = رسالة واضحة 200 — ممنوع صفحة الدخول جوه المودال."""
+    eid, name = _entity()
+    # متصفح بلا كوكيز (وضع التسويل بـ sid في الرابط) وsid غلط
+    # → رسالة انتهت الجلسة مباشرة 200 — لا تحويل ولا صفحة دخول جوه المودال
+    bare = app.test_client()
+    r = bare.get(f"/raghibin/panel?en={name}&d=22&c=officers&sid=WRONG")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "انتهت الجلسة" in body
+    assert "LOGISTICS WORKSPACE" not in body          # مش صفحة الدخول
+    r2 = bare.post("/raghibin/panel/quick_add", data={"e": eid, "sid": "WRONG"})
+    assert r2.status_code == 200 and "انتهت الجلسة" in r2.get_data(as_text=True)
+    r3 = bare.get(f"/raghibin/panel?en={name}&d=22&c=officers")   # بلا sid أصلًا
+    assert r3.status_code == 200 and "انتهت الجلسة" in r3.get_data(as_text=True)
+    # والصفحة نفسها بلا كاش (عشان المتصفح مايحملش نسخة قديمة)
+    page = client.get("/raghibin?tab=daily")
+    assert "no-store" in (page.headers.get("Cache-Control") or "")
+
+
 def test_panel_fragment(app, client):
     """جسم المودال المرجعي: الجهة المختارة + قوة بتشيكات + مربعات بعدد التأميدة."""
     eid, name = _entity()

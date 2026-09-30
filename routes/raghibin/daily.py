@@ -13,22 +13,43 @@
 أجاكسًا في مودال التأميدات).
 """
 import json
+from functools import wraps
 
-from flask import render_template, request
+from flask import g, render_template, request
 
 from core import arabic_numbers as arnum
-from core.auth_core import login_required
+from core.auth_core import current_session, login_required
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 from services import raghibin as rfs
 
 from . import raghibin_bp
+
+
+EXPIRED_FRAGMENT = (
+    '<div class="rg-note warn">⏳ انتهت الجلسة — اعمل تحديث للصفحة (F5) '
+    'وافتح المودال تاني</div>'
+)
+
+
+def _fragment_login_required(view):
+    """لنقاط جلب المودال: بلا تحويلات — الجلسة الساقطة ترجع رسالة واضحة
+    كجزء HTML مباشر بدل صفحة الدخول (السبب التاريخي للعطل)."""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        user, token = current_session()
+        if not user:
+            return EXPIRED_FRAGMENT
+        g.user = user
+        g.sid = token
+        return view(*args, **kwargs)
+    return wrapper
 from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
                       _selected_entity, _slots_vars)
 
 
 @raghibin_bp.route("/panel")
-@login_required
+@_fragment_login_required
 def panel():
     """جسم مودال الراغبين في التأميدات — نفس تصميم النظام المرجعي للمستخدم:
     الجهة المختارة + إضافة سريعة + قائمة القوة بتشيكات + قسمة المربعات."""
@@ -39,7 +60,7 @@ def panel():
 
 
 @raghibin_bp.route("/panel/quick_add", methods=["POST"])
-@login_required
+@_fragment_login_required
 def panel_quick_add():
     """«إضافة عضو جديد سريع إلى قوة الجهة» من داخل المودال — يرجع الجزء محدثًا."""
     year, month = _ctx()
@@ -59,7 +80,7 @@ def panel_quick_add():
 
 
 @raghibin_bp.route("/panel/delete/<int:person_id>", methods=["POST"])
-@login_required
+@_fragment_login_required
 def panel_delete(person_id):
     """حذف اسم من القوة من داخل المودال (🗑) — يرجع الجزء محدثًا."""
     year, month = _ctx()

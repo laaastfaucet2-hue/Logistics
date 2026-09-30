@@ -59,6 +59,14 @@ def create_app():
                warehouses_bp, stores_bp, health_bp, tarfea_bp, raghibin_bp):
         app.register_blueprint(bp)
     app.add_url_rule("/health", "health", lambda: {"status": "ready", "version": APP_VERSION})
+
+    @app.after_request
+    def _no_store_html(response):
+        # صفحات المنظومة ديناميكية دايمًا — يمنع تصفح صفحة قديمة من كاش المتصفح
+        if response.mimetype == "text/html":
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     return app
 
 
