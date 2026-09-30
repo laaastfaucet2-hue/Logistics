@@ -27,4 +27,4 @@ CATEGORIES = [("officers", "الضباط"), ("individuals", "الأفراد وا
 
 
 # تجميع المسارات — الاستيراد الأخير يسجّل الراوتات على البلوبرنت
-from . import cadres  # noqa: F401,E402
+from . import cadres, daily  # noqa: F401,E402

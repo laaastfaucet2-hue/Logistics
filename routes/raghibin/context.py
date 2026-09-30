@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""صفحة قسم الراغبين + السياق المشترك (سنة/شهر/جهة/فئة/بحث) وجديل الرجوع."""
+"""صفحة قسم الراغبين + السياق المشترك (سنة/شهر/جهة/فئة/يوم/بحث) وجديل الرجوع."""
+from datetime import date
 from flask import g, redirect, render_template, request, url_for
 from urllib.parse import quote
 
+from core import arabic_numbers as arnum
+from core import egtime
 from core.auth_core import current_context, current_session, login_required
-from core.config import MONTH_NAMES
+from core.config import DAYS, MONTH_NAMES
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 from services import raghibin as rfs
@@ -34,8 +37,8 @@ def _rb(tab="cadres", ok=None, err=None, warn=None, **extra):
 
 
 def _selected_entity(year, month):
-    """الجهة المحددة من ?e — الافتراضي أول جهة بالقاموس (أو None لو فاضي)."""
-    raw = request.args.get("e", "")
+    """الجهة المحددة من ?e (أو فورم e) — الافتراضي أول جهة بالقاموس (أو None لو فاضي)."""
+    raw = request.values.get("e", "")
     try:
         entity_id = int(raw)
     except ValueError:
@@ -46,6 +49,83 @@ def _selected_entity(year, month):
             return entity
     entities = dt.list_entities(year, month)
     return entities[0] if entities else None
+
+
+def _selected_day(year, month):
+    """اليوم المحدد للتاب اليومي: ?d أو فورم d — الافتراضي تاريخ اليوم وإلا ١."""
+    raw = request.values.get("d", "")
+    day = arnum.parse_int(raw) if raw else 0
+    if day and 1 <= day <= egtime.days_in_month(year, month):
+        return day
+    today = egtime.today()
+    if today.year == year and today.month == month:
+        return today.day
+    return 1
+
+
+def _entity_or_back(year, month, tab="cadres"):
+    """الجهة الهدف من النموذج (e) — لو مفقودة رجوع بتنبيه على التاب المطلوب."""
+    raw = request.values.get("e") or ""
+    try:
+        entity = dt.get_entity(year, month, int(raw))
+    except ValueError:
+        entity = None
+    if not entity:
+        return None, _rb(tab, err="اختر جهة أولًا")
+    return entity, None
+
+
+def _day_grid(year, month, selected, counts):
+    """شبكة أيام الشهر (أسبوع يبدأ السبت) — العلامة عدد راغبين اليوم لجهة التاب."""
+    first = date(year, month, 1)
+    offset = (first.weekday() + 2) % 7          # السبت أول الأعمدة
+    total_days = egtime.days_in_month(year, month)
+    today = egtime.today()
+    cells = [{"empty": True}] * offset
+    for day in range(1, total_days + 1):
+        cells.append({
+            "empty": False, "day": day,
+            "count": counts.get(day, 0),
+            "selected": day == selected,
+            "is_today": today.year == year and today.month == month and today.day == day,
+        })
+    while len(cells) % 7:
+        cells.append({"empty": True})
+    return [cells[i:i + 7] for i in range(0, len(cells), 7)]
+
+
+def _daily_vars(year, month, entity, selected):
+    """متغيرات تاب «الراغبين (يومي)»: التقويم + قوة اليوم + عدادات + تحذير التطابق."""
+    eid = entity["id"] if entity else None
+    counts_map = dr.day_willing_counts(year, month, eid) if eid else {}
+    state = dr.day_state(year, month, selected, eid) if eid else {}
+    officers = dr.list_persons(year, month, entity_id=eid, category="officers") if eid else []
+    individuals = dr.list_persons(year, month, entity_id=eid, category="individuals") if eid else []
+    for person in officers + individuals:
+        person["willing_today"] = state.get(person["id"])
+    willing_officers = sum(1 for p in officers if p["willing_today"])
+    willing_individuals = sum(1 for p in individuals if p["willing_today"])
+    tameed_totals = None
+    if eid:
+        officers_total = individuals_total = 0
+        for rec in dt.records_for_day(year, month, selected, "all", ""):
+            if rec.get("entity_id") != eid:
+                continue
+            if rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
+                officers_total += rec["officers"]
+                individuals_total += rec["individuals"]
+        if officers_total or individuals_total:
+            tameed_totals = {"officers": officers_total, "individuals": individuals_total}
+    return {
+        "sel_day": selected,
+        "weeks": _day_grid(year, month, selected, counts_map),
+        "weekdays": DAYS,
+        "officers": officers,
+        "individuals": individuals,
+        "day_counts": {"officers": willing_officers, "individuals": willing_individuals,
+                       "officers_total": len(officers), "individuals_total": len(individuals)},
+        "tameed_totals": tameed_totals,
+    }
 
 
 def _category():
@@ -92,4 +172,9 @@ def page():
     tab = request.args.get("tab", "daily")
     if tab not in TAB_KEYS:
         tab = "daily"
-    return render_template("raghibin/main.html", **_page_vars(tab))
+    variables = _page_vars(tab)
+    if tab == "daily":
+        selected = _selected_day(variables["year"], variables["month"])
+        variables.update(_daily_vars(variables["year"], variables["month"],
+                                     variables["entity"], selected))
+    return render_template("raghibin/main.html", **variables)

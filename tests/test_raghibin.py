@@ -92,6 +92,74 @@ def test_cadres_files_official_and_states(app):
     assert ws_i.cell(8, 3).value == "أحمد محمد صابر"
 
 
+def test_daily_toggle_flow_and_day_file(app, client):
+    from services.raghibin.files_daily import day_dir
+    eid, name = _entity()
+    p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    drg.set_excluded(YEAR, MONTH, p2, True, "هلاكات")
+    p3, _ = drg.add_person(YEAR, MONTH, eid, "individuals", "أحمد محمد صابر", "فرد (1)")
+    r = client.post("/raghibin/daily/toggle", data={
+        "e": eid, "d": 22, "person_id": p1, "willing": "1"})
+    assert r.status_code == 302
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: True}
+    path = day_dir(YEAR, MONTH, 22) / f"{name}.xlsx"
+    assert path.exists()
+    ws = load_workbook(path).active
+    assert ws.title == "يوم ٢٢"
+    assert "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
+    marks = {ws.cell(r, 3).value: (ws.cell(r, 5).value, ws.cell(r, 4).value)
+             for r in range(8, 11)}
+    assert marks["محمد محمود"][0] == "✓ راغب بالوجبة"
+    assert marks["ابراهيم ناجى عطا الله"][0] == "⊘ غير راغب"
+    assert marks["أحمد محمد صابر"][0] == "✗ لا"
+    total_row = str(ws.cell(11, 1).value)
+    assert "الإجمالي: ١ راغبون من أصل ٣" in total_row
+    # إلغاء الرغبة يحدّث نفس الملف
+    client.post("/raghibin/daily/toggle", data={"e": eid, "d": 22, "person_id": p1,
+                                                "willing": "0"})
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: False}
+
+
+def test_toggle_blocked_for_excluded(app, client):
+    eid, name = _entity()
+    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    drg.set_excluded(YEAR, MONTH, pid, True, "هلاكات")
+    r = client.post("/raghibin/daily/toggle", data={
+        "e": eid, "d": 22, "person_id": pid, "willing": "1"})
+    assert r.status_code == 302
+    assert "warn=" in r.headers["Location"]       # تحذير بدون كتابة
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {}
+
+
+def test_exclude_clears_daily_marks(app):
+    eid, _ = _entity()
+    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    drg.set_daily(YEAR, MONTH, pid, 22, True)
+    drg.set_excluded(YEAR, MONTH, pid, True, "هلاكات")
+    assert drg.month_meals(YEAR, MONTH) == {}     # الاستثناء يسقط تسجيلات اليومية
+    drg.set_excluded(YEAR, MONTH, pid, False)
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {}   # والإرجاع لا يستعيدها
+
+
+def test_daily_page_calendar_folders_and_mismatch(app, client):
+    from services import raghibin as rfs
+    eid, name = _entity()
+    p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "مصطفى عبدالحميد", "نقيب")
+    drg.set_daily(YEAR, MONTH, p1, 22, True)
+    drg.set_daily(YEAR, MONTH, p2, 22, True)
+    dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
+                  10, 10, 10, notes="تأميدة اعتيادية")
+    r = client.get(f"/raghibin?tab=daily&e={eid}&d=22")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "عدم تطابق يوم ٢٢" in body                     # ١٠ تأميدة مقابل ٢ راغبين
+    assert "ضباط: <b>٢</b> من ٢" in body
+    root = rfs.tab_dir(YEAR, MONTH, "daily")
+    assert (root / "يوم ١").exists() and (root / "يوم ٣٠").exists()   # فولدرات الشهر كاملة
+
+
 def test_page_and_section_redirect(client):
     r = client.get("/raghibin?tab=cadres")
     assert r.status_code == 200

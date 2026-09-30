@@ -14,19 +14,7 @@ from data_access import db_tameedat as dt
 from services import raghibin as rfs
 
 from . import raghibin_bp
-from .context import _category, _ctx, _rb
-
-
-def _entity_or_back(year, month):
-    """الجهة الهدف من النموذج (?e أو e في الفورم) — لو مفقودة رجوع بتنبيه."""
-    raw = request.form.get("e") or request.args.get("e") or ""
-    try:
-        entity = dt.get_entity(year, month, int(raw))
-    except ValueError:
-        entity = None
-    if not entity:
-        return None, _rb("cadres", err="اختر جهة أولًا")
-    return entity, None
+from .context import _category, _ctx, _entity_or_back, _rb
 
 
 @raghibin_bp.route("/cadres/add", methods=["POST"])

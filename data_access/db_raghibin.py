@@ -160,10 +160,16 @@ def update_person(year, month, person_id, full_name, rank="", exclude_note=None)
 
 
 def set_excluded(year, month, person_id, excluded, note=""):
-    """تعليم «غير راغب» أو إرجاع الاسم للقوة."""
+    """تعليم «غير راغب» أو إرجاع الاسم للقوة.
+
+    الاستثناء يسقط تسجيلاته اليومية كلها (غير الراغب لا يُحسب في أي وجبة) —
+    والإرجاع للقوة لا يستعيدها (يعاد تسجيلها يدويًا).
+    """
     conn = _conn(year, month)
     conn.execute("UPDATE ragh_persons SET excluded = ?, exclude_note = ? WHERE id = ?",
                  (1 if excluded else 0, (note or "").strip(), person_id))
+    if excluded:
+        conn.execute("DELETE FROM ragh_daily WHERE person_id = ?", (person_id,))
     conn.commit()
     conn.close()
 
@@ -223,6 +229,20 @@ def day_state(year, month, day, entity_id=None):
         sql += " AND p.entity_id = ?"
         params.append(entity_id)
     out = {row["person_id"]: bool(row["willing"]) for row in conn.execute(sql, params)}
+    conn.close()
+    return out
+
+def day_willing_counts(year, month, entity_id=None):
+    """عدد الراغبين (ضباط+أفراد) في كل يوم: {day: count} — لتقويم التاب اليومي."""
+    conn = _conn(year, month)
+    sql = ("SELECT d.day, COUNT(*) AS c FROM ragh_daily d "
+           "JOIN ragh_persons p ON p.id = d.person_id WHERE d.willing = 1")
+    params = []
+    if entity_id:
+        sql += " AND p.entity_id = ?"
+        params.append(entity_id)
+    sql += " GROUP BY d.day"
+    out = {row["day"]: row["c"] for row in conn.execute(sql, params)}
     conn.close()
     return out
 

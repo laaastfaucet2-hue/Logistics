@@ -58,9 +58,11 @@ def tab_dir(year, month, key):
 
 
 def ensure_folders(year, month):
-    """ينشئ الفولدرات الأربعة من أول الشهر (تُستدعى عند فتح القسم وكل حفظ)."""
+    """ينشئ الفولدرات الأربعة + فولدرات يوم ١..آخر الشهر (عند فتح القسم وكل حفظ)."""
     for key in FOLDERS:
         tab_dir(year, month, key)
+    from .files_daily import ensure_day_folders
+    ensure_day_folders(year, month)
     return base_dir(year, month)
 
 
