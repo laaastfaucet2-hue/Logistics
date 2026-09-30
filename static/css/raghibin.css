@@ -86,11 +86,33 @@
   padding: 13px 16px; display: flex; flex-direction: column; gap: 6px;
   margin-bottom: 12px; }
 .rg-entity-cap { color: var(--gold-light); font-size: .85rem; font-weight: 700; }
-.rg-entity-select { width: 100%; padding: 11px 13px; border-radius: 11px;
-  border: 1px solid rgba(59, 130, 246, .5); background: var(--card);
-  color: var(--text); font-weight: 700; font-size: 1rem; }
-.rg-entity-select:focus { border-color: var(--blue, #3b82f6); outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22); }
+/* ═══ القوائم الكحلية الاحترافية الموحدة (بناء ١١٩): جهة الراغبين ·
+       فئة العضو · الرتبة/الدرجة · بحث القوة — بنفس روح قوائم النظام الزرقاء ═══ */
+.rg-entity-select, .rg-qa-cat, .rg-qa-rank, .rg-force-search {
+  width: 100%; border-radius: 11px; border: 1px solid rgba(96, 165, 250, .45);
+  background-color: #0f2439;
+  background-image: linear-gradient(180deg, #17334f 0%, #0f2439 100%);
+  color: #dceafe; font-weight: 700; font-size: .95rem;
+  padding: 12px 14px; transition: border-color .12s ease, box-shadow .12s ease;
+}
+.rg-entity-select, .rg-qa-cat, .rg-qa-rank {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding-left: 42px; background-repeat: no-repeat; background-position: left 13px center;
+  background-size: 15px 15px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237dd3fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #17334f 0%, #0f2439 100%);
+}
+.rg-entity-select:hover, .rg-qa-cat:hover, .rg-qa-rank:hover, .rg-force-search:hover {
+  border-color: rgba(96, 165, 250, .8);
+}
+.rg-entity-select:focus, .rg-qa-cat:focus, .rg-qa-rank:focus, .rg-force-search:focus {
+  border-color: #60a5fa; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, .25);
+}
+.rg-entity-select option, .rg-qa-cat option, .rg-qa-rank option {
+  background: #0f2439; color: #dceafe; font-weight: 600;
+}
+.rg-force-search { max-width: 330px; }
+.rg-force-search::placeholder { color: #9db8d8; font-weight: 600; }
 /* قائمة القوة القابلة للطي */
 details.rg-forcebox > summary { cursor: pointer; font-weight: 800;
   color: var(--gold-light); padding: 2px 0; list-style: none;
@@ -121,7 +143,6 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-forcebox { border: 1px solid var(--card-border); border-radius: 12px;
   padding: 13px 16px; display: flex; flex-direction: column; gap: 10px;
   margin-bottom: 12px; }
-.rg-force-search { max-width: 300px; }
 .rg-force-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 8px; }
 .rg-force-item { display: flex; align-items: center; gap: 7px;
