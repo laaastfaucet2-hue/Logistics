@@ -163,24 +163,31 @@ def test_daily_save_back_to_tameedat(app, client):
     assert "day=" in loc and "ok=" in loc
 
 
-def test_panel_never_redirects_to_login(app, client):
-    """جلسة ساقطة/غلط في نقاط المودال = رسالة واضحة 200 — ممنوع صفحة الدخول جوه المودال."""
+def test_modal_full_page_no_fetch(app, client):
+    """البرمجة الجديدة (٣٠/٠٩/٢٠٢٦ مساءً): زرار التأميدات = صفحة كاملة عادية
+    /raghibin/modal — كل الأزرار نماذج ولينكات، صفر fetch خلفي."""
     eid, name = _entity()
-    # متصفح بلا كوكيز (وضع التسويل بـ sid في الرابط) وsid غلط
-    # → رسالة انتهت الجلسة مباشرة 200 — لا تحويل ولا صفحة دخول جوه المودال
-    bare = app.test_client()
-    r = bare.get(f"/raghibin/panel?en={name}&d=22&c=officers&sid=WRONG")
+    p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    drg.set_daily(YEAR, MONTH, p1, 22, True)
+    dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
+                  10, 10, 10, notes="تأميدة اعتيادية")
+    r = client.get(f"/raghibin/modal?en={name}&d=22&c=officers")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert "انتهت الجلسة" in body
-    assert "LOGISTICS WORKSPACE" not in body          # مش صفحة الدخول
-    r2 = bare.post("/raghibin/panel/quick_add", data={"e": eid, "sid": "WRONG"})
-    assert r2.status_code == 200 and "انتهت الجلسة" in r2.get_data(as_text=True)
-    r3 = bare.get(f"/raghibin/panel?en={name}&d=22&c=officers")   # بلا sid أصلًا
-    assert r3.status_code == 200 and "انتهت الجلسة" in r3.get_data(as_text=True)
-    # والصفحة نفسها بلا كاش (عشان المتصفح مايحملش نسخة قديمة)
-    page = client.get("/raghibin?tab=daily")
-    assert "no-store" in (page.headers.get("Cache-Control") or "")
+    assert "كشف وتسجيل أسماء الضباط والأفراد الراغبين" in body
+    assert body.count('name="names"') == 10
+    assert "رجوع إلى صفحة التأميدات" in body
+    assert "/raghibin/panel/quick_add" in body          # فورم POST عادي
+    assert 'action="/raghibin/modal"' in body           # منسدلة GET عادية
+    assert "rg-force-toggle" in body                    # التشيك (لمس محلي)
+    assert 'value="محمد محمود"' in body                 # الراغب معبأ في مربعه
+    # صفحة التأميدات: الزرار + السكريبت الجديد — ولا أثر للمودال القديم
+    page = client.get("/tameedat?tab=day").get_data(as_text=True)
+    assert 'id="tmRagNamesBtn"' in page
+    assert "raghibin_modal.js" in page and "raghibin_boxes" not in page
+    assert 'id="rgModal"' not in page
+    page2 = client.get("/raghibin?tab=daily")
+    assert "no-store" in (page2.headers.get("Cache-Control") or "")
 
 
 def test_panel_fragment(app, client):
@@ -199,12 +206,13 @@ def test_panel_fragment(app, client):
     assert 'value="tameedat"' in body and 'value="tamida"' in body
     assert "الجهة المختارة للراغبين" in body       # المنسدلة
     assert 'class="rg-entity-select"' in body
-    assert "الاسم رباعى" in body                   # تسمية الاسم رباعي
+    assert "الاسم رباعي" in body                   # تسمية الاسم رباعي
     assert "جهة شرطية معتمدة" in body
     assert "الضباط المسجلون" in body and "الأفراد والصفة" in body
     assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
     assert "<details" in body and "قائمة قوة الضباط المعتمدة" in body  # قابلة للطي
     assert "rg-force-del" not in body              # بدون زر الحذف (من الكوادر فقط)
+    assert "/raghibin/modal?c=individuals" in body  # تابات الفئات تصفح عادي
     assert "ابراهيم ناجى عطا الله" not in body     # المستثنى لا يظهر في القائمة
     assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
     assert "حفظ وأعتماد التجهيزات" in body
@@ -222,7 +230,8 @@ def test_panel_quick_add_and_delete(app, client):
     eid, name = _entity()
     r = client.post("/raghibin/panel/quick_add", data={
         "e": eid, "qa_cat": "officers", "qa_rank": "عقيد",
-        "qa_name": "طارق منير عبد اللطيف", "qa_note": "ملاحظة تجربة", "d": "22"})
+        "qa_name": "طارق منير عبد اللطيف", "qa_note": "ملاحظة تجربة", "d": "22"},
+        follow_redirects=True)
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "طارق منير عبد اللطيف" in body          # ظهر في قائمة القوة فورًا
@@ -230,8 +239,9 @@ def test_panel_quick_add_and_delete(app, client):
     assert person is not None and person["rank"] == "عقيد"
     assert person["exclude_note"] == "ملاحظة تجربة"
     assert drg.get_person(YEAR, MONTH, person["id"]) is not None
-    # حذف من المودال
-    r2 = client.post(f"/raghibin/panel/delete/{person['id']}", data={"e": eid, "d": "22"})
+    # حذف من صفحة الكشف
+    r2 = client.post(f"/raghibin/panel/delete/{person['id']}",
+                     data={"e": eid, "d": "22"}, follow_redirects=True)
     assert r2.status_code == 200
     assert "طارق منير عبد اللطيف" not in r2.get_data(as_text=True)
     assert drg.get_person(YEAR, MONTH, person["id"]) is None

@@ -211,22 +211,6 @@
   </div>
 </div>
 
-<!-- مودال الراغبين: نفس تصميم النظام المرجعي — ربط ١٠٠٪ بالاتجاهين -->
-<div class="tm-modal" id="rgModal" hidden role="dialog" aria-modal="true"
-     aria-labelledby="rgModalTitle" data-day="{{ sel_date_iso }}" data-sid="{{ sid }}">
-  <div class="tm-modal-card rg-modal-card">
-    <div class="tm-modal-head">
-      <b id="rgModalTitle">👮 كشف وتسجيل أسماء الضباط والأفراد الراغبين</b>
-      <button type="button" class="tm-modal-x" id="rgModalClose" aria-label="إغلاق">✕</button>
-    </div>
-    <p class="tm-hint">مزامنة كاملة بين أقسام الجهات وبوابة التجهيزات المعتمدة —
-    المودال مربوط بجهة ويوم التأميدة المكتوبين في الفورم، والحفظ هنا هو الحفظ نفسه
-    في تاب الراغبين وكل ملفات الشهر (ربط بالاتجاهين).</p>
-    <div id="rgModalBody">{% include "raghibin/modal_body.html" %}</div>
-    <span class="rg-build-chip">بناء {{ static_ver }}</span>
-  </div>
-</div>
-
 <!-- سجلات اليوم المحدد -->
 <section class="panel">
   <div class="panel-head">

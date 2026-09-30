@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""تاب «الراغبين (يومي)» + جزء المربعات المشترك مع زرار التأميدة (ربط بالاتجاهين).
+"""تاب «الراغبين (يومي)» + كشف الراغبين في التأميدات (ربط بالاتجاهين).
 
 النموذج (توجيه المستخدم ٣٠/٠٩/٢٠٢٦): حسب تأميدة اليوم تظهر مربعات فاضية ذكية —
 ١٠ ضباط في التأميدة = ١٠ مربعات ضباط و١٠ للأفراد — تكتب الاسم بالبحث الذكي من
@@ -8,51 +8,55 @@
 فيدخل تلقائيًا في قوة الكوادر. الحفظ clear-and-set: المربعات هي كشف الراغبين
 كاملًا لذلك اليوم/الفئة — ومن يحذف من مربع يُلغى رغبته.
 
-/daily/save: حفظ أسماء فئة بيوم (من التاب أو من زرار التأميدة — نفس الداتا
-ونفس بناء الملفات لحظيًا) · /panel: جزء HTML للمربعات (يُضمَّن في التاب ويُجلب
-أجاكسًا في مودال التأميدات).
+التوجيه النهائي (٣٠/٠٩/٢٠٢٦ مساءً): زرار التأميدة يفتح **صفحة كاملة عادية**
+/modal — بنفس آلية كل صفحات النظام (sid في الرابط) — من غير أي جلب خفي:
+fetch اتشال من المنظومة كلها لأنه مصدر العطل المتكرر مع الجلسات.
+/modal: الصفحة الكاملة · /panel: جزء legacy · /panel/quick_add و/panel/delete:
+إضافة سريعة وحذف يرجعون لصفحة الكشف بتحويل عادي · /daily/save: الحفظ الموحد.
 """
 import json
-from functools import wraps
 
-from flask import g, render_template, request
+from flask import redirect, render_template, request
+from urllib.parse import quote
 
 from core import arabic_numbers as arnum
-from core.auth_core import current_session, login_required
+from core.auth_core import login_required
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 from services import raghibin as rfs
+from services.raghibin import modal as rg_modal
 
 from . import raghibin_bp
-
-
-EXPIRED_FRAGMENT = (
-    '<div class="rg-note warn">⏳ انتهت الجلسة — اعمل تحديث للصفحة (F5) '
-    'وافتح المودال تاني</div>'
-)
-
-
-def _fragment_login_required(view):
-    """لنقاط جلب المودال: بلا تحويلات — الجلسة الساقطة ترجع رسالة واضحة
-    كجزء HTML مباشر بدل صفحة الدخول (السبب التاريخي للعطل)."""
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        user, token = current_session()
-        if not user:
-            return EXPIRED_FRAGMENT
-        g.user = user
-        g.sid = token
-        return view(*args, **kwargs)
-    return wrapper
 from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
-                      _selected_entity, _slots_vars)
+                      _selected_entity)
+
+
+def _modal_page_url(entity, day, cat, sid=""):
+    """رابط صفحة كشف الراغبين الكاملة (تصفح عادي — sid في الرابط)."""
+    url = f"/raghibin/modal?c={cat}&d={day}&en={quote(entity['name'])}"
+    return url + (f"&sid={quote(sid)}" if sid else "")
+
+
+@raghibin_bp.route("/modal")
+@login_required
+def modal_page():
+    """صفحة «كشف وتسجيل أسماء الضباط والأفراد الراغبين» الكاملة."""
+    from flask import url_for
+    year, month = _ctx()
+    entity = _selected_entity(year, month, by_name=True)
+    day = _selected_day(year, month)
+    cat = _category()
+    sid = request.values.get("sid", "")
+    variables = rg_modal.build(year, month, entity, day, cat, sid=sid)
+    back = url_for("tameedat.page") + "?tab=day"
+    variables["tameed_back"] = back + (f"&sid={quote(sid)}" if sid else "")
+    return render_template("raghibin/modal_page.html", **variables)
 
 
 @raghibin_bp.route("/panel")
-@_fragment_login_required
+@login_required
 def panel():
-    """جسم مودال الراغبين في التأميدات — نفس تصميم النظام المرجعي للمستخدم:
-    الجهة المختارة + إضافة سريعة + قائمة القوة بتشيكات + قسمة المربعات."""
+    """جزء المودال (legacy) — نفس محتوى الصفحة الكاملة بدون هيكل الصفحة."""
     year, month = _ctx()
     entity = _selected_entity(year, month, by_name=True)
     day = _selected_day(year, month)
@@ -60,9 +64,9 @@ def panel():
 
 
 @raghibin_bp.route("/panel/quick_add", methods=["POST"])
-@_fragment_login_required
+@login_required
 def panel_quick_add():
-    """«إضافة عضو جديد سريع إلى قوة الجهة» من داخل المودال — يرجع الجزء محدثًا."""
+    """«إضافة عضو جديد سريع إلى قوة الجهة» — ثم رجوع لصفحة الكشف (تصفح عادي)."""
     year, month = _ctx()
     entity, back = _entity_or_back(year, month)
     if back:
@@ -76,29 +80,31 @@ def panel_quick_add():
                       rank=(request.form.get("qa_rank") or "").strip(),
                       exclude_note=(request.form.get("qa_note") or "").strip())
         rfs.write_entity_files(year, month, entity["id"], entity["name"], day=day)
-    return _modal_fragment(year, month, entity, day, cat)
+    return redirect(_modal_page_url(entity, day, cat, request.form.get("sid", "")))
 
 
 @raghibin_bp.route("/panel/delete/<int:person_id>", methods=["POST"])
-@_fragment_login_required
+@login_required
 def panel_delete(person_id):
-    """حذف اسم من القوة من داخل المودال (🗑) — يرجع الجزء محدثًا."""
+    """حذف اسم من القوة من صفحة الكشف — ثم رجوع إليها (تصفح عادي)."""
     year, month = _ctx()
     person = dr.get_person(year, month, person_id)
     if person:
         dr.delete_person(year, month, person_id)
         rfs.write_entity_files(year, month, person["entity_id"], person["entity_name"])
         entity = dt.get_entity(year, month, person["entity_id"])
-        return _modal_fragment(year, month, entity, _selected_day(year, month),
-                               person["category"])
+        return redirect(_modal_page_url(entity, _selected_day(year, month),
+                                        person["category"],
+                                        request.form.get("sid", "")))
     entity, back = _entity_or_back(year, month)
-    return back if back else _modal_fragment(year, month, entity,
-                                             _selected_day(year, month), _category())
+    if back:
+        return back
+    return redirect(_modal_page_url(entity, _selected_day(year, month),
+                                    _category(), request.form.get("sid", "")))
 
 
 def _modal_fragment(year, month, entity, day, cat):
-    """بناء جزء المودال الموحد — عبر الخدمة المشتركة (نفس ما هو مدمج في الصفحة)."""
-    from services.raghibin import modal as rg_modal
+    """جزء المودال — عبر الخدمة المشتركة (نفس محتوى الصفحة الكاملة)."""
     variables = rg_modal.build(year, month, entity, day, cat,
                                sid=request.values.get("sid", ""))
     return render_template("raghibin/modal_body.html", **variables)
@@ -116,7 +122,7 @@ def daily_save():
     if request.form.get("cat") in dict(dr.CATEGORIES):
         cat = request.form.get("cat")
     source = "tamida" if request.form.get("source") == "tamida" else "manual"
-    back_to = "tameedat" if request.form.get("back") == "tameedat" else "raghibin"
+    back_to = request.form.get("back", "raghibin")
 
     names = []
     for raw in request.form.getlist("names"):
@@ -160,9 +166,8 @@ def daily_save():
     warn = " | ".join(warnings) if warnings else None
 
     if back_to == "tameedat":
-        from urllib.parse import quote
-        from flask import redirect, url_for
         from core.auth_core import current_session
+        from flask import url_for
         _, token = current_session()
         params = {"tab": "day", "day": f"{year:04d}-{month:02d}-{day:02d}"}
         if token:

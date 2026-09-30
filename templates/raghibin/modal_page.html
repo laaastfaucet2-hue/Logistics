@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}كشف الراغبين • قطاع وسط سيناء - قسم التميينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/raghibin.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<header class="tm-hero">
+  <div class="tm-hero-lines">
+    <b class="tm-l1">منطقة وسط وجنوب للأمن المركزي</b>
+    <b class="tm-l2">👮 كشف وتسجيل أسماء الضباط والأفراد الراغبين</b>
+  </div>
+  <div class="tm-hero-meta">
+    <span class="tm-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
+    <a class="tm-chip dim" href="{{ tameed_back | replace('&', '&amp;') }}">↩ رجوع إلى صفحة التأميدات</a>
+  </div>
+</header>
+
+<p class="tm-hint" style="margin-bottom:14px">مزامنة كاملة بين أقسام الجهات وبوابة التجهيزات المعتمدة —
+هذه صفحة كاملة عادية (زي كل صفحات النظام): كل زر هنا تصفح عادي بلا أي جلب خفي —
+والحفظ يتزامن لحظيًا مع تاب الراغبين وكل ملفات الشهر (ربط بالاتجاهين).</p>
+
+{% include "raghibin/modal_body.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/raghibin_modal.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

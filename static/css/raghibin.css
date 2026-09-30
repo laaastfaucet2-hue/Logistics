@@ -135,6 +135,8 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-modal-foot { justify-content: flex-start; }
 .rg-modal-foot .rt-btn.gold { min-width: 230px; }
 .rg-qa-add { white-space: nowrap; }
+.rg-entity-form { display: flex; gap: 10px; align-items: center; }
+.rg-entity-form .rg-entity-select { flex: 1; }
 .rg-entity-row { display: flex; gap: 7px; align-items: stretch; }
 .rg-entity-row .rg-entity { flex: 1; }
 .rg-entity-del button { height: 100%; padding: 0 13px; border-radius: 11px;
