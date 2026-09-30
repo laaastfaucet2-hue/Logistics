@@ -135,8 +135,8 @@ with app.app_context():
                 "number": num, "fiscal_year": Y,
                 "date_from": d, "date_to": d + 2,
                 "issue_days": 3, "mode": "manual", "entity_label": ent,
-                "officers": "%d ضباط" % off, "individuals": "%d أفراد" % ind,
-                "recruits": "%d مجندين" % rec,
+                "officers": off, "individuals": ind,
+                "recruits": rec,
                 "meals": ["breakfast", "lunch", "dinner"],
                 "receiver_kind": "وحدة", "receiver_rank": "ملازم أول",
                 "receiver_name": ent, "issuer_name": "الرقيب أول محمد سيد",
@@ -180,7 +180,7 @@ with app.app_context():
             continue
         db_tameedat.add_record(Y, M, d, {"id": eid, "name": ents[ent_ids.index(eid)][0],
                                          "entity_type": ents[ent_ids.index(eid)][1]},
-                               "%d ضباط" % off, "%d أفراد" % ind, "%d مجندين" % rec,
+                               off, ind, rec,
                                notes="تأميدة اعتيادية")
     print("تأميدات: ٥ ✓")
 
