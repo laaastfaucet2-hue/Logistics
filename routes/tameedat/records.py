@@ -9,6 +9,7 @@ from core import dates
 from core import egtime
 import json
 from data_access import db_tameedat as dt
+from data_access import db_raghibin as drg
 from data_access import db_tameed_rations as snap
 
 from . import TAB_KEYS, tameedat_bp
@@ -99,8 +100,13 @@ def record_add():
     if new_attached:
         listed = "، ".join(f"«{n}»" for n in new_attached[:3])
         ok += f" الجهة الملحقة {listed} أُضيفت هي الأخرى إلى قاموس الشهر تلقائيًا."
-    return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok,
-               warn=_rag_warning(entity, counts))
+    warn = _rag_warning(entity, counts)
+    if request.form.get("rag_check") == "1":
+        range_txt = drg.range_mismatch_text(year, month, entity["id"], day, day_to,
+                                            counts["officers"], counts["individuals"])
+        if range_txt:
+            warn = f"{warn} | {range_txt}" if warn else range_txt
+    return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok, warn=warn)
 
 
 @tameedat_bp.route("/records/edit/<int:record_id>", methods=["POST"])
@@ -138,8 +144,13 @@ def record_edit(record_id):
     if range_days > 1:
         end_text = dates.format_date(f"{year:04d}-{month:02d}-{day_to:02d}")
         ok += f" المدة الزمنية أصبحت من {date_text} إلى {end_text}."
-    return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok,
-               warn=_rag_warning(entity, counts))
+    warn = _rag_warning(entity, counts)
+    if request.form.get("rag_check") == "1":
+        range_txt = drg.range_mismatch_text(year, month, entity["id"], day, day_to,
+                                            counts["officers"], counts["individuals"])
+        if range_txt:
+            warn = f"{warn} | {range_txt}" if warn else range_txt
+    return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok, warn=warn)
 
 
 @tameedat_bp.route("/records/copy/<int:record_id>", methods=["POST"])

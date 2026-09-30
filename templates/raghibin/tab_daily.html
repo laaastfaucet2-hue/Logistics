@@ -13,17 +13,11 @@
 {% endif %}
 
 <div class="tm-dict-stack">
-  <!-- التقويم اليومي + العدادات -->
+  <!-- التقويم اليومي -->
   <div class="rg-card">
     <div class="rg-card-head">
       <b>🗓️ تقويم {{ month_name }} {{ year | aindic }}</b>
-      <span class="rg-dim">العلامة = عدد الراغبين في اليوم — اضغط أي يوم لتسجيله</span>
-    </div>
-    <div class="rg-counters">
-      <span>ضباط: <b>{{ day_counts.officers | aindic }}</b> من {{ day_counts.officers_total | aindic }}</span>
-      <span>أفراد: <b>{{ day_counts.individuals | aindic }}</b> من {{ day_counts.individuals_total | aindic }}</span>
-      <span>الإجمالي: <b>{{ (day_counts.officers + day_counts.individuals) | aindic }}</b> من
-        {{ (day_counts.officers_total + day_counts.individuals_total) | aindic }}</span>
+      <span class="rg-dim">العلامة = عدد الراغبين المسجلين بالأسماء في اليوم</span>
     </div>
     <div class="tm-cal" role="grid" aria-label="تقويم الراغبين اليومي">
       {% for wd in weekdays %}<span class="tm-wd">{{ wd }}</span>{% endfor %}
@@ -32,7 +26,7 @@
           {% if cell.empty %}<span class="tm-cell empty"></span>
           {% else %}
           <a class="tm-cell {{ 'sel' if cell.selected }} {{ 'today' if cell.is_today }} {{ 'has' if cell.count }}"
-             href="{{ dbase }}{{ '&e=' + (entity.id | string) if entity }}&d={{ cell.day }}"
+             href="{{ dbase }}{{ '&e=' + (entity.id | string) if entity }}&d={{ cell.day }}&c={{ fcat }}"
              aria-label="يوم {{ cell.day }} {{ cell.count ~ ' راغبين' if cell.count else '' }}">
             <b>{{ cell.day | aindic }}</b>
             {% if cell.count %}<i class="tm-dot">{{ cell.count | aindic }}</i>{% endif %}
@@ -49,7 +43,7 @@
     <div class="rg-card-head"><b>تبديل الجهة</b><span class="rg-dim">جهات القاموس ({{ entities | length | aindic }})</span></div>
     <div class="rg-entity-list">
       {% for ent in entities %}
-      <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}" href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}">
+      <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}" href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}&c={{ fcat }}">
         <b>{{ ent.name }}</b>
       </a>
       {% endfor %}
@@ -57,47 +51,21 @@
   </div>
   {% endif %}
 
-  <!-- قوة اليوم: ضباط فوق وأفراد تحت -->
+  <!-- مربعات اليوم: زرار تبديل ضباط/أفراد + المربعات الذكية -->
   {% if entity %}
   <div class="rg-card">
     <div class="rg-card-head">
-      <b>قوة يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
-      <span class="rg-dim">اضغط «راغب» أو «لا» — التسجيل لحظي والملف يتبنى فورًا</span>
+      <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
+      <span class="rg-dim">المربعات بعدد التأميدة — الضباط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · الأفراد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
     </div>
-
-    {% for category_key, group, label in [('officers', officers, 'الضباط'), ('individuals', individuals, 'الأفراد والصف')] %}
-    <h4 class="rg-group-title">{{ label }} — راغبين {{ (day_counts.officers if category_key == 'officers' else day_counts.individuals) | aindic }} من {{ group | length | aindic }}</h4>
-    {% if group %}
-    <table class="rg-table">
-      <thead><tr><th>م</th><th>الرتبة</th><th>الاسم الرتبعي الكامل</th><th>حالة اليوم</th><th>التسجيل</th></tr></thead>
-      <tbody>
-      {% for p in group %}
-      <tr class="{{ 'is-excluded' if p.excluded }}">
-        <td>{{ loop.index | aindic }}</td>
-        <td>{{ p.rank or '—' }}</td>
-        <td class="rg-name">{{ p.full_name }}{% if p.excluded %} <span class="rg-state off">(⊘ غير راغب{% if p.exclude_note %} — {{ p.exclude_note }}{% endif %})</span>{% endif %}</td>
-        <td>{% if p.excluded %}<span class="rg-state off">⊘</span>
-            {% elif p.willing_today %}<span class="rg-state on">✓ راغب</span>
-            {% elif p.willing_today == False %}<span class="rg-state off">✗ لا</span>
-            {% else %}<span class="rg-dim">—</span>{% endif %}</td>
-        <td>
-          <form method="post" action="/raghibin/daily/toggle" class="rg-daybtns">
-            <input type="hidden" name="e" value="{{ entity.id }}">
-            <input type="hidden" name="d" value="{{ sel_day }}">
-            <input type="hidden" name="person_id" value="{{ p.id }}">
-            <input type="hidden" name="sid" value="{{ sid }}">
-            <button class="{{ 'on-w' if p.willing_today }}" name="willing" value="1" type="submit">✓ راغب</button>
-            <button class="{{ 'on-n' if p.willing_today == False }}" name="willing" value="0" type="submit">✗ لا</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="rg-dim">مفيش {{ label }} في قوة الجهة — ضيفهم من تاب «الجهات والكوادر المعتمدة».</p>
-    {% endif %}
-    {% endfor %}
+    <div class="rg-cat-switch">
+      <a class="rt-btn {{ 'gold' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">🎖 ضباط</a>
+      <a class="rt-btn {{ 'gold' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">👥 أفراد</a>
+      <span class="rg-dim">الزرار يبدل بين الفئتين — كل فئة بمربعاتها</span>
+    </div>
+    {% with back='raghibin', source='manual' %}
+      {% include "raghibin/panel_slots.html" %}
+    {% endwith %}
   </div>
   {% else %}
   <div class="rg-card"><p class="rg-dim">مفيش جهات لسه — سجّل تأميدة أولًا وهتنزل الجهات هنا.</p></div>
@@ -107,6 +75,6 @@
     <b>📁 الملفات المحلية</b>
     <span class="rg-dim">{{ section_folder }}/{{ '1. (يومي) الراغبين' }}/يوم {{ sel_day | aindic }}/<الجهة>.xlsx —
     القوة كلها بعلامات اليوم (✓ راغب / ✗ لا / ⊘ مستثنى مميز) بالدباجة والتوقيعات الرسمية،
-    وبيتبني لحظيًا مع كل ضغطة.</span>
+    وبيتبنى لحظيًا مع كل حفظ للمربعات.</span>
   </div>
 </div>

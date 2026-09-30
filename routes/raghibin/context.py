@@ -36,8 +36,17 @@ def _rb(tab="cadres", ok=None, err=None, warn=None, **extra):
     return redirect(base + (separator + query if query else ""))
 
 
-def _selected_entity(year, month):
-    """الجهة المحددة من ?e (أو فورم e) — الافتراضي أول جهة بالقاموس (أو None لو فاضي)."""
+def _selected_entity(year, month, by_name=False):
+    """الجهة المحددة: ?e معرف أو ?en اسم (للمودال) أو فورم e —
+    الافتراضي أول جهة بالقاموس (أو None لو فاضي)."""
+    if by_name:
+        name = " ".join((request.values.get("en") or "").split())
+        if name:
+            entity = dt.find_entity_by_name(year, month, name)
+            if entity:
+                return entity
+        entities = dt.list_entities(year, month)
+        return entities[0] if entities else None
     raw = request.values.get("e", "")
     try:
         entity_id = int(raw)
@@ -115,37 +124,62 @@ def _monthly_vars(year, month, entity, category):
     }
 
 
+def _tameed_day_totals(year, month, entity_id, selected):
+    """أعداد تأميدة اليوم المحدد للجهة (حسب مداها من-إلى) أو None."""
+    officers_total = individuals_total = 0
+    for rec in dt.records_for_day(year, month, selected, "all", ""):
+        if rec.get("entity_id") != entity_id:
+            continue
+        if rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
+            officers_total += rec["officers"]
+            individuals_total += rec["individuals"]
+    if officers_total or individuals_total:
+        return {"officers": officers_total, "individuals": individuals_total}
+    return None
+
+
+def _slots_vars(year, month, entity, selected):
+    """مربعات اليوم الذكية: عدد المربعات من تأميدة اليوم (توجيه ٣٠/٠٩/٢٠٢٦)،
+    والمملوء منها = الراغبون المسجلون بالأسماء (بالأقدمية) + قوة الفئة للكومبو.
+
+    slots[cat] = {tameeda, count, has_tameeda, boxes (أسماء + فراغات), label}
+    force[cat] = أسماء القوة غير المستثناة (للبحث الذكي).
+    """
+    eid = entity["id"] if entity else None
+    state = dr.day_state(year, month, selected, eid) if eid else {}
+    tameed_totals = _tameed_day_totals(year, month, eid, selected) if eid else None
+    slots, force = {}, {}
+    for cat, key, label in (("officers", "officers", "الضباط"),
+                            ("individuals", "individuals", "الأفراد والصف")):
+        persons = dr.list_persons(year, month, entity_id=eid, category=cat,
+                                  excluded=False) if eid else []
+        willing = [p["full_name"] for p in persons if state.get(p["id"])]
+        tameeda = tameed_totals[key] if tameed_totals else 0
+        boxes = list(willing) + [None] * max(0, tameeda - len(willing))
+        slots[cat] = {"tameeda": tameeda, "count": len(willing),
+                      "has_tameeda": bool(tameed_totals), "boxes": boxes,
+                      "label": label}
+        force[cat] = [p["full_name"] for p in persons]
+    return {"slots": slots, "force": force, "tameed_totals": tameed_totals}
+
+
 def _daily_vars(year, month, entity, selected):
-    """متغيرات تاب «الراغبين (يومي)»: التقويم + قوة اليوم + عدادات + تحذير التطابق."""
+    """متغيرات تاب «الراغبين (يومي)»: التقويم + المربعات + عدادات + تحذير التطابق."""
     eid = entity["id"] if entity else None
     counts_map = dr.day_willing_counts(year, month, eid) if eid else {}
-    state = dr.day_state(year, month, selected, eid) if eid else {}
-    officers = dr.list_persons(year, month, entity_id=eid, category="officers") if eid else []
-    individuals = dr.list_persons(year, month, entity_id=eid, category="individuals") if eid else []
-    for person in officers + individuals:
-        person["willing_today"] = state.get(person["id"])
-    willing_officers = sum(1 for p in officers if p["willing_today"])
-    willing_individuals = sum(1 for p in individuals if p["willing_today"])
-    tameed_totals = None
-    if eid:
-        officers_total = individuals_total = 0
-        for rec in dt.records_for_day(year, month, selected, "all", ""):
-            if rec.get("entity_id") != eid:
-                continue
-            if rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
-                officers_total += rec["officers"]
-                individuals_total += rec["individuals"]
-        if officers_total or individuals_total:
-            tameed_totals = {"officers": officers_total, "individuals": individuals_total}
+    base = _slots_vars(year, month, entity, selected)
+    slots = base["slots"]
     return {
         "sel_day": selected,
         "weeks": _day_grid(year, month, selected, counts_map),
         "weekdays": DAYS,
-        "officers": officers,
-        "individuals": individuals,
-        "day_counts": {"officers": willing_officers, "individuals": willing_individuals,
-                       "officers_total": len(officers), "individuals_total": len(individuals)},
-        "tameed_totals": tameed_totals,
+        "slots": slots,
+        "force": base["force"],
+        "tameed_totals": base["tameed_totals"],
+        "day_counts": {"officers": slots["officers"]["count"],
+                       "individuals": slots["individuals"]["count"],
+                       "officers_total": slots["officers"]["tameeda"],
+                       "individuals_total": slots["individuals"]["tameeda"]},
     }
 
 

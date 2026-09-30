@@ -51,6 +51,26 @@
 .rg-daybtns button.on-w { background: #16a34a; border-color: #16a34a; color: #fff; }
 .rg-daybtns button.on-n { background: #dc2626; border-color: #dc2626; color: #fff; }
 .rg-total-row td { background: rgba(245, 158, 11, .12); font-size: 1rem; }
+.rg-cat-switch { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 4px; }
+.rg-slots-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.rg-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 9px; margin-bottom: 10px; }
+.rag-slot { width: 100%; padding: 11px 13px; border-radius: 10px;
+  border: 1px solid var(--card-border); background: var(--card, transparent);
+  color: var(--text); font-weight: 600; }
+.rag-slot:focus { border-color: var(--gold-border); outline: none;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, .18); }
+.rg-slots-hint { margin-top: -2px; }
+.rg-check-line { display: flex; align-items: center; gap: 9px; padding: 10px 4px;
+  font-weight: 600; cursor: pointer; }
+.rg-check-line input { width: 19px; height: 19px; accent-color: #f59e0b; }
+.rg-modal-card { max-width: 860px; width: min(96vw, 860px); max-height: 88vh;
+  overflow: auto; }
+.rg-modal-bar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.rg-modal-bar select { flex: 1; min-width: 200px; }
 .rg-soon { background: var(--card); border: 1px dashed var(--gold-border); border-radius: 14px;
   padding: 26px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
 .rg-files b { font-size: .95rem; }

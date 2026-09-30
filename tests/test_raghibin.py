@@ -96,15 +96,17 @@ def test_cadres_files_official_and_states(app):
     assert ws_i.cell(8, 3).value == "أحمد محمد صابر"
 
 
-def test_daily_toggle_flow_and_day_file(app, client):
+def test_daily_save_flow_clear_and_set(app, client):
+    """حفظ المربعات = كشف اليوم الكامل: المرسل راغب، والغايب من المربعات يُلغى."""
+    import json as _json
     from services.raghibin.files_daily import day_dir
     eid, name = _entity()
     p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
     p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
     drg.set_excluded(YEAR, MONTH, p2, True, "هلاكات")
     p3, _ = drg.add_person(YEAR, MONTH, eid, "individuals", "أحمد محمد صابر", "فرد (1)")
-    r = client.post("/raghibin/daily/toggle", data={
-        "e": eid, "d": 22, "person_id": p1, "willing": "1"})
+    r = client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 22, "cat": "officers", "names": ["محمد محمود"]})
     assert r.status_code == 302
     assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: True}
     path = day_dir(YEAR, MONTH, 22) / f"{name}.xlsx"
@@ -117,23 +119,66 @@ def test_daily_toggle_flow_and_day_file(app, client):
     assert marks["محمد محمود"][0] == "✓ راغب بالوجبة"
     assert marks["ابراهيم ناجى عطا الله"][0] == "⊘ غير راغب"
     assert marks["أحمد محمد صابر"][0] == "✗ لا"
-    total_row = str(ws.cell(11, 1).value)
-    assert "الإجمالي: ١ راغبون من أصل ٣" in total_row
-    # إلغاء الرغبة يحدّث نفس الملف
-    client.post("/raghibin/daily/toggle", data={"e": eid, "d": 22, "person_id": p1,
-                                                "willing": "0"})
-    assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: False}
+    assert "الإجمالي: ١ راغبون من أصل ٣" in str(ws.cell(11, 1).value)
+    # حفظ جديد بدون محمد محمود → تُلغى رغبته (clear-and-set) والمستثنى يتجاهل دايمًا
+    r2 = client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 22, "cat": "officers",
+        "names": ["ابراهيم ناجى عطا الله", "مصطفى عبدالحميد"], "new_names": "[]"})
+    assert not drg.day_state(YEAR, MONTH, 22, eid).get(p1)   # محذوف من المربعات = أُلغيت رغبته
+    assert "warn=" in r2.headers["Location"]      # المستثنى تحذير بدون تسجيل
+    # فرد مستقل عن ضباط الفئة الأخرى
+    assert drg.day_state(YEAR, MONTH, 22, eid).get(p3) is None
 
 
-def test_toggle_blocked_for_excluded(app, client):
+def test_daily_save_adds_confirmed_new_person(app, client):
+    """الاسم غير الموجود + تأكيد «إضافة كقوة دائمة» → يدخل قوة الكوادر ويسجل راغبًا."""
     eid, name = _entity()
-    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
-    drg.set_excluded(YEAR, MONTH, pid, True, "هلاكات")
-    r = client.post("/raghibin/daily/toggle", data={
-        "e": eid, "d": 22, "person_id": pid, "willing": "1"})
+    r = client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 22, "cat": "officers", "names": ["شريف جمال حاتم جديد"],
+        "new_names": '["شريف جمال حاتم جديد"]'})
     assert r.status_code == 302
-    assert "warn=" in r.headers["Location"]       # تحذير بدون كتابة
-    assert drg.day_state(YEAR, MONTH, 22, eid) == {}
+    person = drg.find_person(YEAR, MONTH, eid, "officers", "شريف جمال حاتم جديد")
+    assert person is not None                    # دخل القوة الدائمة
+    assert drg.day_state(YEAR, MONTH, 22, eid) == {person["id"]: True}
+    cadres_file = rfs.cadres_dir(YEAR, MONTH) / f"{name} (ضباط).xlsx"
+    ws = load_workbook(cadres_file).active
+    assert "شريف جمال حاتم جديد" in [ws.cell(r, 3).value for r in range(8, 20)]
+    # بدون تأكيد → تجاهل بتحذير وبدون إضافة
+    r2 = client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 23, "cat": "officers", "names": ["اسم لم يؤكد"], "new_names": "[]"})
+    assert "warn=" in r2.headers["Location"]
+    assert drg.find_person(YEAR, MONTH, eid, "officers", "اسم لم يؤكد") is None
+
+
+def test_daily_save_back_to_tameedat(app, client):
+    """حفظ من مودال التأميدات يرجع لصفحة التأميدات نفسها (ربط بالاتجاهين)."""
+    eid, name = _entity()
+    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    r = client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 22, "cat": "officers", "names": ["محمد محمود"],
+        "back": "tameedat", "source": "tamida"})
+    assert r.status_code == 302
+    loc = r.headers["Location"]
+    assert "tameedat" in loc and "tab=day" in loc
+    assert "day=" in loc and "ok=" in loc
+
+
+def test_panel_fragment(app, client):
+    """جزء المربعات: عدد المربعات من التأميدة + hidden back/source للمودال."""
+    eid, name = _entity()
+    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
+                  10, 10, 10, notes="تأميدة اعتيادية")
+    r = client.get(f"/raghibin/panel?en={name}&d=22&c=officers&back=tameedat&source=tamida")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert body.count('name="names"') == 10       # ١٠ مربعات حسب التأميدة
+    assert 'value="tameedat"' in body and 'value="tamida"' in body
+    assert 'data-combo="rgForceOfficers"' in body
+    # بدون تأميدة: لا مربعات مع رسالة إرشادية
+    r2 = client.get(f"/raghibin/panel?en={name}&d=5&c=officers")
+    assert 'name="names"' not in r2.get_data(as_text=True)
+    assert "سجّل تأميدة" in r2.get_data(as_text=True)
 
 
 def test_exclude_clears_daily_marks(app):
@@ -159,7 +204,7 @@ def test_daily_page_calendar_folders_and_mismatch(app, client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "عدم تطابق يوم ٢٢" in body                     # ١٠ تأميدة مقابل ٢ راغبين
-    assert "ضباط: <b>٢</b> من ٢" in body
+    assert "الضباط ٢/١٠" in body and "الأفراد ٠/١٠" in body   # عداد المربعات
     root = rfs.tab_dir(YEAR, MONTH, "daily")
     assert (root / "يوم ١").exists() and (root / "يوم ٣٠").exists()   # فولدرات الشهر كاملة
 
@@ -230,14 +275,39 @@ def test_monthly_tab_and_file(app, client):
     assert "الضباط" in body and "الأفراد" in body
 
 
-def test_monthly_rebuilds_on_toggle(app, client):
+def test_monthly_rebuilds_on_save(app, client):
     eid, name = _entity()
-    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
-    client.post("/raghibin/daily/toggle", data={"e": eid, "d": 5, "person_id": pid,
-                                                "willing": "1"})
+    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 5, "cat": "officers", "names": ["محمد محمود"]})
     ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["الضباط"]
     assert ws.cell(8, 3).value == "١"
     assert "إجمالي الوجبات: ١ وجبة" in str(ws.cell(9, 1).value)
+
+
+def test_rag_check_range_warning_excess_only(app, client):
+    """شيك «عدم مطابقة الأسماء وتجاهل النقص»: زيادة الراغبين تنبّه والنقص لا."""
+    from core import egtime
+    eid, name = _entity()
+    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    drg.add_person(YEAR, MONTH, eid, "officers", "مصطفى عبدالحميد", "نقيب")
+    client.post("/raghibin/daily/save", data={
+        "e": eid, "d": 22, "cat": "officers",
+        "names": ["محمد محمود", "مصطفى عبدالحميد"]})
+    # تأميدة ضابط واحد فقط والراغبين اتنين → زيادة → تنبيه عدم مطابقة
+    r = client.post("/tameedat/records/add", data={
+        "save_token": "tok-excess", "entity_name": name, "day_from": "22",
+        "day_to": "22", "officers": "1", "individuals": "0", "recruits": "0",
+        "notes": "", "rag_check": "1", "custom_rations_json": ""})
+    assert "warn=" in r.headers["Location"]
+    assert "%D8%B9%D8%AF%D9%85%20%D9%85%D8%B7%D8%A7%D8%A8%D9%82%D8%A9" in r.headers["Location"]
+    # تأميدة ١٠ ضباط والراغبين ٢ → نقص → لا تنبيه (تجاهل النقص)
+    r2 = client.post("/tameedat/records/add", data={
+        "save_token": "tok-short", "entity_name": name, "day_from": "25",
+        "day_to": "25", "officers": "10", "individuals": "10", "recruits": "0",
+        "notes": "", "rag_check": "1", "custom_rations_json": ""})
+    loc2 = r2.headers["Location"]
+    assert "warn=" not in loc2
 
 
 def test_page_and_section_redirect(client):

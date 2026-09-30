@@ -60,6 +60,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/raghibin_boxes.js') }}?v={{ static_ver }}"></script>
 <script type="application/json" id="tmEntities">{{ entity_names | tojson }}</script>
 <script src="{{ url_for('static', filename='js/tameedat.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/tameedat_rations.js') }}?v={{ static_ver }}"

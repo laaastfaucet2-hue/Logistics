@@ -12,6 +12,7 @@
 - نسخ القوة بين الشهور/السنوات ينسخ الأسماء والرتب والحالات بلا تسجيلات يومية،
   ويطابق الجهة بالاسم (أرقام id تختلف بين قواميس الشهور).
 """
+from core import arabic_numbers as arnum
 from core import egtime
 from data_access import months
 from data_access import db_tameedat as db_tameedat   # SCHEMA قاموس الجهات — أساس الربط
@@ -264,6 +265,63 @@ def day_state(year, month, day, entity_id=None):
     out = {row["person_id"]: bool(row["willing"]) for row in conn.execute(sql, params)}
     conn.close()
     return out
+
+def set_day_category(year, month, entity_id, day, category, person_ids, source="manual"):
+    """تسجيل فئة كاملة في يوم: المرسل هم الراغبون بالأسماء (المربعات المملوءة).
+
+    clear-and-set: من يُرسل صار راغبًا، وأي عضو آخر من نفس الجهة والفئة كان
+    راغبًا في اليوم ويغيب عن القائمة يُلغى رغبته — المربعات هي الكشف الكامل.
+    يرجع (عدد المسجلين، عدد الملغين).
+    """
+    day = max(1, min(31, int(day)))
+    wanted = {int(pid) for pid in person_ids}
+    conn = _conn(year, month)
+    for pid in wanted:
+        conn.execute(
+            "INSERT INTO ragh_daily (person_id, day, willing, source, updated_at) "
+            "VALUES (?,?,?,?,?) ON CONFLICT(person_id, day) "
+            "DO UPDATE SET willing = 1, source = excluded.source, "
+            "updated_at = excluded.updated_at",
+            (pid, day, 1, source, _stamp()))
+    if wanted:
+        cur = conn.execute(
+            "DELETE FROM ragh_daily WHERE day = ? AND willing = 1 AND person_id NOT IN "
+            f"({','.join('?' for _ in wanted)}) "
+            "AND person_id IN (SELECT id FROM ragh_persons WHERE entity_id = ? AND category = ?)",
+            [day, *wanted, entity_id, _clean_category(category)])
+    else:   # مفيش راغبين مرسلين: إلغاء كل راغبي الجهة/الفئة في اليوم
+        cur = conn.execute(
+            "DELETE FROM ragh_daily WHERE day = ? AND willing = 1 "
+            "AND person_id IN (SELECT id FROM ragh_persons WHERE entity_id = ? AND category = ?)",
+            [day, entity_id, _clean_category(category)])
+    removed = cur.rowcount if cur.rowcount > 0 else 0
+    conn.commit()
+    conn.close()
+    return len(wanted), removed
+
+
+def range_mismatch_text(year, month, entity_id, day, day_to, officers, individuals):
+    """فحص «عدم مطابقة الأسماء وتجاهل النقص» لمدة التأميدة: تنبيه فقط عند
+    زيادة الراغبين (بالأسماء) عن أعداد التأميدة — النقص يُتجاهل (قرار المستخدم)."""
+    persons = list_persons(year, month, entity_id=entity_id, excluded=False)
+    problems = []
+    for d in range(day, (day_to or day) + 1):
+        state = day_state(year, month, d, entity_id)
+        willing_o = sum(1 for p in persons
+                        if p["category"] == "officers" and state.get(p["id"]))
+        willing_i = sum(1 for p in persons
+                        if p["category"] == "individuals" and state.get(p["id"]))
+        day_txt = arnum.to_arabic_indic(str(d))
+        if officers is not None and willing_o > officers:
+            problems.append(f"يوم {day_txt}: راغبو الضباط ({arnum.to_arabic_indic(str(willing_o))}) "
+                            f"أكثر من التأميدة ({arnum.to_arabic_indic(str(officers))})")
+        if individuals is not None and willing_i > individuals:
+            problems.append(f"يوم {day_txt}: راغبو الأفراد ({arnum.to_arabic_indic(str(willing_i))}) "
+                            f"أكثر من التأميدة ({arnum.to_arabic_indic(str(individuals))})")
+    if not problems:
+        return None
+    return "تنبيه الراغبين (عدم مطابقة): " + " — ".join(problems[:6]) +            (" — ومدة أخرى" if len(problems) > 6 else "") + " — تم الحفظ رغم ذلك"
+
 
 def day_willing_counts(year, month, entity_id=None):
     """عدد الراغبين (ضباط+أفراد) في كل يوم: {day: count} — لتقويم التاب اليومي."""

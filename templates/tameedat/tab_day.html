@@ -193,17 +193,43 @@
           <span class="tm-bigact-txt">المقررات والتخصيص التفاعلي للمتعهد والتموين للجهة الحالية</span>
         </button>
         <button type="button" class="tm-bigact teal" id="tmRagNamesBtn"
-                title="تسجيل أسماء الراغبين — قيد التطوير">
+                title="كشف وتسجيل أسماء الضباط والأفراد الراغبين — مربعات بعدد التأميدة بالبحث الذكي">
           <span class="tm-bigact-ico" aria-hidden="true">👮</span>
           <span class="tm-bigact-txt">تسجيل أسماء الضباط والأفراد الراغبين للجهة الحالية</span>
         </button>
       </div>
 
+      <label class="rg-check-line">
+        <input type="checkbox" name="rag_check" value="1">
+        تحميل كشف الراغبين لمدة التأميدة (عدم مطابقة الأسماء وتجاهل النقص)
+      </label>
       <button class="rt-btn gold tm-save" type="submit">
         {% if edit_record %}💾 حفظ التعديل في البيانات المحلية{% else %}💾 حفظ التأميدة في البيانات المحلية{% endif %}
       </button>
     </form>
   </section>
+  </div>
+</div>
+
+<!-- مودال الراغبين: نفس جزء تاب الراغبين — ربط ١٠٠٪ بالاتجاهين -->
+<div class="tm-modal" id="rgModal" hidden role="dialog" aria-modal="true"
+     aria-labelledby="rgModalTitle" data-day="{{ sel_date_iso }}" data-sid="{{ save_token }}">
+  <div class="tm-modal-card rg-modal-card">
+    <div class="tm-modal-head">
+      <b id="rgModalTitle">كشف وتسجيل أسماء الضباط والأفراد الراغبين</b>
+      <button type="button" class="tm-modal-x" id="rgModalClose" aria-label="إغلاق">✕</button>
+    </div>
+    <p class="tm-hint">المربعات بعدد تأميدة اليوم للجهة المختارة — اكتب الاسم بالبحث الذكي
+    من «الجهات والكوادر»، وأي اسم جديد هيسألك: هل تريد إضافته كقوة دائمة للجهة؟
+    الحفظ هنا هو الحفظ نفسه في تاب الراغبين (ربط بالاتجاهين).</p>
+    <div class="rg-modal-bar">
+      <select id="rgModalEntity" aria-label="الجهة">
+        {% for n in entity_names %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+      </select>
+      <button type="button" class="rt-btn rg-cat-btn gold" data-cat="officers">🎖 الضباط</button>
+      <button type="button" class="rt-btn rg-cat-btn" data-cat="individuals">👥 الأفراد</button>
+    </div>
+    <div id="rgModalBody"><p class="rg-dim">اختار الجهة لعرض المربعات…</p></div>
   </div>
 </div>
 
