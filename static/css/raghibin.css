@@ -71,6 +71,8 @@
 .rg-modal-bar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
   margin-bottom: 12px; }
 .rg-modal-bar select { flex: 1; min-width: 200px; }
+.rg-day-chip { padding: 7px 14px; border-radius: 10px; font-weight: 700;
+  border: 1px solid var(--gold-border); color: var(--gold-light); white-space: nowrap; }
 .rg-soon { background: var(--card); border: 1px dashed var(--gold-border); border-radius: 14px;
   padding: 26px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
 .rg-files b { font-size: .95rem; }

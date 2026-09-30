@@ -226,6 +226,7 @@
       <select id="rgModalEntity" aria-label="الجهة">
         {% for n in entity_names %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
       </select>
+      <span class="rg-day-chip">يوم التأميدة «من يوم»: <b id="rgModalDay">{{ sel_day | aindic }}</b></span>
       <button type="button" class="rt-btn rg-cat-btn gold" data-cat="officers">🎖 الضباط</button>
       <button type="button" class="rt-btn rg-cat-btn" data-cat="individuals">👥 الأفراد</button>
     </div>

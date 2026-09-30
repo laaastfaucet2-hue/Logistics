@@ -52,13 +52,39 @@
 
   var body = document.getElementById("rgModalBody");
   var entitySelect = document.getElementById("rgModalEntity");
+  var dayLabel = document.getElementById("rgModalDay");
   var cat = "officers";
-  var day = modal.getAttribute("data-day") || "";
   var sid = modal.getAttribute("data-sid") || "";
+
+  /* اليوم المُتَّبع = حقل «من يوم» في فورم التأميدة (بأرقام عربية أو إنجليزية)،
+     ولو فاضي: يوم الصفحة من data-day — الحفظ والأسماء ليوم التأميدة نفسه. */
+  function parseArabicInt(text) {
+    var digits = "٠١٢٣٤٥٦٧٨٩";
+    var s = String(text || "").trim();
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      var d = digits.indexOf(s[i]);
+      out += (d !== -1) ? String(d) : s[i];
+    }
+    var n = parseInt(out, 10);
+    return isNaN(n) ? null : n;
+  }
+
+  function currentDay() {
+    var field = document.getElementById("tmDayFrom");
+    var n = field ? parseArabicInt(field.value) : null;
+    if (n && n >= 1 && n <= 31) return n;
+    var iso = modal.getAttribute("data-day") || "";
+    return parseArabicInt(iso.split("-")[2]) || 1;
+  }
+
+  function refreshDayLabel() {
+    if (dayLabel) dayLabel.textContent = String(currentDay());
+  }
 
   function loadPanel() {
     var entityName = entitySelect ? entitySelect.value : "";
-    var params = ["en=" + encodeURIComponent(entityName), "d=" + day.split("-")[2],
+    var params = ["en=" + encodeURIComponent(entityName), "d=" + currentDay(),
                   "c=" + cat, "back=tameedat", "source=tamida"];
     if (sid) params.push("sid=" + encodeURIComponent(sid));
     body.innerHTML = '<p class="rg-dim">… جاري تحميل المربعات</p>';
@@ -89,6 +115,7 @@
         if (o.value === current) entitySelect.value = current;
       });
     }
+    refreshDayLabel();
     modal.hidden = false;
     loadPanel();
   }
@@ -106,5 +133,16 @@
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !modal.hidden) closeModal();
+  });
+  /* المودال يتبع «من يوم» لحظيًا — تغيير اليوم والمودال مفتوح = إعادة تحميل المربعات */
+  ["tmDayFrom", "tmDayTo"].forEach(function (id) {
+    var field = document.getElementById(id);
+    if (!field) return;
+    ["input", "change"].forEach(function (ev) {
+      field.addEventListener(ev, function () {
+        refreshDayLabel();
+        if (!modal.hidden && id === "tmDayFrom") loadPanel();
+      });
+    });
   });
 })();
