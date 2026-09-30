@@ -32,7 +32,7 @@ def cadres_add():
     if not name:
         return _rb("cadres", e=entity["id"], c=category, err="اكتب الاسم الرتبعي الكامل")
     person_id, created = dr.add_person(year, month, entity["id"], category, name, rank)
-    rfs.write_cadres_files(year, month, entity["id"], entity["name"])
+    rfs.write_entity_files(year, month, entity["id"], entity["name"])
     if created:
         return _rb("cadres", e=entity["id"], c=category,
                    ok=f"تم إضافة {name} إلى قوة {entity['name']}")
@@ -52,7 +52,7 @@ def cadres_exclude(person_id):
         return _rb("cadres", e=person["entity_id"], c=person["category"],
                    x=person_id, warn="اكتب سبب الاستثناء (هلاكات/مأمورية/...) ثم أكد")
     dr.set_excluded(year, month, person_id, exclude, note)
-    rfs.write_cadres_files(year, month, person["entity_id"], person["entity_name"])
+    rfs.write_entity_files(year, month, person["entity_id"], person["entity_name"])
     if exclude:
         return _rb("cadres", e=person["entity_id"], c=person["category"],
                    ok=f"{person['full_name']} الآن «غير راغب» ولن يُحسب في الوجبات")
@@ -68,7 +68,7 @@ def cadres_delete(person_id):
     if not person:
         return _rb("cadres", err="الاسم غير موجود")
     dr.delete_person(year, month, person_id)
-    rfs.write_cadres_files(year, month, person["entity_id"], person["entity_name"])
+    rfs.write_entity_files(year, month, person["entity_id"], person["entity_name"])
     return _rb("cadres", e=person["entity_id"], c=person["category"],
                ok=f"تم حذف {person['full_name']} من القوة")
 
@@ -94,7 +94,7 @@ def cadres_copy():
     copied_entities, copied_names = dr.copy_force(year, month, target_year,
                                                   target_month, entity_ids)
     if copied_entities:
-        rfs.write_all_cadres(target_year, target_month)
+        rfs.write_all(target_year, target_month)
     return _rb("cadres",
                ok=f"تم نسخ قوة {copied_entities} جهة "
                   f"({copied_names} اسم) إلى الشهر الهدف وملفاتها اتبنت هناك")

@@ -97,21 +97,34 @@ def _cell(ws, row, col, value, bold=False, fill=None):
     return cell
 
 
-def _signatures(ws, row, ncols, year, month):
-    """التوقيعان الرسميان أسفل الجدول (نفس آلية ملفات التأميدات الرسمية)."""
-    blocks = [(1, lhdb.get_setting(year, month, "sig_right_rank"),
-               lhdb.get_setting(year, month, "sig_right_name")),
-              (ncols - 1, lhdb.get_setting(year, month, "sig_left_rank"),
-               lhdb.get_setting(year, month, "sig_left_name"))]
-    for col, rank, name in blocks:
-        ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=col + 1)
+def signatures_rows(ws, row, year, month, ncols):
+    """التوقيعان الرسميان أسفل الجدول — دالة مشتركة لكل ملفات الراغبين
+    (نفس آلية ملفات التأميدات الرسمية: قيمة الرتبة سطر والاسم تحته)."""
+    blocks = [(1, True, lhdb.get_setting(year, month, "sig_right_rank"),
+               lhdb.get_setting(year, month, "sig_right_name"))]
+    # الملفات الضيقة (٣ أعمدة زي كشف الشهر): التوقيع الثاني عمود مستقل بلا دمج
+    left_col = ncols - 1 if ncols >= 4 else 3
+    blocks.append((left_col, left_col + 1 <= ncols,
+                   lhdb.get_setting(year, month, "sig_left_rank"),
+                   lhdb.get_setting(year, month, "sig_left_name")))
+    for col, merge, rank, name in blocks:
+        if merge:
+            ws.merge_cells(start_row=row, start_column=col,
+                           end_row=row, end_column=col + 1)
         top = ws.cell(row, col, rank or "........................")
         top.font = Font(bold=True, size=12, name="Cairo")
         top.alignment = CENTER
-        ws.merge_cells(start_row=row + 1, start_column=col, end_row=row + 1, end_column=col + 1)
+        if merge:
+            ws.merge_cells(start_row=row + 1, start_column=col,
+                           end_row=row + 1, end_column=col + 1)
         bottom = ws.cell(row + 1, col, name or "........................")
         bottom.font = Font(bold=True, size=12, name="Cairo")
         bottom.alignment = CENTER
+
+
+def _signatures(ws, row, ncols, year, month):
+    """توافقية: الملفات القديمة تستدعي _signatures — ديليجيت للمشترك."""
+    signatures_rows(ws, row, year, month, ncols)
 
 
 def _cadres_sheet(ws, year, month, entity_name, category_key, category_label, persons):
@@ -165,3 +178,28 @@ def write_all_cadres(year, month):
     for entity in dt.list_entities(year, month):
         write_cadres_files(year, month, entity["id"], entity["name"])
     return cadres_dir(year, month)
+
+
+def write_entity_files(year, month, entity_id, entity_name, day=None):
+    """كل ملفات جهة واحدة بعد أي تعديل عليها: الكوادر + عدم الراغبين + الشهري
+    (+ ملف اليوم المحدد إن تحدد) — كلها بناء مستهدف لحظي."""
+    write_cadres_files(year, month, entity_id, entity_name)
+    from .files_rosters import write_excluded_files
+    write_excluded_files(year, month, entity_id, entity_name)
+    from .files_monthly import write_monthly_file
+    write_monthly_file(year, month, entity_id, entity_name)
+    if day:
+        from .files_daily import write_day_file
+        write_day_file(year, month, day, entity_id, entity_name)
+
+
+def write_all(year, month):
+    """بناء كل ملفات الراغبين لكل الجهات (بعد نسخ القوة أو إعادة البذر)."""
+    from data_access import db_tameedat as dt
+    from .files_rosters import write_excluded_files
+    from .files_monthly import write_monthly_file
+    for entity in dt.list_entities(year, month):
+        write_cadres_files(year, month, entity["id"], entity["name"])
+        write_excluded_files(year, month, entity["id"], entity["name"])
+        write_monthly_file(year, month, entity["id"], entity["name"])
+    return base_dir(year, month)

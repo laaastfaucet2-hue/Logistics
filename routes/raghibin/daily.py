@@ -14,6 +14,7 @@ from core import arabic_numbers as arnum
 from core.auth_core import login_required
 from data_access import db_raghibin as dr
 from services.raghibin.files_daily import write_day_file
+from services.raghibin.files_monthly import write_monthly_file
 
 from . import raghibin_bp
 from .context import _ctx, _entity_or_back, _rb, _selected_day
@@ -43,6 +44,7 @@ def daily_toggle():
                         f"أرجعه للقوة من تاب «الجهات والكوادر» أولًا")
     dr.set_daily(year, month, person_id, day, willing, source="manual")
     write_day_file(year, month, day, entity["id"], entity["name"])
+    write_monthly_file(year, month, entity["id"], entity["name"])   # كشف الشهر لحظيًا
     day_txt = arnum.to_arabic_indic(str(day))
     if willing:
         return _rb("daily", e=entity["id"], d=day,

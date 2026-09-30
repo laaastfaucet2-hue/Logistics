@@ -17,7 +17,7 @@ from data_access import dataguard
 from data_access import db_raghibin as dr
 from documents.official_xlsx import add_letterhead
 
-from . import FILL_EXCLUDED, FOLDERS, tab_dir
+from . import FILL_EXCLUDED, signatures_rows, tab_dir
 
 FILL_WILLING = "E8F5EE"
 CENTER = Alignment(horizontal="center", vertical="center", readingOrder=2)
@@ -41,21 +41,8 @@ def ensure_day_folders(year, month):
 
 
 def _signatures(ws, row, year, month):
-    """التوقيعان الرسميان أسفل الجدول (نفس آلية ملفات الراغبين الرسمية)."""
-    from data_access import db_letterhead as lhdb
-    blocks = [(1, lhdb.get_setting(year, month, "sig_right_rank"),
-               lhdb.get_setting(year, month, "sig_right_name")),
-              (COLS - 1, lhdb.get_setting(year, month, "sig_left_rank"),
-               lhdb.get_setting(year, month, "sig_left_name"))]
-    for col, rank, name in blocks:
-        ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=col + 1)
-        top = ws.cell(row, col, rank or "........................")
-        top.font = Font(bold=True, size=12, name="Cairo")
-        top.alignment = CENTER
-        ws.merge_cells(start_row=row + 1, start_column=col, end_row=row + 1, end_column=col + 1)
-        bottom = ws.cell(row + 1, col, name or "........................")
-        bottom.font = Font(bold=True, size=12, name="Cairo")
-        bottom.alignment = CENTER
+    """التوقيعان الرسميان — ديليجيت للمشترك في الحزمة."""
+    signatures_rows(ws, row, year, month, COLS)
 
 
 def write_day_file(year, month, day, entity_id, entity_name):

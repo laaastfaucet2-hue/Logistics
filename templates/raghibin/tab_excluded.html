@@ -1,0 +1,75 @@
+{% set xbase = '/raghibin?tab=excluded' %}
+{% set xbase = xbase + ('&sid=' + sid) if sid else xbase %}
+
+{% if ok %}<div class="rg-note ok">✅ {{ ok }}</div>{% endif %}
+{% if warn %}<div class="rg-note warn">⚠️ {{ warn }}</div>{% endif %}
+
+<div class="tm-dict-stack">
+  <div class="rg-card">
+    <div class="rg-card-head">
+      <b>🚫 المستثنون «غير الراغبين»</b>
+      <span class="rg-dim">المستثنى لا يُحسب في أي وجبة وتُسقط تسجيلاته اليومية تلقائيًا — يظهر مشطوبًا في كل الكشوف</span>
+    </div>
+    {% if entities | length > 1 %}
+    <div class="rg-entity-list">
+      {% for ent in entities %}
+      <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}" href="{{ xbase }}&e={{ ent.id }}{{ '&q=' + q if q }}">
+        <b>{{ ent.name }}</b>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if entity %}
+    <form method="get" action="/raghibin" class="rg-search">
+      <input type="hidden" name="tab" value="excluded">
+      <input type="hidden" name="e" value="{{ entity.id }}">
+      {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+      <input name="q" value="{{ q }}" placeholder="🔍 بحث بالاسم أو الرتبة بين المستثنين">
+      <button class="rt-btn" type="submit">بحث</button>
+      {% if q %}<a class="tm-link" href="{{ xbase }}&e={{ entity.id }}">إلغاء البحث</a>{% endif %}
+    </form>
+    {% endif %}
+  </div>
+
+  {% if entity %}
+  <div class="rg-card">
+    <div class="rg-card-head">
+      <b>سجل عدم الراغبين: {{ entity.name }}</b>
+      <span class="rg-dim">عدد المستثنين: {{ excluded_count | aindic }}</span>
+    </div>
+    {% if excluded_persons %}
+    <table class="rg-table">
+      <thead><tr><th>م</th><th>الرتبة</th><th>الاسم الرتبعي الكامل</th><th>الفئة</th><th>ملاحظات / حالة الغياب</th><th>إجراء</th></tr></thead>
+      <tbody>
+      {% for p in excluded_persons %}
+      <tr class="is-excluded">
+        <td>{{ loop.index | aindic }}</td>
+        <td>{{ p.rank or '—' }}</td>
+        <td class="rg-name">{{ p.full_name }}</td>
+        <td>{{ 'ضابط' if p.category == 'officers' else 'فرد' }}</td>
+        <td>{{ p.exclude_note or '—' }}</td>
+        <td>
+          <form method="post" action="/raghibin/cadres/exclude/{{ p.id }}" class="rg-inline">
+            <input type="hidden" name="state" value="0">
+            <input type="hidden" name="sid" value="{{ sid }}">
+            <button class="rt-btn" type="submit">↩ إرجاعه للقوة الراغبة</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="rg-dim">مفيش مستثنين في هذه الجهة — التعليم بيتم من تاب «الجهات والكوادر المعتمدة» بضغطة «⊘ غير راغب».</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="rg-card rg-files">
+    <b>📁 الملفات المحلية</b>
+    <span class="rg-dim">{{ section_folder }}/{{ '2. عدم الراغبين' }}/ — لكل جهة ملفان
+    «<الجهة> (ضباط غير راغبين).xlsx» و«<الجهة> (أفراد غير راغبين).xlsx»:
+    م | الرتبة | الاسم الرتبعي الكامل | ملاحظات / حالة الغياب + الإجمالي،
+    بالدباجة والتوقيعات الرسمية وبيتبنوا لحظيًا مع كل استثناء أو إرجاع.</span>
+  </div>
+</div>

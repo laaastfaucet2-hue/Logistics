@@ -48,10 +48,15 @@
       <input type="hidden" name="e" value="{{ entity.id }}">
       <input type="hidden" name="cat" value="{{ fcat }}">
       <input type="hidden" name="sid" value="{{ sid }}">
-      <div class="fld"><label>الرتبة</label><input name="rank" placeholder="رائد / نقيب / ..." value=""></div>
+      <div class="fld"><label>الرتبة</label><input name="rank" list="rgRankList" data-combo="rgRankList"
+             placeholder="اختر الرتبة أو اكتبها" autocomplete="off"></div>
       <div class="fld rg-grow"><label>الاسم الرتبعي الكامل</label><input name="name" required placeholder="الاسم كما هو معتمد"></div>
       <button class="rt-btn gold" type="submit">➕ إضافة إلى {{ dict(categories)[fcat] }}</button>
     </form>
+    <datalist id="rgRankList">
+      {% for r in officer_ranks %}<option value="{{ r }}"></option>{% endfor %}
+      {% for r in individual_ranks %}<option value="{{ r }}"></option>{% endfor %}
+    </datalist>
 
     <!-- بحث القوة -->
     <form method="get" action="/raghibin" class="rg-search">

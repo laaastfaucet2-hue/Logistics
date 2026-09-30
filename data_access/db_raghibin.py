@@ -44,6 +44,29 @@ CREATE INDEX IF NOT EXISTS idx_ragh_daily_day ON ragh_daily(day);
 CATEGORIES = (("officers", "الضباط"), ("individuals", "الأفراد والصف"))
 CATEGORY_KEYS = {k for k, _ in CATEGORIES}
 
+# الرتب المعتمدة — من الأقدمية الأعلى للأدنى (توجيه المستخدم ٣٠/٠٩/٢٠٢٦:
+# الضباط من اللواء إلى الملازم، والأفراد بنفس مبدأ الأقدمية)
+RANKS = {
+    "officers": ["فريق أول", "فريق", "لواء", "عميد", "عقيد", "مقدم",
+                 "رائد", "نقيب", "ملازم أول", "ملازم"],
+    "individuals": ["مساعد أول", "مساعد", "رئيس رقباء", "رقيب أول", "رقيب",
+                    "عريف", "جندي أول", "جندي", "مجند"],
+}
+ALL_RANKS = RANKS["officers"] + RANKS["individuals"]
+
+
+def _norm_rank(text):
+    """توحيد نص الرتبة (همزات الألف ومسافات) لمطابقة القوائم."""
+    t = (text or "").strip().replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+    return " ".join(t.split())
+
+
+def rank_weight(category, rank):
+    """وزن الرتبة داخل فئتها: ٠ = الأقدمية الأعلى؛ غير المعروفة آخر الفئة."""
+    ranks = [_norm_rank(r) for r in RANKS.get(category, [])]
+    key = _norm_rank(rank)
+    return ranks.index(key) if key in ranks else len(ranks) + 1
+
 
 def _conn(year, month):
     conn = months.get_db(year, month)
@@ -95,7 +118,17 @@ def list_persons(year, month, entity_id=None, category=None, query="", excluded=
         like = f"%{query}%"
         params.extend((like, like))
     sql += " ORDER BY p.entity_id, p.category DESC, p.serial, p.id"
-    return [dict(r) for r in conn.execute(sql, params)]
+    rows = [dict(r) for r in conn.execute(sql, params)]
+    conn.close()
+
+    def _key(person):
+        # الضباط قبل الأفراد، وداخل الفئة بالأقدمية ثم مسلسل الإضافة
+        return (person["entity_id"], 0 if person["category"] == "officers" else 1,
+                rank_weight(person["category"], person["rank"]),
+                person["serial"], person["id"])
+
+    rows.sort(key=_key)
+    return rows
 
 
 def get_person(year, month, person_id):

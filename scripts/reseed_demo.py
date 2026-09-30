@@ -256,9 +256,9 @@ with app.app_context():
                                           "entity_type": "شرطية"}, 10, 10, 10,
                                notes="تأميدة اعتيادية")
         print("راغبين: جهة الصور بقوتها ✓")
-    from services.raghibin import write_all_cadres
+    from services.raghibin import write_all
     from services.raghibin.files_daily import write_day_file
-    write_all_cadres(Y, M)
+    write_all(Y, M)                                      # كوادر + مستثنين + شهري لكل جهة
     write_day_file(Y, M, 22, rag_eid, rag_entity_name)   # ملف يوم ٢٢ بقوة الصور
 
 

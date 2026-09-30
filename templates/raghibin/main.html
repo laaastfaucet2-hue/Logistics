@@ -30,12 +30,13 @@
   {% include "raghibin/tab_cadres.html" %}
 {% elif tab == 'daily' %}
   {% include "raghibin/tab_daily.html" %}
+{% elif tab == 'excluded' %}
+  {% include "raghibin/tab_excluded.html" %}
 {% else %}
-  <div class="rg-soon">
-    <b>🚧 هذا التاب في مرحلة جاية من خطة التطوير</b>
-    <p>الخطة الكاملة معتمدة وموثقة في <b>docs/خطة-تطوير-الراغبين.md</b>:
-    {% if tab == 'excluded' %}تاب «عدم الراغبين» — قائمة المستثنين ضباطًا وأفرادًا بالسبب (المرحلة ج٣).
-    {% else %}تاب «تجميع الكشف العام» — القائمة المنسدلة والزرارين وكشف وجبات الشهر بالإجمالي (المرحلة ج٣).{% endif %}</p>
-  </div>
+  {% include "raghibin/tab_monthly.html" %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

@@ -94,6 +94,27 @@ def _day_grid(year, month, selected, counts):
     return [cells[i:i + 7] for i in range(0, len(cells), 7)]
 
 
+def _excluded_vars(year, month, entity, query):
+    """متغيرات تاب «عدم الراغبين»: المستثنون (ضباطًا وأفرادًا) لجهة التاب."""
+    persons = dr.list_persons(year, month, entity_id=entity["id"], query=query,
+                              excluded=True) if entity else []
+    return {"excluded_persons": persons,
+            "excluded_count": len(persons)}
+
+
+def _monthly_vars(year, month, entity, category):
+    """متغيرات تاب «تجميع الكشف العام»: وجبات الشهر (وجبة/يوم) بالفئة المختارة."""
+    meals = dr.month_meals(year, month, entity["id"], category) if entity else {}
+    persons = dr.list_persons(year, month, entity_id=entity["id"], category=category,
+                              excluded=False) if entity else []
+    rows = [{"person": p, "meals": meals.get(p["id"], 0)} for p in persons]
+    return {
+        "monthly_rows": rows,
+        "monthly_total_persons": len(rows),
+        "monthly_total_meals": sum(r["meals"] for r in rows),
+    }
+
+
 def _daily_vars(year, month, entity, selected):
     """متغيرات تاب «الراغبين (يومي)»: التقويم + قوة اليوم + عدادات + تحذير التطابق."""
     eid = entity["id"] if entity else None
@@ -160,6 +181,9 @@ def _page_vars(tab):
         "counts": counts,
         "persons": persons,
         "exclude_person": dr.get_person(year, month, exclude_id) if exclude_id else None,
+        "all_ranks": dr.ALL_RANKS,
+        "officer_ranks": dr.RANKS["officers"],
+        "individual_ranks": dr.RANKS["individuals"],
         "section_folder": rfs.base_dir(year, month),
         "total_force": sum(c["officers"] + c["individuals"] for c in counts.values()),
     }
@@ -173,8 +197,13 @@ def page():
     if tab not in TAB_KEYS:
         tab = "daily"
     variables = _page_vars(tab)
+    year, month = variables["year"], variables["month"]
+    entity = variables["entity"]
     if tab == "daily":
-        selected = _selected_day(variables["year"], variables["month"])
-        variables.update(_daily_vars(variables["year"], variables["month"],
-                                     variables["entity"], selected))
+        selected = _selected_day(year, month)
+        variables.update(_daily_vars(year, month, entity, selected))
+    elif tab == "excluded":
+        variables.update(_excluded_vars(year, month, entity, variables["q"]))
+    elif tab == "monthly":
+        variables.update(_monthly_vars(year, month, entity, variables["fcat"]))
     return render_template("raghibin/main.html", **variables)

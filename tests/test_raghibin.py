@@ -2,6 +2,10 @@
 """قسم الراغبين (ج١): قوة الجهات + الحالات + نسخ القوة + ملفات الكوادر الرسمية."""
 from openpyxl import load_workbook
 
+from services import raghibin as rfs
+from services.raghibin import files_monthly as mfs
+from services.raghibin import files_rosters as xr
+
 from data_access import db_raghibin as drg
 from data_access import db_tameedat as dt
 from services import raghibin as rfs
@@ -158,6 +162,82 @@ def test_daily_page_calendar_folders_and_mismatch(app, client):
     assert "ضباط: <b>٢</b> من ٢" in body
     root = rfs.tab_dir(YEAR, MONTH, "daily")
     assert (root / "يوم ١").exists() and (root / "يوم ٣٠").exists()   # فولدرات الشهر كاملة
+
+
+def test_rank_seniority_ordering(app):
+    eid, _ = _entity()
+    for rank, name in (("ملازم", "ع"),
+                       ("رائد", "ب"), ("لواء", "أ"), ("نقيب", "ج")):
+        drg.add_person(YEAR, MONTH, eid, "officers", name, rank)
+    drg.add_person(YEAR, MONTH, eid, "individuals", "م1", "عريف")
+    drg.add_person(YEAR, MONTH, eid, "individuals", "م2", "مساعد أول")
+    drg.add_person(YEAR, MONTH, eid, "individuals", "م3", "رتبة غير معروفة")
+    persons = drg.list_persons(YEAR, MONTH, entity_id=eid)
+    officers = [p["full_name"] for p in persons if p["category"] == "officers"]
+    individuals = [p["full_name"] for p in persons if p["category"] == "individuals"]
+    # الضباط: اللواء ← رائد ← نقيب ← ملازم (الأقدمية)
+    assert officers == ["أ", "ب", "ج", "ع"]
+    # الأفراد: مساعد أول ← عريف ← وغير المعروفة آخر الفئة
+    assert individuals == ["م2", "م1", "م3"]
+    assert drg.rank_weight("officers", "لواء") < drg.rank_weight("officers", "رائد")
+    assert drg.rank_weight("officers", "ملازم") == 9      # آخر رتب معروفة
+    assert drg.rank_weight("officers", "غريب") == 11      # غير المعروفة آخر الفئة
+
+
+def test_excluded_tab_and_files(app, client):
+    eid, name = _entity()
+    p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    p2, _ = drg.add_person(YEAR, MONTH, eid, "individuals", "كريم فتحي عوض", "فرد (1)")
+    drg.set_excluded(YEAR, MONTH, p2, True, "مأمورية خارج القطاع")
+    folder = xr.write_excluded_files(YEAR, MONTH, eid, name)
+    off = folder / f"{name} (ضباط غير راغبين).xlsx"
+    ind = folder / f"{name} (أفراد غير راغبين).xlsx"
+    assert off.exists() and ind.exists()
+    ws = load_workbook(ind).active
+    assert ws.cell(8, 3).value == "كريم فتحي عوض"
+    assert ws.cell(8, 4).value == "مأمورية خارج القطاع"
+    assert "الإجمالي: ١" in str(ws.cell(9, 1).value)
+    r = client.get(f"/raghibin?tab=excluded&e={eid}")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "سجل عدم الراغبين" in body and "كريم فتحي عوض" in body
+    assert "إرجاعه للقوة الراغبة" in body
+
+
+def test_monthly_tab_and_file(app, client):
+    eid, name = _entity()
+    p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "مصطفى عبدالحميد", "نقيب")
+    p3, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    drg.set_excluded(YEAR, MONTH, p3, True, "هلاكات")
+    drg.set_daily(YEAR, MONTH, p1, 22, True)
+    drg.set_daily(YEAR, MONTH, p1, 23, True)
+    drg.set_daily(YEAR, MONTH, p2, 22, True)
+    path = mfs.write_monthly_file(YEAR, MONTH, eid, name)
+    book = load_workbook(path)
+    assert book.sheetnames == ["الضباط", "الأفراد والصف"]
+    ws = book["الضباط"]
+    assert ws.cell(8, 2).value == "رائد / محمد محمود" and ws.cell(8, 3).value == "٢"
+    assert ws.cell(9, 3).value == "١"                       # نقيب / مصطفى — وجبة
+    names = [ws.cell(r, 2).value for r in range(8, 11)]     # المستثنى خارج الكشف
+    assert all("ابراهيم" not in str(n) for n in names)
+    assert "إجمالي ٢ فرد | إجمالي الوجبات: ٣ وجبة" in str(ws.cell(10, 1).value)
+    r = client.get(f"/raghibin?tab=monthly&e={eid}&c=officers")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "رائد / محمد محمود" in body
+    assert "إجمالي الوجبات: ٣ وجبة" in body
+    assert "الضباط" in body and "الأفراد" in body
+
+
+def test_monthly_rebuilds_on_toggle(app, client):
+    eid, name = _entity()
+    pid, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    client.post("/raghibin/daily/toggle", data={"e": eid, "d": 5, "person_id": pid,
+                                                "willing": "1"})
+    ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["الضباط"]
+    assert ws.cell(8, 3).value == "١"
+    assert "إجمالي الوجبات: ١ وجبة" in str(ws.cell(9, 1).value)
 
 
 def test_page_and_section_redirect(client):
