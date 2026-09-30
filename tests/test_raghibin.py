@@ -396,6 +396,48 @@ def test_note_marker_and_inline_edit(app, client):
     assert "حفظ الملاحظة" in body2
 
 
+def test_no_double_dropdown_and_daily_tabs(app, client):
+    """القايمة المزدوجة ممنوعة: المربعات والرتبة data-combo بدون list= —
+    وتبديل الفئات في التاب اليومي بتابات ظاهرة بعدادات."""
+    eid, name = _entity()
+    drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
+    dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
+                  10, 10, 10, notes="تأميدة اعتيادية")
+    modal = client.get(f"/raghibin/panel?en={name}&d=22&c=officers").get_data(as_text=True)
+    assert 'list="' not in modal and 'data-combo="rgForceOfficers"' in modal
+    cadres = client.get(f"/raghibin?tab=cadres&e={eid}").get_data(as_text=True)
+    assert 'list="' not in cadres
+    daily = client.get(f"/raghibin?tab=daily&e={eid}&d=22").get_data(as_text=True)
+    assert "rg-cat-tabs" in daily and "👮 الضباط" in daily and "👥 الأفراد" in daily
+    assert "الاسم رباعي" in cadres
+
+
+def test_entity_add_and_delete_from_cadres(app, client):
+    """➕ إضافة جهة و🗑 حذفها من تاب الكوادر مع تنظيف ملفاتها."""
+    r = client.post("/raghibin/cadres/entity_add", data={
+        "new_name": "قطاع الشهيد محمد", "new_type": "حربية"})
+    assert r.status_code == 302
+    entity = dt.find_entity_by_name(YEAR, MONTH, "قطاع الشهيد محمد")
+    assert entity is not None and entity["entity_type"] == "حربية"
+    body = client.get(f"/raghibin?tab=cadres&e={entity['id']}").get_data(as_text=True)
+    assert "قطاع الشهيد محمد" in body and "إضافة جهة جديدة" in body
+    folder = rfs.cadres_dir(YEAR, MONTH)
+    assert (folder / "قطاع الشهيد محمد (ضباط).xlsx").exists()
+    # تكرار الاسم → تحذير بدون إضافة
+    r2 = client.post("/raghibin/cadres/entity_add", data={
+        "new_name": "قطاع الشهيد محمد", "new_type": "شرطية"})
+    assert "warn=" in r2.headers["Location"]
+    # الحذف: يزيل القوة والملفات الخمسة
+    drg.add_person(YEAR, MONTH, entity["id"], "officers", "مجرب الحذف", "رائد")
+    r3 = client.post(f"/raghibin/cadres/entity_delete/{entity['id']}")
+    assert r3.status_code == 302 and "ok=" in r3.headers["Location"]
+    assert dt.find_entity_by_name(YEAR, MONTH, "قطاع الشهيد محمد") is None
+    assert drg.list_persons(YEAR, MONTH, entity_id=entity["id"]) == []
+    assert not (folder / "قطاع الشهيد محمد (ضباط).xlsx").exists()
+    assert not (rfs.tab_dir(YEAR, MONTH, "monthly")
+                / "قطاع الشهيد محمد.xlsx").exists()
+
+
 def test_page_and_section_redirect(client):
     r = client.get("/raghibin?tab=cadres")
     assert r.status_code == 200

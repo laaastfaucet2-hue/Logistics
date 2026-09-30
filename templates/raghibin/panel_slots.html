@@ -31,7 +31,7 @@
   {% if group.boxes %}
   <div class="rg-slots-grid">
     {% for name in group.boxes %}
-    <input class="rag-slot" name="names" value="{{ name or '' }}" list="{{ dlist }}"
+    <input class="rag-slot" name="names" value="{{ name or '' }}"
            data-combo="{{ dlist }}" autocomplete="off"
            placeholder="{{ loop.index | aindic }}. اكتب اسم الراغب (بحث ذكي)">
     {% endfor %}

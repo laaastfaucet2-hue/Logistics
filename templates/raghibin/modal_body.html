@@ -97,7 +97,7 @@
       {% for name in group.boxes %}
       <div class="rg-slotrow">
         <span class="rg-slotnum">{{ loop.index | aindic }} -</span>
-        <input class="rag-slot" name="names" value="{{ name or '' }}" list="{{ dlist }}"
+        <input class="rag-slot" name="names" value="{{ name or '' }}"
                data-combo="{{ dlist }}" autocomplete="off"
                placeholder="اكتب {{ 'رتبة أو اسم الضابط' if fcat == 'officers' else 'درجة أو اسم الفرد' }}...">
       </div>

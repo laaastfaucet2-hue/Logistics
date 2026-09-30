@@ -12,17 +12,37 @@
       <b>جهات القوة ({{ entities | length | aindic }} جهة)</b>
       <span class="rg-dim">اختر جهة لعرض قوتها الضابطية والصفية — إجمالي الأسماء: {{ total_force | aindic }}</span>
     </div>
+    <form method="post" action="/raghibin/cadres/entity_add" class="rg-addform">
+      <input type="hidden" name="sid" value="{{ sid }}">
+      <div class="fld rg-grow"><label>➕ إضافة جهة جديدة</label>
+        <input name="new_name" required placeholder="اسم الجهة كما هو معتمد"></div>
+      <div class="fld"><label>النوع</label>
+        <select name="new_type">
+          <option value="شرطية">شرطية</option>
+          <option value="حربية">حربية</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+      </div>
+      <button class="rt-btn gold" type="submit">➕ إضافة جهة</button>
+    </form>
     {% if not entities %}
-      <p class="rg-dim">مفيش جهات في قاموس التأميدات لسه — سجّل تأميدة لأي جهة وهتنزل هنا تلقائيًا.</p>
+      <p class="rg-dim">مفيش جهات في قاموس التأميدات لسه — سجّل تأميدة أو أضف جهة من الفورم فوق.</p>
     {% else %}
     <div class="rg-entity-list">
       {% for ent in entities %}
       {% set c = counts.get(ent.id, {'officers': 0, 'individuals': 0, 'officers_excluded': 0, 'individuals_excluded': 0}) %}
-      <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
-         href="{{ base }}&e={{ ent.id }}&c={{ fcat }}{{ '&q=' + q if q }}">
-        <b>{{ ent.name }}</b>
-        <span class="rg-dim">{{ ent.entity_type }} · ضباط {{ c.officers | aindic }} · أفراد {{ c.individuals | aindic }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
-      </a>
+      <div class="rg-entity-row">
+        <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
+           href="{{ base }}&e={{ ent.id }}&c={{ fcat }}{{ '&q=' + q if q }}">
+          <b>{{ ent.name }}</b>
+          <span class="rg-dim">{{ ent.entity_type }} · ضباط {{ c.officers | aindic }} · أفراد {{ c.individuals | aindic }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
+        </a>
+        <form method="post" action="/raghibin/cadres/entity_delete/{{ ent.id }}" class="rg-entity-del"
+              onsubmit="return confirm('حذف جهة «{{ ent.name }}» وكل أسمائها نهائيًا من هذا الشهر؟')">
+          <input type="hidden" name="sid" value="{{ sid }}">
+          <button type="submit" title="حذف الجهة">🗑</button>
+        </form>
+      </div>
       {% endfor %}
     </div>
     {% endif %}
@@ -48,9 +68,9 @@
       <input type="hidden" name="e" value="{{ entity.id }}">
       <input type="hidden" name="cat" value="{{ fcat }}">
       <input type="hidden" name="sid" value="{{ sid }}">
-      <div class="fld"><label>الرتبة</label><input name="rank" list="rgRankList" data-combo="rgRankList"
+      <div class="fld"><label>الرتبة</label><input name="rank" data-combo="rgRankList"
              placeholder="اختر الرتبة أو اكتبها" autocomplete="off"></div>
-      <div class="fld rg-grow"><label>الاسم الرتبعي الكامل</label><input name="name" required placeholder="الاسم كما هو معتمد"></div>
+      <div class="fld rg-grow"><label>الاسم رباعي</label><input name="name" required placeholder="الاسم رباعي كما هو معتمد"></div>
       <button class="rt-btn gold" type="submit">➕ إضافة إلى {{ dict(categories)[fcat] }}</button>
     </form>
     <datalist id="rgRankList">
@@ -72,7 +92,7 @@
     <!-- جدول القوة -->
     {% if persons %}
     <table class="rg-table">
-      <thead><tr><th>م</th><th>الرتبة</th><th>الاسم الرتبعي الكامل</th><th>الحالة</th><th>ملاحظات / حالة الغياب</th><th>إجراءات</th></tr></thead>
+      <thead><tr><th>م</th><th>الرتبة</th><th>الاسم رباعي</th><th>الحالة</th><th>ملاحظات / حالة الغياب</th><th>إجراءات</th></tr></thead>
       <tbody>
       {% for p in persons %}
         {% if note_person and note_person.id == p.id %}

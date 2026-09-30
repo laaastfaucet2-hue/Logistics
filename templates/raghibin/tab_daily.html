@@ -58,10 +58,13 @@
       <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
       <span class="rg-dim">المربعات بعدد التأميدة — الضباط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · الأفراد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
     </div>
-    <div class="rg-cat-switch">
-      <a class="rt-btn {{ 'gold' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">🎖 ضباط</a>
-      <a class="rt-btn {{ 'gold' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">👥 أفراد</a>
-      <span class="rg-dim">الزرار يبدل بين الفئتين — كل فئة بمربعاتها</span>
+    <div class="tm-tabs rg-cat-tabs" aria-label="فئات الراغبين">
+      <a class="tm-tab {{ 'on' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">
+        👮 الضباط <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
+      </a>
+      <a class="tm-tab {{ 'on' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">
+        👥 الأفراد <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
+      </a>
     </div>
     {% with back='raghibin', source='manual' %}
       {% include "raghibin/panel_slots.html" %}

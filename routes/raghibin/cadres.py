@@ -8,6 +8,7 @@ services.raghibin.files_rosters — ونسخ القوة لشهر/سنة آخر �
 """
 from flask import request
 
+from core import arabic_numbers as arnum
 from core.auth_core import login_required
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
@@ -89,6 +90,41 @@ def cadres_note(person_id):
                    ok=f"📝 تم حفظ ملاحظة {person['full_name']}: {note}")
     return _rb("cadres", e=person["entity_id"], c=person["category"],
                ok=f"تم حذف ملاحظة {person['full_name']}")
+
+
+@raghibin_bp.route("/cadres/entity_add", methods=["POST"])
+@login_required
+def cadres_entity_add():
+    """➕ إضافة جهة جديدة للقوة مباشرة من تاب الكوادر (بنفس نوع القاموس)."""
+    year, month = _ctx()
+    name = " ".join((request.form.get("new_name") or "").split())
+    if not name:
+        return _rb("cadres", err="اكتب اسم الجهة أولًا")
+    if dt.find_entity_by_name(year, month, name):
+        return _rb("cadres", warn=f"الجهة «{name}» موجودة بالفعل في القوة")
+    entity_type = (request.form.get("new_type") or "شرطية").strip() or "شرطية"
+    entity_id = dt.add_entity(year, month, name, entity_type)
+    rfs.write_entity_files(year, month, entity_id, name)
+    return _rb("cadres", e=entity_id,
+               ok=f"تم إضافة جهة «{name}» ({entity_type}) وبناء ملفاتها — أضف قوتها من الفورم تحت")
+
+
+@raghibin_bp.route("/cadres/entity_delete/<int:entity_id>", methods=["POST"])
+@login_required
+def cadres_entity_delete(entity_id):
+    """🗑 حذف جهة وكل أسمائها (وقسمتها في قاموس الشهر) + تنظيف ملفاتها."""
+    year, month = _ctx()
+    entity = dt.get_entity(year, month, entity_id)
+    if not entity:
+        return _rb("cadres", err="الجهة غير موجودة")
+    removed_records = dt.delete_entity(year, month, entity_id)
+    removed_files = rfs.remove_entity_files(year, month, entity["name"])
+    ok = f"تم حذف جهة «{entity['name']}» وكل أسمائها من هذا الشهر"
+    if removed_records:
+        ok += f" (معها {arnum.to_arabic_indic(str(removed_records))} تأميدة مسجلة)"
+    if removed_files:
+        ok += f" و{arnum.to_arabic_indic(str(removed_files))} ملف محلي لها"
+    return _rb("cadres", ok=ok)
 
 
 @raghibin_bp.route("/cadres/copy", methods=["POST"])

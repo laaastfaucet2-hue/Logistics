@@ -193,6 +193,24 @@ def write_entity_files(year, month, entity_id, entity_name, day=None):
         write_day_file(year, month, day, entity_id, entity_name)
 
 
+def remove_entity_files(year, month, entity_name):
+    """حذف كل ملفات جهة من فولدرات الراغبين بعد حذف الجهة من القاموس."""
+    root = base_dir(year, month)
+    removed = 0
+    candidates = [
+        root / FOLDERS["cadres"] / f"{entity_name} (ضباط).xlsx",
+        root / FOLDERS["cadres"] / f"{entity_name} (أفراد).xlsx",
+        root / FOLDERS["excluded"] / f"{entity_name} (ضباط غير راغبين).xlsx",
+        root / FOLDERS["excluded"] / f"{entity_name} (أفراد غير راغبين).xlsx",
+        root / FOLDERS["monthly"] / f"{entity_name}.xlsx",
+    ]
+    for path in candidates:
+        if path.exists():
+            path.unlink()
+            removed += 1
+    return removed
+
+
 def write_all(year, month):
     """بناء كل ملفات الراغبين لكل الجهات (بعد نسخ القوة أو إعادة البذر)."""
     from data_access import db_tameedat as dt
