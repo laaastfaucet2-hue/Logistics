@@ -100,13 +100,16 @@ def _modal_fragment(year, month, entity, day, cat):
     """بناء جزء المودال الموحد: قوة الفئة بعلامات اليوم + المربعات + الإضافة السريعة."""
     variables = _slots_vars(year, month, entity, day)
     state = dr.day_state(year, month, day, entity["id"]) if entity else {}
-    persons = dr.list_persons(year, month, entity_id=entity["id"], category=cat) \
-        if entity else []
+    # قائمة القوة في المودال = غير المستثنين فقط (توجيه المستخدم: المستثنى
+    # لا يظهر في القائمة — إدارته من تاب «الجهات والكوادر»)
+    persons = dr.list_persons(year, month, entity_id=entity["id"], category=cat,
+                              excluded=False) if entity else []
     for person in persons:
         person["willing_today"] = state.get(person["id"])
     variables.update({
         "fcat": cat, "entity": entity, "sel_day": day,
         "force_persons": persons,
+        "entity_names": dt.entity_names(year, month),
         "categories": dr.CATEGORIES,
         "officer_ranks": dr.RANKS["officers"],
         "individual_ranks": dr.RANKS["individuals"],

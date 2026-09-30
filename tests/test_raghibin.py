@@ -190,16 +190,22 @@ def test_panel_fragment(app, client):
     drg.set_daily(YEAR, MONTH, pid, 22, True)
     dt.add_record(YEAR, MONTH, 22, {"id": eid, "name": name, "entity_type": "شرطية"},
                   10, 10, 10, notes="تأميدة اعتيادية")
+    p_ex, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    drg.set_excluded(YEAR, MONTH, p_ex, True, "هلاكات")
     r = client.get(f"/raghibin/panel?en={name}&d=22&c=officers&sid=tok")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert body.count('name="names"') == 10       # ١٠ مربعات حسب التأميدة
     assert 'value="tameedat"' in body and 'value="tamida"' in body
-    assert "الجهة المختارة الحالية للتعبين" in body
+    assert "الجهة المختارة للراغبين" in body       # المنسدلة
+    assert 'class="rg-entity-select"' in body
+    assert "الاسم رباعى" in body                   # تسمية الاسم رباعي
     assert "جهة شرطية معتمدة" in body
     assert "الضباط المسجلون" in body and "الأفراد والصفة" in body
     assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
-    assert "قائمة قوة الضباط المعتمدة" in body
+    assert "<details" in body and "قائمة قوة الضباط المعتمدة" in body  # قابلة للطي
+    assert "rg-force-del" not in body              # بدون زر الحذف (من الكوادر فقط)
+    assert "ابراهيم ناجى عطا الله" not in body     # المستثنى لا يظهر في القائمة
     assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
     assert "حفظ وأعتماد التجهيزات" in body
     assert "ضبط اليوم" in body

@@ -114,8 +114,15 @@
       });
   }
 
+  /* الجهة الحالية: منسدلة المودال إن وجدت وإلا جهة التأميدة في الفورم */
+  function currentEntityName() {
+    var sel = body.querySelector(".rg-entity-select");
+    if (sel && sel.value.trim()) return sel.value.trim();
+    return entityName();
+  }
+
   function loadPanel() {
-    var params = ["en=" + encodeURIComponent(entityName()), "d=" + currentDay(),
+    var params = ["en=" + encodeURIComponent(currentEntityName()), "d=" + currentDay(),
                   "c=" + cat];
     if (sid) params.push("sid=" + encodeURIComponent(sid));
     body.innerHTML = '<p class="rg-dim">… جاري تحميل كشف الراغبين</p>';
@@ -170,6 +177,10 @@
         });
     });
 
+    /* المنسدلة: تبديل الجهة من جوه المودال */
+    var entitySel = root.querySelector(".rg-entity-select");
+    if (entitySel) entitySel.addEventListener("change", loadPanel);
+
     /* تبديل رتب «الإضافة السريعة» حسب الفئة */
     var catSel = root.querySelector(".rg-qa-cat");
     var rankSel = root.querySelector(".rg-qa-rank");
@@ -202,22 +213,6 @@
       });
       fetchText("/raghibin/panel/quick_add", { method: "POST", body: data });
     });
-
-    /* حذف اسم من القوة */
-    Array.prototype.forEach.call(root.querySelectorAll(".rg-force-del"),
-      function (btn) {
-        btn.addEventListener("click", function () {
-          if (!window.confirm("حذف «" + btn.getAttribute("data-name") +
-                              "» من قوة الجهة نهائيًا؟")) return;
-          var data = new FormData();
-          var entity = formField(root, "e");
-          data.append("e", entity ? entity.value : "");
-          data.append("d", (formField(root, "d") || {}).value || currentDay());
-          data.append("sid", (formField(root, "sid") || {}).value || "");
-          fetchText("/raghibin/panel/delete/" + btn.getAttribute("data-person"),
-                    { method: "POST", body: data });
-        });
-      });
 
     /* تشيك القوة ↔ المربعات */
     Array.prototype.forEach.call(root.querySelectorAll(".rg-force-toggle"),

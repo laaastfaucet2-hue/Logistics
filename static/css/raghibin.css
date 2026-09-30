@@ -61,11 +61,15 @@
   gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .rg-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
   gap: 9px; margin-bottom: 10px; }
-.rag-slot { width: 100%; padding: 11px 13px; border-radius: 10px;
-  border: 1px solid var(--card-border); background: var(--card, transparent);
-  color: var(--text); font-weight: 600; }
-.rag-slot:focus { border-color: var(--gold-border); outline: none;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, .18); }
+/* المربعات: ثيم أزرق (توجيه المستخدم ٣٠/٠٩/٢٠٢٦) */
+.rag-slot { width: 100%; padding: 11px 13px; border-radius: 11px;
+  border: 1px solid rgba(59, 130, 246, .5);
+  background: rgba(59, 130, 246, .09);
+  color: var(--text); font-weight: 700; }
+.rag-slot::placeholder { color: rgba(148, 163, 184, .8); font-weight: 500; }
+.rag-slot:focus { border-color: var(--blue, #3b82f6); outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22);
+  background: rgba(59, 130, 246, .14); }
 .rg-slots-hint { margin-top: -2px; }
 .rg-check-line { display: flex; align-items: center; gap: 9px; padding: 10px 4px;
   font-weight: 600; cursor: pointer; }
@@ -82,7 +86,19 @@
   padding: 13px 16px; display: flex; flex-direction: column; gap: 6px;
   margin-bottom: 12px; }
 .rg-entity-cap { color: var(--gold-light); font-size: .85rem; font-weight: 700; }
-.rg-entity-title { font-size: 1.15rem; }
+.rg-entity-select { width: 100%; padding: 11px 13px; border-radius: 11px;
+  border: 1px solid rgba(59, 130, 246, .5); background: var(--card);
+  color: var(--text); font-weight: 700; font-size: 1rem; }
+.rg-entity-select:focus { border-color: var(--blue, #3b82f6); outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22); }
+/* قائمة القوة القابلة للطي */
+details.rg-forcebox > summary { cursor: pointer; font-weight: 800;
+  color: var(--gold-light); padding: 2px 0; list-style: none;
+  display: flex; align-items: center; gap: 8px; user-select: none; }
+details.rg-forcebox > summary::-webkit-details-marker { display: none; }
+.rg-caret { display: inline-block; transition: transform .15s; }
+details.rg-forcebox[open] > summary .rg-caret { transform: rotate(180deg); }
+details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-type-chip { align-self: flex-start; padding: 5px 13px; border-radius: 10px;
   background: rgba(34, 170, 90, .12); border: 1px solid rgba(34, 170, 90, .45);
   font-weight: 700; font-size: .85rem; }
@@ -113,9 +129,12 @@
 .rg-force-check { display: flex; align-items: center; gap: 9px; cursor: pointer;
   flex: 1; font-size: .92rem; }
 .rg-force-check input { width: 18px; height: 18px; accent-color: #f59e0b; }
-.rg-force-del { background: transparent; border: none; cursor: pointer;
-  font-size: .95rem; opacity: .75; }
-.rg-force-del:hover { opacity: 1; }
+/* أزرار المودال موحدة ومنضفة */
+.rg-modal-form .rt-btn { padding: 11px 24px; border-radius: 11px;
+  font-weight: 800; font-size: .95rem; }
+.rg-modal-foot { justify-content: flex-start; }
+.rg-modal-foot .rt-btn.gold { min-width: 230px; }
+.rg-qa-add { white-space: nowrap; }
 .rg-slotsbox { border: 1px solid var(--gold-border); border-radius: 12px;
   padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; }
 .rg-slotshead { display: flex; justify-content: space-between; align-items: center;

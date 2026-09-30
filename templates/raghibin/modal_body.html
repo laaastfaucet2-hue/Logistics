@@ -12,15 +12,15 @@
   {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
   <input type="hidden" name="new_names" value="" class="rg-new-names">
 
-  <!-- الجهة المختارة الحالية للتعبين -->
+  <!-- الجهة المختارة للراغبين — قائمة منسدلة بكل جهات القاموس والملحقات -->
   <div class="rg-entity-box">
-    <div class="rg-entity-cap">الجهة المختارة الحالية للتعبين</div>
-    {% if entity %}
-    <b class="rg-entity-title">{{ entity.name }}</b>
-    <span class="rg-type-chip">✓ نوع الجهة: جهة {{ entity.entity_type }} معتمدة</span>
-    {% else %}
-    <b class="rg-dim">اكتب اسم الجهة في فورم التأميدة أولًا ثم أعد فتح المودال</b>
-    {% endif %}
+    <div class="rg-entity-cap">الجهة المختارة للراغبين</div>
+    <select class="rg-entity-select" aria-label="الجهة المختارة للراغبين">
+      {% for n in entity_names %}
+      <option value="{{ n }}" {{ 'selected' if entity and entity.name == n }}>{{ n }}</option>
+      {% endfor %}
+    </select>
+    {% if entity %}<span class="rg-type-chip">✓ نوع الجهة: جهة {{ entity.entity_type }} معتمدة</span>{% endif %}
   </div>
 
   <!-- إضافة عضو جديد سريع إلى قوة الجهة -->
@@ -41,7 +41,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="fld rg-grow"><label>الاسم الرتبعي بالكامل</label>
+      <div class="fld rg-grow"><label>الاسم رباعى</label>
         <input name="qa_name" class="rg-qa-name" placeholder="مثال: ملازم / مصطفى السيد عبدالحميد">
       </div>
     </div>
@@ -65,27 +65,26 @@
     </button>
   </div>
 
-  <!-- قائمة القوة المعتمدة: التشيك = راغب بالوجبة اليوم -->
-  <div class="rg-forcebox">
-    <b>قائمة قوة {{ group.label }} المعتمدة ({{ force[fcat] | length | aindic }}):</b>
+  <!-- قائمة القوة المعتمدة: قابلة للطي — التشيك = راغب بالوجبة اليوم -->
+  <details class="rg-forcebox" open>
+    <summary>📋 قائمة قوة {{ group.label }} المعتمدة ({{ force[fcat] | length | aindic }})
+      <span class="rg-caret">▾</span></summary>
     <input class="rg-force-search" placeholder="🔍 بحث في القوة..." aria-label="بحث في القوة">
     <div class="rg-force-list">
       {% for p in force_persons %}
       <div class="rg-force-item" data-name="{{ p.full_name }}">
-        <label class="rg-force-check" title="{{ p.exclude_note or '' }}">
+        <label class="rg-force-check">
           <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
                  data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
           <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b>
             {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}</span>
         </label>
-        <button type="button" class="rg-force-del" data-person="{{ p.id }}"
-                data-name="{{ p.full_name }}" title="حذف من القوة نهائيًا">🗑</button>
       </div>
       {% else %}
       <p class="rg-dim">لا يوجد {{ 'ضباط' if fcat == 'officers' else 'أفراد وصف' }} مسجلين حاليًا في هذه الجهة الشرطية — أضفهم من «إضافة عضو جديد سريع» فوق.</p>
       {% endfor %}
     </div>
-  </div>
+  </details>
 
   <!-- قسمة الأسماء في كشوفات التجهيز اليومية -->
   <div class="rg-slotsbox">
