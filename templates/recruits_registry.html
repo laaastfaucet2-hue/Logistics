@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_field, date_text %}
+{% block title %}المجندين — أصل القوة • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}أصل القوة — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+{% include "recruits_tabs.html" %}
+{% set copy_kind = "registry" %}
+{% include "partials/legacy_notice.html" %}
+{% include "partials/month_copy.html" %}
+
+<div class="rc-grid">
+  {% set is_edit = edit_item and edit_item.id %}
+  <!-- بطاقة التسجيل/التعديل -->
+  <form method="post" action="{{ url_for('recruits.save') }}"
+        enctype="multipart/form-data" autocomplete="off" class="panel rc-form">
+    <div class="panel-head">
+      <h3>{{ '✏️ تعديل بيانات مجند' if is_edit else '➕ تسجيل مجند جديد' }}</h3>
+      {% if is_edit %}<a class="rt-btn dim" href="{{ url_for('recruits.page') }}&tab=registry">إلغاء</a>{% endif %}
+    </div>
+    <p class="date-format-hint" id="date-format-hint">كل التواريخ: يوم/شهر/سنة <bdi dir="ltr">٢٢/٠٩/٢٠٢٦</bdi> — يمكن الكتابة أو الاختيار من التقويم.</p>
+    {% if form_error %}<div class="flash flash-error" role="alert">{{ form_error }}</div>{% endif %}
+    <input type="hidden" name="id" value="{{ edit_item.id if edit_item else '' }}">
+
+    <label class="rc-lbl">الاسم رباعي <span class="req">*</span></label>
+    <input name="name" required value="{{ edit_item.name if edit_item else '' }}" placeholder="مثال: أحمد مجدي محمود محمد">
+
+    <div class="rc-row2">
+      <div><label class="rc-lbl">الرقم العسكري <span class="req">*</span></label>
+        <input name="mil_no" required value="{{ edit_item.mil_no if edit_item else '' }}" placeholder="بالأرقام"></div>
+      <div>{{ date_field('service_start', 'تاريخ دخول الخدمة', edit_item.service_start if edit_item else '') }}</div>
+    </div>
+    <div class="rc-row2">
+      <div>{{ date_field('service_end', 'تاريخ انتهاء الخدمة', edit_item.service_end if edit_item else '') }}</div>
+      <div><label class="rc-lbl">المحافظة</label>
+        <input name="governorate" id="rcGov" data-combo="govList" autocomplete="off"
+               value="{{ edit_item.governorate if edit_item else '' }}" placeholder="اختر أو اكتب محافظة..."></div>
+    </div>
+    <div class="rc-row2">
+      <div><label class="rc-lbl">المدينة / القرية</label>
+        <input name="city" id="rcCity" data-combo="cityList" autocomplete="off"
+               value="{{ edit_item.city if edit_item else '' }}" placeholder="اختر أو اكتب مدينة أو قرية...">
+        <small class="panel-hint">بعد اختيار المحافظة تظهر مدنها — اكتب أي قرية أو مدينة ناقصة لتُضاف للقائمة.</small></div>
+      <div><label class="rc-lbl">العنوان التفصيلي</label>
+        <input name="address" value="{{ edit_item.address if edit_item else '' }}" placeholder="الشارع / علامة مميزة..."></div>
+    </div>
+
+    <label class="rc-lbl">📷 الصورة الشخصية</label>
+    <div class="rc-file">
+      <input type="file" name="photo" accept="image/*">
+      {% if edit_item and edit_item.photo %}
+      <img class="rc-thumb" src="{{ url_for('recruits.file_view', name=edit_item.photo) }}" alt="">
+      {% endif %}
+    </div>
+
+    <div class="rc-cert">
+      <label class="rc-check"><input type="checkbox" name="has_cert" value="1" id="hasCertCb"
+        {% if edit_item and edit_item.has_cert %}checked{% endif %}> يملك شهادة صحية</label>
+      <div class="rc-cert-details" id="certDetails" {% if not (edit_item and edit_item.has_cert) %}hidden{% endif %}>
+        <div class="rc-row2">
+          <div>{{ date_field('cert_date', 'تاريخ الشهادة', edit_item.cert_date if edit_item else '') }}</div>
+          <div>{{ date_field('cert_expiry', 'تاريخ انتهائها', edit_item.cert_expiry if edit_item else '') }}</div>
+        </div>
+        <label class="rc-lbl">📎 صورة الشهادة الصحية</label>
+        <div class="rc-file">
+          <input type="file" name="cert_photo" accept="image/*">
+          {% if edit_item and edit_item.cert_photo %}
+          <a class="rc-link" target="_blank" href="{{ url_for('recruits.file_view', name=edit_item.cert_photo) }}">عرض الشهادة الحالية</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <button class="rt-btn navy rc-save" type="submit">
+      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      {{ 'حفظ التعديل' if is_edit else 'تسجيل المجند' }}
+    </button>
+  </form>
+
+  <!-- جدول القوة -->
+  <div class="panel rc-table-panel">
+    <div class="panel-head"><h3>👥 قوة الوحدة <span class="panel-hint">{{ recruits | length | aindic }} مجندًا</span></h3>
+      {% include "partials/print_btn.html" %}</div>
+    <datalist id="govList">{% for g in govs %}<option value="{{ g }}">{% endfor %}</datalist>
+    <datalist id="cityList">{% for c in cities %}<option value="{{ c }}">{% endfor %}</datalist>
+    <script type="application/json" id="rcPlacesMap">{{ places_by_gov | tojson }}</script>
+    {% if recruits %}
+    <div class="table-wrap">
+      <table class="rt-table">
+        <thead><tr>
+          <th title="تحديد للنسخ">نسخ</th><th>م</th><th>الصورة</th><th>الاسم</th><th>الرقم العسكري</th><th>الخدمة</th>
+          <th>المحافظة / المدينة</th><th>الشهادة الصحية</th><th>إجراءات</th>
+        </tr></thead>
+        <tbody>
+          {% for r in recruits %}
+          <tr>
+            <td><input type="checkbox" form="monthCopyForm" name="recruit_ids" value="{{ r.id }}" aria-label="تحديد {{ r.name }} للنسخ"></td>
+            <td class="num">{{ loop.index | aindic }}</td>
+            <td>{% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% else %}<span class="rc-avatar ph">؟</span>{% endif %}</td>
+            <td><b>{{ r.name }}</b>{% if discharge[r.id] is not none and discharge[r.id] <= 60 %}
+              <span class="rc-mini warn">⏳ {{ discharge[r.id] | aindic }} يومًا للتسريح</span>{% endif %}</td>
+            <td class="num">{{ r.mil_no | aindic }}</td>
+            <td class="num rc-dates">دخول: {{ date_text(r.service_start) }}<br>انتهاء: {{ date_text(r.service_end) }}</td>
+            <td>{{ r.governorate or '—' }}{% if r.city %}<br><span class="dim">{{ r.city }}</span>{% endif %}</td>
+            <td>{% set b = badges[r.id] %}<span class="rc-cert-badge s-{{ {'🟢':'ok','🟠':'soon','🔴':'exp','⚪':'none'}[b[0]] }}">{{ b[0] }} {{ b[1] }}</span>
+              {% if r.cert_expiry %}<div class="dim rc-mini">{{ date_text(r.cert_expiry) }}</div>{% endif %}</td>
+            <td class="ops">
+              <a class="icon-btn edit" title="تعديل البيانات"
+                 href="{{ url_for('recruits.page') }}&tab=registry&edit={{ r.id }}">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </a>
+              <form method="post" class="inline-f" action="{{ url_for('recruits.delete', rid=r.id) }}"
+                    onsubmit="return confirm('حذف «{{ r.name }}» من أصل القوة نهائيًا؟ من هذا الشهر فقط، ولن تتأثر الشهور الأخرى')">
+                <button class="icon-btn del" type="submit" title="حذف المجند">
+                  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </form>
+              <a class="icon-btn print" title="طباعة كشف حالة المجند لهذا الشهر" target="_blank"
+                 href="{{ url_for('recruits.print_doc', what='recruit') }}&rid={{ r.id }}">
+                <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="panel-hint" style="text-align:center;padding:22px 0">لا يوجد مجندون بعد — سجّل أول مجند من البطاقة اليمنى.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/recruits.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

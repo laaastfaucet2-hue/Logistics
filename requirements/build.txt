@@ -1,0 +1,5 @@
+-r desktop.txt
+pyinstaller==6.19.0
+pytest==9.0.2
+fonttools==4.65.0
+brotli==1.2.0

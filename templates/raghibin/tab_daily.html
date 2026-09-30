@@ -1,0 +1,83 @@
+{% set dbase = '/raghibin?tab=daily' %}
+{% set dbase = dbase + ('&sid=' + sid) if sid else dbase %}
+
+{% if ok %}<div class="rg-note ok">✅ {{ ok }}</div>{% endif %}
+{% if err %}<div class="rg-note err">⛔ {{ err }}</div>{% endif %}
+{% if warn %}<div class="rg-note warn">⚠️ {{ warn }}</div>{% endif %}
+
+{% if tameed_totals and (tameed_totals.officers != day_counts.officers or tameed_totals.individuals != day_counts.individuals) %}
+<div class="rg-note warn">⚠️ <b>عدم تطابق يوم {{ sel_day | aindic }}:</b>
+  التأميدة مسجّلة ضباط {{ tameed_totals.officers | aindic }} وراغبين فعليًا {{ day_counts.officers | aindic }}
+  — أفراد {{ tameed_totals.individuals | aindic }} وراغبين فعليًا {{ day_counts.individuals | aindic }}.
+  التنبيه لا يمنع التسجيل.</div>
+{% endif %}
+
+<div class="tm-dict-stack">
+  <!-- التقويم اليومي -->
+  <div class="rg-card">
+    <div class="rg-card-head">
+      <b>🗓️ تقويم {{ month_name }} {{ year | aindic }}</b>
+      <span class="rg-dim">العلامة = عدد الراغبين المسجلين بالأسماء في اليوم</span>
+    </div>
+    <div class="tm-cal" role="grid" aria-label="تقويم الراغبين اليومي">
+      {% for wd in weekdays %}<span class="tm-wd">{{ wd }}</span>{% endfor %}
+      {% for week in weeks %}
+        {% for cell in week %}
+          {% if cell.empty %}<span class="tm-cell empty"></span>
+          {% else %}
+          <a class="tm-cell {{ 'sel' if cell.selected }} {{ 'today' if cell.is_today }} {{ 'has' if cell.count }}"
+             href="{{ dbase }}{{ '&e=' + (entity.id | string) if entity }}&d={{ cell.day }}&c={{ fcat }}"
+             aria-label="يوم {{ cell.day }} {{ cell.count ~ ' راغبين' if cell.count else '' }}">
+            <b>{{ cell.day | aindic }}</b>
+            {% if cell.count %}<i class="tm-dot">{{ cell.count | aindic }}</i>{% endif %}
+          </a>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- اختيار الجهة -->
+  {% if entities | length > 1 %}
+  <div class="rg-card">
+    <div class="rg-card-head"><b>تبديل الجهة</b><span class="rg-dim">جهات القاموس ({{ entities | length | aindic }})</span></div>
+    <div class="rg-entity-list">
+      {% for ent in entities %}
+      <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}" href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}&c={{ fcat }}">
+        <b>{{ ent.name }}</b>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- مربعات اليوم: زرار تبديل ضباط/أفراد + المربعات الذكية -->
+  {% if entity %}
+  <div class="rg-card">
+    <div class="rg-card-head">
+      <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
+      <span class="rg-dim">المربعات بعدد التأميدة — الضباط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · الأفراد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
+    </div>
+    <div class="tm-tabs rg-cat-tabs" aria-label="فئات الراغبين">
+      <a class="tm-tab {{ 'on' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">
+        👮 الضباط <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
+      </a>
+      <a class="tm-tab {{ 'on' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">
+        👥 الأفراد <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
+      </a>
+    </div>
+    {% with back='raghibin', source='manual' %}
+      {% include "raghibin/panel_slots.html" %}
+    {% endwith %}
+  </div>
+  {% else %}
+  <div class="rg-card"><p class="rg-dim">مفيش جهات لسه — سجّل تأميدة أولًا وهتنزل الجهات هنا.</p></div>
+  {% endif %}
+
+  <div class="rg-card rg-files">
+    <b>📁 الملفات المحلية</b>
+    <span class="rg-dim">{{ section_folder }}/{{ '1. (يومي) الراغبين' }}/يوم {{ sel_day | aindic }}/<الجهة>.xlsx —
+    القوة كلها بعلامات اليوم (✓ راغب / ✗ لا / ⊘ مستثنى مميز) بالدباجة والتوقيعات الرسمية،
+    وبيتبنى لحظيًا مع كل حفظ للمربعات.</span>
+  </div>
+</div>

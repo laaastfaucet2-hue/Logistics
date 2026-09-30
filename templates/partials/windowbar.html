@@ -1,0 +1,9 @@
+<div class="windowbar {{ 'is-native' if desktop_mode else '' }}">
+  <div class="window-brand pywebview-drag-region"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt=""><span>وزارة الداخلية — منظومة التعيينات</span><i></i><small>LOGISTICS WORKSPACE</small></div>
+  <span class="window-edition">{{ 'تطبيق سطح المكتب' if desktop_mode else 'معاينة الويب' }} <b dir="ltr">{{ app_version }}</b></span>
+  {% if desktop_mode %}<div class="window-controls" dir="ltr">
+    <button type="button" data-window="minimize" title="تصغير" aria-label="تصغير"><svg viewBox="0 0 16 16"><path d="M3 11h10"/></svg></button>
+    <button type="button" data-window="maximize" title="تكبير / استعادة" aria-label="تكبير أو استعادة"><svg viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg></button>
+    <button type="button" data-window="close" class="window-close" title="إغلاق" aria-label="إغلاق"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button>
+  </div>{% endif %}
+</div>

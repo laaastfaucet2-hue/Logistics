@@ -1,0 +1,93 @@
+/* الهوية المعتمدة: بنفسجي داكن + برتقالي ساطع مع خط Changa المحلي
+   (التصميم المرجعي لقسم التاميدات — آخر توجيه للمستخدم).
+   أسماء الرموز (--brand-gold وإخوتها) بقيت ثابتة حفاظًا على كل ملفات التنسيق
+   القائمة، لكن قيمها تحمل البرتقالي المعتمد — في الكود الجديد استخدم
+   --brand-purple / --brand-orange / --on-orange. ألوان المستندات الرسمية مستقلة. */
+/* الهوية المعتمدة — آخر توجيه للمستخدم (٢٣/٠٩/٢٠٢٦): ألوان «slate + amber»
+   مطابقةً لبرنامجه الثاني، مع خط Tajawal المحلي.
+     الخلفية: slate-950 #020617 والبطاقات slate-900 #0f172a والحدود slate-800 #1e293b
+     التمييز:  amber-500 #f59e0b وhover amber-400 — نص الإجراءات slate-950
+   أسماء الرموز (--brand-gold إلخ) ثابتة للتوافق مع كل ملفات التنسيق،
+   وقيمها الآن تحمل الـslate/amber. ألوان المستندات الرسمية الورقية مستقلة. */
+:root {
+  color-scheme: dark;
+  --font-ui: "Tajawal", "Segoe UI", Tahoma, sans-serif;
+
+  /* Slate العميق — قاعدة الواجهة */
+  --brand-purple: #0f172a;
+  --brand-navy: #0f172a;
+  --window-bg: #020617;
+  --bg0: #020617;
+  --bg1: #0f172a;
+  --card: #0f172a;
+  --card-border: #1e293b;
+  --field-border: #334155;
+  --field-bg: #111e33;
+  --surface-soft: #172033;
+  --surface-gold: #201708;
+  --surface-red: #2b1214;
+
+  /* Amber — لون الإجراءات والتمييز */
+  --brand-orange: #f59e0b;
+  --brand-gold: #f59e0b;
+  --brand-gold-hover: #fbbf24;
+  --on-orange: #020617;
+  --on-gold: #020617;
+  --gold: #f59e0b;
+  --gold-light: #fcd34d;
+  --gold-dark: #b45309;
+  --gold-border: #6b4206;
+  --gold-rgb: 245, 158, 11;
+
+  /* النصوص والحالات (ألوان الحالات تظل مميّزة عن لون التنقل) */
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --green: #6ee7b7;
+  --blue: #7dd3fc;
+  --status-other: #a78bfa;
+  --red: #f87171;
+  --danger-solid: #b91c1c;
+  --orange: #fdba74;
+  --success-soft: #06281c;
+  --success-border: #164e3a;
+  --danger-border: #6b2121;
+  --success-rgb: 110, 231, 183;
+  --danger-rgb: 248, 113, 113;
+  --info-rgb: 125, 211, 252;
+  --other-rgb: 167, 139, 250;
+  --shadow: 0 8px 28px #00000045;
+  --focus-ring: 0 0 0 3px #f59e0b40;
+  --radius: 14px;
+  --window-h: 38px;
+}
+
+/* Paper previews are deliberately independent of the surrounding application. */
+.a4, .rc-doc, .tm-doc {
+  color-scheme: light;
+  --text: #161616;
+  --muted: #5f5f57;
+  --card: #ffffff;
+  --card-border: #deded6;
+  --surface-soft: #f8f8f4;
+  --surface-gold: #fff5d5;
+  --green: #17633f;
+  --red: #ba2015;
+  --blue: #43545d;
+  --status-other: #5e4b78;
+}
+@media print {
+  :root {
+    color-scheme: light;
+    --text: #161616;
+    --muted: #5f5f57;
+    --card: #ffffff;
+    --card-border: #deded6;
+    --surface-soft: #f8f8f4;
+    --surface-gold: #fff5d5;
+    --green: #17633f;
+    --red: #ba2015;
+    --blue: #43545d;
+    --status-other: #5e4b78;
+  }
+  body { background: #ffffff !important; color: #161616 !important; }
+}

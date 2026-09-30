@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_text, period_text %}
+{% block title %}المجندين — {{ {'present':'الحضور','leaves':'الإجازات','absent':'الغياب','other':'أخرى'}[tab] }} • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}{% if tab == 'present' %}حضور يوم {{ period_text(year, month, day) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'leaves' %}إجازات شهر {{ month_name }} {{ year | aindic }}{% elif tab == 'absent' %}سجل الغياب — {{ month_name }} {{ year | aindic }}{% else %}حالات أخرى — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% macro person(r, badges) %}
+<div class="rc-person">
+  {% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% endif %}
+  <div><b>{{ r.name }}</b>
+    <div class="rc-line-mini"><span class="dim">{{ r.mil_no | aindic }}</span>
+      {% set b = badges[r.id] %}<span class="rc-cert-badge sm s-{{ {'🟢':'ok','🟠':'soon','🔴':'exp','⚪':'none'}[b[0]] }}">{{ b[0] }} {{ b[1] }}</span>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+{% block content %}
+{% include "recruits_tabs.html" %}
+
+{% if tab == 'present' %}
+<!-- ==================== الحضور ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>✅ حاضرو يوم {{ period_text(year, month, day) }} <span class="panel-hint">{{ rows | length | aindic }} من {{ recruits | length | aindic }}</span></h3>
+    <div class="rt-actions">
+      <a class="icon-btn print" title="طباعة كشف اليومية كاملًا" target="_blank"
+         href="{{ url_for('recruits.print_doc', what='day') }}&day={{ day }}">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      </a>
+    </div>
+  </div>
+  <div class="rc-stat-chips">
+    {% for st, n in counts.items() %}<span class="rc-chip st-{{ st }}">{{ st }} <b>{{ n | aindic }}</b></span>{% endfor %}
+  </div>
+  {% if rows %}
+  <div class="table-wrap"><table class="rt-table"><thead><tr><th>م</th><th>المجند</th><th>الرقم العسكري</th></tr></thead>
+    <tbody>{% for r, st in rows %}<tr><td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ r.mil_no | aindic }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا حضور مسجل لهذا اليوم.</p>{% endif %}
+</div>
+
+{% elif tab == 'leaves' %}
+<!-- ==================== الإجازات ==================== -->
+{% if upcoming %}
+<div class="rc-banner warn">🛎️ <b>كشف الإجازات المرتقّب (خلال يومين):</b>
+  {% for rid, rs in upcoming.items() %}{% for f, t in rs %}
+    <span class="rc-chip st-إجازة">{{ by_id[rid].name }} — يبدأ يوم {{ period_text(year, month, f) }}</span>
+  {% endfor %}{% endfor %}
+</div>
+{% endif %}
+<div class="panel">
+  <div class="panel-head">
+    <h3>🏖️ إجازات شهر {{ month_name }}</h3>
+    <div class="rt-actions">
+      {% if sheet_leaves %}<a class="icon-btn down" title="تنزيل كشف الإجازات وورد"
+         href="{{ url_for('recruits.docx_download', name=sheet_leaves.name) }}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </a>{% endif %}
+      <a class="icon-btn print" title="طباعة كشف الإجازات" target="_blank"
+         href="{{ url_for('recruits.print_doc', what='month-leaves') }}">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      </a>
+    </div>
+  </div>
+  {% if ranges %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>المجند</th><th>من — إلى</th><th>المدة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+      {% set ns = namespace(i=1) %}
+      {% for rid, rs in ranges.items() %}{% for f, t in rs %}
+      <tr>
+        <td class="num">{{ ns.i | aindic }}</td>{% set ns.i = ns.i + 1 %}
+        <td>{{ person(by_id[rid], badges) }}</td>
+        <td class="num">{{ period_text(year, month, f) }} — {{ period_text(year, month, t) }}</td>
+        <td class="num">{{ (t - f + 1) | aindic }} يومًا</td>
+        <td class="ops">
+          <a class="icon-btn print" title="تصريح إجازة (طباعة+وورد)" target="_blank"
+             href="{{ url_for('recruits.print_doc', what='permit') }}&rid={{ rid }}&from={{ f }}&to={{ t }}">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا إجازات مسجلة هذا الشهر.</p>{% endif %}
+</div>
+
+{% elif tab == 'absent' %}
+<!-- ==================== الغياب ==================== -->
+{% if streaks %}
+<div class="rc-banner danger">🚫 <b>غياب متواصل مقلق:</b>
+  {% for rid, n in streaks.items() %}{% if n >= 3 %}<span class="rc-chip st-غياب">{{ by_id[rid].name }} — {{ n | aindic }} أيام متتالية</span>{% endif %}{% endfor %}
+</div>
+{% endif %}
+<div class="panel">
+  <div class="panel-head"><h3>🚫 سجل الغياب — شهر {{ month_name }}</h3>
+    <div class="rt-actions">{% include "partials/print_btn.html" %}</div></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
+    <tbody>{% for r, d in rows %}<tr>
+      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ period_text(year, month, d) }}</td>
+      <td class="ops"><a class="icon-btn print" title="كشف حالة المجند" target="_blank"
+        href="{{ url_for('recruits.print_doc', what='recruit') }}&rid={{ r.id }}">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا غياب مسجل — ممتاز ✔</p>{% endif %}
+</div>
+
+{% else %}
+<!-- ==================== أخرى ==================== -->
+{% for title, items in groups %}
+<div class="panel">
+  <div class="panel-head"><h3>{{ {'مأمورية':'🧭','مستشفى':'🏥','أخرى':'➕'}[title] }} {{ title }} <span class="panel-hint">{{ items | length | aindic }}</span></h3></div>
+  {% if items %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th>{% if title == 'أخرى' %}<th>الملاحظة</th>{% endif %}</tr></thead>
+    <tbody>{% for item in items %}<tr>
+      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(item[0], badges) }}</td>
+      <td class="num">{{ period_text(year, month, item[1]) }}</td>{% if title == 'أخرى' %}<td>{{ item[2] or '—' }}</td>{% endif %}
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:14px 0">لا سجلات.</p>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

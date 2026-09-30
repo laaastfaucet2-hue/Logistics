@@ -1,0 +1,151 @@
+/* صفحة المجندين — ثيم النظام البنفسجي/البرتقالي بخط Changa المحلي (قاعدة ١٢) */
+
+/* ======== التبويبات ======== */
+.rc-tabs { display: flex; gap: 14px 22px; row-gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+.rc-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 12px;
+  border: 1px solid rgba(var(--gold-rgb),.22); background: var(--card); color: var(--text);
+  text-decoration: none; font-weight: 600; font-size: .86rem; transition: .18s; }
+/* فاصل خطي عمودي بين كل تاب والتاب اللي بعده */
+.rc-tabs .rc-tab + .rc-tab::before { content: ""; position: absolute; inset-inline-start: -11px; top: 50%;
+  transform: translateY(-50%); width: 1.5px; height: 20px; border-radius: 2px;
+  background: linear-gradient(180deg, transparent, rgba(var(--gold-rgb),.55), transparent); }
+.rc-tab:hover { transform: translateY(-2px); border-color: rgba(var(--gold-rgb),.5); color: var(--text); }
+.rc-tab.on { background: var(--surface-gold);
+  border-color: rgba(var(--gold-rgb),.65); color: var(--gold-light); box-shadow: 0 4px 18px rgba(var(--gold-rgb),.15); }
+
+/* ======== التخطيط ======== */
+.rc-grid { display: grid; grid-template-columns: minmax(330px, 420px) 1fr; gap: 16px; align-items: start; }
+.rc-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.rc-journal { display: grid; grid-template-columns: 250px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .rc-grid, .rc-journal { grid-template-columns: 1fr; } }
+
+/* ======== مربع الأيام ======== */
+.rc-daysbox { position: sticky; top: calc(var(--window-h) + 96px); }
+.rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.rc-daybox { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 9px;
+  border: 1px solid var(--card-border); background: var(--card); color: var(--text);
+  text-decoration: none; font-weight: 600; font-size: .8rem; transition: .15s; }
+.rc-daybox:hover { border-color: rgba(var(--gold-rgb),.55); transform: scale(1.06); }
+.rc-daybox.on { background: var(--surface-gold);
+  border-color: var(--brand-gold); color: var(--gold-light); }
+.rc-daybox.locked { border-color: rgba(var(--success-rgb),.5); color: var(--green); }
+.rc-daybox.missing { border-color: rgba(var(--danger-rgb),.55); color: var(--red); animation: rc-pulse 1.8s infinite; }
+/* Selected dates retain readable gold text even when they carry a status. */
+.rc-daybox.on.locked, .rc-daybox.on.missing { color: var(--gold-light); }
+.rc-daybox.today { outline: 2px solid rgba(var(--gold-rgb),.7); outline-offset: 1px; }
+.rc-lock { position: absolute; bottom: 2px; inset-inline-end: 3px; }
+.rc-lock svg { width: 9px; height: 9px; stroke: var(--green); fill: none; stroke-width: 2.4; }
+@keyframes rc-pulse { 50% { box-shadow: 0 0 0 4px rgba(var(--danger-rgb),.14); } }
+.rc-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; font-size: .8125rem; color: var(--muted); }
+.rc-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-inline-end: 6px; }
+.dot.today { background: var(--brand-gold); } .dot.locked { background: var(--green); } .dot.missing { background: var(--red); }
+
+/* ======== اللافتات ======== */
+.rc-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 16px;
+  border-radius: 12px; margin-bottom: 14px; font-weight: 500; font-size: .86rem; }
+.rc-banner.draft { background: rgba(var(--info-rgb),.1); border: 1px solid rgba(var(--info-rgb),.45); color: var(--blue); }
+.rc-banner.locked { background: rgba(var(--success-rgb),.08); border: 1px solid rgba(var(--success-rgb),.4); color: var(--green); }
+.rc-banner.warn { background: rgba(var(--gold-rgb),.09); border: 1px solid rgba(var(--gold-rgb),.45); color: var(--text); }
+.rc-banner.danger { background: rgba(var(--danger-rgb),.09); border: 1px solid rgba(var(--danger-rgb),.5); color: var(--red); }
+.rc-banner.slim { padding: 8px 12px; margin-bottom: 8px; }
+.rc-mini-btn { background: rgba(var(--gold-rgb),.15); border: 1px solid rgba(var(--gold-rgb),.5); color: var(--text);
+  border-radius: 8px; padding: 4px 12px; font-weight: 600; font-size: .8125rem; cursor: pointer; }
+.rc-mini-btn:hover { background: rgba(var(--gold-rgb),.3); }
+
+/* ======== الحالات ======== */
+.rc-chip { display: inline-block; padding: 4px 11px; border-radius: 999px; font-size: .8125rem;
+  font-weight: 600; border: 1px solid var(--card-border); background: var(--card); margin: 2px; }
+.rc-chip b { color: var(--text); }
+.st-حضور { border-color: rgba(var(--success-rgb),.5) !important; color: var(--green) !important; }
+.st-إجازة { border-color: rgba(var(--gold-rgb),.55) !important; color: var(--text) !important; }
+.st-غياب { border-color: rgba(var(--danger-rgb),.55) !important; color: var(--red) !important; }
+.st-مأمورية { border-color: rgba(var(--info-rgb),.5) !important; color: var(--blue) !important; }
+.st-مستشفى { border-color: rgba(var(--other-rgb),.55) !important; color: var(--status-other) !important; }
+.st-أخرى { border-color: rgba(95,95,87,.5) !important; color: var(--text) !important; }
+
+.rc-status { min-width: 118px; }
+.rc-jtable select, .rc-jtable input.rc-status { padding: 6px 10px; background: var(--field-bg); }
+
+/* ======== أشخاص وصور ======== */
+.rc-person { display: flex; align-items: center; gap: 10px; }
+.rc-avatar { width: 38px; height: 38px; border-radius: 10px; object-fit: cover;
+  border: 1px solid rgba(var(--gold-rgb),.3); }
+.rc-avatar.ph { display: inline-grid; place-items: center; background: var(--card); color: var(--muted); }
+.rc-thumb { max-height: 84px; border-radius: 10px; border: 1px solid rgba(var(--gold-rgb),.3); }
+.rc-line-mini { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rc-mini { font-size: .8125rem; } .rc-mini.warn { color: var(--text); font-weight: 600; }
+.rc-mini.gold { color: var(--text); font-weight: 600; }
+
+/* ======== الشهادة الصحية ======== */
+.rc-cert-badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .8125rem; font-weight: 600; }
+.rc-cert-badge.sm { font-size: .8125rem; padding: 2px 7px; }
+.rc-cert-badge.s-ok { color: var(--green); background: rgba(var(--success-rgb),.09); }
+.rc-cert-badge.s-soon { color: var(--text); background: rgba(var(--gold-rgb),.09); }
+.rc-cert-badge.s-exp { color: var(--red); background: rgba(var(--danger-rgb),.1); }
+.rc-cert-badge.s-none { color: var(--muted); background: var(--card); }
+
+/* ======== النماذج ======== */
+.rc-form { position: static; }
+.rc-lbl { display: block; font-size: .8125rem; font-weight: 600; color: var(--muted); margin: 11px 0 5px; }
+.rc-lbl .req { color: var(--red); }
+.rc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rc-file { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* مربعات الإدخال — نفس استايل صفحة المقررات التمونيية حرفيًا (خلفية كحلية + تحديد ذهبي) */
+.rc-form input:not([type=file]):not([type=checkbox]),
+.rc-range input {
+  width: 100%; padding: 12px 14px; border-radius: 11px; font-family: var(--font-ui);
+  font-size: .95rem; font-weight: 500; background: var(--card);
+  border: 1px solid var(--field-border); color: var(--text);
+  outline: none; transition: all .2s; color-scheme: dark; }
+.rc-form input:not([type=file]):not([type=checkbox]):focus,
+.rc-range input:focus { border-color: var(--gold); background: rgba(var(--gold-rgb),.06);
+  box-shadow: 0 0 0 4px rgba(var(--gold-rgb),.14); }
+.rc-form input::placeholder, .rc-range input::placeholder { color: #64748b; }
+.rc-file input[type=file] { font-size: .8125rem; width: 100%; padding: 9px 10px; border-radius: 10px;
+  background: var(--card); border: 1px dashed var(--card-border);
+  color: var(--text); color-scheme: dark; }
+.rc-file input[type=file]::file-selector-button { margin-inline-end: 10px; padding: 6px 14px;
+  border-radius: 8px; border: 1px solid rgba(var(--gold-rgb),.4); cursor: pointer;
+  background: rgba(var(--gold-rgb),.12); color: var(--text); font-weight: 600; font-family: var(--font-ui); }
+.rc-cert { border: 1px dashed rgba(var(--gold-rgb),.3); border-radius: 12px; padding: 4px 12px 12px; margin-top: 12px; }
+.rc-check { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .82rem; cursor: pointer; margin-top: 8px; }
+.rc-check input { accent-color: var(--brand-gold); width: 17px; height: 17px; cursor: pointer; }
+.rc-cert-details { animation: rcCertOpen .25s ease; }
+@keyframes rcCertOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.rc-save { width: 100%; margin-top: 16px; justify-content: center; display: inline-flex; gap: 8px; align-items: center; }
+.rc-link { color: var(--blue); font-size: .8125rem; }
+.rc-dates { font-size: .8125rem; white-space: nowrap; }
+.rc-range { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rc-range .rc-num { width: 64px; text-align: center; }
+.rc-range .rc-ref { min-width: 250px; flex: 1; }
+.rc-stat-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+
+/* ======== الإشعارات الداخلية ======== */
+.rc-notif-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.rc-notif { border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px; }
+.rc-notif.danger { border-color: rgba(var(--danger-rgb),.45); }
+.rc-notif.warn { border-color: rgba(var(--gold-rgb),.4); }
+.rc-notif ul { margin: 9px 0 0; padding-inline-start: 18px; }
+.rc-notif a { color: var(--text); text-decoration: none; }
+.rc-notif a:hover { color: var(--text); }
+
+/* ======== المستند المطبوع ======== */
+.rc-doc { background: #fff; color: #0a1230; border-radius: 14px; padding: 26px 30px; }
+.rc-doc .pd-title { color: #b8860b; }
+.rc-permit p { font-size: 1.02rem; line-height: 2.1; font-weight: 700; }
+.rc-print-table { width: 100%; }
+.rc-print-table th { background: #0a1230 !important; color: #f6d47c !important; }
+
+@media print {
+  body { background: #fff !important; }
+  .no-print, .rc-tabs, .ctx-strip, nav, .side-foot, .bell-wrap { display: none !important; }
+  .rc-doc { border: 0; padding: 0; box-shadow: none; }
+}
+
+@media (max-width: 720px) {
+  .rc-row2 { grid-template-columns: 1fr; }
+  .rc-tabs { gap: 10px 16px; }
+  .rc-tab { padding: 8px 12px; font-size: .875rem; }
+  .rc-range .rc-ref { min-width: 0; flex-basis: 100%; }
+}

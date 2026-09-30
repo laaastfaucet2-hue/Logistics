@@ -1,0 +1,11 @@
+{% if (copy_kind == 'registry' and legacy_registry) or (copy_kind == 'letterhead' and legacy_letterhead) %}
+<div class="legacy-notice">
+  <div><b>وجدنا بيانات من النسخة القديمة</b><p>استورد {{ 'أصل القوة' if copy_kind == 'registry' else 'الدباجة' }} إلى <strong>{{ month_name }} {{ ctx_year | aindic }}</strong> فقط، إن كانت تخص هذا الشهر. المصدر القديم يظل محفوظًا، ولا نوزّعه تلقائيًا على الشهور.</p></div>
+  <form action="{{ url_for('month_copy.legacy', kind=copy_kind) }}" method="post"
+        onsubmit="return confirm('تأكيد استيراد البيانات العامة القديمة إلى الشهر الظاهر فقط؟ سيتم أخذ نسخة احتياطية، دون حذف المصدر القديم.')">
+    <input type="hidden" name="confirmed" value="1"><input type="hidden" name="year" value="{{ ctx_year }}"><input type="hidden" name="month" value="{{ ctx_month }}">
+    {% if copy_kind == 'letterhead' %}<label><input type="checkbox" name="replace" value="1"> أوافق على استبدال دباجة هذا الشهر إن وجدت</label>{% endif %}
+    <button type="submit" class="btn-ghost">استيراد لهذا الشهر</button>
+  </form>
+</div>
+{% endif %}

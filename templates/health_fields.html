@@ -1,0 +1,18 @@
+{# نموذج نصوص تقرير — يُضمَّن مع تفعيل report وfield_rows (يُستخدم في تاب الكشف) #}
+<form method="post" action="{{ url_for('health.save_fields', report=report) }}" class="hl-form">
+  <input type="hidden" name="day" value="{{ day }}">
+  {% for key, label, kind, val in field_rows %}
+  <label class="hl-field"><span>{{ label }}</span>
+    {% if kind == 'area' %}
+    <textarea name="{{ key }}" rows="6" dir="rtl" data-hkey="{{ key }}">{{ val }}</textarea>
+    {% else %}
+    <input type="text" name="{{ key }}" value="{{ val }}" dir="rtl" data-hkey="{{ key }}"
+           {% if kind == 'date' %}placeholder="فارغ = تاريخ يوم الكشف تلقائيًا"{% endif %}>
+    {% endif %}
+  </label>
+  {% endfor %}
+  <div class="hl-actions">
+    <button class="rt-btn green" type="submit">💾 حفظ وتحديث ملف الوورد</button>
+    <button class="rt-btn small dim" type="submit" formaction="{{ url_for('health.reset_fields', report=report) }}">↺ إرجاع النص الرسمي الافتراضي</button>
+  </div>
+</form>

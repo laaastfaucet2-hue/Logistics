@@ -1,0 +1,44 @@
+/* قاعدة الطباعة الرسمية — كل window.print() في المنظومة:
+   دباجة الشهر + اللوجو أعلى الورقة، التوقيعان أسفلها، بلا شريط أو رسائل. */
+.app-print-head, .app-print-foot { display: none; }
+
+.app-print-head .pd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.app-print-head .pd-lh { text-align: right; line-height: 1.85; }
+.app-print-head .pd-lh .l1 { font-weight: 800; font-size: 15px; color: #b8860b; }
+.app-print-head .pd-lh .l2,
+.app-print-head .pd-lh .l3,
+.app-print-head .pd-lh .l4 { font-weight: 700; font-size: 13px; color: #0a1230; }
+.app-print-head .pd-logo { width: 72px; height: 72px; object-fit: contain; }
+.app-print-head .pd-title { text-align: center; font-weight: 800; font-size: 14px;
+  color: #f6d47c; background: #0a1230; border-radius: 8px; padding: 8px 12px; margin: 10px 0 14px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.app-print-head .pd-title:empty { display: none; }
+.app-print-foot .print-sigs { display: flex; justify-content: space-between; gap: 24px; }
+.app-print-foot .ps { display: flex; flex-direction: column; gap: 4px; min-width: 38%;
+  text-align: center; font-weight: 800; color: #1a2033; line-height: 1.8; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff !important; color: #161616 !important; }
+  .windowbar, .sidebar, .topbar, .footer, .bg-fx, .bell-wrap, .bell-panel,
+  .toast, .flash, .menu-btn, .nav, .side-foot, .logout-btn, .brand,
+  .rt-toolbar, .rt-formcard, .rt-tabs, .rt-note, .rt-copy, .rt-kinds, .rt-actions,
+  .ctx-strip, .icon-btn, .mini-btn, .month-copy, .legacy-notice,
+  .combo-list, .modal, .tm-newbtn, .tm-openbar, .tm-hero, .tm-tabs, .tm-calpanel,
+  .tm-formcard, .tm-formcol, .tm-filters, .tm-copybar, .tm-days-open, .tm-actions,
+  .tm-print-mini, .tm-permit-make, .tm-permit-done, .tm-report-actions, .tm-report-desc, .rc-tabs, .rc-form,
+  .rc-daysbox, .rc-range, .rc-journal aside, .workspace-hero, .hero-action,
+  .page-intro, .lh-grid, .lh-savebar, .lh-decide, .lh-del-form, .js-print-page,
+  .no-print, .head-ops, th.ops, td.ops { display: none !important; }
+
+  .app-print-head, .app-print-foot { display: block !important; }
+  body.own-letterhead .app-print-head,
+  body.own-letterhead .app-print-foot { display: none !important; }
+
+  .app, .main { display: block !important; min-height: 0 !important; }
+  .content { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+  .panel { background: #fff !important; border: none !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 0 12px !important; }
+  .table-wrap { overflow: visible !important; border: none !important; }
+  a { text-decoration: none !important; color: inherit !important; }
+}

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_field, date_text, period_text %}
+{% block title %}الترفية • منظومة التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>🎖️ الترفية — دورة مستقلة زي الإمداد والمتعهد</span><span class="sep">•</span>
+  <span class="dim hl-month-chip">📅 شهر <strong>{{ month_name }} {{ year | aindic }}</strong> — ملفات منفصلة شهر بشهر</span>
+</div>
+
+<nav class="hl-tabs">
+  {% for key, name, icon in tabs %}
+  <a class="hl-tab {{ 'on' if sub == key }}" href="{{ url_for('tarfea.page', sub=key) }}">
+    <span class="hl-tab-ico">{{ icon }}</span>
+    <span class="hl-tab-name">{{ name }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+{% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
+{% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
+
+<!-- زرارا الملفات المحلية للتاب — نفس شكل المستودعات وعلى مجلدات 11-الترفية المنفصلة -->
+<div class="wh-fsbar no-print">
+  <a class="rt-btn dim" href="{{ url_for('tarfea.open_folder', sub=sub) }}">📂 فتح مجلد «{{ sub_name }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('tarfea.open_file', sub=sub) }}">📗 فتح ملف «{{ tab_file }}»</a>
+  <a class="icon-btn down" title="تنزيل ملف «{{ tab_file }}» إكسل"
+     href="{{ url_for('tarfea.file', sub=sub) }}">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+  </a>
+</div>
+
+<!-- ==================== تاب الأصناف ==================== -->
+{% if sub == 'items' %}
+<div class="panel">
+  <div class="panel-head"><h3>📦 كتالوج أصناف الترفية — الاسم + المعيار</h3></div>
+  <form method="post" action="{{ url_for('tarfea.items_save') }}" class="wh-form" autocomplete="off">
+    <fieldset class="wh-fs">
+      <legend>📦 صنف جديد</legend>
+      <div class="wh-grid">
+        <label class="wh-f">اسم الصنف
+          <input name="name" data-combo="whItemsList" autocomplete="off" placeholder="مثال: تونة" dir="rtl" required></label>
+        <label class="wh-f">وحدة التعامل (المعيار)
+          <input name="handle_unit" data-combo="whUnitsList" autocomplete="off" placeholder="علبة، عدد، قطعة…" dir="rtl" required></label>
+      </div>
+    </fieldset>
+    <div class="wh-form-actions no-print">
+      <button class="rt-btn green" type="submit">💾 إضافة صنف — وكارته يتفتح في ٣ مخازن</button>
+    </div>
+  </form>
+  {% if items %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th><th>وحدة القاعدة</th><th>عليه حركة</th><th class="no-print">إجراءات</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="name"><b>{{ it.name }}</b></td>
+        <td>{{ it.handle_unit }}</td>
+        <td>{{ it.base_unit }}</td>
+        <td>{{ 'نعم' if has_move.get(it.id) else 'لا' }}</td>
+        <td class="no-print">
+          <form method="post" action="{{ url_for('tarfea.items_delete') }}" class="inline-f">
+            <input type="hidden" name="id" value="{{ it.id }}">
+            <button class="rt-btn small dim" type="submit"
+                    onclick="return confirm('حذف «{{ it.name }}» ودورته كاملة؟ هتمسح إيذاناته وحركاته والافتتاحي وإذون صرفه — مفيش رجوع.')">
+              🗑️ حذف الصنف ودورته</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أصناف ترفية لسه — ابدأ بإضافة أول صنف فوق 👆</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ١ مخازن — قالب المستودعات الحقيقي ==================== -->
+{% elif sub == 'wh1' %}
+{% include "warehouses/tab_wh1.html" %}
+
+<!-- ==================== تاب ٢ مخازن ==================== -->
+{% elif sub == 'wh2' %}
+<div class="panel">
+  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3></div>
+  <div class="wh-subtabs no-print">
+    <button type="button" class="wh-subtab active" data-wh2sub="day">📤 ٢ مخازن</button>
+    <button type="button" class="wh-subtab" data-wh2sub="ghilaf">📦 ٢ مخازن تغليف</button>
+  </div>
+  <div class="wh-subpanel" data-wh2panel="day">
+  <form method="post" action="{{ url_for('tarfea.wh2_add') }}" class="wh-form" autocomplete="off">
+    <fieldset class="wh-fs">
+      <legend>📤 بيانات إذن الصرف</legend>
+      <div class="wh-grid">
+        <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
+          <input name="serial" value="{{ next_serial | aindic }}" inputmode="numeric" autocomplete="off"></label>
+        <label class="wh-f">يوم الإذن (داخل الشهر النشط)
+          <input name="day" value="{{ default_day | aindic }}" inputmode="numeric" autocomplete="off">
+          <span class="wh-hintline wh-day-hint"></span></label>
+        <label class="wh-f">الصنف
+          <select name="item_id" required>
+            <option value="">— اختر الصنف —</option>
+            {% for it in items %}<option value="{{ it.id }}">{{ it.name }} — المتاح {{ it.balance | qty3 }} {{ it.handle_unit }}</option>{% endfor %}
+          </select></label>
+        <label class="wh-f">الكمية المنصرفة (بوحدة التعامل)
+          <input name="qty" inputmode="decimal" autocomplete="off" required></label>
+        <label class="wh-f">منصرف إلى (الجهة/الشخص)
+          <input name="receiver" autocomplete="off" dir="rtl"></label>
+        <label class="wh-f">المسؤول عن الصرف
+          <input name="responsible" autocomplete="off" dir="rtl"></label>
+        <label class="wh-f">ملاحظات
+          <input name="notes" autocomplete="off" dir="rtl"></label>
+      </div>
+    </fieldset>
+    <div class="wh-form-actions no-print">
+      <button class="rt-btn green" type="submit">💾 حفظ إذن الصرف</button>
+      <span class="wh-hintline">بيخصم من كارت ٣ مخازن تلقائيًا وينزل في سجل ٥ مخازن — مفيش رصيد سالب</span>
+    </div>
+  </form>
+  {% if issues %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>رقم</th><th>اليوم</th><th>الصنف</th><th>الكمية</th><th>منصرف إلى</th><th>المسؤول</th><th>ملاحظات</th><th class="no-print">إجراءات</th></tr></thead>
+    <tbody>{% for i in issues %}
+      <tr><td class="num">{{ i.serial | aindic }}</td><td>{{ i.day | aindic }} {{ month_name }}</td>
+        <td class="name"><b>{{ i.item_name or '—' }}</b></td><td class="num">{{ i.qty | qty3 }} {{ i.unit }}</td>
+        <td>{{ i.receiver or '—' }}</td><td>{{ i.responsible or '—' }}</td><td>{{ i.notes or '—' }}</td>
+        <td class="no-print"><form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=i.id) }}" class="inline-f">
+          <button class="rt-btn small dim" type="submit">🗑️ حذف</button></form></td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش إذون صرف لسه</div>{% endif %}
+  </div>
+  <div class="wh-subpanel" data-wh2panel="ghilaf" hidden>
+    {% if issues_pack %}
+    <div class="wh-scroll"><table class="rt-table wh-table">
+      <thead><tr><th>رقم</th><th>اليوم</th><th>الصنف</th><th>الكمية المنصرفة</th>
+        <th>المنصرف بالتغليف</th><th>نوع التغليف</th><th>منصرف إلى</th><th>المسؤول</th></tr></thead>
+      <tbody>{% for p in issues_pack %}
+        <tr><td class="num">{{ p.i.serial | aindic }}</td><td>{{ p.i.day | aindic }} {{ month_name }}</td>
+          <td class="name"><b>{{ p.i.item_name or '—' }}</b></td>
+          <td class="num">{{ p.i.qty | qty3 }} {{ p.i.unit }}</td>
+          <td>{{ p.pack }}</td><td>{{ p.kind }}</td>
+          <td>{{ p.i.receiver or '—' }}</td><td>{{ p.i.responsible or '—' }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="hl-empty">مفيش إذون صرف لسه — أول إذن هيظهر هنا بالتغليف</div>{% endif %}
+  </div>
+</div>
+
+<!-- ==================== تاب ٣ مخازن — قالب المستودعات الحقيقي ==================== -->
+{% elif sub == 'wh3' %}
+{% include "warehouses/tab_wh3.html" %}
+<div class="panel">
+  <div class="panel-head"><h3>📊 كشف جرد الأرصدة — آخر رصيد لكل صنف</h3></div>
+  {% if stock %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>آخر رصيد</th></tr></thead>
+    <tbody>{% for s in stock %}
+      <tr><td class="num">{{ loop.index | aindic }}</td><td class="name"><b>{{ s.name }}</b></td>
+        <td>{{ s.unit }}</td><td class="num"><b>{{ s.balance | qty3 }}</b></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أصناف</div>{% endif %}
+</div>
+
+<!-- ==================== تاب ٥ مخازن ==================== -->
+{% elif sub == 'wh5' %}
+<div class="panel">
+  <div class="panel-head"><h3>📋 سجل ٥ مخازن اليومي — مشتق تلقائيًا من ١ و٢ و٣ مخازن</h3></div>
+  <div class="hl-hint row"><span>الكميات بتظهر <b>بالمعيار (وحدة التعامل)</b> وليس بالتغليف — وبيتحدث تلقائيًا مع كل رصيد افتتاحي أو إذن إضافة أو صرف.</span></div>
+  {% if t5 %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>التاريخ</th><th>رقم الإذن</th><th>وارد من / منصرف إلى</th>
+      <th>قيمة الأصناف المضافة</th><th>قيمة الأصناف المنصرفة</th>
+      <th>البيان والملحوظات والتفاصيل</th><th>المسؤول عن الصرف</th><th class="no-print">إجراءات</th></tr></thead>
+    <tbody>{% for r in t5 %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td>{{ r.day | aindic }} {{ month_name }}</td>
+        <td class="num">{{ r.permit_no | aindic if r.permit_no else 'رصيد' }}</td>
+        <td>{{ r.party }}</td>
+        <td class="num">{% if r.added %}{{ r.added | qty3 }} {{ r.unit }}{% else %}—{% endif %}</td>
+        <td class="num">{% if r.issued %}{{ r.issued | qty3 }} {{ r.unit }}{% else %}—{% endif %}</td>
+        <td>{{ r.details }}</td>
+        <td>{{ r.responsible or '—' }}</td>
+        <td class="no-print">{% if r.kind == 'wh2' %}
+          <form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=r.issue_id) }}" class="inline-f">
+            <button class="rt-btn small dim" type="submit">🗑️</button></form>
+        {% elif r.kind == 'wh1' %}<a class="rt-btn small dim" href="{{ url_for('warehouses.page', cycle='tarfea', sub='wh1', wh1edit=r.serial) }}">✏️</a>
+        {% else %}<span class="hl-hint">افتتاحي</span>{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">السجل فاضي — أول ما تسجل رصيد افتتاحي أو إذن إضافة أو صرف هينزل هنا تلقائيًا</div>{% endif %}
+</div>
+
+<!-- ==================== تاب مخزن الترفية — مخزن منفصل تمامًا ==================== -->
+{% elif sub == 'store' %}
+<div class="panel">
+  <div class="panel-head"><h3>🏠 مخزن الترفية — حركة المخزن مجمعه</h3></div>
+  {% if store.inn or store.out %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th>
+      <th>الوحدة</th><th>التغليف</th><th>المستند</th></tr></thead>
+    <tbody>{% for row in store.inn %}
+      <tr><td class="num">{{ loop.index | aindic }}</td>
+        <td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td><td>إضافة</td>
+        <td class="name"><b>{{ row.item }}</b></td><td class="num">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td><td>{{ row.pack_label or '—' }}</td><td>{{ row.doc }}</td></tr>
+    {% endfor %}{% for row in store.out %}
+      <tr class="wh-issue-row"><td class="num">{{ (store.inn | length + loop.index) | aindic }}</td>
+        <td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td><td>صرف</td>
+        <td class="name"><b>{{ row.item }}</b></td><td class="num">{{ row.qty | qty3 }}</td>
+        <td>{{ row.unit }}</td><td>{{ row.pack_label or '—' }}</td><td>{{ row.doc }} — إلى: {{ row.receiver }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش حركة لسه — سجّل رصيد افتتاحي أو إذن إضافة من ١ مخازن</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>🧾 حركة كل صنف — مخزن الترفية</h3></div>
+  {% if store_per_item %}
+    {% for name, g in store_per_item.items() %}
+    <h4 style="margin:12px 0 4px;color:var(--gold-light)">▪ {{ name }} <small>({{ g.kind }})</small></h4>
+    <div class="wh-scroll"><table class="rt-table wh-table">
+      <thead><tr><th>النوع</th><th>التاريخ</th><th>الكمية</th><th>المستند</th></tr></thead>
+      <tbody>{% for row in g.inn %}
+        <tr><td>إضافة</td><td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{{ row.qty | qty3 }} {{ row.unit }}</td><td>{{ row.doc }}</td></tr>
+      {% endfor %}{% for row in g.out %}
+        <tr class="wh-issue-row"><td>صرف</td><td><bdi dir="ltr">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{{ row.qty | qty3 }} {{ row.unit }}</td><td>{{ row.doc }} — إلى: {{ row.receiver }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% endfor %}
+  {% else %}<div class="hl-empty">مفيش أصناف بحركة لسه</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>📊 كشف جرد أرصدة مخزن الترفية</h3></div>
+  {% if store_balances %}
+  <div class="wh-scroll"><table class="rt-table wh-table">
+    <thead><tr><th>م</th><th>الصنف</th><th>الرصيد</th><th>الوحدة</th><th>الرصيد بالتغليف</th></tr></thead>
+    <tbody>{% for name, qty, pack, unit in store_balances %}
+      <tr><td class="num">{{ loop.index | aindic }}</td><td class="name"><b>{{ name }}</b></td>
+        <td class="num"><b>{{ qty | qty3 }}</b> {{ unit }}</td><td>{{ unit }}</td>
+        <td>{{ pack }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="hl-empty">مفيش أرصدة لسه</div>{% endif %}
+</div>
+{% endif %}
+
+<div class="panel hl-folders">
+  <div class="panel-head"><h3>📁 مكان الملفات المحلية — منفصلة شهر بشهر</h3></div>
+  <pre dir="ltr">{{ folder_path }}</pre>
+  <span class="hl-hint">├── الأصناف/كشف الأصناف.xlsx · ├── ١ مخازن إذون الإضافة/ · ├── ٢ مخازن إذون الصرف/ ·
+├── ٣ مخازن دفتر الأصناف/ · └── ٥ مخازن السجل اليومي/ — كل حفظ بيحدّث الملفات فورًا.</span>
+</div>
+
+<!-- قوائم الكومبو وبيانات JS (نفس معرفات المستودعات — تقرأها combo.js وwarehouses.js) -->
+<datalist id="whUnitsList">{% for u in units %}<option value="{{ u }}"></option>{% endfor %}</datalist>
+<datalist id="whSuppliersList">{% for n in supplier_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whProducersList">{% for n in producers %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whItemsList">{% for n in items_data %}<option value="{{ n }}"></option>{% endfor %}</datalist>
+<datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
+<datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
+<datalist id="whMissingList"></datalist>
+<datalist id="whLooseUnitsList"><option value="كجم"></option><option value="لتر"></option><option value="جرام"></option><option value="علبة"></option></datalist>
+<datalist id="whInnerKindsList">{% for u in units %}<option value="{{ u }}"></option>{% endfor %}{% for k in pack_kinds %}{% if k != "بدون تغليف" %}<option value="{{ k }}"></option>{% endif %}{% endfor %}<option value="باكت"></option><option value="علبة"></option></datalist>
+<script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
+<script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
+<script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>
+<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month} | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/warehouses.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

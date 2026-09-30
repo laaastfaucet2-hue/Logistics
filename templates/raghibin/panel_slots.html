@@ -1,0 +1,47 @@
+{# جزء مربعات الراغبين الذكية — يُضمَّن في التاب اليومي ويُجلب في مودال التأميدات.
+   يحتاج: entity · sel_day · fcat · slots · force · back · source (+sid اختياري) #}
+{% set dlist = 'rgForceOfficers' if fcat == 'officers' else 'rgForceIndividuals' %}
+{% set group = slots[fcat] %}
+<form method="post" action="/raghibin/daily/save" class="rg-slots-form" data-ragboxes>
+  <input type="hidden" name="e" value="{{ entity.id }}">
+  <input type="hidden" name="d" value="{{ sel_day }}">
+  <input type="hidden" name="cat" value="{{ fcat }}">
+  <input type="hidden" name="back" value="{{ back }}">
+  <input type="hidden" name="source" value="{{ source }}">
+  {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+  <input type="hidden" name="new_names" value="" class="rg-new-names">
+
+  <datalist id="{{ dlist }}">
+    {% for n in force[fcat] %}<option value="{{ n }}"></option>{% endfor %}
+  </datalist>
+
+  <div class="rg-slots-head">
+    <b>مربعات {{ group.label }} الراغبين — يوم {{ sel_day | aindic }}</b>
+    <span class="rg-dim">
+      {% if group.has_tameeda %}
+        التأميدة: {{ group.tameeda | aindic }} مربع — المسجل بالأسماء: {{ group.count | aindic }}
+      {% elif group.count %}
+        مفيش تأميدة ليوم {{ sel_day | aindic }} — المربعات المملوءة هي المسجل سلفًا
+      {% else %}
+        مفيش تأميدة ليوم {{ sel_day | aindic }} — سجّل التأميدة لتظهر مربعاتها
+      {% endif %}
+    </span>
+  </div>
+
+  {% if group.boxes %}
+  <div class="rg-slots-grid">
+    {% for name in group.boxes %}
+    <input class="rag-slot" name="names" value="{{ name or '' }}"
+           data-combo="{{ dlist }}" autocomplete="off"
+           placeholder="{{ loop.index | aindic }}. اكتب اسم الراغب (بحث ذكي)">
+    {% endfor %}
+  </div>
+  <p class="rg-dim rg-slots-hint">الاسم يُجلب بالبحث الذكي من «الجهات والكوادر» — وأي اسم
+  جديد هيسألك: هل تريد إضافته كقوة دائمة للجهة؟ (نعم = يدخل قوة الكوادر تلقائيًا).
+  حفظ المربعات هو كشف الراغبين كاملًا لليوم — الفاضي يعني غير راغب.</p>
+  <button class="rt-btn gold" type="submit">💾 حفظ أسماء {{ group.label }} الراغبين يوم {{ sel_day | aindic }}</button>
+  {% else %}
+  <p class="rg-dim">لا توجد مربعات — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }} أولًا
+  (عدد المربعات = أعداد التأميدة).</p>
+  {% endif %}
+</form>

@@ -1,0 +1,19 @@
+<details class="month-copy panel">
+  <summary><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>
+    نسخ {{ 'أصل القوة' if copy_kind == 'registry' else 'الدباجة والتوقيعات' }} إلى شهر آخر
+    <small>نسخة مستقلة • بدون تغيير المصدر</small>
+  </summary>
+  <form id="monthCopyForm" method="post" action="{{ url_for('month_copy.copy', kind=copy_kind) }}" class="copy-controls">
+    <input type="hidden" name="year" value="{{ ctx_year }}"><input type="hidden" name="month" value="{{ ctx_month }}">
+    <label>السنة المستهدفة<input name="target_year" data-combo="copyYears" placeholder="اختر السنة" required autocomplete="off"></label>
+    <label>الشهر المستهدف<input name="target_month" data-combo="copyMonths" placeholder="اختر الشهر" required autocomplete="off"></label>
+    <datalist id="copyYears">{% for y in years %}<option value="{{ y | aindic }}">{% endfor %}</datalist>
+    <datalist id="copyMonths">{% for n, label in months %}<option value="{{ label }}">{% endfor %}</datalist>
+    {% if copy_kind == 'registry' %}
+    <fieldset><legend>المجندون المراد نسخهم</legend><label><input type="radio" name="scope" value="all" checked> الكل</label>
+    <label><input type="radio" name="scope" value="selected"> المحددون في الجدول فقط</label></fieldset>
+    {% endif %}
+    <button type="submit" class="btn-gold">معاينة النسخ <span aria-hidden="true">←</span></button>
+    <p class="copy-note">{% if copy_kind == 'registry' %}تُنقل البيانات والصور والشهادات فقط، دون الحضور أو الإجازات أو اليومية. الأرقام العسكرية الموجودة تُترك دون تعديل.{% else %}تُنقل الأسطر واللوجو والتوقيعات. أي استبدال لدباجة موجودة يحتاج تأكيدك.{% endif %}</p>
+  </form>
+</details>

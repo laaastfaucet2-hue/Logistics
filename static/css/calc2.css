@@ -1,0 +1,69 @@
+/* آلة حاسبة ٢ مخازن */
+.c2-bar { padding: 16px 18px; margin-bottom: 14px; }
+.c2-dates { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.c2-dates label, .c2-force label, .c2-meta label {
+  display: flex; flex-direction: column; gap: 5px; font-size: .82rem; font-weight: 700; }
+.c2-dates input, .c2-force input, .c2-meta input, .c2-actual {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--field-border);
+  background: var(--card); color: var(--text); font-weight: 600; }
+.c2-force, .c2-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; padding: 8px 4px 12px; }
+.c2-force .wide { grid-column: span 2; }
+
+.c2-list { display: flex; flex-direction: column; gap: 14px; }
+.c2-day-h { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px;
+  background: var(--brand-gold); color: var(--on-gold); font-size: .95rem; font-weight: 800; }
+.c2-tm { display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  border-radius: 14px; border: 2px solid var(--gold-border); margin-bottom: 8px; }
+.c2-tm-head { font-size: .82rem; font-weight: 800; padding: 4px 2px 2px; }
+.c2-tm.c0 { border-color: #f59e0b; background: rgba(245, 158, 11, .10); }
+.c2-tm.c1 { border-color: #2dd4bf; background: rgba(45, 212, 191, .10); }
+.c2-tm.c2 { border-color: #a78bfa; background: rgba(167, 139, 250, .12); }
+.c2-tm.c3 { border-color: #fb7185; background: rgba(251, 113, 133, .12); }
+.c2-tm.c4 { border-color: #38bdf8; background: rgba(56, 189, 248, .12); }
+.c2-tm.c5 { border-color: #a3e635; background: rgba(163, 230, 53, .10); }
+.c2-tm.c0 .c2-tm-head { color: #fcd34d; }
+.c2-tm.c1 .c2-tm-head { color: #99f6e4; }
+.c2-tm.c2 .c2-tm-head { color: #ddd6fe; }
+.c2-tm.c3 .c2-tm-head { color: #fecdd3; }
+.c2-tm.c4 .c2-tm-head { color: #bae6fd; }
+.c2-tm.c5 .c2-tm-head { color: #d9f99d; }
+
+.c2-pickrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px; width: 100%; text-align: right; padding: 10px 12px; border-radius: 12px;
+  border: 1px dashed rgba(255,255,255,.12); background: rgba(2, 6, 23, .35);
+  color: inherit; font-family: inherit; cursor: pointer; }
+.c2-pickrow:hover { border-color: currentColor; background: rgba(2, 6, 23, .55); }
+.c2-pickrow.on { border-style: solid; box-shadow: inset 0 0 0 1px currentColor; }
+.c2-pick-who { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.c2-pick-who small, .c2-chip small { background: #166534; color: #bbf7d0; border-radius: 999px;
+  padding: 1px 8px; font-size: .72rem; font-weight: 800; }
+.c2-pick-who small.main, .c2-chip small.main { background: #92400e; color: #fde68a; }
+
+.c2-box { min-height: 92px; border: 1px dashed var(--gold-border); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(245, 158, 11, .04); }
+.c2-box-empty { color: var(--muted); font-size: .88rem; font-weight: 600; padding: 18px 8px; }
+.c2-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  background: #0f172a; border: 1px solid rgba(255,255,255,.12); color: #fde68a; border-radius: 12px;
+  padding: 8px 10px; font-weight: 700; }
+.c2-chip-force { font-size: .75rem; color: #cbd5e1; font-weight: 600; }
+.c2-x { width: 22px; height: 22px; border: 0; border-radius: 8px; background: #334155;
+  color: #fff; cursor: pointer; font-size: 14px; line-height: 1; margin-right: auto; }
+
+.c2-meals { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 4px 2px 10px;
+  font-weight: 700; }
+.c2-force-total { margin-right: auto; color: var(--gold-light); }
+.c2-table th { font-size: .78rem; }
+.c2-pp { min-width: 132px; display: flex; flex-direction: column; gap: 4px; }
+.c2-meal { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  font-size: .78rem; font-weight: 700; }
+.c2-meal span { color: var(--gold-light); }
+.c2-meal b { font-variant-numeric: tabular-nums; color: var(--text); }
+.c2-pp-cus { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--gold-border); }
+.c2-pp-cus em { display: block; font-style: normal; font-size: .7rem; font-weight: 800;
+  color: var(--brand-gold); margin-bottom: 4px; }
+.c2-save { margin: 18px 0 28px; }
+.c2-form .panel { margin-bottom: 14px; }
+@media print {
+  .c2-bar, .c2-save, .c2-list, .c2-x { display: none !important; }
+}

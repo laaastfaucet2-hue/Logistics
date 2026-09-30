@@ -1,0 +1,357 @@
+/* ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر */
+/* مستودعات وسجلات — الدورة المخزنية (سجل الإمداد / سجل المتعهد)
+   هوية slate/amber المعتمدة من theme.css — بلا أي بنفسجي. */
+
+.wh-hero { display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.wh-hero-lines .wh-l1 { display: block; font-size: 1.35rem; font-weight: 800; color: var(--text); }
+.wh-hero-lines .wh-l2 { display: block; font-size: .88rem; color: var(--muted); margin-top: 4px; }
+.wh-hero-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.wh-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 999px; background: var(--card); border: 1px solid var(--card-border);
+  font-size: .82rem; color: var(--muted); }
+.wh-chip.month { border-color: var(--gold-border); color: var(--gold-light);
+  background: var(--surface-gold); }
+
+/* الدورتان */
+.wh-cycles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px; margin-bottom: 14px; }
+.wh-cycle { display: flex; align-items: center; gap: 13px; padding: 14px 18px;
+  border-radius: 13px; text-decoration: none; background: var(--card);
+  border: 1px solid var(--card-border); color: var(--muted); transition: all .15s; }
+.wh-cycle:hover { border-color: var(--gold-border); color: var(--text); }
+.wh-cycle.on { background: var(--brand-orange); border-color: var(--brand-orange); color: var(--on-orange); }
+.wh-cycle-ic { font-size: 1.6rem; }
+.wh-cycle-txt b { display: block; font-size: 1.05rem; font-weight: 800; }
+.wh-cycle-txt small { font-size: .78rem; opacity: .8; }
+
+/* التويبات الفرعية */
+.wh-tabs { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 12px; }
+.wh-tab { display: inline-flex; align-items: center; gap: 9px; padding: 11px 18px;
+  border-radius: 11px; text-decoration: none; font-weight: 600; font-size: .92rem;
+  background: var(--card); border: 1px solid var(--card-border); color: var(--muted);
+  transition: border-color .15s, background .15s, color .15s; }
+.wh-tab:hover { border-color: var(--gold-border); color: var(--text); }
+.wh-tab.on { background: var(--brand-orange); border-color: var(--brand-orange); color: var(--on-orange); }
+.wh-count { min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px;
+  display: inline-grid; place-items: center; font-size: .76rem;
+  background: rgba(255, 255, 255, .14); color: inherit; }
+.wh-tab.on .wh-count { background: rgba(0, 0, 0, .18); }
+
+/* شريط أزرار الملفات */
+.wh-fsbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* زر الإضافة الأمبر — نفس نمط التأميدات */
+.wh-newbtn { display: flex; align-items: center; justify-content: center; gap: 11px;
+  width: 100%; padding: 13px 20px; margin: 0 0 14px; border-radius: 12px;
+  background: var(--brand-gold); border: 1px solid var(--brand-gold);
+  color: var(--on-gold); font-family: var(--font-ui); font-size: 15px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 7px 20px rgba(245, 158, 11, .25); transition: all .14s; }
+.wh-newbtn:hover { background: var(--brand-gold-hover); border-color: var(--brand-gold-hover); }
+.wh-newbtn-plus { width: 28px; height: 28px; border-radius: 8px; display: grid;
+  place-items: center; background: rgba(2, 6, 23, .16); font-size: 1.2rem; font-weight: 800; }
+
+/* النماذج */
+.wh-form { padding: 18px; margin-bottom: 16px; }
+.wh-form.wh-open { display: block; }
+.wh-form-title { margin: 0 0 6px; font-size: 1.05rem; color: var(--gold-light); }
+/* شريط وضع تعديل إذن ١ مخازن (توجيه ٢٧/٠٩) */
+.wh-edit-banner { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  justify-content: space-between; background: color-mix(in srgb, var(--gold) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 10px;
+  padding: 8px 12px; margin-bottom: 10px; font-size: .95rem; }
+.wh-row-actions { white-space: nowrap; }
+.wh-row-actions .rt-btn { margin-inline-start: 4px; }
+.wh-form-hint { margin: 0 0 14px; font-size: .84rem; color: var(--muted); }
+.wh-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px; }
+.wh-f { display: flex; flex-direction: column; gap: 6px; font-size: .86rem;
+  color: var(--muted); min-width: 0; }
+.wh-f > * { min-width: 0; }
+.wh-f i { color: var(--gold); font-style: normal; }
+.wh-f small { color: var(--muted); opacity: .8; }
+.wh-f input, .wh-f textarea, .wh-f select { background: var(--field-bg);
+  border: 1px solid var(--field-border); border-radius: 9px; color: var(--text);
+  padding: 9px 12px; font-family: var(--font-ui); font-size: .95rem; width: 100%; }
+.wh-f textarea { resize: vertical; }
+.wh-f-wide { grid-column: 1 / -1; }
+.wh-f-hint { justify-content: center; }
+.wh-hintline { font-size: .82rem; color: var(--gold-light); min-height: 1.2em; }
+.wh-form-actions { display: flex; gap: 10px; margin-top: 14px; }
+.wh-pack { border: 1px dashed var(--gold-border); border-radius: 11px; padding: 12px 14px;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 12px;
+  background: var(--surface-soft); }
+.wh-pack legend { font-size: .82rem; color: var(--gold-light); padding-inline: 6px; }
+.wh-pack label { display: flex; flex-direction: column; gap: 5px; font-size: .78rem;
+  color: var(--muted); min-width: 0; }
+.wh-pack input { background: var(--field-bg); border: 1px solid var(--field-border);
+  border-radius: 8px; color: var(--text); padding: 7px 10px; width: 100%;
+  font-family: var(--font-ui); }
+.wh-pack .wh-hintline { grid-column: 1 / -1; }
+
+/* الجداول */
+.wh-scroll { overflow-x: auto; }
+.wh-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.wh-table th, .wh-table td { padding: 9px 10px; text-align: right;
+  border-bottom: 1px solid var(--card-border); white-space: nowrap; }
+.wh-table thead th { color: var(--gold-light); font-size: .8rem;
+  background: var(--surface-soft); position: sticky; top: 0; }
+.wh-table td.name b { color: var(--text); }
+.wh-table td.num { font-variant-numeric: tabular-nums; }
+.wh-table td.ops { display: flex; gap: 6px; align-items: center; }
+.wh-table td.empty, .wh-table tr:only-child td.empty,
+.rt-table td.empty { text-align: center; color: var(--muted); padding: 22px 10px; }
+.wh-table tfoot td { font-weight: 800; color: var(--gold-light);
+  border-top: 2px solid var(--gold-border); background: var(--surface-gold); }
+
+/* دفتر ٣ مخازن */
+.wh-ledger-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr);
+  gap: 14px; align-items: start; }
+.wh-items-col > * { min-width: 0; }
+.wh-items-list { display: flex; flex-direction: column; gap: 7px; margin-top: 10px;
+  max-height: 420px; overflow-y: auto; padding-inline-end: 3px; }
+.wh-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border-radius: 10px; text-decoration: none; background: var(--surface-soft);
+  border: 1px solid var(--card-border); color: var(--muted); transition: all .13s; }
+.wh-item b { color: var(--text); font-size: .92rem; }
+.wh-item small { font-size: .76rem; }
+.wh-item:hover { border-color: var(--gold-border); }
+.wh-item.on { border-color: var(--brand-orange); background: var(--surface-gold); }
+.wh-item.on b { color: var(--gold-light); }
+.wh-missing { margin-top: 14px; border-top: 1px dashed var(--card-border); padding-top: 10px; }
+.wh-missing > b { font-size: .8rem; color: var(--muted); display: block; margin-bottom: 7px; }
+.wh-missing-item { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px;
+  border-radius: 8px; text-decoration: none; color: var(--muted); font-size: .84rem; }
+.wh-missing-item:hover { background: var(--surface-soft); color: var(--gold-light); }
+.wh-missing-item small { opacity: .7; }
+.wh-card { min-width: 0; }
+.wh-card-name { color: var(--gold-light); }
+.wh-inline-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 10px 0 12px; padding: 10px 12px; border-radius: 10px;
+  background: var(--surface-soft); border: 1px dashed var(--card-border); }
+.wh-inline-form label { display: flex; flex-direction: column; gap: 4px;
+  font-size: .78rem; color: var(--muted); }
+.wh-inline-form input { background: var(--field-bg); border: 1px solid var(--field-border);
+  border-radius: 8px; color: var(--text); padding: 7px 10px; width: 190px;
+  font-family: var(--font-ui); }
+.wh-badge-dev { font-size: .74rem; color: var(--muted); border: 1px dashed var(--field-border);
+  border-radius: 999px; padding: 4px 10px; }
+.wh-opener-row td { color: var(--muted); font-style: italic; background: var(--surface-soft); }
+.wh-issue-row td { background: rgba(244, 63, 94, .05); }
+.wh-issued { color: var(--red); font-weight: 800; }
+.wh-opener { border: 1px dashed var(--gold-border); border-radius: 12px; padding: 14px;
+  margin: 0 0 14px; background: var(--surface-gold); }
+.wh-opener-title { display: block; font-size: .95rem; color: var(--gold-light); margin-bottom: 10px; }
+
+/* دفتر ٢ مخازن */
+.wh-note { font-size: .86rem; color: var(--muted); margin: 0 0 14px; }
+.wh-note.dim { margin: 6px 0 0; font-size: .8rem; }
+.wh-note b { color: var(--text); }
+.wh-permit { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 13px 15px; margin-bottom: 13px; background: var(--surface-soft); }
+.wh-permit-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 8px; }
+.wh-permit-no { color: var(--gold-light); font-size: .98rem; }
+.wh-permit-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem;
+  color: var(--muted); margin-bottom: 10px; }
+
+/* شاشات صغيرة */
+@media (max-width: 980px) {
+  .wh-cycles { grid-template-columns: 1fr; }
+  .wh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-pack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-ledger-grid { grid-template-columns: 1fr; }
+}
+
+/* الطباعة الرسمية: الجداول المهمة فقط — الدباجة أعلى والتوقيعان أسفل (من base/print.css) */
+@media print {
+  .wh-hero-meta, .wh-cycles, .wh-tabs, .wh-fsbar, .wh-newbtn, .wh-form,
+  .no-print, .wh-inline-form, .wh-missing, .wh-items-col { display: none !important; }
+  .wh-hero-lines .wh-l1 { font-size: 1.05rem; }
+  .wh-ledger-grid { display: block; }
+  .wh-scroll { overflow: visible; }
+  .wh-table { font-size: .72rem; }
+  .wh-table th, .wh-table td { white-space: normal; }
+  .wh-table thead th { position: static; }
+}
+
+/* توزيع المخازن + التفريدة + كروت المخازن */
+.wh-split-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 8px; margin-bottom: 7px; align-items: center; }
+.wh-split-row input { background: var(--field-bg); border: 1px solid var(--field-border);
+  border-radius: 8px; color: var(--text); padding: 8px 10px; width: 100%;
+  font-family: var(--font-ui); min-width: 0; }
+#whSplitAdd { margin-top: 4px; }
+.wh-taf-title { display: block; font-size: .85rem; color: var(--gold-light); margin: 12px 0 8px; }
+.wh-store-card { margin-bottom: 16px; }
+.wh-in { color: var(--green); font-weight: 800; }
+.wh-out { color: var(--red); font-weight: 800; }
+
+/* خلية التغليف: الصيغة اللفظية كاملة بلا لف مخل (توجيه ٢٦/٠٩) */
+.wh-pack-cell { min-width: 210px; font-size: .78rem; line-height: 1.9; }
+@media (max-width: 720px) {
+  .wh-pack-cell { min-width: 160px; }
+}
+
+/* مربع التغليف الموحد (٢٦/٠٩): النوع ← العبوة كام؟ ← علب اختيارية ← السائب بوحدته */
+fieldset.wh-pack { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 6px 14px 10px; margin: 2px 0 8px; }
+fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
+  padding: 0 8px; font-size: .85rem; }
+/* التغليف: مربعات تحت بعض (توجيه ٢٧/٠٩) — وكل حقل بعرض كامل */
+.wh-pack-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.wh-pack-row .wh-f input { max-width: 420px; }
+.wh-pack-row.wh-pack-weights { grid-template-columns: 1fr 1fr; gap: 12px; }
+.wh-pack-row.wh-pack-weights .wh-f input { max-width: 100%; }
+
+/* 📺 الشاشة الحية: بترسم قصة التغليف مع كل إدخال (توجيه ٢٧/٠٩) */
+.wh-tv { display: flex; align-items: center; justify-content: center; gap: 16px;
+  flex-wrap: wrap; min-height: 104px; border-radius: 14px; padding: 12px 16px; margin: 6px 0 10px;
+  background: linear-gradient(160deg, #0d1524, #14203a);
+  border: 1px solid var(--gold-border); box-shadow: inset 0 0 46px rgba(0, 0, 0, .4); }
+.wh-tv-empty { color: var(--muted); font-size: .9rem; }
+.wh-tv-ic { display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: var(--gold-light); }
+.wh-tv-badge { font-size: .84rem; font-weight: 800; color: var(--text); }
+.wh-tv-arrow { color: var(--brand-gold); font-size: 1.5rem; font-weight: 900; }
+.wh-tv-mini { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center;
+  max-width: 150px; opacity: .95; }
+.wh-tv-total { font-size: 1.5rem; font-weight: 900; color: var(--brand-gold);
+  text-shadow: 0 0 18px rgba(240, 185, 57, .25); }
+/* صور العبوات الحقيقية (أيزومتريك) + وزن جنب العدد + طباعة المورد/الصنف على العبوة */
+.wh-pack-img { vertical-align: middle; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .45)); }
+.wh-tv-w { color: var(--brand-gold); font-size: .74em; font-weight: 800; white-space: nowrap; }
+.wh-tv-brand { display: block; font-size: .68rem; font-weight: 600; color: #dbe4f0;
+  line-height: 1.6; max-width: 96px; text-align: center; overflow: hidden;
+  border-top: 1px dashed rgba(219, 228, 240, .35); padding-top: 2px; }
+
+/* معادلة التغليف: صناديق كبيرة بأسئلة تحتها + إجمالي ذهبي (توجيه ٢٧/٠٩) */
+.wh-eq { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.wh-eq-cell { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 140px; }
+.wh-eq-cell input { width: 100%; padding: 12px 10px; font-size: 1.15rem; font-weight: 700;
+  border: 1.5px solid var(--gold-border); border-radius: 10px; background: var(--surface);
+  color: var(--text); }
+.wh-eq-cell input:focus { outline: none; border-color: var(--brand-gold); }
+.wh-eq-lbl { font-size: .8rem; color: var(--muted); }
+.wh-eq-total { flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  padding: 8px 16px; min-width: 110px; border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+  color: var(--brand-gold); background: var(--surface-gold); border: 1.5px dashed var(--gold-border); }
+
+/* قوالب جاهزة من الذاكرة */
+.wh-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+
+/* قصة التغليف كرقائق — نفس التوقيع في كل العروض */
+.pack-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .82rem;
+  background: var(--surface-gold); border: 1px solid var(--gold-border); color: var(--text);
+  white-space: nowrap; }
+.pack-chip.gold { background: var(--brand-gold); border-color: var(--brand-gold);
+  color: #1a1400; font-weight: 800; }
+.pack-chip.preset { cursor: pointer; }
+.pack-chip.preset:hover { border-color: var(--brand-gold); }
+.pack-plus { color: var(--muted); margin: 0 2px; }
+.wh-pack-inner-toggle { display: flex; align-items: center; gap: 8px;
+  margin: 10px 2px 6px; font-size: .84rem; cursor: pointer; color: var(--text); }
+.wh-pack-inner-toggle input { width: 16px; height: 16px; accent-color: var(--brand-gold); }
+.wh-pack-inner-toggle small { color: var(--muted); }
+.wh-pack-inner { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; align-items: end; padding: 8px 12px 10px; margin: 0 0 8px;
+  border-right: 3px solid var(--brand-gold); border-radius: 8px;
+  background: var(--surface-gold); }
+.wh-pack-inner + .wh-pack-row, .wh-pack-inner ~ .js-pack-hint { margin-top: 4px; }
+.wh-pack-diff { min-height: 4px; font-size: .8rem; font-weight: 700; margin-top: 4px; }
+.wh-pack-diff.bad { color: var(--red); }
+.wh-pack-diff.good { color: var(--green); }
+@media (max-width: 980px) {
+  .wh-pack-row, .wh-pack-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* نافذة التفريدة المنبثقة + قائمة التفاريد (توجيه ٢٦/٠٩) */
+.wh-taf-list tbody tr { cursor: pointer; }
+.wh-taf-list tbody tr:hover { background: var(--surface-gold); }
+.wh-taf-list tbody tr td:last-child { cursor: default; }
+.wh-dialog { border: 1px solid var(--gold-border); border-radius: 14px;
+  background: var(--card); color: var(--text); max-width: min(860px, 94vw);
+  width: 860px; padding: 0; box-shadow: 0 24px 60px #000a; }
+.wh-dialog::backdrop { background: #0009; }
+.wh-dialog-head { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--card-border);
+  color: var(--gold-light); font-size: .95rem; }
+.wh-dialog-body { padding: 6px 16px 12px; max-height: 66vh; overflow-y: auto; }
+.wh-dialog-foot { display: flex; justify-content: flex-end; gap: 8px;
+  padding: 10px 16px; border-top: 1px solid var(--card-border); }
+.wh-taf-item { margin: 10px 0 14px; }
+.wh-taf-item-name { display: block; font-size: .95rem; margin-bottom: 6px;
+  color: var(--gold-light); }
+/* تابان ٢ مخازن الفرعيان: التفاريد (الافتراضي) وسجلات ٢ مخازن */
+.wh-subtabs { display: flex; gap: 8px; margin: 2px 0 12px; flex-wrap: wrap; }
+.wh-subtab { border: 1px solid var(--card-border); background: transparent;
+  color: var(--text); padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  font-weight: 700; font-size: .9rem; }
+.wh-subtab.active { background: var(--gold); border-color: var(--gold); color: #020617; }
+/* دائرة «ملحقات»: تفتح نافذة الجهات الأخرى (توجيه ٢٧/٠٩) */
+.wh-extras-dot { display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--gold-border); background: var(--surface-gold);
+  color: var(--gold-light); border-radius: 999px; padding: 2px 10px;
+  font-size: .78rem; font-weight: 700; cursor: pointer; margin-inline-start: 8px; }
+.wh-extras-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.wh-extras-dot:hover { background: var(--gold); color: #020617; }
+
+/* إذن ١ مخازن الاحترافي: مربعات + كارت لكل صنف (توجيه ٢٧/٠٩) */
+.wh-fs { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 14px 16px; margin: 12px 0; background: var(--surface-1); }
+.wh-fs legend { font-weight: 800; color: var(--gold-light); padding: 0 8px; }
+/* تابات المخازن الفرعية: تاب لكل مخزن (توجيه ٢٧/٠٩) */
+.wh-subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.wh-subtabs .wh-tab { padding: 8px 14px; font-size: .9rem; }
+.wh-item-card { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 14px; background: var(--card); }
+.wh-item-card-head { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; color: var(--gold-light); }
+.icon-btn.del { color: #f87171; }
+.wh-add-line { margin-top: 4px; }
+
+/* كل صنف داخل المخزن: كارت بحركته التفصيلية (توجيه ٢٧/٠٩) */
+.wh-st-item { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 10px 12px; margin: 10px 0; background: var(--surface); }
+.wh-st-item-head { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 8px; }
+.wh-st-name { color: var(--brand-gold); font-size: 1.05rem; }
+.wh-st-moves { font-size: .92rem; }
+
+/* ⭐ فورم رصيد أول المدة الاحترافي (توجيه ٢٨/٠٩): المربعات جنب بعض في صفوف منتظمة */
+.wh-opener .wh-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wh-opener .wh-grid > .wh-tv, .wh-opener .wh-grid > .wh-presets,
+.wh-opener .wh-grid > .wh-eq, .wh-opener .wh-grid > .wh-pack-row,
+.wh-opener .wh-grid > .js-loose-toggle, .wh-opener .wh-grid > .wh-hintline,
+.wh-opener .wh-grid > .wh-pack-diff, .wh-opener .wh-grid > .js-split-box { grid-column: 1 / -1; }
+/* مربع معادلة التغليف: ٤ خانات جنب بعض + الإجمالي الذهبي صف كامل تحتهم */
+.wh-opener .wh-eq { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px; align-items: start; border: 1px solid var(--gold-border);
+  border-radius: 12px; padding: 12px 14px; background: var(--surface-soft); }
+.wh-opener .wh-eq-cell { flex: none; min-width: 0; }
+.wh-opener .wh-eq-total { grid-column: 1 / -1; }
+/* صف الأوزان والسائب: خانتان جنب بعض */
+.wh-opener .wh-pack-weights, .wh-opener .js-loose-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* زر الحفظ: عريض ذهبي بارز آخر الفورم */
+.wh-opener .wh-form-actions { display: block; margin-top: 16px; }
+.wh-opener .wh-form-actions .rt-btn { width: 100%; padding: 13px 20px; font-size: 16px; }
+/* خانة التاريخ: الليبل فوق الخانة زي باقي الحقول بالظبط */
+.wh-datecell { display: flex; flex-direction: column; gap: 6px; font-size: .86rem;
+  color: var(--muted); min-width: 0; }
+.wh-datecell .rc-lbl { font-size: .86rem; color: var(--muted); }
+.wh-datecell .date-field { display: flex; gap: 8px; align-items: center; }
+.wh-datecell .date-field input { flex: 1; min-width: 0; background: var(--field-bg);
+  border: 1px solid var(--field-border); border-radius: 9px; color: var(--text);
+  padding: 9px 12px; font-family: var(--font-ui); font-size: .95rem; width: 100%; }
+.wh-datecell .date-trigger { background: none; border: none; color: var(--gold-light); }
+/* فورم «صنف جديد» جوه العمود الجانبي: عمودين مريحين بدل أربعة ضيقين */
+.wh-items-col .wh-opener .wh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wh-items-col .wh-opener .wh-eq { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 980px) {
+  .wh-opener .wh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-opener .wh-eq { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wh-items-col .wh-opener .wh-grid,
+  .wh-items-col .wh-opener .wh-eq { grid-template-columns: 1fr; }
+}
+
+/* خلايا الشركات في كروت المخازن: نص هادئ محسوم (توجيه ٢٨/٠٩) */
+.wh-table td.wh-co { font-size: .8rem; color: var(--muted); white-space: normal; min-width: 110px; }

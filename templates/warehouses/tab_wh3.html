@@ -1,0 +1,356 @@
+{% from "partials/pack_story.html" import pack_chips %}
+{# ٣ مخازن — كتالوج الأصناف ودفتر الحركة: كارت لكل صنف
+   (مسلسل/اليوم بالاسم/التاريخ/رقم إذن/مضاف/منصرف/رصيد)
+   رصيد أول المدة إدخال حقيقي بكل بياناته — والمنصرف يجي تلقائي من إذون ٢ مخازن #}
+<div class="wh-ledger-grid">
+  <aside class="panel wh-items-col no-print">
+    <div class="panel-head"><h3>📒 أصناف الدورة</h3>
+      <span class="panel-hint">وحدة التعامل والرصيد — اضغط الصنف لفتح كارته</span></div>
+    <div class="wh-items-list">
+      {% for it in items %}
+      <a class="wh-item {{ 'on' if card and card.item.id == it.id }}"
+         href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh3', item=it.id) }}">
+        <b>{{ it.name }}</b>
+        <small>{{ it.handle_unit }} — الرصيد: {{ it.balance | qty3 }}</small>
+      </a>
+      {% else %}
+      <p class="empty">الكتالوج فاضي — أول إذن إضافة من ١ مخازن يفتح كارت الصنف هنا تلقائيًا.</p>
+      {% endfor %}
+    </div>
+    {% if catalog_missing %}
+    <div class="wh-missing">
+      <b>أصناف المقرر غير المضافة بعد:</b>
+      {% for c in catalog_missing %}
+      <a class="wh-missing-item" title="افتح نموذج إذن إضافة لهذا الصنف"
+         href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1', item_name=c.name) }}">
+        {{ c.name }} <small>{% if c.unit %}({{ c.unit }}){% endif %} — لم تُضف بعد</small>
+      </a>
+      {% endfor %}
+      <!-- رصيد أول المدة لصنف لم يُفتح كارته بعد: يفتح الكارت تلقائيًا — قائمة تفتح وتقفل -->
+      <button type="button" class="wh-newbtn no-print" id="whOpenerNewToggle"
+              aria-expanded="false" aria-controls="whOpenerNewForm">
+        <span class="wh-newbtn-plus">＋</span> <span class="wh-newbtn-label">رصيد أول المدة لصنف جديد</span>
+      </button>
+      <form class="wh-opener no-print" id="whOpenerNewForm" method="post" hidden
+            action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
+        <input type="hidden" name="cycle" value="{{ cycle_key }}">
+        <b class="wh-opener-title">🧾 رصيد أول المدة لصنف جديد</b>
+        <div class="wh-grid">
+          <label class="wh-f">الصنف <i>*</i>
+            <input name="item_name" required data-combo="whMissingList" autocomplete="off"
+                   placeholder="اكتب أو اختر صنفًا من المقرر"></label>
+          <label class="wh-f">الكمية <i>*</i>
+            <input name="qty" inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
+          <label class="wh-f">اليوم
+            <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}"></label>
+          <label class="wh-f">الشركة المنتجة
+            <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
+          <label class="wh-f">الشركة الموردة
+            <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
+          <!-- قوالب جاهزة + معادلة التغليف (توجيه ٢٧/٠٩) -->
+          <div class="wh-tv js-tv" aria-live="polite"></div>
+        <div class="wh-presets js-pack-presets" hidden></div>
+          <div class="wh-eq">
+            <div class="wh-eq-cell">
+              <span class="wh-eq-lbl">نوع العبوة</span>
+              <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="بلتة، شكارة، كرتونة...">
+            </div>
+            <div class="wh-eq-cell js-count-cell" hidden>
+              <span class="wh-eq-lbl js-count-lbl">كم عبوة؟</span>
+              <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="١٠">
+            </div>
+            <div class="wh-eq-cell">
+              <span class="wh-eq-lbl js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span>
+              <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت، كجم، علبة...">
+              <span class="wh-hintline js-inner-mode-hint"></span>
+            </div>
+            <div class="wh-eq-cell js-innercount-cell" hidden>
+              <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+              <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
+            </div>
+            <div class="wh-eq-total js-eq-total">—</div>
+          </div>
+          <div class="wh-pack-row wh-pack-weights">
+            <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وزن المعيار الواحد (وزن العلبة مثلًا)</span> <small>(بيحوّل العدّ لكجم — وبيحسب السائب بالعلب)</small>
+              <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢"></label>
+            <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
+              <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off" placeholder="١٢"></label>
+          </div>
+          <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة (علب أو كجم)</button>
+          <div class="wh-pack-row js-loose-row" hidden>
+            <label class="wh-f">كمية سائبة
+              <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+            <label class="wh-f">وحدة السائب
+              <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList" autocomplete="off" placeholder="كجم أو علب"></label>
+          </div>
+          <div class="wh-hintline js-inner-sum"></div>
+          <div class="wh-hintline js-pack-hint"></div>
+          <div class="wh-pack-diff js-pack-diff"></div>
+        </div>
+        <div class="wh-grid">
+          <div class="wh-f wh-datecell">{{ date_field('prod_date', 'تاريخ الإنتاج') }}</div>
+          <div class="wh-f wh-datecell">{{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}</div>
+          <div class="wh-f wh-f-wide"><span class="wh-hintline js-shelf-hint"></span></div>
+        </div>
+        <div class="js-split-box" data-auto-row="1">
+          <b class="wh-split-title">توزيع الرصيد على المخازن (اختياري — والمجموع يجب أن يطابق الكمية)</b>
+          <div class="js-split-rows"></div>
+          <button type="button" class="rt-btn dim js-split-add">＋ إضافة مخزن</button>
+          <span class="wh-hintline js-split-hint"></span>
+        </div>
+        <div class="wh-form-actions">
+          <button class="rt-btn gold" type="submit">💾 تسجيل الرصيد وفتح الكارت</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
+
+  <section class="panel wh-card" id="whCard">
+    {% if card %}
+    <div class="panel-head">
+      <h3>كارت الصنف: <b class="wh-card-name">{{ card.item.name }}</b></h3>
+      <span class="wh-chip dim">وحدة التعامل: <b>{{ card.item.handle_unit }}</b>
+        {% if card.item.ration_unit and card.item.ration_unit != card.item.handle_unit %}
+        — وحدة المقرر: {{ card.item.ration_unit }}{% endif %}</span>
+    </div>
+    <form class="wh-inline-form no-print" method="post"
+          action="{{ url_for('warehouses.wh3_unit', cycle=cycle_key) }}">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="item_id" value="{{ card.item.id }}">
+      {% if card.moved %}
+      <label>وحدة التعامل (مُثبَّتة — يوجد حركة على الصنف)
+        <input name="handle_unit" value="{{ card.item.handle_unit }}" readonly
+               class="dim" title="ممنوع تغيير الوحدة بعد أول حركة"></label>
+      {% else %}
+      <label>تغيير وحدة التعامل (تُطبق على الحركات الجديدة)
+        <input name="handle_unit" data-combo="whUnitsList" autocomplete="off"
+               value="{{ card.item.handle_unit }}"></label>
+      {% endif %}
+      <button class="icon-btn save" type="submit" title="حفظ وحدة التعامل">
+        <svg viewBox="0 0 24 24"><path d="M4 3h12l4 4v14H4ZM8 3v6h8V3M8 21v-8h8v8"></path></svg>
+      </button>
+      <span class="wh-chip gold">الرصيد الحالي: <b>{{ card.balance | qty3 }}</b> {{ card.item.handle_unit }}</span>
+      <span class="wh-chip dim">مضاف: <b>{{ card.total_added | qty3 }}</b></span>
+      <span class="wh-chip dim">منصرف: <b>{{ card.total_issued | qty3 }}</b></span>
+      {% if card.pack_note %}<span class="wh-chip">التغليف المتبقي: {{ card.pack_note }}</span>{% endif %}
+    </form>
+
+    <div class="wh-subtabs no-print">
+      <button type="button" class="wh-subtab active" data-wh3sub="daftar">📒 دفتر ٣ مخازن</button>
+      <button type="button" class="wh-subtab" data-wh3sub="ghilaf">📦 ٣ مخازن تغليف</button>
+      <button type="button" class="wh-subtab" data-wh3sub="tafared">📋 دفتر ٣ مخازن تفاريد</button>
+    </div>
+    <div class="wh-subpanel" data-wh3panel="daftar">
+
+    {% if not card.has_opener %}
+    <!-- رصيد أول المدة: إدخال حقيقي بكل بياناته — قائمة تفتح وتقفل (توجيه ٢٦/٠٩) -->
+    <button type="button" class="wh-newbtn no-print" id="whOpenerToggle"
+            aria-expanded="false" aria-controls="whOpenerForm">
+      <span class="wh-newbtn-plus">＋</span> <span class="wh-newbtn-label">رصيد أول المدة — «{{ card.item.name }}»</span>
+    </button>
+    <form class="wh-opener no-print" id="whOpenerForm" method="post" hidden
+          data-item-name="{{ card.item.name }}"
+          action="{{ url_for('warehouses.wh3_opener', cycle=cycle_key) }}">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="item_id" value="{{ card.item.id }}">
+      <b class="wh-opener-title">🧾 رصيد أول المدة — «{{ card.item.name }}»</b>
+      <div class="wh-grid">
+        <label class="wh-f">الكمية {{ '(' + card.item.handle_unit + ')' if card.item.handle_unit }} <i>*</i>
+          <input name="qty" required inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
+        <label class="wh-f">اليوم
+          <input name="day" inputmode="numeric" value="{{ default_day | aindic }}" min="١" max="{{ days_in_month | aindic }}">
+          <span class="wh-hintline wh-day-hint"></span></label>
+        <label class="wh-f">الشركة المنتجة
+          <input name="producer" data-combo="whProducersList" autocomplete="off"></label>
+        <label class="wh-f">الشركة الموردة
+          <input name="supplier_name" data-combo="whSuppliersList" autocomplete="off"></label>
+        <!-- قوالب جاهزة + معادلة التغليف (توجيه ٢٧/٠٩) -->
+        <div class="wh-tv js-tv" aria-live="polite"></div>
+        <div class="wh-presets js-pack-presets" hidden></div>
+        <div class="wh-eq">
+          <div class="wh-eq-cell">
+            <span class="wh-eq-lbl">نوع العبوة</span>
+            <input name="pack_kind" class="js-pack-kind" data-combo="whPackKindsList" autocomplete="off" placeholder="بلتة، شكارة، كرتونة...">
+          </div>
+          <div class="wh-eq-cell js-count-cell" hidden>
+            <span class="wh-eq-lbl js-count-lbl">كم عبوة؟</span>
+            <input name="pack_count" class="js-pack-count" inputmode="decimal" autocomplete="off" placeholder="١٠">
+          </div>
+          <div class="wh-eq-cell">
+            <span class="wh-eq-lbl js-inner-kind-lbl">نوع المعيار داخل العبوة؟</span>
+            <input name="pack_inner_kind" class="js-inner-kind" data-combo="whInnerKindsList" autocomplete="off" placeholder="باكت، كجم، علبة...">
+            <span class="wh-hintline js-inner-mode-hint"></span>
+          </div>
+          <div class="wh-eq-cell js-innercount-cell" hidden>
+            <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+            <input name="pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
+          </div>
+          <div class="wh-eq-total js-eq-total">—</div>
+        </div>
+        <div class="wh-pack-row wh-pack-weights">
+          <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وزن المعيار الواحد (وزن العلبة مثلًا)</span> <small>(بيحوّل العدّ لكجم — وبيحسب السائب بالعلب)</small>
+            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢"></label>
+          <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
+            <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off" placeholder="١٢"></label>
+        </div>
+        <button type="button" class="rt-btn dim js-loose-toggle no-print">＋ فيه كمية سائبة (علب أو كجم)</button>
+        <div class="wh-pack-row js-loose-row" hidden>
+          <label class="wh-f">كمية سائبة
+            <input name="pack_loose" class="js-pack-loose" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f">وحدة السائب
+            <input name="pack_loose_unit" class="js-loose-unit" data-combo="whLooseUnitsList" autocomplete="off" placeholder="كجم أو علب"></label>
+        </div>
+        <div class="wh-hintline js-inner-sum"></div>
+        <div class="wh-hintline js-pack-hint"></div>
+        <div class="wh-pack-diff js-pack-diff"></div>
+      </div>
+      <div class="wh-grid">
+        <div class="wh-f wh-datecell">{{ date_field('prod_date', 'تاريخ الإنتاج') }}</div>
+        <div class="wh-f wh-datecell">{{ date_field('exp_date', 'تاريخ الصلاحية (إلزامي)') }}</div>
+        <div class="wh-f wh-f-wide"><span class="wh-hintline js-shelf-hint"></span></div>
+        <label class="wh-f wh-f-wide">ملاحظات
+          <textarea name="notes" rows="2"></textarea></label>
+      </div>
+      <div class="js-split-box" data-auto-row="1">
+        <b class="wh-split-title">توزيع الرصيد على المخازن (اختياري — والمجموع يجب أن يطابق الكمية)</b>
+        <div class="js-split-rows"></div>
+        <button type="button" class="rt-btn dim js-split-add">＋ إضافة مخزن</button>
+        <span class="wh-hintline js-split-hint"></span>
+      </div>
+      <div class="wh-form-actions">
+        <button class="rt-btn gold" type="submit">💾 تسجيل رصيد أول المدة</button>
+      </div>
+    </form>
+    {% endif %}
+
+    <div class="wh-scroll">
+    <table class="rt-table wh-table wh-ledger">
+      <thead><tr>
+        <th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+        <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th>
+      </tr></thead>
+      <tbody>
+        {% if card.opener_row %}
+        <tr class="wh-opener-row">
+          <td class="num">—</td>
+          <td>{{ card.opener_row.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ card.opener_row.date_iso | datefmt }}</bdi></td>
+          <td class="num">—</td>
+          <td>رصيد أول المدة</td>
+          <td class="num">{{ card.opener_row.added | qty3 }}</td>
+          <td class="num">٠٫٠٠٠</td>
+          <td class="num"><b>{{ card.opener_row.balance | qty3 }}</b></td>
+          <td>{{ card.opener_row.notes or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr class="wh-opener-row">
+          <td class="num">—</td><td colspan="3" class="name">رصيد أول المدة</td>
+          <td>لم يُسجَّل بعد — أدخله من النموذج بكل بياناته</td>
+          <td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td class="num">٠٫٠٠٠</td><td></td>
+        </tr>
+        {% endif %}
+        {% set n = namespace(i=0) %}
+        {% for row in card.rows if row.kind != 'opener' %}
+        {% set n.i = n.i + 1 %}
+        <tr {% if row.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
+          <td class="num">{{ n.i | aindic }}</td>
+          <td>{{ row.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ row.date_iso | datefmt }}</bdi></td>
+          <td class="num">{% if row.permit_no %}{{ row.permit_no | aindic }}{% else %}—{% endif %}</td>
+          <td>{{ row.label or '—' }}</td>
+          <td class="num">{{ row.added | qty3 }}</td>
+          <td class="num {% if row.kind == 'issue2' %}wh-issued{% endif %}">{{ row.issued | qty3 }}</td>
+          <td class="num"><b>{{ row.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td>{{ row.notes or '—' }}</td>
+        </tr>
+        {% else %}
+        {% if card.has_opener %}
+        <tr><td colspan="9" class="empty">لا حركات بعد — أول إذن إضافة من ١ مخازن يسجل هنا.</td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">الإجماليات</td>
+          <td class="num">{{ card.total_added | qty3 }}</td>
+          <td class="num">{{ card.total_issued | qty3 }}</td>
+          <td class="num"><b>{{ card.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    </div>
+    <div class="wh-subpanel" data-wh3panel="ghilaf" hidden>
+      {% if card.pack_rows %}
+      <div class="wh-scroll">
+      <table class="rt-table wh-table wh-ledger">
+        <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+          <th>مضاف</th><th>مضاف بالتغليف</th><th>منصرف</th><th>منصرف بالتغليف</th>
+          <th>الرصيد</th><th>الرصيد بالتغليف</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+        {% for r in card.pack_rows %}
+        <tr {% if r.label and r.label.startswith('صرف') %}class="wh-issue-row"{% endif %}>
+          <td class="num">{{ r.seq | aindic if r.seq is number else r.seq }}</td>
+          <td>{{ r.wday }}</td>
+          <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+          <td class="num">{% if r.permit_no and r.permit_no != '—' %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
+          <td>{{ r.label or '—' }}</td>
+          <td class="num">{% if r.added %}{{ r.added | qty3 }}{% else %}—{% endif %}</td>
+          <td>{{ r.added_pack }}</td>
+          <td class="num {% if r.issued %}wh-issued{% endif %}">{% if r.issued %}{{ r.issued | qty3 }}{% else %}—{% endif %}</td>
+          <td>{{ r.issued_pack }}</td>
+          <td class="num"><b>{{ r.balance | qty3 }}</b> {{ card.item.handle_unit }}</td>
+          <td>{{ r.balance_pack }}</td>
+          <td>{{ r.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="empty">افتح كارت الصنف أولًا ليظهر الدفتر بالتغليف.</p>{% endif %}
+    </div>
+    <div class="wh-subpanel" data-wh3panel="tafared" hidden>
+      {% if taf3 and taf3.rows %}
+      <div class="wh-scroll">
+      <table class="rt-table wh-table wh-ledger">
+        <thead><tr><th>مسلسل</th><th>اليوم</th><th>التاريخ</th><th>رقم الإذن</th><th>البيان</th>
+          <th>مضاف</th><th>منصرف</th><th>الرصيد</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+          {% for r in taf3.rows %}
+          <tr {% if r.kind == 'issue2' %}class="wh-issue-row"{% endif %}>
+            <td class="num">{{ r.seq | aindic }}</td>
+            <td>{{ r.wday }}</td>
+            <td><bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi></td>
+            <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
+            <td>{{ r.label or '—' }}</td>
+            <td class="wh-pack-cell">{{ pack_chips(r.added_pack) }}</td>
+            <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
+            <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
+            <td>{{ r.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5">الإجماليات</td>
+            <td class="num">{{ card.total_added | qty3 }}</td>
+            <td class="num">{{ card.total_issued | qty3 }}</td>
+            <td class="wh-pack-cell"><b>{{ taf3.balance_pack }}</b></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+      {% else %}
+      <p class="empty">سجّل رصيد أول المدة من «دفتر ٣ مخازن» أولًا ليظهر دفتر التفاريد بالتغليف.</p>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="panel-head"><h3>📒 دفتر ٣ مخازن</h3></div>
+    <p class="empty">اختر صنفًا من القائمة ليفتح كارته: مسلسل الحركة، اليوم، التاريخ، رقم الإذن،
+      المضاف، المنصرف، والرصيد — بالوحدة التعاملية للصنف.</p>
+    {% endif %}
+  </section>
+</div>

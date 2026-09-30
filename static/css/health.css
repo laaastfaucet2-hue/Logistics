@@ -1,0 +1,177 @@
+/* قسم «الصحة» — تابات مربعات + ورق معاينة حية بنفس هوية النظام */
+.hl-flash { display: flex; align-items: center; gap: 8px; padding: 11px 16px;
+  border-radius: 12px; margin: 10px 0; font-weight: 700; font-size: .92rem; }
+.hl-flash.ok { background: rgba(var(--success-rgb, 25, 135, 84), .12);
+  color: var(--green, #15803d); border: 1px solid rgba(var(--success-rgb, 25, 135, 84), .4); }
+.hl-flash.bad { background: rgba(220, 53, 69, .1); color: #b02a37;
+  border: 1px solid rgba(220, 53, 69, .4); }
+
+.hl-month-chip strong { color: var(--gold, #b8860b); }
+
+/* ================== التابات المربعات ================== */
+.hl-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin: 12px 0; }
+.hl-tab { display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px 12px; border-radius: 16px; text-decoration: none;
+  background: var(--card); border: 2px solid var(--card-border);
+  color: var(--text); font-weight: 800; font-size: .86rem; text-align: center;
+  transition: .15s; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+.hl-tab:hover { transform: translateY(-2px); border-color: var(--gold, #b8860b); }
+.hl-tab.on { background: linear-gradient(160deg, rgba(var(--info-rgb, 13, 110, 253), .16),
+  rgba(var(--info-rgb, 13, 110, 253), .05)); border-color: var(--gold, #b8860b);
+  box-shadow: 0 4px 14px rgba(184, 134, 11, .25); }
+.hl-tab-ico { font-size: 1.7rem; line-height: 1; }
+.hl-tab.on .hl-tab-name { color: var(--gold, #b8860b); }
+
+/* ================== تقسيم فورم/معاينة ================== */
+.hl-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+  gap: 14px; align-items: start; }
+.hl-pv-head { font-weight: 800; font-size: .86rem; color: var(--gold, #b8860b);
+  padding: 4px 2px 8px; position: sticky; }
+@media (max-width: 980px) {
+  .hl-split { grid-template-columns: 1fr; }
+  .hl-paper-col { order: -1; position: sticky; top: 8px; z-index: 5; }
+}
+
+/* ================== ورق المعاينة — مطابق لملف الوورد ================== */
+.hl-paper { background: #fff; color: #0a1230; border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35); padding: 26px 22px;
+  font-weight: 700; }
+.hl-frame { border: 4px double #0a1230; padding: 26px 22px 30px; min-height: 480px; }
+.hl-paper-top { display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 10px; padding-bottom: 6px; margin-bottom: 14px; }
+.hl-paper-logo { width: 98px; height: auto; object-fit: contain; }
+.hl-paper-lines { text-align: right; line-height: 1.6; }
+.hl-pl1 { font-size: 14pt; }
+.hl-paper-lines div { font-size: 12pt; }
+.hl-pl3 { border-bottom: 2px solid #b8860b; padding-bottom: 4px; }
+.hl-paper-title { text-align: center; color: #b8860b; font-size: 15pt;
+  margin: 14px 0 16px; }
+.hl-paper-date { margin: 3px 0; font-size: 12pt; }
+.hl-paper-body { line-height: 2.05; font-size: 12pt; margin: 10px 0;
+  text-align: justify; white-space: pre-wrap; }
+.hl-paper-names { margin: 12px 6px 12px 0; }
+.hl-paper-name { font-size: 12pt; line-height: 1.95; }
+.hl-paper-none { color: #b8860b; font-size: 11pt; padding: 6px 0; }
+.hl-paper-tail { margin-top: 10px; font-size: 12pt; }
+.hl-paper-note { background: rgba(184, 134, 11, .08); border: 1px dashed #b8860b;
+  border-radius: 10px; padding: 10px 12px; font-size: 10.5pt; margin: 10px 0 16px; }
+.hl-paper-tanks { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.hl-paper-tanks th, .hl-paper-tanks td { border: 1px solid #0a1230; padding: 4px 5px;
+  font-size: 9pt; text-align: center; font-weight: 700; }
+.hl-paper-tanks th { background: rgba(184, 134, 11, .12); }
+.hl-ptnum { color: #b8860b; width: 30px; }
+.hl-paper-appr { margin-top: 20px; font-size: 12pt; text-align: right; }
+.hl-paper-sigs { width: 100%; margin-top: 16px; border-collapse: collapse; }
+.hl-paper-sigs td { text-align: center; padding: 6px 8px; font-size: 12pt; }
+.hl-pv-def { min-width: 40%; }
+.hl-paper-approve { text-align: center; margin-top: 14px; font-size: 12pt; }
+.hl-live-dirty { background: rgba(184, 134, 11, .1); }
+
+/* ================== نموذج التعديل ================== */
+.hl-form { display: grid; gap: 12px; padding: 8px 4px; }
+.hl-field { display: grid; gap: 5px; }
+.hl-field > span { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.hl-field input[type="text"], .hl-field textarea,
+.hl-field input[type="file"] {
+  width: 100%; border: 1px solid var(--card-border); border-radius: 10px;
+  padding: 10px 12px; background: var(--bg, transparent); color: var(--text);
+  font: inherit; }
+.hl-field textarea { resize: vertical; line-height: 1.9; }
+.hl-field input:focus, .hl-field textarea:focus { outline: 2px solid var(--gold, #b8860b); }
+
+.hl-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hl-hint { color: var(--muted); font-size: .84rem; }
+.hl-hint.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin: 8px 0 12px; }
+
+/* أيام الكشف */
+.hl-days-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 10px 4px; border-bottom: 1px dashed var(--card-border); }
+.hl-day-in { width: 74px; text-align: center; border: 1px solid var(--card-border);
+  border-radius: 10px; padding: 9px 6px; background: var(--bg, transparent);
+  color: var(--text); font: inherit; font-weight: 700; }
+.hl-day-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 4px; }
+.hl-day-tab { padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: .88rem;
+  border: 1px solid var(--card-border); color: var(--muted); background: var(--bg, transparent); }
+.hl-day-tab.on { background: var(--gold, #b8860b); color: #fff; border-color: var(--gold, #b8860b); }
+
+/* قائمة المجندين */
+.hl-recruits { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px; }
+.hl-rec { display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  border: 1px solid var(--card-border); border-radius: 12px; padding: 9px 11px;
+  cursor: pointer; background: var(--bg, transparent); transition: .15s; }
+.hl-rec:hover { border-color: var(--gold, #b8860b); }
+.hl-rec.sugg { border-color: rgba(var(--success-rgb, 25, 135, 84), .55);
+  background: rgba(var(--success-rgb, 25, 135, 84), .07); }
+.hl-rec.picked { outline: 2px solid var(--gold, #b8860b); outline-offset: -2px; }
+.hl-rec input { accent-color: var(--gold, #b8860b); width: 17px; height: 17px; }
+.hl-name { font-weight: 700; font-size: .9rem; }
+.hl-st { font-size: .7rem; padding: 2px 8px; border-radius: 999px;
+  background: var(--card-border); color: var(--muted); }
+.hl-st.good { background: rgba(var(--success-rgb, 25, 135, 84), .15); color: var(--green, #15803d); }
+.hl-st.none { opacity: .65; }
+.hl-done { font-size: .72rem; color: var(--gold, #b8860b); font-weight: 800; }
+.hl-empty { padding: 18px; text-align: center; color: var(--muted); }
+
+/* جدول الخزانات */
+.hl-tanks-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.hl-tanks { border-collapse: collapse; min-width: 860px; }
+.hl-tanks th, .hl-tanks td { border: 1px solid var(--card-border); padding: 6px; }
+.hl-tanks th { background: rgba(var(--gold-rgb, 184, 134, 11), .1); color: var(--gold, #b8860b);
+  font-size: .78rem; }
+.hl-tanks td input { width: 100%; min-width: 86px; border: 1px solid transparent;
+  border-radius: 8px; padding: 7px 8px; background: var(--bg, transparent);
+  color: var(--text); font: inherit; text-align: center; }
+.hl-tanks td input:focus { border-color: var(--gold, #b8860b); outline: none; }
+.hl-tnum { text-align: center; font-weight: 800; color: var(--gold, #b8860b); }
+
+.hl-folders pre { background: var(--bg, transparent); border: 1px dashed var(--card-border);
+  border-radius: 10px; padding: 10px 14px; font-size: .8rem; margin: 6px 0; }
+.hl-folders .hl-hint { line-height: 2; }
+
+/* إحصائية «لم يُكشفوا طبيًا» في تاب المجندين */
+.hl-stat-link { text-decoration: none; }
+.hl-no-checkup { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 2px 10px; }
+.hl-nc-name { border: 1px solid rgba(220, 53, 69, .45); color: #b02a37;
+  background: rgba(220, 53, 69, .06); border-radius: 999px; padding: 6px 14px;
+  font-weight: 700; font-size: .86rem; }
+
+@media (max-width: 640px) {
+  .hl-recruits { grid-template-columns: 1fr; }
+  .hl-actions .rt-btn { flex: 1; justify-content: center; }
+  .hl-tab-ico { font-size: 1.4rem; }
+  .hl-paper { padding: 18px 14px 22px; }
+}
+
+/* شريط إدارة الخزانات */
+.hl-tank-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 10px 4px; border-bottom: 1px dashed var(--card-border); margin-bottom: 8px; }
+.hl-tank-bar b { color: var(--gold, #b8860b); }
+
+/* مربعات أسماء المكتوشين + قائمة البحث الذكي */
+.hl-namebox-row { display: flex; gap: 8px; align-items: center;
+  position: relative; margin-bottom: 9px; }
+.hl-namebox-row input[type="text"] { flex: 1; min-width: 0;
+  border: 1px solid var(--card-border); border-radius: 10px; padding: 11px 13px;
+  background: var(--bg, transparent); color: var(--text); font: inherit;
+  font-weight: 700; }
+.hl-namebox-row input[type="text"]:focus { outline: 2px solid var(--gold, #b8860b); }
+.hl-box-x { border: 1px solid rgba(220, 53, 69, .4); color: #b02a37;
+  background: rgba(220, 53, 69, .06); border-radius: 10px; width: 42px; height: 42px;
+  font-size: 1rem; cursor: pointer; flex-shrink: 0; }
+.hl-box-x:hover { background: rgba(220, 53, 69, .15); }
+.hl-ac { position: absolute; top: 100%; right: 0; left: 50px; z-index: 40;
+  background: var(--card); border: 1px solid var(--gold, #b8860b); border-radius: 12px;
+  max-height: 264px; overflow-y: auto; box-shadow: 0 10px 24px rgba(0, 0, 0, .4);
+  margin-top: 4px; }
+.hl-ac-item { padding: 10px 14px; cursor: pointer; display: flex; gap: 10px;
+  align-items: center; justify-content: space-between; font-weight: 700;
+  border-bottom: 1px dashed var(--card-border); }
+.hl-ac-item:last-child { border-bottom: 0; }
+.hl-ac-item:hover { background: rgba(184, 134, 11, .15); }
+.hl-ac-pres { color: var(--green, #15803d); font-size: .74rem; white-space: nowrap; }
+.hl-ac-hint { padding: 8px 14px; font-size: .74rem; color: var(--muted);
+  border-bottom: 1px solid var(--card-border); background: rgba(184, 134, 11, .07); }
+.hl-ac-item { color: var(--text, #f1f3f9); }

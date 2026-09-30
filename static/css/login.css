@@ -1,0 +1,54 @@
+/* Original open navy/gold login composition; keep the new readable typography. */
+.login-body { min-height: 100vh; background: var(--bg0); padding: 0; }
+.login-wrap { max-width: 1160px; margin: auto; display: grid; grid-template-columns: 1.15fr 1fr;
+  gap: 90px; align-items: center; padding: 55px 40px; min-height: calc(100vh - 88px); }
+.login-hero { background: none; color: var(--text); padding: 0; position: relative; }
+.login-identity { display: flex; gap: 13px; align-items: center; margin-bottom: 35px; }
+.login-identity img { width: 51px; height: 51px; }
+.login-identity strong { font-size: 21px; display: block; }
+.login-identity small { display: block; color: var(--muted); font-size: 11px; letter-spacing: 1.8px; margin-top: 4px; }
+.login-hero h1 { font-size: 42px; line-height: 1.6; font-weight: 600; margin: 0; color: var(--text); }
+.login-hero h1 span { color: var(--brand-gold); }
+.login-hero > p { color: var(--muted); font-size: 16px; line-height: 2; margin-top: 17px; max-width: 390px; }
+.login-art { position: relative; height: 245px; margin-top: 12px; }
+.login-art .warehouse-art { left: auto; right: 30px; top: 0; width: 330px; height: 245px; }
+.login-art .art-caption { bottom: 0; left: auto; right: 25px; font-size: 10px; }
+.login-card { background: var(--card); padding: 38px; display: flex; flex-direction: column; justify-content: center;
+  border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 30px 75px #0002; position: relative; }
+.login-card::before { content: ""; width: 48px; height: 2px; background: var(--brand-gold); position: absolute; top: 0; right: 38px; }
+.login-card h2 { font-size: 30px; margin: 13px 0 5px; }
+.login-sub { font-size: 15px; color: var(--muted); margin-bottom: 25px; }
+.login-card .field { margin-top: 16px; }
+.login-card .field input { height: 49px; background: var(--field-bg); }
+.field input[name=username] { direction: ltr; text-align: left; }
+.login-card .btn-block { display: flex; justify-content: space-between; padding: 13px 18px; min-height: 48px; }
+.login-card .btn-block svg { height: 18px; width: 18px; flex-shrink: 0; }
+.login-security { display: flex; align-items: center; gap: 9px; padding-top: 23px; margin-top: 26px;
+  border-top: 1px solid var(--card-border); color: var(--muted); font-size: 13px; }
+.login-security svg { width: 18px; height: 18px; color: var(--green); flex-shrink: 0; }
+.login-foot { width: 100%; color: var(--muted); font-size: 12px;
+  padding: 0 32px 20px; display: flex; justify-content: space-between; gap: 16px; }
+.login-card .flash { font-size: 14px; padding: 12px; line-height: 1.8; }
+.login-session { display: none; }
+@media (max-width: 1050px) {
+  .login-wrap { gap: 50px; padding: 45px 30px; }
+  .login-hero h1 { font-size: 37px; }
+  .login-card { padding: 30px; }
+  .login-art .warehouse-art { right: 0; width: 285px; }
+  .login-art .art-caption { right: 0; font-size: 9px; }
+}
+@media (max-width: 760px) {
+  .login-wrap { display: block; max-width: 450px; width: 100%; padding: 30px 22px; min-height: calc(100vh - 100px); }
+  .login-hero { margin-bottom: 28px; }
+  .login-identity { margin-bottom: 18px; }
+  .login-identity img { width: 43px; height: 43px; }
+  .login-identity strong { font-size: 18px; }
+  .login-hero h1 { font-size: 29px; }
+  .login-hero h1 br { display: none; }
+  .login-hero h1 span::before { content: " "; }
+  .login-hero > p { font-size: 14px; margin-top: 10px; }
+  .login-art { display: none; }
+  .login-card { padding: 30px 25px; }
+  .login-card h2 { font-size: 27px; }
+  .login-foot { flex-wrap: wrap; padding: 0 22px 20px; gap: 7px; }
+}

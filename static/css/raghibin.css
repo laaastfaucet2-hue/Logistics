@@ -1,0 +1,166 @@
+/* قسم الراغبين — يركب فوق أسلوب التاميدات المشترك (tameedat.css) */
+.rg-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.rg-card-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap; }
+.rg-dim { color: var(--muted); font-size: .85rem; }
+.rg-note { padding: 10px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 14px; }
+.rg-note.ok { background: rgba(34, 170, 90, .12); border: 1px solid rgba(34, 170, 90, .45); }
+.rg-note.err { background: rgba(220, 70, 70, .12); border: 1px solid rgba(220, 70, 70, .45); }
+.rg-note.warn { background: rgba(245, 158, 11, .14); border: 1px solid rgba(245, 158, 11, .5); }
+.rg-entity-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 9px; }
+.rg-entity { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px;
+  border: 1px solid var(--card-border); border-radius: 11px; color: var(--text); }
+.rg-entity:hover { border-color: var(--gold-border); }
+.rg-entity.on { background: var(--brand-orange); border-color: var(--brand-orange); }
+.rg-entity.on b, .rg-entity.on .rg-dim { color: var(--on-orange); }
+.rg-entity.on .rg-excluded-badge { color: #ffe1b0; }
+.rg-excluded-badge { color: #c2410c; font-weight: 700; }
+.rg-subtabs .tm-tab { padding: 9px 16px; }
+.rg-addform { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rg-addform .fld { min-width: 130px; }
+.rg-addform .rg-grow { flex: 1; }
+.rg-search { display: flex; gap: 10px; align-items: center; }
+.rg-search input[name="q"] { flex: 1; }
+.rg-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.rg-table th { background: var(--brand-gold, #f59e0b22); color: var(--text);
+  padding: 9px 8px; border-bottom: 2px solid var(--gold-border); }
+.rg-table td { padding: 8px; border-bottom: 1px solid var(--card-border);
+  text-align: center; vertical-align: middle; }
+.rg-table .rg-name { font-weight: 700; }
+.rg-table tr.is-excluded td { background: rgba(220, 70, 70, .07); }
+.rg-table tr.is-excluded .rg-name { text-decoration: line-through; opacity: .75; }
+.rg-state { font-weight: 800; white-space: nowrap; }
+.rg-state.on { color: #16a34a; }
+.rg-state.off { color: #dc2626; }
+.rg-actions { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.rg-inline { display: inline; }
+.rg-del { background: transparent; border: none; cursor: pointer; font-size: 1rem; }
+.rg-exclform { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+.rg-note-input { flex: 1; min-width: 180px; }
+.rg-counters { display: flex; gap: 16px; flex-wrap: wrap; font-weight: 700;
+  font-size: .95rem; }
+.rg-counters b { color: var(--gold-light); }
+.rg-group-title { margin: 4px 0 -6px; color: var(--gold-light); font-size: .95rem; }
+.rg-daybtns { display: flex; gap: 6px; justify-content: center; }
+.rg-daybtns button { padding: 6px 13px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--card-border); background: transparent; color: var(--text);
+  font-weight: 700; font-size: .85rem; }
+.rg-daybtns button:hover { border-color: var(--gold-border); }
+.rg-daybtns button.on-w { background: #16a34a; border-color: #16a34a; color: #fff; }
+.rg-daybtns button.on-n { background: #dc2626; border-color: #dc2626; color: #fff; }
+.rg-total-row td { background: rgba(245, 158, 11, .12); font-size: 1rem; }
+.rg-note-badge { display: inline-block; max-width: 220px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
+  padding: 2px 9px; border-radius: 8px; font-size: .82rem; font-weight: 700;
+  background: rgba(245, 158, 11, .14); border: 1px solid rgba(245, 158, 11, .45); }
+.rg-cat-switch { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 4px; }
+.rg-slots-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.rg-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 9px; margin-bottom: 10px; }
+/* المربعات: ثيم أزرق (توجيه المستخدم ٣٠/٠٩/٢٠٢٦) */
+.rag-slot { width: 100%; padding: 11px 13px; border-radius: 11px;
+  border: 1px solid rgba(59, 130, 246, .5);
+  background: rgba(59, 130, 246, .09);
+  color: var(--text); font-weight: 700; }
+.rag-slot::placeholder { color: rgba(148, 163, 184, .8); font-weight: 500; }
+.rag-slot:focus { border-color: var(--blue, #3b82f6); outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22);
+  background: rgba(59, 130, 246, .14); }
+.rg-slots-hint { margin-top: -2px; }
+.rg-check-line { display: flex; align-items: center; gap: 9px; padding: 10px 4px;
+  font-weight: 600; cursor: pointer; }
+.rg-check-line input { width: 19px; height: 19px; accent-color: #f59e0b; }
+.rg-modal-card { max-width: 860px; width: min(96vw, 860px); max-height: 88vh;
+  overflow: auto; }
+.rg-modal-bar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.rg-modal-bar select { flex: 1; min-width: 200px; }
+.rg-day-chip { padding: 7px 14px; border-radius: 10px; font-weight: 700;
+  border: 1px solid var(--gold-border); color: var(--gold-light); white-space: nowrap; }
+/* مودال الراغبين — نفس تصميم النظام المرجعي */
+.rg-entity-box { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 13px 16px; display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 12px; }
+.rg-entity-cap { color: var(--gold-light); font-size: .85rem; font-weight: 700; }
+.rg-entity-select { width: 100%; padding: 11px 13px; border-radius: 11px;
+  border: 1px solid rgba(59, 130, 246, .5); background: var(--card);
+  color: var(--text); font-weight: 700; font-size: 1rem; }
+.rg-entity-select:focus { border-color: var(--blue, #3b82f6); outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22); }
+/* قائمة القوة القابلة للطي */
+details.rg-forcebox > summary { cursor: pointer; font-weight: 800;
+  color: var(--gold-light); padding: 2px 0; list-style: none;
+  display: flex; align-items: center; gap: 8px; user-select: none; }
+details.rg-forcebox > summary::-webkit-details-marker { display: none; }
+.rg-caret { display: inline-block; transition: transform .15s; }
+details.rg-forcebox[open] > summary .rg-caret { transform: rotate(180deg); }
+details.rg-forcebox[open] > summary { margin-bottom: 10px; }
+.rg-type-chip { align-self: flex-start; padding: 5px 13px; border-radius: 10px;
+  background: rgba(34, 170, 90, .12); border: 1px solid rgba(34, 170, 90, .45);
+  font-weight: 700; font-size: .85rem; }
+.rg-quickadd { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 13px 16px; display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 10px; }
+.rg-qa-title { color: var(--gold-light); }
+.rg-qa-grid { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rg-qa-grid .fld { min-width: 150px; }
+.rg-qa-grid .rg-grow { flex: 1; }
+.rg-day-inline { display: inline-flex; gap: 7px; align-items: center; align-self: flex-start;
+  padding: 6px 14px; border-radius: 10px; font-weight: 700; margin-bottom: 10px;
+  border: 1px solid var(--gold-border); color: var(--gold-light); }
+.rg-ctabs { display: flex; gap: 8px; border-bottom: 2px solid var(--card-border);
+  margin-bottom: 12px; }
+.rg-ctab { background: transparent; border: none; color: var(--muted);
+  font-weight: 700; padding: 10px 16px; cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.rg-ctab.on { color: var(--gold-light); border-bottom-color: var(--gold-border); }
+.rg-forcebox { border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 13px 16px; display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 12px; }
+.rg-force-search { max-width: 300px; }
+.rg-force-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px; }
+.rg-force-item { display: flex; align-items: center; gap: 7px;
+  border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 12px; }
+.rg-force-check { display: flex; align-items: center; gap: 9px; cursor: pointer;
+  flex: 1; font-size: .92rem; }
+.rg-force-check input { width: 18px; height: 18px; accent-color: #f59e0b; }
+/* أزرار المودال موحدة ومنضفة */
+.rg-modal-form .rt-btn { padding: 11px 24px; border-radius: 11px;
+  font-weight: 800; font-size: .95rem; }
+.rg-modal-foot { justify-content: flex-start; }
+.rg-modal-foot .rt-btn.gold { min-width: 230px; }
+.rg-qa-add { white-space: nowrap; }
+.rg-entity-form { display: flex; gap: 10px; align-items: center; }
+.rg-entity-form .rg-entity-select { flex: 1; }
+.rg-entity-row { display: flex; gap: 7px; align-items: stretch; }
+.rg-entity-row .rg-entity { flex: 1; }
+.rg-entity-del button { height: 100%; padding: 0 13px; border-radius: 11px;
+  border: 1px solid var(--card-border); background: transparent; cursor: pointer;
+  font-size: .95rem; opacity: .6; }
+.rg-entity-del button:hover { opacity: 1; border-color: #dc2626;
+  background: rgba(220, 38, 38, .1); }
+.rg-cat-tabs { margin-bottom: 4px; }
+.rg-build-chip { float: left; font-size: .75rem; color: var(--muted);
+  border: 1px solid var(--card-border); border-radius: 8px; padding: 3px 10px; }
+.rg-slotsbox { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; }
+.rg-slotshead { display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; flex-wrap: wrap; }
+.rg-updated-chip { padding: 5px 13px; border-radius: 10px; font-weight: 700;
+  font-size: .85rem; background: rgba(245, 158, 11, .14);
+  border: 1px solid rgba(245, 158, 11, .5); }
+.rg-slots-list { display: flex; flex-direction: column; gap: 8px; }
+.rg-slotrow { display: flex; align-items: center; gap: 9px; }
+.rg-slotnum { color: var(--muted); font-weight: 700; min-width: 30px; text-align: left; }
+.rg-modal-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-top: 14px; }
+@media (max-width: 720px) { .rg-qa-grid { flex-direction: column; align-items: stretch; } }
+.rg-soon { background: var(--card); border: 1px dashed var(--gold-border); border-radius: 14px;
+  padding: 26px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.rg-files b { font-size: .95rem; }
+@media (max-width: 720px) { .rg-addform, .rg-exclform { flex-direction: column; align-items: stretch; } }
