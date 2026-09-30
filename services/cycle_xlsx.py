@@ -262,11 +262,14 @@ def build_wh3(wh3_dir, year, month, items, moves, book1_name, book2_name,
     from services import warehouses_fs as wf
     specs = dw.pack_specs_map(year, month, cycle)
 
+    units_map = {it["name"]: it["handle_unit"] for it in items}
+
     def _brk(q, name):
         sp = _pack_spec_of(specs, name)
         return dw.pack_breakdown(sp.get("pack_kind"), sp.get("pack_capacity"),
                                  sp.get("pack_inner_count"),
-                                 sp.get("pack_inner_capacity"), q, "—", "سائب",
+                                 sp.get("pack_inner_capacity"), q,
+                                 units_map.get(name, "—"), "سائب",
                                  inner_kind=sp.get("pack_inner_kind")) or _q(q)
 
     balance_rows = [(i, it["name"], it["handle_unit"], it["ration_unit"] or "—",
