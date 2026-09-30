@@ -149,6 +149,10 @@ def register(app):
             # قسم «الترفية» = الدورة المستقلة (أصناف/١/٢/٣/٥ مخازن)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("tarfea.page", **params))
+        if key == "raghebeen":
+            # قسم «الراغبين» = صفحة الراغبين الحقيقية (٤ تابات — ج١ ٣٠/٠٩/٢٠٢٦)
+            params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            return redirect(url_for("raghibin.page", **params))
         section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)
         if not section:
             abort(404)

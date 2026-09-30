@@ -1,0 +1,45 @@
+/* قسم الراغبين — يركب فوق أسلوب التاميدات المشترك (tameedat.css) */
+.rg-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.rg-card-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap; }
+.rg-dim { color: var(--muted); font-size: .85rem; }
+.rg-note { padding: 10px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 14px; }
+.rg-note.ok { background: rgba(34, 170, 90, .12); border: 1px solid rgba(34, 170, 90, .45); }
+.rg-note.err { background: rgba(220, 70, 70, .12); border: 1px solid rgba(220, 70, 70, .45); }
+.rg-note.warn { background: rgba(245, 158, 11, .14); border: 1px solid rgba(245, 158, 11, .5); }
+.rg-entity-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 9px; }
+.rg-entity { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px;
+  border: 1px solid var(--card-border); border-radius: 11px; color: var(--text); }
+.rg-entity:hover { border-color: var(--gold-border); }
+.rg-entity.on { background: var(--brand-orange); border-color: var(--brand-orange); }
+.rg-entity.on b, .rg-entity.on .rg-dim { color: var(--on-orange); }
+.rg-entity.on .rg-excluded-badge { color: #ffe1b0; }
+.rg-excluded-badge { color: #c2410c; font-weight: 700; }
+.rg-subtabs .tm-tab { padding: 9px 16px; }
+.rg-addform { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rg-addform .fld { min-width: 130px; }
+.rg-addform .rg-grow { flex: 1; }
+.rg-search { display: flex; gap: 10px; align-items: center; }
+.rg-search input[name="q"] { flex: 1; }
+.rg-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.rg-table th { background: var(--brand-gold, #f59e0b22); color: var(--text);
+  padding: 9px 8px; border-bottom: 2px solid var(--gold-border); }
+.rg-table td { padding: 8px; border-bottom: 1px solid var(--card-border);
+  text-align: center; vertical-align: middle; }
+.rg-table .rg-name { font-weight: 700; }
+.rg-table tr.is-excluded td { background: rgba(220, 70, 70, .07); }
+.rg-table tr.is-excluded .rg-name { text-decoration: line-through; opacity: .75; }
+.rg-state { font-weight: 800; white-space: nowrap; }
+.rg-state.on { color: #16a34a; }
+.rg-state.off { color: #dc2626; }
+.rg-actions { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.rg-inline { display: inline; }
+.rg-del { background: transparent; border: none; cursor: pointer; font-size: 1rem; }
+.rg-exclform { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+.rg-note-input { flex: 1; min-width: 180px; }
+.rg-soon { background: var(--card); border: 1px dashed var(--gold-border); border-radius: 14px;
+  padding: 26px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.rg-files b { font-size: .95rem; }
+@media (max-width: 720px) { .rg-addform, .rg-exclform { flex-direction: column; align-items: stretch; } }

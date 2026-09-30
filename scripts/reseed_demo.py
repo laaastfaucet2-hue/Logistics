@@ -221,6 +221,45 @@ with app.app_context():
                                notes="تأميدة اعتيادية")
     print("تأميدات: ٥ ✓")
 
+    # ═══ ٧-ب) الراغبين: جهة «قطاع الشهيد اشرف جاد» بقوة الصور + تسجيل يوم ٢٢ ═══
+    from data_access import db_raghibin as drg
+    rag_entity_name = "قطاع الشهيد اشرف جاد"
+    rag_ents = {e["name"]: e["id"] for e in db_tameedat.list_entities(Y, M)}
+    rag_eid = rag_ents.get(rag_entity_name)
+    if not rag_eid:
+        rag_eid = db_tameedat.add_entity(Y, M, rag_entity_name, "شرطية")
+    if not drg.list_persons(Y, M, entity_id=rag_eid):
+        # القوة المرجعية من صور المستخدم: ١٠ ضباط (٣ بأسماء حقيقية) + ١٠ أفراد
+        officers = [("رائد", "محمد محمود"), ("نقيب", "مصطفى عبدالحميد"),
+                    ("رائد", "ابراهيم ناجى عطا الله"), ("ملازم أول", "أحمد سمير عبد الله"),
+                    ("نقيب", "كريم عادل محمد"), ("رائد", "هاني فتحي إبراهيم"),
+                    ("ملازم", "عمرو خالد سعيد"), ("نقيب", "طارق منير عبد اللطيف"),
+                    ("رائد", "شريف جمال حاتم"), ("ملازم أول", "يوسف علاء الدين")]
+        for rank, name in officers:
+            excluded = name == "ابراهيم ناجى عطا الله"
+            drg.add_person(Y, M, rag_eid, "officers", name, rank,
+                           excluded=excluded,
+                           exclude_note="هلاكات — غير راغب" if excluded else "")
+        individuals = ["أحمد محمد صابر", "محمود رزق اللهيمي", "إسلام ناصر عبد الله",
+                       "كريم فتحي عوض", "محمد رشدي الفار", "عمر عبد الغني حسين",
+                       "مصطفى سعيد قنديل", "أيمن طلعت رياض", "حسام الدين فؤاد",
+                       "إبراهيم عبد المنعم"]
+        for i, name in enumerate(individuals, start=1):
+            drg.add_person(Y, M, rag_eid, "individuals", name, f"فرد ({i})")
+        # يوم ٢٢ (زي الصورة): ضباط راغبان ٢ من ١٠ — وجبة واحدة لليوم
+        willing = drg.list_persons(Y, M, entity_id=rag_eid, category="officers")
+        by_name = {p["full_name"]: p["id"] for p in willing}
+        for nm in ("محمد محمود", "مصطفى عبدالحميد"):
+            if nm in by_name:
+                drg.set_daily(Y, M, by_name[nm], 22, True, source="manual")
+        db_tameedat.add_record(Y, M, 22, {"id": rag_eid, "name": rag_entity_name,
+                                          "entity_type": "شرطية"}, 10, 10, 10,
+                               notes="تأميدة اعتيادية")
+        print("راغبين: جهة الصور بقوتها ✓")
+    from services.raghibin import write_all_cadres
+    write_all_cadres(Y, M)
+
+
     # ═══ ٨) كل المرايا + الوورد ═══
     wf.ensure_folders(Y, M)
     tf.ensure_folders(Y, M)
