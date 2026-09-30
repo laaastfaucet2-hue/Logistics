@@ -143,6 +143,43 @@ with app.app_context():
                 "record_ids": [], "actuals": actuals})
     print("أذون ٢ مخازن:", len(db_permits.list_permits(Y, M)))
 
+    # ═══ ٥ب) جهات المقررات وتوزيعها (لتوزيع المقررات على الجهات) ═══
+    from data_access import db_entities as de
+    dist = [
+        ("tamween", [
+            ("صالة الترفية", [("ملح طعام", "كجم", 2, 4, 3), ("أرز", "كجم", 3, 5, 4),
+                              ("سكر", "كجم", 2, 3, 2), ("شاي", "وحدة", 1, 1, 1)]),
+            ("الورشة", [("ملح طعام", "كجم", 1, 2, 2), ("مكرونة", "وحدة", 2, 3, 2),
+                        ("زيت طعام", "وحدة", 1, 2, 1)]),
+            ("البوابة", [("أرز", "كجم", 2, 3, 3), ("عدس", "كجم", 1, 2, 1),
+                         ("فول مدمس", "وحدة", 2, 3, 2)]),
+        ]),
+        ("contractor", [
+            ("صالة الترفية", [("خضار وسوق", "كجم", 10, 15, 12),
+                              ("لحوم طازجة", "كجم", 4, 6, 5),
+                              ("خبز بلدي", "رغيف", 20, 30, 25)]),
+            ("الورشة", [("خضار وسوق", "كجم", 5, 8, 6),
+                        ("خبز بلدي", "رغيف", 10, 15, 12)]),
+        ]),
+    ]
+    for section, ents in dist:
+        by_name = {e["name"]: e for e in de.list_entities(Y, M, section)}
+        for nm, items in ents:
+            if nm in by_name:
+                continue
+            de.add_entity(Y, M, section, nm)   # يسحب أصناف المقرر النشط تلقائيًا
+            by_name = {e["name"]: e for e in de.list_entities(Y, M, section)}
+            ent = by_name[nm]
+            have_items = {it["name"] for it in ent["items"]}
+            for iname, iunit, bf, ln, dn in items:
+                if iname in have_items:
+                    # عدّل الكميات على صنف موجود
+                    it = next(it for it in ent["items"] if it["name"] == iname)
+                    de.update_entity_item(Y, M, it["id"], iname, iunit, bf, ln, dn)
+                else:
+                    de.add_entity_item(Y, M, ent["id"], iname, iunit, bf, ln, dn)
+    print("جهات المقررات ✓")
+
     # ═══ ٦) المجندين: ١٤ مجند ═══
     names = ["أحمد محمود صابر", "محمد إبراهيم علي", "مصطفى كامل حسن",
              "كريم عبد الله فؤاد", "عمر حسين طنطاوي", "يوسف سامي مرسي",

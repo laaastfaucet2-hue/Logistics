@@ -425,92 +425,127 @@ def build_tarfea(year, month):
 # المخازن والثلاجات — فولدر لكل مخزن (٤ ملفات) + مجمع في جذر القسم
 # ======================================================================
 def build_store_folders(base, rep, units, year=2026, month=9):
-    """جذر القسم: ملفا «حركة المخازن» و«حركة المخازن تغليف» مجمعين،
-    وفولدر لكل مخزن فيه: حركة المخزن + حركة المخزن تفاريد
-    + جرد المخزن كميات + جرد المخزن تغليف."""
-    taf_by_store = {}
-    for cycle in ("supply", "contractor"):
+    """🆕 (توجيه المستخدم):
+    - الجذر: ملف واحد «حركة وكشف أرصدة المخازن.xlsx» فيه:
+      حركة المخازن كلها · حركة المخازن كلها بالتغليف ·
+      كشف أرصدة المخازن كلها · كشف أرصدة المخازن بالتغليف
+      + شيت لكل صنف بأرصدته في كل المخازن (غير المجمع).
+    - فولدر لكل مخزن فيه ملف واحد باسم المخزن فيه ٤ شيتات:
+      حركة المخزن · حركة المخزن بالتغليف ·
+      كشف جرد أرصدة المخزن · كشف أرصدة المخزن بالتغليف.
+    الملفات القديمة (حركة المخازن/حركة المخازن تغليف/ملفات المخزن الأربعة) تُمسح."""
+    specs_maps = {}
+    for cycle in ("supply", "contractor", "tarfea"):
         try:
-            for t in dw.tafreeda_rows(year, month, cycle):
-                taf_by_store.setdefault(t.get("store_id"), []).append(t)
+            specs_maps[cycle] = dw.pack_specs_map(year, month, cycle)
         except Exception:
-            continue
+            specs_maps[cycle] = {}
 
-    def _exp_left(expiry, day):
-        try:
-            exp = _date.fromisoformat(str(expiry)[:10])
-        except (TypeError, ValueError):
+    def _pack_qty(cycle, name, qty):
+        """تفكيك الكمية بعبوات صنفها — للعمود «الكمية بالتغليف»."""
+        if not qty:
             return "—"
-        left = (exp - _date(year, month, int(day))).days
-        return "منتهي الصلاحية" if left < 0 else \
-            arnum.to_arabic_indic(str(left)) + " يوم"
+        sp = specs_maps.get(cycle, {}).get(name) or {}
+        kind = (sp.get("pack_kind") or "").strip()
+        if not kind or kind == "بدون تغليف":
+            return _q(qty) + " " + units.get(name, "")
+        return dw.pack_breakdown(kind, sp.get("pack_capacity"),
+                                 sp.get("pack_inner_count"),
+                                 sp.get("pack_inner_capacity"), qty,
+                                 units.get(name, "—"), "",
+                                 inner_kind=sp.get("pack_inner_kind")) or _q(qty)
 
     all_move, all_move_pack = [], []
+    all_bal, all_bal_pack = [], []
+    per_item_bal = {}                     # الصنف → [(المخزن، الرصيد، الوحدة، التغليف)]
     idx = 0
     for target in rep["stores"] + [rep["unassigned"]]:
         store_name = target["store"]["name"]
         folder = base / _safe_file(store_name)
         folder.mkdir(parents=True, exist_ok=True)
         _migrate(folder, "كشف جرد الارصدة.xlsx")
-        move_rows, taf_rows = [], []
+        # 🧹 مسح ملفات المخزن الأربعة القديمة — حلت محلها ملف واحد بأربع شيتات
+        for old in ("حركة المخزن", "حركة المخزن تفاريد",
+                    "جرد المخزن كميات", "جرد المخزن تغليف"):
+            oldp = folder / _file_name(old)
+            if oldp.exists():
+                try:
+                    oldp.unlink()
+                except OSError:
+                    pass
+        move_rows, move_pack_rows = [], []
         for row in target["inn"]:
             idx += 1
             doc = ("إذن إضافة رقم {}".format(arnum.to_arabic_indic(row["serial"]))
                    if row.get("serial") else "رصيد أول المدة")
-            move_rows.append((idx, "إضافة",
-                              dates.format_date(row["date_iso"]) or row["date_iso"],
-                              row["cycle"], row["item"], _q(row["qty"]),
-                              row["unit"], row.get("pack_label") or "—", doc))
+            when = dates.format_date(row["date_iso"]) or row["date_iso"]
+            pack_qty = _pack_qty(row["cycle"], row["item"], row["qty"])
+            line = (idx, "إضافة", when, row["cycle"], row["item"], _q(row["qty"]),
+                    row["unit"], row.get("pack_label") or "—", doc)
+            move_rows.append(line)
+            move_pack_rows.append(line[:5] + (_q(row["qty"]), pack_qty) + line[7:])
         for row in target["out"]:
             idx += 1
             doc = "إذن صرف ٢ مخازن رقم {}".format(
                 arnum.to_arabic_indic(row["permit_no"]))
-            move_rows.append((idx, "صرف",
-                              dates.format_date(row["date_iso"]) or row["date_iso"],
-                              row["cycle"], row["item"], _q(row["qty"]),
-                              row["unit"], row.get("pack_label") or "—", doc))
-            taf_rows.append((len(taf_rows) + 1,
-                             dates.format_date(row["date_iso"]) or row["date_iso"],
-                             row["item"], _q(row["qty"]), row["unit"],
-                             row.get("issued_label") or row.get("pack_label") or "—",
-                             doc, "—"))
+            when = dates.format_date(row["date_iso"]) or row["date_iso"]
+            pack_qty = _pack_qty(row["cycle"], row["item"], row["qty"])
+            line = (idx, "صرف", when, row["cycle"], row["item"], _q(row["qty"]),
+                    row["unit"], row.get("pack_label") or "—", doc)
+            move_rows.append(line)
+            move_pack_rows.append(line[:5] + (_q(row["qty"]), pack_qty) + line[7:])
+        bal_rows = [(name, qty) for name, qty in sorted(target["balances"].items())]
         used = set()
-        _save_xlsx(folder / _file_name("حركة المخزن"), [
+        _save_xlsx(folder / (_safe_file(store_name) + ".xlsx"), [
             (_sheet_unique(used, "حركة المخزن"),
              ["م", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية", "الوحدة",
-              "التغليف", "المستند"], move_rows)])
-        used = set()
-        _save_xlsx(folder / _file_name("حركة المخزن تفاريد"), [
-            (_sheet_unique(used, "حركة المخزن تفاريد"),
-             ["م", "التاريخ", "الصنف", "الكمية", "الوحدة",
-              "المنصرف بالتغليف", "المستند", "الصلاحية"], taf_rows)])
-        bal_rows = [(i, name, _q(qty), units.get(name, "—"))
-                    for i, (name, qty) in enumerate(sorted(target["balances"].items()), 1)]
-        bal_pack = [(i, name, _q(qty),
-                     target.get("pack_notes", {}).get(name) or _q(qty))
-                    for i, (name, qty) in enumerate(sorted(target["balances"].items()), 1)]
-        used = set()
-        _save_xlsx(folder / _file_name("جرد المخزن كميات"), [
-            (_sheet_unique(used, "جرد المخزن كميات"),
-             ["م", "الصنف", "الرصيد", "الوحدة"], bal_rows)])
-        used = set()
-        _save_xlsx(folder / _file_name("جرد المخزن تغليف"), [
-            (_sheet_unique(used, "جرد المخزن تغليف"),
-             ["م", "الصنف", "الرصيد", "الرصيد بالتغليف"], bal_pack)])
-        for row in move_rows:
-            line = (row[0], store_name) + row[1:]
-            all_move.append(line)
-            all_move_pack.append((line[:7]) + (row[7], line[8]))
+              "التغليف", "المستند"], move_rows),
+            (_sheet_unique(used, "حركة المخزن بالتغليف"),
+             ["م", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
+              "الكمية بالتغليف", "الوحدة", "التغليف", "المستند"], move_pack_rows),
+            (_sheet_unique(used, "كشف جرد أرصدة المخزن"),
+             ["م", "الصنف", "الرصيد", "الوحدة"],
+             [(i, name, _q(qty), units.get(name, "—"))
+              for i, (name, qty) in enumerate(bal_rows, 1)]),
+            (_sheet_unique(used, "كشف أرصدة المخزن بالتغليف"),
+             ["م", "الصنف", "الرصيد", "الوحدة", "الرصيد بالتغليف"],
+             [(i, name, _q(qty), units.get(name, "—"),
+               target.get("pack_notes", {}).get(name) or _q(qty))
+              for i, (name, qty) in enumerate(bal_rows, 1)])])
+        for row, prow in zip(move_rows, move_pack_rows):
+            all_move.append((row[0], store_name) + row[1:])
+            all_move_pack.append((prow[0], store_name) + prow[1:])
+        for name, qty in bal_rows:
+            unit = units.get(name, "—")
+            note = target.get("pack_notes", {}).get(name) or _q(qty)
+            all_bal.append((store_name, name, _q(qty), unit))
+            all_bal_pack.append((store_name, name, _q(qty), unit, note))
+            per_item_bal.setdefault(name, []).append((store_name, _q(qty), unit, note))
+    # 🧹 الملفات الجذرية القديمة
+    for old in ("حركة المخازن", "حركة المخازن تغليف"):
+        oldp = base / _file_name(old)
+        if oldp.exists():
+            try:
+                oldp.unlink()
+            except OSError:
+                pass
     used = set()
-    _save_xlsx(base / _file_name("حركة المخازن"), [
-        (_sheet_unique(used, "حركة المخازن مجمع"),
-         ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
-          "الوحدة", "التغليف", "المستند"], all_move)])
-    used = set()
-    _save_xlsx(base / _file_name("حركة المخازن تغليف"), [
-        (_sheet_unique(used, "حركة المخازن تغليف مجمع"),
-         ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
-          "الوحدة", "التغليف", "المستند"], all_move_pack)])
+    book = [(_sheet_unique(used, "حركة المخازن كلها"),
+             ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
+              "الوحدة", "التغليف", "المستند"], all_move),
+            (_sheet_unique(used, "حركة المخازن كلها بالتغليف"),
+             ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
+              "الكمية بالتغليف", "الوحدة", "التغليف", "المستند"], all_move_pack),
+            (_sheet_unique(used, "كشف أرصدة المخازن كلها"),
+             ["المخزن", "الصنف", "الرصيد", "الوحدة"], all_bal),
+            (_sheet_unique(used, "كشف أرصدة المخازن بالتغليف"),
+             ["المخزن", "الصنف", "الرصيد", "الوحدة", "الرصيد بالتغليف"], all_bal_pack)]
+    for name in sorted(per_item_bal):
+        book.append((_sheet_unique(used, name),
+                     ["المخزن", "الرصيد", "الوحدة", "الرصيد بالتغليف"],
+                     per_item_bal[name]))
+    _save_xlsx(base / _file_name("حركة وكشف أرصدة المخازن"), book)
+    return base / _file_name("حركة وكشف أرصدة المخازن")
 
 
 # ======================================================================

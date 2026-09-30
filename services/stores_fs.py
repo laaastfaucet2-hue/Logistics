@@ -17,7 +17,7 @@ from services.tameedat_fs import _save_xlsx
 
 TAB_FILES = {
     "mains": "سجل المخازن.xlsx",
-    "movement": "حركة وكشف الأرصدة.xlsx",
+    "movement": "حركة وكشف أرصدة المخازن.xlsx",   # 🆕 الملف الموحد (٤ شيتات + شيتات الأصناف)
 }
 
 
@@ -32,9 +32,10 @@ def base_dir(year, month):
 
 
 def file_path(year, month, tab):
-    sub = "سجل المخازن" if tab == "mains" else "حركة وكشف الأرصدة"
-    path = base_dir(year, month) / sub
-    path.mkdir(parents=True, exist_ok=True)
+    path = base_dir(year, month)
+    if tab == "mains":
+        path = path / "سجل المخازن"
+        path.mkdir(parents=True, exist_ok=True)
     return path / TAB_FILES[tab]
 
 
@@ -61,39 +62,9 @@ def snapshot(year, month):
              for i, s in enumerate(stores, 1)])])
 
         rep = dw.stores_report(year, month)
-        def _d(iso):
-            """التاريخ الموحد «٠٣/٠٩/٢٠٢٦» في خلايا المرايا."""
-            return dates.format_date(iso) or iso
-        move_rows, balance_rows = [], []
-        idx = 0
-        for target in rep["stores"] + [rep["unassigned"]]:
-            store_name = target["store"]["name"]
-            for row in target["inn"]:
-                idx += 1
-                doc = (f"إذن إضافة رقم {arnum.to_arabic_indic(row['serial'])}"
-                       if row.get("serial") else "رصيد أول المدة")
-                move_rows.append((idx, store_name, "إضافة", _d(row["date_iso"]),
-                                  row["cycle"], row["item"], row["qty"], row["unit"],
-                                  _fmt_pack(row), doc))
-            for row in target["out"]:
-                idx += 1
-                move_rows.append((idx, store_name, "صرف", _d(row["date_iso"]),
-                                  row["cycle"], row["item"], row["qty"], row["unit"],
-                                  _fmt_pack(row),
-                                  f"إذن صرف ٢ مخازن رقم {arnum.to_arabic_indic(row['permit_no'])}"))
-        for target in rep["stores"] + [rep["unassigned"]]:
-            store_name = target["store"]["name"]
-            for item, qty in sorted(target["balances"].items()):
-                balance_rows.append((store_name, item, qty,
-                                     target.get("pack_notes", {}).get(item) or "—"))
-        _save_xlsx(file_path(year, month, "movement"), [
-            ("حركة المخازن",
-             ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف",
-              "الكمية", "الوحدة", "التغليف", "المستند"], move_rows),
-            ("كشف الأرصدة",
-             ["المخزن", "الصنف", "الرصيد", "التغليف المتبقي بالضبط"], balance_rows)])
 
-        # فولدر لكل مخزن: حركة المخزن + كشف جرد الأرصدة (توجيه ٢٨/٠٩ مساءً)
+        # 🆕 فولدر لكل مخزن (ملف واحد ٤ شيتات) + الملف الجذري الموحد
+        # «حركة وكشف أرصدة المخازن.xlsx» — توجيه المستخدم
         from services import cycle_xlsx
         units = {}
         for _c in ("supply", "contractor", "tarfea"):
@@ -109,6 +80,19 @@ def snapshot(year, month):
 
 
 def ensure_folders(year, month):
+    base = base_dir(year, month)
     file_path(year, month, "mains")
     file_path(year, month, "movement")
-    return base_dir(year, month)
+    # 🧹 ترحيل الهيكل القديم (توجيه المستخدم — ملف موحد + ملف واحد لكل مخزن)
+    import shutil
+    old_sub = base / "حركة وكشف الأرصدة"
+    if old_sub.is_dir():
+        shutil.rmtree(old_sub, ignore_errors=True)
+    for old in ("حركة المخازن.xlsx", "حركة المخازن تغليف.xlsx"):
+        oldp = base / old
+        if oldp.exists():
+            try:
+                oldp.unlink()
+            except OSError:
+                pass
+    return base

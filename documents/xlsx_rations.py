@@ -124,7 +124,7 @@ def _kind_sheet(wb, name, year, month, short, section_name, kind_key):
         ws.column_dimensions[chr(64 + j)].width = w
 
 
-def _entity_sheet(wb, entity, year, month):
+def _entity_sheet(wb, entity, year, month, section_name="مقررات المتعهد"):
     name = INVALID_SHEET.sub("", entity["name"])[:28] or "جهة"
     base = name
     i = 2
@@ -135,7 +135,7 @@ def _entity_sheet(wb, entity, year, month):
     ws.sheet_view.rightToLeft = True
     headers = (["مسلسل", "اسم الصنف", "الوحدة", "فطار", "غداء", "عشاء"] + DAYS)
     add_letterhead(ws, year, month, len(headers))
-    _title(ws, f"توزيع مقررات المتعهد — {entity['name']} — {MONTH_NAMES[month-1]} {arnum.to_arabic_indic(year)}",
+    _title(ws, f"توزيع {section_name} — {entity['name']} — {MONTH_NAMES[month-1]} {arnum.to_arabic_indic(year)}",
            len(headers))
     _header(ws, TABLE_ROW, headers)
     rows = []
@@ -180,10 +180,46 @@ def rebuild(year, month, short):
         label = f"مقرر {RATION_KIND_MAP[kind_key]['name']}"
         _kind_sheet(wb, label, year, month, short, section_name, kind_key)
     for entity in de.list_entities(year, month, short):
-        _entity_sheet(wb, entity, year, month)
+        _entity_sheet(wb, entity, year, month, section_name)
     path, _ = xlsx_path(year, month, short)
     dataguard.atomic_save(wb.save, path)          # كتابة ذرّية + فحص سلامة
     dataguard.auto_backup("write", min_minutes=20)  # نسخة تلقائية (مخنوقة كل ٢٠ دقيقة)
+    rebuild_distribution(year, month, short)      # 🆕 فولدر توزيع المقررات على الجهات
+    return path
+
+
+def distribution_path(year, month, short):
+    """مسار ملف «توزيع المقررات (التمونيية/المتعهد) لكل جهة» داخل فولدره."""
+    index, section_name = _section_info(short)
+    folder = storage.section_files_path(year, month, index)
+    folder = folder / "توزيع المقررات على الجهات"
+    folder.mkdir(parents=True, exist_ok=True)
+    word = "التمونيية" if short == "tamween" else "المتعهد"
+    return folder / f"توزيع المقررات {word} لكل جهة.xlsx", section_name
+
+
+def rebuild_distribution(year, month, short):
+    """🆕 (توجيه المستخدم): فولدر «توزيع المقررات على الجهات» جواه ملف واحد
+    شيتاته = الجهات — كل جهة بشيت باسمها ومقرراتها (فطار/غداء/عشاء/الأيام)."""
+    entities = de.list_entities(year, month, short)
+    path, section_name = distribution_path(year, month, short)
+    wb = Workbook()
+    wb.properties.version = EXPORT_VERSION
+    wb.properties.keywords = _letterhead_revision(year, month)
+    wb.remove(wb.active)
+    if entities:
+        for entity in entities:
+            _entity_sheet(wb, entity, year, month, section_name)
+    else:
+        ws = wb.create_sheet("توزيع المقررات")
+        ws.sheet_view.rightToLeft = True
+        headers = ["مسلسل", "اسم الصنف", "الوحدة", "فطار", "غداء", "عشاء"]
+        add_letterhead(ws, year, month, len(headers))
+        _title(ws, f"توزيع {section_name} على الجهات — {MONTH_NAMES[month-1]} "
+                   f"{arnum.to_arabic_indic(year)}", len(headers))
+        _header(ws, TABLE_ROW, headers)
+        _signatures(ws, DATA_ROW + 2, len(headers), year, month)
+    dataguard.atomic_save(wb.save, path)
     return path
 
 
