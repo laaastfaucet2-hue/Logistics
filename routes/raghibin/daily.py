@@ -48,7 +48,9 @@ def modal_page():
     cat = _category()
     sid = request.values.get("sid", "")
     variables = rg_modal.build(year, month, entity, day, cat, sid=sid)
-    back = url_for("tameedat.page") + "?tab=day"
+    # url_for('tameedat.page') بيحمل ?year&month&sid تلقائيًا (url_defaults) — فالفاصل &
+    back = url_for("tameedat.page")
+    back += ("&" if "?" in back else "?") + "tab=day"
     variables["tameed_back"] = back + (f"&sid={quote(sid)}" if sid else "")
     return render_template("raghibin/modal_page.html", **variables)
 
