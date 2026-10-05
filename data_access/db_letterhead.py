@@ -4,6 +4,17 @@ from data_access import months, storage
 KEYS = ["lh_1", "lh_2", "lh_3", "lh_4", "sig_right_rank", "sig_right_name",
         "sig_left_rank", "sig_left_name", "logo_file"]
 
+# 🔒 التوقيعات الرسمية مثبّتة نهائيًا على مستوى المنظومة كلها (طلب المستخدم ٠٥/١٠/٢٠٢٦)
+# يمين الصفحة: المسؤول المباشر — شمالها: جهة الاعتماد.
+# تُطبع في كل ملفات Excel وWord والطباعة لكل الشهور، ولا تتأثر
+# بالحفظ من الواجهة ولا بالنسخ بين الشهور ولا بأي قيم مخزّنة قديمة.
+PINNED = {
+    "sig_right_rank": "رائد",
+    "sig_right_name": "مصطفى نصرالله",
+    "sig_left_rank": "مقدم",
+    "sig_left_name": "اسامة العجرودى",
+}
+
 
 def get_conn(year, month):
     conn = months.get_db(year, month)
@@ -15,7 +26,8 @@ def get_all(year, month):
     conn = get_conn(year, month)
     try:
         saved = dict(conn.execute("SELECT key, value FROM month_settings"))
-        return {key: saved.get(key, "") for key in KEYS}
+        pinned = {key: PINNED[key] for key in KEYS if key in PINNED}
+        return {**{key: saved.get(key, "") for key in KEYS}, **pinned}
     finally:
         conn.close()
 
@@ -29,7 +41,8 @@ def save(year, month, values):
     try:
         with conn:
             conn.executemany("INSERT OR REPLACE INTO month_settings(key,value) VALUES(?,?)",
-                             [(key, str(value or "").strip()) for key, value in values.items() if key in KEYS])
+                             [(key, str(value or "").strip()) for key, value in values.items()
+                              if key in KEYS and key not in PINNED])
     finally:
         conn.close()
 

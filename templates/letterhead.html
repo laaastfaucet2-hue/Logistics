@@ -57,30 +57,30 @@
     </div>
   </div>
 
-  <!-- التوقيعان — أسفل الصفحة يمينًا وشمالًا -->
+  <!-- التوقيعان — مثبّتان نهائيًا على مستوى المنظومة كلها، أسفل الصفحة يمينًا وشمالًا -->
   <div class="panel lh-panel">
-    <div class="panel-head"><h3>✍️ التوقيع يمين الصفحة</h3></div>
+    <div class="panel-head"><h3>✍️ التوقيع يمين الصفحة <span class="lh-pin">🔒 مثبّت نهائيًا</span></h3></div>
     <div class="lh-sig-form">
       <label>الرتبة</label>
-      <input name="sig_right_rank" value="{{ sig_right_rank }}" placeholder="مثال: رائد">
+      <input name="sig_right_rank" value="{{ sig_right_rank }}" readonly class="lh-pinned" title="توقيع مثبّت على مستوى المنظومة — لا يتغيّر">
       <label>الاسم</label>
-      <input name="sig_right_name" value="{{ sig_right_name }}" placeholder="مثال: أحمد محمد علي">
+      <input name="sig_right_name" value="{{ sig_right_name }}" readonly class="lh-pinned" title="توقيع مثبّت على مستوى المنظومة — لا يتغيّر">
     </div>
   </div>
   <div class="panel lh-panel">
-    <div class="panel-head"><h3>✍️ التوقيع شمال الصفحة</h3></div>
+    <div class="panel-head"><h3>✍️ التوقيع شمال الصفحة <span class="lh-pin">🔒 مثبّت نهائيًا</span></h3></div>
     <div class="lh-sig-form">
       <label>الرتبة</label>
-      <input name="sig_left_rank" value="{{ sig_left_rank }}" placeholder="مثال: عميد">
+      <input name="sig_left_rank" value="{{ sig_left_rank }}" readonly class="lh-pinned" title="توقيع مثبّت على مستوى المنظومة — لا يتغيّر">
       <label>الاسم</label>
-      <input name="sig_left_name" value="{{ sig_left_name }}" placeholder="مثال: محمد عبد الله">
+      <input name="sig_left_name" value="{{ sig_left_name }}" readonly class="lh-pinned" title="توقيع مثبّت على مستوى المنظومة — لا يتغيّر">
     </div>
   </div>
 </div>
 
 <div class="lh-savebar">
   <button class="rt-btn gold big" type="submit">💾 حفظ الدباجة والتوقيعات</button>
-  <span class="lh-hint">بالحفظ: يُعاد بناء <strong>ملف Word الدباجة</strong> وتتحدث الدباجة واللوجو والتوقيعات في <strong>إكسل هذا الشهر فقط</strong> لحظيًا</span>
+  <span class="lh-hint">بالحفظ: يُعاد بناء <strong>ملف Word الدباجة</strong> وتتحدث الدباجة واللوجو في <strong>إكسل هذا الشهر فقط</strong> لحظيًا — التوقيعات 🔒 <strong>مثبّتة نهائيًا</strong> على مستوى كل الشهور: يمينًا <strong>{{ sig_right_rank }} / {{ sig_right_name }}</strong> وشمالًا <strong>{{ sig_left_rank }} / {{ sig_left_name }}</strong></span>
 </div>
 </form>
 
