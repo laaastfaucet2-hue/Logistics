@@ -13,7 +13,13 @@ def _letterhead_print_vars(year, month):
         from data_access.db_letterhead import template_vars
         return template_vars(year, month)
     except Exception:  # noqa: BLE001 — الطباعة لا تسقط الصفحة
-        return {"lh": ["", "", "", ""], "sig_right": ("", ""), "sig_left": ("", ""),
+        try:  # التوقيعات المثبّتة تظل تُطبع حتى لو تعذّرت قراءة قاعدة الشهر
+            from data_access.db_letterhead import PINNED
+            right = (PINNED["sig_right_rank"], PINNED["sig_right_name"])
+            left = (PINNED["sig_left_rank"], PINNED["sig_left_name"])
+        except Exception:  # noqa: BLE001
+            right = left = ("", "")
+        return {"lh": ["", "", "", ""], "sig_right": right, "sig_left": left,
                 "has_logo": False}
 
 

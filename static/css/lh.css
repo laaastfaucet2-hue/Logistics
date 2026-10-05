@@ -43,6 +43,11 @@
   font-size: .95rem; font-weight: 500; color: var(--text); background: var(--card);
   border: 1px solid var(--field-border); outline: none; transition: all .2s; }
 .lh-sig-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(var(--gold-rgb),.14); }
+.lh-sig-form input.lh-pinned { cursor: not-allowed; color: var(--gold-light);
+  background: rgba(var(--gold-rgb),.07); border: 1px solid rgba(var(--gold-rgb),.45); font-weight: 700; }
+.lh-pin { display: inline-block; margin-inline-start: 8px; padding: 2px 10px; border-radius: 999px;
+  font-size: .68rem; font-weight: 700; color: var(--gold-light);
+  background: rgba(var(--gold-rgb),.12); border: 1px solid rgba(var(--gold-rgb),.4); vertical-align: middle; }
 
 .lh-savebar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   margin: 14px 0 8px; padding: 16px 20px; border-radius: 14px;
