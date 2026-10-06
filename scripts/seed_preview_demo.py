@@ -177,6 +177,7 @@ def _rebuild_raghibin_files(year, month, persons):
     """مرايا الراغبين المحلية: ملف كل جهة في يومها + الكوادر + عدم الراغبين + التجميع."""
     from data_access import db_raghibin as rp
     from services.raghibin import files_daily, files_monthly, files_rosters
+    from services import raghibin as rp_rfs
 
     days = {}
     for (day, entity_name) in WILLING_PLAN:
@@ -192,7 +193,9 @@ def _rebuild_raghibin_files(year, month, persons):
             written += 1
         files_monthly.write_monthly_file(year, month, entity_id, entity_name)
         files_rosters.write_excluded_files(year, month, entity_id, entity_name)
+    cadres = rp_rfs.write_all_cadres(year, month)      # ملفات القوة (ضباط/أفراد) لكل جهة
     print(f"📄 ملفات الراغبين المحلية: {written} ملف يوم/جهة + ملفات الكوادر والتجميع")
+    return written, cadres
 
 
 def _reset(year, month):

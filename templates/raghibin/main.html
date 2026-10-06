@@ -37,6 +37,9 @@
 {% else %}
   {% include "raghibin/tab_monthly.html" %}
 {% endif %}
+
+{% set ft_section = "raghibin" %}
+{% include "partials/files_tree.html" %}
 {% endblock %}
 
 {% block scripts %}

@@ -130,18 +130,21 @@
   [data-theme="blue"] .tm-att-num input { background: #071a3a; color: #dbeafe; }
   [data-theme="blue"] ::-webkit-scrollbar-thumb { background: #24558f; }
 
-  /* مفتاح الألوان نفسه يتبع الوضع المختار */
-  .theme-switch { margin: 10px 4px 4px; }
-  .ts-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted);
-    margin-bottom: 7px; }
-  .ts-label svg { width: 15px; height: 15px; }
-  .ts-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .ts-btn { font: inherit; font-size: 12.5px; font-weight: 500; padding: 8px 4px; cursor: pointer;
-    border-radius: 9px; border: 1px solid var(--field-border); background: var(--bg0);
-    color: var(--text); transition: .15s; }
-  .ts-btn:hover { border-color: var(--brand-gold); color: var(--gold-light); }
+  /* مفتاح الألوان — في الفوتر بين الجملتين (توجيه المستخدم ٠٦/١٠/٢٠٢٦) */
+  .theme-switch { display: flex; align-items: center; gap: 9px; padding: 4px 12px;
+    border: 1px solid var(--card-border); border-radius: 999px; background: var(--bg0);
+    box-shadow: inset 0 1px 0 #ffffff08; }
+  .ts-label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted);
+    white-space: nowrap; }
+  .ts-label svg { width: 14px; height: 14px; color: var(--brand-gold); }
+  .ts-row { display: flex; align-items: center; gap: 3px; padding: 2px;
+    border-radius: 999px; background: var(--card); }
+  .ts-btn { font: inherit; font-size: 12px; font-weight: 500; padding: 4px 13px; cursor: pointer;
+    border: 1px solid transparent; border-radius: 999px; background: none;
+    color: var(--muted); transition: .15s; white-space: nowrap; }
+  .ts-btn:hover { color: var(--gold-light); border-color: var(--gold-border); }
   .ts-btn.on { background: var(--brand-gold); border-color: var(--brand-gold);
-    color: var(--on-gold); font-weight: 700; }
+    color: var(--on-gold); font-weight: 700; box-shadow: 0 2px 10px #0003; }
   .side-officials { padding: 10px 13px 4px; display: flex; flex-direction: column; gap: 7px; }
   .so-row { display: flex; flex-direction: column; gap: 2px; }
   .so-row small { font-size: 11px; color: var(--muted); }

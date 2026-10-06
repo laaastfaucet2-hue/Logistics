@@ -1,0 +1,31 @@
+{# 📁 حصر الملفات المحلية للقسم — شجرة تُفتح وتُغلق وتتحدث لحظيًا (توجيه ٠٦/١٠/٢٠٢٦).
+   يُستدعى بـ: {% set ft_section = 'tameedat' %} ثم include. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/files-tree.css') }}?v={{ static_ver }}">
+<section class="ft-zone" id="ftZone"
+         data-tree="{{ url_for('files_tree.tree') }}?section={{ ft_section }}&v={{ static_ver }}"
+         data-fresh="25">
+  <button type="button" class="ft-head" id="ftToggle" aria-expanded="false" aria-controls="ftBody">
+    <span class="ft-caret" aria-hidden="true">▾</span>
+    <b>📁 الملفات المحلية على جهازك — {{ 'التاميدات' if ft_section == 'tameedat' else 'قسم الراغبين' }}</b>
+    <span class="ft-chips" id="ftChips">
+      <i class="ft-chip dim">بيتم الحصر الآن…</i>
+    </span>
+    <span class="ft-hint">اضغط للفتح والإغلاق</span>
+  </button>
+
+  <div class="ft-body" id="ftBody" hidden>
+    <div class="ft-bar">
+      <span class="ft-where" id="ftWhere">📂 <bdi dir="ltr"></bdi></span>
+      <span class="ft-live" id="ftLive"><i class="ft-dot"></i>مزامنة لحظية مع البرنامج</span>
+      <button type="button" class="ft-refresh" id="ftRefresh">🔄 تحديث الآن</button>
+    </div>
+    <div class="ft-tree" id="ftTree" aria-live="polite"></div>
+    <p class="ft-note">
+      كل ما تراه هنا هو <b>ما هو موجود فعلًا على القرص</b> داخل فولدر الشهر — الاسم والحجم
+      ووقت آخر تحديث. أي حفظ أو تعديل في البرنامج (تأميدة، تسجيل راغب، قوة جهة) يُعيد كتابة
+      الملفات المتأثرة <b>في نفس اللحظة</b>، ولو كان الملف مفتوحًا في Excel ولم يُقفل بعد:
+      البرنامج يحتفظ بالتحديث وينزّله فور إغلاق الملف (live-sync) فلا يضيع أي تغيير.
+    </p>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='js/files-tree.js') }}?v={{ static_ver }}"></script>

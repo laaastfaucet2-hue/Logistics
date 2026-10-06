@@ -37,15 +37,6 @@
       <div class="so-row"><small>رئيس قسم التعيينات</small><b>مقدم/ اسامة العجرودى</b></div>
       <div class="so-row"><small>ضابط بقسم التعيينات</small><b>رائد/ مصطفى نصرالله</b></div>
     </div>
-    <!-- مفتاح ألوان البرنامج: كحلي (الافتراضي) / أبيض / أزرق -->
-    <div class="theme-switch" id="themeSwitch" role="group" aria-label="ألوان البرنامج">
-      <span class="ts-label">{{ icon('brush') }}ألوان البرنامج</span>
-      <div class="ts-row">
-        <button type="button" class="ts-btn" data-theme-mode="slate" title="الهوية الافتراضية: كحلي داكن مع كهرماني">كحلي</button>
-        <button type="button" class="ts-btn" data-theme-mode="white" title="وضع نهاري فاتح بلمسة كهرمانية">أبيض</button>
-        <button type="button" class="ts-btn" data-theme-mode="blue" title="كحلي مزرق (أزرق ملكي) مع أزرق فاتح لامع">أزرق</button>
-      </div>
-    </div>
     <a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a>
   </div>
 </aside>
@@ -78,7 +69,19 @@
     {% if current_user %}{% include "partials/official_print_foot.html" %}{% endif %}
   {% endblock %}
 </main>
-<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>تعمل محليًا على جهازك · احتفظ بنسخة احتياطية من بياناتك</span>{% endif %}</footer>
+<footer class="footer">
+  <span class="foot-app">وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>
+  <!-- مفتاح ألوان البرنامج: كحلي (الافتراضي) / أبيض / أزرق — في الفوتر بين الجملتين (توجيه ٠٦/١٠/٢٠٢٦) -->
+  <div class="theme-switch" id="themeSwitch" role="group" aria-label="ألوان البرنامج">
+    <span class="ts-label">{{ icon('brush') }}ألوان البرنامج</span>
+    <span class="ts-row">
+      <button type="button" class="ts-btn" data-theme-mode="slate" title="الهوية الافتراضية: كحلي داكن مع كهرماني">كحلي</button>
+      <button type="button" class="ts-btn" data-theme-mode="white" title="وضع نهاري فاتح بلمسة كهرمانية">أبيض</button>
+      <button type="button" class="ts-btn" data-theme-mode="blue" title="كحلي مزرق (أزرق ملكي) مع أزرق فاتح لامع">أزرق</button>
+    </span>
+  </div>
+  {% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span class="foot-note">تعمل محليًا على جهازك · احتفظ بنسخة احتياطية من بياناتك</span>{% endif %}
+</footer>
 </div></div>
 {% include 'partials/notifications.html' %}
 {% include 'partials/assistant.html' %}
