@@ -70,7 +70,7 @@
   {% endblock %}
 </main>
 <footer class="footer">
-  <span class="foot-app">وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>
+  <span class="foot-app">وزارة الداخلية — منظومة التعيينات</span>
   <!-- مفتاح ألوان البرنامج: كحلي (الافتراضي) / أبيض / أزرق — في الفوتر بين الجملتين (توجيه ٠٦/١٠/٢٠٢٦) -->
   <div class="theme-switch" id="themeSwitch" role="group" aria-label="ألوان البرنامج">
     <span class="ts-label">{{ icon('brush') }}ألوان البرنامج</span>
@@ -80,7 +80,8 @@
       <button type="button" class="ts-btn" data-theme-mode="blue" title="كحلي مزرق (أزرق ملكي) مع أزرق فاتح لامع">أزرق</button>
     </span>
   </div>
-  {% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span class="foot-note">تعمل محليًا على جهازك · احتفظ بنسخة احتياطية من بياناتك</span>{% endif %}
+  {% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% endif %}
+  <span class="foot-note">تصميم وتنفيذ رائد/ مصطفى السيد عبدالحميد نصرالله</span>
 </footer>
 </div></div>
 {% include 'partials/notifications.html' %}

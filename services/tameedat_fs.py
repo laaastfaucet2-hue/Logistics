@@ -16,6 +16,7 @@ import json
 import logging
 
 from core import dates, egtime
+from core import labels
 from core.config import SECTIONS, MONTH_NAMES
 from data_access import dataguard, storage
 from data_access import db_tameedat as dt
@@ -105,13 +106,14 @@ def _record_json(rec):
         "عدد أيام المدة": rec["range_days"],
         "الجهة": rec["entity_name"],
         "نوع الجهة": rec["entity_type"],
-        "ضباط": rec["officers"],
-        "أفراد": rec["individuals"],
-        "مجندين": rec["recruits"],
+        "ض": rec["officers"],
+        "أ": rec["individuals"],
+        "م": rec["recruits"],
+        "مفتاح الحروف": labels.LEGEND,
         "الإجمالي": rec["total"],
         "ملحقة": [{"الاسم": a["name"], "النوع": a["entity_type"],
-                   "ضباط": a["officers"], "أفراد": a["individuals"],
-                   "مجندين": a["recruits"]} for a in rec["attachments"]],
+                   "ض": a["officers"], "أ": a["individuals"],
+                   "م": a["recruits"]} for a in rec["attachments"]],
         "إجمالي التأميدة مع الملحقات": rec["grand_total"],
         "ملاحظات": rec["notes"],
         "آخر تعديل": rec["updated_at"],
@@ -135,7 +137,7 @@ def snapshot_all(year, month):
         "عدد الجهات": len(entities),
         "الجهات": [{
             "مسلسل": e["serial"], "الاسم": e["name"], "النوع": e["entity_type"],
-            "راغبين ضباط": e["rag_officers"], "راغبين أفراد": e["rag_individuals"],
+            "راغبين ض": e["rag_officers"], "راغبين أ": e["rag_individuals"],
             "ملاحظات": e["notes"],
         } for e in entities],
     })
@@ -147,8 +149,8 @@ def snapshot_all(year, month):
             "الجهة": r["name"], "النوع": r["entity_type"],
             "ملحقة": r["kind"] == "attachment",
             "أيام التميد": r["active_days"], "عدد التأميدات": r["records"],
-            "ضباط": r["total_officers"], "أفراد": r["total_individuals"],
-            "مجندين": r["total_recruits"], "الإجمالي": r["grand_total"],
+            "ض": r["total_officers"], "أ": r["total_individuals"],
+            "م": r["total_recruits"], "الإجمالي": r["grand_total"],
             "أيام التميد بالتواريخ": [{
                 "التأميدة رقم": part["record_id"],
                 "من": dates.format_date(f"{year:04d}-{month:02d}-{part['day']:02d}"),
@@ -217,18 +219,18 @@ def _snapshot_day_folders(year, month, records):
             sheet.merge_cells(start_row=sheet.max_row, start_column=1,
                               end_row=sheet.max_row, end_column=2)
             pairs = [
+                ("مفتاح الحروف", labels.LEGEND),
                 ("النوع", rec["entity_type"] or "—"),
                 ("من يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")),
                 ("إلى يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day_to']:02d}")),
                 ("عدد أيام المدة", rec["range_days"]),
-                ("ضباط", rec["officers"]), ("أفراد", rec["individuals"]),
-                ("مجندين", rec["recruits"]), ("إجمالي التأميدة", rec["total"]),
+                ("ض", rec["officers"]), ("أ", rec["individuals"]),
+                ("م", rec["recruits"]), ("إجمالي التأميدة", rec["total"]),
                 ("إجمالي التأميدة مع الملحقات", rec["grand_total"]),
             ]
             for a in rec.get("attachments", []):
                 pairs.append(("ملحقة: {} ({})".format(a["name"], a["entity_type"] or "—"),
-                              "ضباط {} · أفراد {} · مجندين {}".format(
-                                  a["officers"], a["individuals"], a["recruits"])))
+                              labels.pair3(a["officers"], a["individuals"], a["recruits"])))
             pairs.append(("ملاحظات", rec.get("notes") or "—"))
             for k, v in pairs:
                 sheet.append([k, v])
@@ -267,7 +269,7 @@ def _save_xlsx(path, sheets):
 def _save_day_xlsx(path, year, month, records):
     """«تأميدات اليوم المحدد» — ورقة رأسية عمودية (توجيه ٢٨/٠٩): كل تأميدة بلوك
     صفوف «البيان | القيمة» بدل الجدول العرضي، وأعلى الورقة إجمالي كل التأميدات
-    في الشهر (ضباط/أفراد/مجندين بملحقاتها) — يتجدد تلقائيًا مع كل حفظ."""
+    في الشهر (ض/أ/م بملحقاتها) — يتجدد تلقائيًا مع كل حفظ."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
     book = Workbook()
@@ -306,9 +308,10 @@ def _save_day_xlsx(path, year, month, records):
 
     block("إجمالي التأميدات في الشهر — {} {}".format(MONTH_NAMES[month - 1], year), [
         ("عدد التأميدات", len(records)),
-        ("إجمالي الضباط", _sum("officers")),
-        ("إجمالي الأفراد", _sum("individuals")),
-        ("إجمالي المجندين", _sum("recruits")),
+        ("مفتاح الحروف", labels.LEGEND),
+        ("إجمالي ض", _sum("officers")),
+        ("إجمالي أ", _sum("individuals")),
+        ("إجمالي م", _sum("recruits")),
         ("الإجمالي العام", sum(r["grand_total"] for r in records)),
     ])
     for rec in records:
@@ -318,16 +321,15 @@ def _save_day_xlsx(path, year, month, records):
             ("من يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")),
             ("إلى يوم", dates.format_date(f"{year:04d}-{month:02d}-{rec['day_to']:02d}")),
             ("عدد أيام المدة", rec["range_days"]),
-            ("ضباط", rec["officers"]),
-            ("أفراد", rec["individuals"]),
-            ("مجندين", rec["recruits"]),
+            ("ض", rec["officers"]),
+            ("أ", rec["individuals"]),
+            ("م", rec["recruits"]),
             ("إجمالي التأميدة", rec["total"]),
             ("إجمالي التأميدة مع الملحقات", rec["grand_total"]),
         ]
         for a in rec.get("attachments", []):
             pairs.append(("ملحقة: {} ({})".format(a["name"], a["entity_type"] or "—"),
-                          "ضباط {} · أفراد {} · مجندين {}".format(
-                              a["officers"], a["individuals"], a["recruits"])))
+                          labels.pair3(a["officers"], a["individuals"], a["recruits"])))
         pairs.append(("ملاحظات", rec.get("notes") or "—"))
         block("تأميدة رقم {} — {}".format(rec["id"], rec["entity_name"]), pairs)
     sheet.column_dimensions["A"].width = 34
@@ -365,8 +367,8 @@ def _snapshot_xlsx(year, month, records, entities, summary):
                               e.get("notes") or "—"))
         _save_xlsx(tab_dir(year, month, "dict") / TAB_XLSX["dict"], [(
             "قاموس الجهات",
-            ["م", "الجهة", "النوع", "إجمالي الضباط", "إجمالي الأفراد",
-             "متوسط ضباط", "متوسط أفراد", "متوسط مجندين", "عدد التأميدات", "ملحقة على", "ملاحظات"],
+            ["م", "الجهة", "النوع", "إجمالي ض", "إجمالي أ",
+             "متوسط ض", "متوسط أ", "متوسط م", "عدد التأميدات", "ملحقة على", "ملاحظات"],
             dict_rows)])
 
         momoda_rows = [(idx, r["name"], "ملحقة" if r["kind"] == "attachment" else "رئيسية",
@@ -381,10 +383,11 @@ def _snapshot_xlsx(year, month, records, entities, summary):
                                   dates.format_date(f"{year:04d}-{month:02d}-{part['day_to']:02d}"),
                                   part["range_days"],
                                   part["parent_name"] if part.get("attachment") else "—"))
-        _save_xlsx(tab_dir(year, month, "momoda") / TAB_XLSX["momoda"], [
+        _save_xlsx(tab_dir(year, month, "momoda") / TAB_XLSX["momoda"], [(
+            "مفتاح الحروف", ["الشرح"], [[labels.LEGEND]]),
             ("ملخص الجهات المومدة",
              ["م", "الجهة", "الحالة", "النوع", "أيام التميد", "عدد التأميدات",
-              "ضباط", "أفراد", "مجندين", "الإجمالي"], momoda_rows),
+              "ض", "أ", "م", "الإجمالي"], momoda_rows),
             ("التواريخ من - إلى",
              ["الجهة", "تأميدة رقم", "من", "إلى", "عدد الأيام", "ملحقة على"], date_rows)])
     except Exception:

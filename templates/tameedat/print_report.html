@@ -37,7 +37,7 @@
   <h4 class="tm-part">أولًا: التفصيل اليومي للتأميدات</h4>
   <table class="rt-table rc-print-table tm-print-table">
     <thead>
-      <tr><th>اليوم</th><th>التاريخ</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+      <tr><th>اليوم</th><th>التاريخ</th><th>الجهة</th><th>النوع</th><th title="ضباط">ض</th><th title="أفراد">أ</th><th title="مجندين">م</th><th>الإجمالي</th></tr>
     </thead>
     <tbody>
       {% for r in records %}
@@ -80,7 +80,7 @@
   <h4 class="tm-part">ثانيًا: الملخص الشهري — الجهات المومدة</h4>
   <table class="rt-table rc-print-table tm-print-table">
     <thead>
-      <tr><th>م</th><th>الجهة</th><th>النوع</th><th>أيام التميد</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+      <tr><th>م</th><th>الجهة</th><th>النوع</th><th>أيام التميد</th><th title="ضباط">ض</th><th title="أفراد">أ</th><th title="مجندين">م</th><th>الإجمالي</th></tr>
     </thead>
     <tbody>
       {% for r in summary %}

@@ -47,11 +47,17 @@
 
 /* نموذج الإضافة */
 .rt-formcard { margin-bottom: 18px; }
+/* سطر شرح مستقل أعلى صف الحقول — فلا يكسر محاذاة (اسم الصنف/الوحدة/فطار/غداء/عشاء) */
+.rt-form-note { grid-column: 1 / -1; margin: 0 0 2px; padding: 9px 12px; border-radius: 10px;
+  background: rgba(var(--gold-rgb),.07); border: 1px solid rgba(var(--gold-rgb),.22);
+  color: var(--muted); font-size: .82rem; line-height: 1.8; }
+.rt-form-note b { color: var(--text); }
 .rt-form { display: grid; grid-template-columns: 2.2fr 1fr .8fr .8fr .8fr auto;
   gap: 12px; align-items: end; padding: 6px 4px 2px; }
 .rt-form.compact { grid-template-columns: 2.2fr 1fr .8fr .8fr .8fr auto; padding-bottom: 14px; }
 .rt-form .fld { display: flex; flex-direction: column; gap: 6px; }
-.rt-form .fld label { font-size: .8rem; font-weight: 600; color: var(--text); }
+.rt-form .fld label { font-size: .8rem; font-weight: 600; color: var(--text);
+  min-height: 1.35em; white-space: nowrap; }
 .rt-form input, .rt-copy select { padding: 12px 14px; border-radius: 11px; font-family: var(--font-ui);
   font-size: .95rem; font-weight: 500; background: var(--card);
   border: 1px solid var(--field-border); color: var(--text); outline: none; transition: all .2s; }
@@ -249,3 +255,4 @@ tr.custom-on .name { color: var(--status-other); }
   .modal-box { padding: 18px; max-height: 90vh; overflow-y: auto; }
   .grid-days input { width: 60px; }
 }
+@media print { .rt-form-note { display: none !important; } }

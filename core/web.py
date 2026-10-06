@@ -39,6 +39,14 @@ def register(app):
     app.add_template_filter(dates.format_date, "datefmt")
     app.add_template_filter(dates.input_date, "dateinput")
     app.add_template_global(dates.period_date, "period_date")
+    # مفتاح الحروف ض/أ/م — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٦/١٠/٢٠٢٦)
+    from core import labels
+    app.add_template_global(labels.pair3, "pair3")
+    app.add_template_global(labels.pair2, "pair2")
+    app.add_template_global(labels.triple_slash, "slash3")
+    app.add_template_global(labels.slash2, "slash2")
+    app.add_template_global(labels.LEGEND, "tri_legend")
+    app.add_template_global(labels.LEGEND_TWO, "pair_legend")
 
     @app.context_processor
     def inject_bell():

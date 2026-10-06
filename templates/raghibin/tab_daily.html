@@ -21,9 +21,10 @@
 <div class="rg-note warn">
   <b>⚠️ عدم تطابق يوم {{ sel_day | aindic }} — {{ entity.name if entity }}:</b>
   <span class="rg-dim">
-    التأميدة مسجّلة: ضباط {{ day_counts.officers_total | aindic }} وأفراد {{ day_counts.individuals_total | aindic }} —
-    الراغبون المسجلون بالأسماء: ضباط {{ day_counts.officers | aindic }} وأفراد {{ day_counts.individuals | aindic }} —
-    الكوادر المعتمدة: ضباط {{ (day_cadres.officers or 0) | aindic }} وأفراد {{ (day_cadres.individuals or 0) | aindic }}.
+    التأميدة مسجّلة: {{ pair2(day_counts.officers_total, day_counts.individuals_total) }} —
+    الراغبون المسجلون بالأسماء: {{ pair2(day_counts.officers, day_counts.individuals) }} —
+    الكوادر المعتمدة: {{ pair2(day_cadres.officers or 0, day_cadres.individuals or 0) }}
+    <i class="sh-legend">({{ pair_legend }})</i>.
   </span>
   <ul class="rg-alert-list">
     {% for issue in day_alert_issues %}
@@ -72,7 +73,7 @@
         <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
            href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}&c={{ fcat }}">
           <b>{{ ent.name }}</b>
-          <span class="rg-dim">{{ ent.entity_type }} · ضباط {{ (counts.get(ent.id, {}).officers or 0) | aindic }} · أفراد {{ (counts.get(ent.id, {}).individuals or 0) | aindic }}</span>
+          <span class="rg-dim">{{ ent.entity_type }} · ض {{ (counts.get(ent.id, {}).officers or 0) | aindic }} · أ {{ (counts.get(ent.id, {}).individuals or 0) | aindic }}</span>
         </a>
         <a class="rg-xls" href="{{ url_for('raghibin.open_entity_excel') }}&d={{ sel_day }}&e={{ ent.id }}"
            title="فتح ملف إكسل راغبين «{{ ent.name }}» ليوم {{ sel_day | aindic }} على جهازك">
@@ -83,19 +84,19 @@
   </div>
   {% endif %}
 
-  <!-- مربعات اليوم: زرار تبديل ضباط/أفراد + المربعات الذكية -->
+  <!-- مربعات اليوم: زرار تبديل ض/أ + المربعات الذكية -->
   {% if entity %}
   <div class="rg-card">
     <div class="rg-card-head">
       <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
-      <span class="rg-dim">المربعات بعدد التأميدة — الضباط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · الأفراد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
+      <span class="rg-dim">المربعات بعدد التأميدة — ض {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · أ {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }} <i class="sh-legend">({{ pair_legend }})</i></span>
     </div>
     <div class="tm-tabs rg-cat-tabs" aria-label="فئات الراغبين">
       <a class="tm-tab {{ 'on' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">
-        👮 الضباط <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
+        👮 ض <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
       </a>
       <a class="tm-tab {{ 'on' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">
-        👥 الأفراد <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
+        👥 أ <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
       </a>
     </div>
     {% with back='raghibin', source='manual' %}

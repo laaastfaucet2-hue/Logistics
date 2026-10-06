@@ -33,6 +33,10 @@ def _sheet(ws, year, month, entity_name, category_label, persons, meals):
     title.font = Font(name="Cairo", size=13, bold=True, color="132638")
     title.alignment = CENTER
     ws.row_dimensions[6].height = 22
+    from core import labels
+    legend = ws.cell(5, 1, labels.LEGEND_TWO)
+    legend.font = Font(name="Cairo", size=10, color="6B7280")
+    legend.alignment = CENTER
     for col, name in enumerate(HEADERS, start=1):
         cell = ws.cell(7, col, name)
         cell.font = Font(name="Cairo", size=11, bold=True, color="FFFFFF")
@@ -72,8 +76,8 @@ def write_monthly_file(year, month, entity_id, entity_name):
     meals = dr.month_meals(year, month, entity_id)
     book = Workbook()
     book.remove(book.active)
-    for category_key, category_label in (("officers", "الضباط"),
-                                         ("individuals", "الأفراد والصف")):
+    for category_key, category_label in (("officers", "ض — الضباط"),
+                                         ("individuals", "أ — الأفراد والصف")):
         persons = dr.list_persons(year, month, entity_id=entity_id,
                                   category=category_key, excluded=False)
         ws = book.create_sheet(category_label)

@@ -21,8 +21,8 @@
 
   <div class="al-body" id="alBody" hidden>
     <p class="al-note">
-      المقارنة على <b>الضباط والأفراد</b> فقط (المجندون خارج مقارنة الراغبين) —
-      «الكوادر المعتمدة» = أسماء القوة المسجلة في تاب «الجهات والكوادر المعتمدة».
+      المقارنة على <b>ض/أ</b> فقط (المجندون خارج مقارنة الراغبين) —
+      <b>{{ tri_legend }}</b> — «الكوادر المعتمدة» = أسماء القوة المسجلة في تاب «الجهات والكوادر المعتمدة».
       التنبيهات إرشادية ولا تمنع أي حفظ.
     </p>
     {% if not alert_rows %}
@@ -56,9 +56,9 @@
               <span class="al-type">{{ row.entity_type }}</span>
               {% if row.attachments %}<i class="al-att" title="جهات ملحقة على هذه التأميدة">ملحقات {{ row.attachments | aindic }}</i>{% endif %}
             </td>
-            <td><bdi dir="ltr">{{ row.tameeda.officers | aindic }} / {{ row.tameeda.individuals | aindic }} / {{ row.recruits | aindic }}</bdi></td>
-            <td><bdi dir="ltr">{{ row.willing.officers | aindic }} / {{ row.willing.individuals | aindic }}</bdi></td>
-            <td><bdi dir="ltr">{{ row.cadres.officers | aindic }} / {{ row.cadres.individuals | aindic }}</bdi></td>
+            <td><bdi dir="ltr">{{ slash3(row.tameeda.officers, row.tameeda.individuals, row.recruits) }}</bdi></td>
+            <td><bdi dir="ltr">{{ slash2(row.willing.officers, row.willing.individuals) }}</bdi></td>
+            <td><bdi dir="ltr">{{ slash2(row.cadres.officers, row.cadres.individuals) }}</bdi></td>
             <td class="al-issues">
               {% if row.issues %}
                 <ul>{% for issue in row.issues %}<li class="lvl-{{ issue.level }}">{{ issue.text }}</li>{% endfor %}</ul>

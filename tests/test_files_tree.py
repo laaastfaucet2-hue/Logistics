@@ -269,22 +269,22 @@ def test_footer_has_theme_switch_between_the_two_sentences(client):
         and "أزرق" in footer
     sidebar = body[body.index('<aside class="sidebar"'):body.index("</aside>")]
     assert "theme-switch" not in sidebar                    # اتشالت من الشريط الجانبي
-    assert "تعمل محليًا على جهازك · احتفظ بنسخة احتياطية من بياناتك" in footer
     assert "وزارة الداخلية — منظومة التعيينات" in footer
+    assert "مساحة مستقلة" not in footer and "بناء" not in footer   # حُذفت أسطر النسخة (توجيه ٠٦/١٠)
 
 
 def test_english_workspace_brand_is_gone_and_credit_is_written(client):
     for url in ("/dashboard", "/tameedat?tab=day", "/raghibin?tab=daily"):
         body = client.get(url).get_data(as_text=True)
         assert "LOGISTICS WORKSPACE" not in body
-        assert "تصميم وتنفيذ رائد/ مصطفى نصرالله" in body
+        assert "تصميم وتنفيذ رائد/ مصطفى السيد عبدالحميد نصرالله" in body
 
 
 def test_login_card_first_right_aligned_and_no_english_brand(app):
     page = app.test_client().get("/login").get_data(as_text=True)
     assert page.index('<section class="login-card"') < page.index('<section class="login-hero"')
     assert "LOGISTICS WORKSPACE" not in page and "WORKSPACE /" not in page
-    assert "تصميم وتنفيذ رائد/ مصطفى نصرالله" in page
+    assert "تصميم وتنفيذ رائد/ مصطفى السيد عبدالحميد نصرالله" in page
     css = (Path(__file__).resolve().parents[1] / "static/css/login.css").read_text(
         encoding="utf-8")
     assert "text-align: right" in css

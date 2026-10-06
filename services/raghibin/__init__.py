@@ -159,8 +159,9 @@ def write_cadres_files(year, month, entity_id, entity_name):
     """بناء ملفي القوة (ضباط/أفراد) لجهة واحدة لحظيًا — يُستدعى بعد كل تعديل."""
     ensure_folders(year, month)
     persons = dr.list_persons(year, month, entity_id=entity_id)
-    for category_key, category_label in (("officers", "الضباط"),
-                                         ("individuals", "الأفراد والصف")):
+    # أسماء الشيتات: الحرف أولًا ثم الاسم الكامل (توجيه ٠٦/١٠/٢٠٢٦ — مفتاح الحروف ض/أ/م)
+    for category_key, category_label in (("officers", "ض — الضباط"),
+                                         ("individuals", "أ — الأفراد والصف")):
         book = Workbook()
         ws = book.active
         ws.title = category_label

@@ -82,7 +82,7 @@ def write_day_file(year, month, day, entity_id, entity_name):
             counts[key][0] += 1
         else:
             mark, fill = "✗ لا", None
-        category_label = "ضابط" if person["category"] == "officers" else "فرد"
+        category_label = "ض" if person["category"] == "officers" else "أ"
         values = [arnum.to_arabic_indic(str(serial)), person["rank"] or "—",
                   person["full_name"], category_label, mark,
                   person["exclude_note"] or ""]
@@ -94,13 +94,14 @@ def write_day_file(year, month, day, entity_id, entity_name):
                 cell.fill = PatternFill("solid", fgColor=fill)
         row += 1
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=COLS)
+    from core import labels
     total = ws.cell(row, 1,
                     f"الإجمالي: {arnum.to_arabic_indic(str(counts['officers'][0] + counts['individuals'][0]))} "
                     f"راغبون من أصل {arnum.to_arabic_indic(str(len(persons)))} "
-                    f"(ضباط {arnum.to_arabic_indic(str(counts['officers'][0]))} من "
-                    f"{arnum.to_arabic_indic(str(counts['officers'][1]))} — أفراد "
+                    f"(ض {arnum.to_arabic_indic(str(counts['officers'][0]))} من "
+                    f"{arnum.to_arabic_indic(str(counts['officers'][1]))} — أ "
                     f"{arnum.to_arabic_indic(str(counts['individuals'][0]))} من "
-                    f"{arnum.to_arabic_indic(str(counts['individuals'][1]))})")
+                    f"{arnum.to_arabic_indic(str(counts['individuals'][1]))}) — {labels.LEGEND_TWO}")
     total.font = Font(size=12, name="Cairo", bold=True)
     total.alignment = CENTER
     _signatures(ws, row + 2, year, month)
