@@ -209,6 +209,13 @@ def remove_entity_files(year, month, entity_name):
         if path.exists():
             path.unlink()
             removed += 1
+    # فولدرات الجهة داخل الأيام (شجرة «يوم N/<الجهة>/») — تُشال بكاملها
+    from .files_daily import day_dir
+    for folder in (root / FOLDERS["daily"]).glob(f"يوم */{entity_name}"):
+        if folder.is_dir():
+            import shutil
+            shutil.rmtree(folder, ignore_errors=True)
+            removed += 1
     return removed
 
 

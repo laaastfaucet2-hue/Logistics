@@ -80,7 +80,9 @@ def test_tree_lists_every_raghibin_folder(app, client):
             "4. الجهات والكوادر المعتمدة"} <= names
     daily = next(c for c in data["children"] if c["name"].startswith("1. (يومي)"))
     day3 = next(c for c in daily["children"] if c["name"] == "يوم ٣")
-    assert [f["name"] for f in day3["children"]] == ["جهة الراغبين.xlsx"]
+    assert [f["name"] for f in day3["children"]] == ["جهة الراغبين"]      # فولدر الجهة
+    entity_files = [f["name"] for f in day3["children"][0]["children"]]
+    assert set(entity_files) == {"ض — الضباط.xlsx", "أ — الأفراد والصف.xlsx"}
 
 
 def test_tree_hides_lock_and_temp_files_and_sorts_days_numerically(app, client):
@@ -143,8 +145,10 @@ def test_raghibin_daily_save_rewrites_the_entity_six_files(app, client):
 
     root = SECTION_ROOTS["raghibin"]()
     written = [str(p.relative_to(root)) for p in root.rglob("*.xlsx")]
-    day_file = "1. (يومي) الراغبين/يوم ٧/جهة لحظية.xlsx"
-    assert day_file in written
+    day_files = ["1. (يومي) الراغبين/يوم ٧/جهة لحظية/ض — الضباط.xlsx",
+                 "1. (يومي) الراغبين/يوم ٧/جهة لحظية/أ — الأفراد والصف.xlsx"]
+    for day_file in day_files:
+        assert day_file in written
     for expected in ("2. عدم الراغبين/جهة لحظية (ضباط غير راغبين).xlsx",
                      "3. تجميع الكشف الشهري العام/جهة لحظية.xlsx",
                      "4. الجهات والكوادر المعتمدة/جهة لحظية (ضباط).xlsx"):
@@ -227,7 +231,8 @@ def test_new_day_file_written_even_if_the_previous_one_was_locked(app, client, m
     eid, entity = _entity("جهة القفل")
     drg.add_person(YEAR, MONTH, eid, "officers", "سامح يوسف", rank="نقيب")
     files_daily.write_day_file(YEAR, MONTH, 5, eid, entity["name"])
-    day_file = SECTION_ROOTS["raghibin"]() / "1. (يومي) الراغبين" / "يوم ٥" / "جهة القفل.xlsx"
+    day_file = (SECTION_ROOTS["raghibin"]() / "1. (يومي) الراغبين" / "يوم ٥"
+                / "جهة القفل" / "ض — الضباط.xlsx")
     assert day_file.is_file()
 
     real_replace = os.replace

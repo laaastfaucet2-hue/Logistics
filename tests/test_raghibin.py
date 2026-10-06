@@ -109,17 +109,23 @@ def test_daily_save_flow_clear_and_set(app, client):
         "e": eid, "d": 22, "cat": "officers", "names": ["محمد محمود"]})
     assert r.status_code == 302
     assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: True}
-    path = day_dir(YEAR, MONTH, 22) / f"{name}.xlsx"
-    assert path.exists()
-    ws = load_workbook(path).active
-    assert ws.title == "يوم ٢٢"
-    assert "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
-    marks = {ws.cell(r, 3).value: (ws.cell(r, 5).value, ws.cell(r, 4).value)
-             for r in range(8, 11)}
-    assert marks["محمد محمود"][0] == "✓ راغب بالوجبة"
-    assert marks["ابراهيم ناجى عطا الله"][0] == "⊘ غير راغب"
-    assert marks["أحمد محمد صابر"][0] == "✗ لا"
-    assert "الإجمالي: ١ راغبون من أصل ٣" in str(ws.cell(11, 1).value)
+    # الشجرة الجديدة: فولدر لكل يوم ⇒ فولدر لكل جهة ⇒ ملفان (ض + أ)
+    folder = day_dir(YEAR, MONTH, 22) / name
+    assert folder.is_dir()
+    off_path, ind_path = folder / "ض — الضباط.xlsx", folder / "أ — الأفراد والصف.xlsx"
+    assert off_path.exists() and ind_path.exists()
+    ws = load_workbook(off_path).active
+    assert ws.title == "ض — الضباط"
+    assert "الرغبين في وجبة الطعام" in str(ws.cell(6, 1).value) or \
+        "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
+    marks = {ws.cell(r, 3).value: ws.cell(r, 4).value for r in range(9, 11)}
+    assert marks["محمد محمود"] == "✓ راغب بالوجبة"
+    assert marks["ابراهيم ناجى عطا الله"] == "⊘ غير راغب"
+    assert "الإجمالي: ١ راغبون من أصل ٢" in str(ws.cell(11, 1).value)
+    ws_i = load_workbook(ind_path).active
+    assert ws_i.title == "أ — الأفراد والصف"
+    assert ws_i.cell(9, 3).value == "أحمد محمد صابر"      # الفرد في ملفه المستقل
+    assert ws_i.cell(9, 4).value == "✗ لا"
     # حفظ جديد بدون محمد محمود → تُلغى رغبته (clear-and-set) والمستثنى يتجاهل دايمًا
     r2 = client.post("/raghibin/daily/save", data={
         "e": eid, "d": 22, "cat": "officers",

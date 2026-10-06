@@ -82,14 +82,15 @@ def open_entity_excel():
     entity = _selected_entity(year, month)
     if not entity:
         return _rb(tab="daily", d=day, err="مفيش جهات في قاموس الشهر لسه — سجّل تأميدة أولًا")
-    path = day_files.write_day_file(year, month, day, entity["id"], entity["name"])
+    folder = day_files.write_day_file(year, month, day, entity["id"], entity["name"])
     day_txt = arnum.to_arabic_indic(str(day))
-    if _open_path(path):
+    if _open_path(folder):
         return _rb(tab="daily", d=day, ok=(
-            f"تم فتح ملف إكسل «{entity['name']}» ليوم {day_txt} 📗"))
+            f"تم فتح فولدر ملفات «{entity['name']}» ليوم {day_txt} — "
+            f"داخله «ض — الضباط.xlsx» و«أ — الأفراد والصف.xlsx» 📗"))
     from flask import url_for
     return _rb(tab="daily", d=day, err=(
-        f"ملف إكسل «{entity['name']}» ليوم {day_txt} اتبنى محليًا ويمكن تنزيله الآن "
+        f"ملفا إكسل «{entity['name']}» ليوم {day_txt} اتبنوا محليًا ويمكن تنزيلهما الآن "
         f"من: {url_for('raghibin.download_day_excel')}?d={day}&e={entity['id']} — "
         "وفتح الملفات مباشرة متاح من نسخة سطح المكتب"))
 
@@ -104,5 +105,5 @@ def download_day_excel():
     entity = _selected_entity(year, month)
     if not entity:
         return _rb(tab="daily", d=day, err="اختر جهة أولًا لتنزيل كشف راغبيها")
-    path = day_files.write_day_file(year, month, day, entity["id"], entity["name"])
-    return attachment(path, fallback=f"raghibin-day{day}.xlsx")
+    path = day_files.day_zip(year, month, day, entity["name"])
+    return attachment(path, fallback=f"raghibin-day{day}.zip")
