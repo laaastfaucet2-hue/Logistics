@@ -90,7 +90,8 @@ def size_text(size):
 
 
 def _time_text(mtime):
-    return time.strftime("%H:%M:%S", time.localtime(mtime))
+    """وقت آخر تحديث بتوقيت القاهرة نفسه الذي يظهر في البرنامج (لا توقيت السيرفر)."""
+    return egtime.from_timestamp(mtime).strftime("%H:%M:%S")
 
 
 def _walk(path, root, fresh_seconds, now):
