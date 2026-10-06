@@ -4,11 +4,11 @@
 import json
 from flask import Blueprint, render_template, request, g, redirect, url_for, jsonify
 from core.auth_core import login_required, current_context, current_session
-from core.config import MONTH_NAMES, MEALS
+from core.config import MONTH_NAMES, MEALS, STOCK_LOW_RATIO
 from core import arabic_numbers as arnum, egtime
 from data_access import months, db_permits as dp, db_tameedat as dt
 from data_access import db_recruits, db_attendance
-from services import permit_build as pb
+from services import permit_build as pb, stock_link
 
 calc2_bp = Blueprint("calc2", __name__, url_prefix="/calc2")
 
@@ -143,6 +143,8 @@ def page():
     tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
     contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
     nxt, fiscal = dp.peek_next_number(egtime.today())
+    stock = {"tamween": stock_link.for_rows(year, month, "tamween", tamween),
+             "contractor": stock_link.for_rows(year, month, "contractor", contractor)}
     return render_template(
         "calc2/page.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
@@ -153,6 +155,8 @@ def page():
         force=force, entity_label=label,
         tamween=tamween, contractor=contractor,
         meals=MEALS, issuers=_issuers(year, month, day_from),
+        stock=stock, stock_low_ratio=STOCK_LOW_RATIO,
+        stock_totals={k: stock_link.totals(v) for k, v in stock.items()},
         next_number=nxt, fiscal_year=fiscal, days_in_month=last,
         meal_on={"breakfast": True, "lunch": True, "dinner": True},
     )
@@ -178,6 +182,28 @@ def rows():
     tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
     contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
     return jsonify({"tamween": tamween, "contractor": contractor, "days_in_month": last})
+
+
+@calc2_bp.route("/stock")
+@login_required
+def stock():
+    """أرصدة صفوف الإذن لحظيًا — يُنادى عند تغيير «التعديل والكمية الفعلية».
+
+    الاستعلام: section=tamween|contractor · items=اسم:كمية,اسم:كمية
+    """
+    year, month = _ctx()
+    section = request.args.get("section") or "tamween"
+    if section not in stock_link.CYCLE_BY_SECTION:
+        return jsonify({"error": "قسم غير معروف", "items": {}}), 400
+    rows = []
+    for part in (request.args.get("items") or "").split(","):
+        if ":" not in part:
+            continue
+        name, _, raw = part.rpartition(":")
+        rows.append({"name": name.strip(), "auto": arnum.parse_float(raw)})
+    data = stock_link.for_rows(year, month, section, rows)
+    return jsonify({"section": section, "items": data,
+                    "totals": stock_link.totals(data)})
 
 
 @calc2_bp.route("/save", methods=["POST"])
