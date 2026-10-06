@@ -367,13 +367,22 @@ def test_rag_check_range_warning_excess_only(app, client):
         "notes": "", "rag_check": "1", "custom_rations_json": ""})
     assert "warn=" in r.headers["Location"]
     assert "%D8%B9%D8%AF%D9%85%20%D9%85%D8%B7%D8%A7%D8%A8%D9%82%D8%A9" in r.headers["Location"]
-    # تأميدة ١٠ ضباط والراغبين ٢ → نقص → لا تنبيه (تجاهل النقص)
+    # تأميدة ١٠ ضباط والراغبين ٢ → نقص: شيك «عدم مطابقة الأسماء» نفسه لا يزيد تنبيهًا
+    # (قاعدته تجاوز الزيادة فقط)، لكن تنبيهات الراغبين/الكوادر (توجيه ٠٦/١٠/٢٠٢٦) تُنبّه
+    # بالنقص وبأرقام الراغبين المسجلة فعلًا — وهذا هو المطلوب صراحة من المستخدم.
+    client.post("/raghibin/daily/save", data={      # راغبان مسجلان يوم ٢٥ (نقص عن ١٠)
+        "e": eid, "d": 25, "cat": "officers",
+        "names": ["محمد محمود", "مصطفى عبدالحميد"]})
     r2 = client.post("/tameedat/records/add", data={
         "save_token": "tok-short", "entity_name": name, "day_from": "25",
         "day_to": "25", "officers": "10", "individuals": "10", "recruits": "0",
         "notes": "", "rag_check": "1", "custom_rations_json": ""})
     loc2 = r2.headers["Location"]
-    assert "warn=" not in loc2
+    assert "warn=" in loc2
+    from urllib.parse import unquote
+    assert "عدم مطابقة" not in unquote(loc2)          # شيك الزيادة فقط كما كان
+    assert "أقل من التأميدة" in unquote(loc2)          # تنبيه النقص الجديد
+    assert "الراغبون المسجلون ضباط ٢" in unquote(loc2)  # يذكر الأرقام المسجلة فعلًا
 
 
 def test_note_marker_and_inline_edit(app, client):

@@ -1,0 +1,34 @@
+{# المساعد المحلي 🤖 — زر جانبي مثل الإشعارات: يُفتح ويُغلق، ولا يظهر في الطباعة.
+   محلي بالكامل: بلا إنترنت وبلا أي نموذج خارجي (services/assistant.py). #}
+{% if current_user %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}?v={{ static_ver }}">
+<div class="asst-wrap" id="asstWrap">
+  <div class="asst-inner">
+    <button class="asst-btn" id="asstBtn" type="button" title="المساعد المحلي — اسأل أو اكتب اسم تاب"
+            aria-haspopup="dialog" aria-expanded="false" aria-controls="asstPanel">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path><path d="M8 9h8M8 13h5"></path></svg>
+      <span class="asst-dot" aria-hidden="true"></span>
+    </button>
+    <button class="asst-toggle" id="asstToggle" type="button" title="طي المساعد">−</button>
+  </div>
+
+  <div class="asst-panel" id="asstPanel" role="dialog" aria-modal="false" aria-labelledby="asstTitle">
+    <div class="asst-head">
+      <b id="asstTitle">🤖 المساعد المحلي</b>
+      <span class="asst-tag" title="يعمل داخل البرنامج بلا إنترنت وبلا خدمة خارجية">أوفلاين</span>
+      <button type="button" class="asst-x" id="asstClose" aria-label="إغلاق المساعد" title="إغلاق">✕</button>
+    </div>
+    <div class="asst-log" id="asstLog" aria-live="polite"></div>
+    <div class="asst-prompts" id="asstPrompts"></div>
+    <form class="asst-form" id="asstForm" autocomplete="off">
+      <input type="text" id="asstInput" name="q" placeholder="اكتب: افتح التاميدات · تنبيهات · عدد التأميدات…"
+             aria-label="سؤال المساعد">
+      <button type="submit" class="asst-send" title="إرسال">➤</button>
+    </form>
+    <p class="asst-foot">يقترح ويفتح التابات ويقرأ بيانات الشهر النشط — ولا يحفظ ولا يعدّل أي بيانات.</p>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/assistant.js') }}?v={{ static_ver }}"
+        data-ask="{{ url_for('assistant.ask') }}"
+        data-prompts="{{ url_for('assistant.prompts') }}"></script>
+{% endif %}

@@ -1,0 +1,57 @@
+/* جدول تنبيهات التاميدات ↔ الراغبين — كل أيام الشهر، يُفتح ويُغلق (٠٦/١٠/٢٠٢٦).
+   يعتمد رموز theme.css فقط حتى يتبع الثيم المختار (كحلي/أبيض/أزرق) تلقائيًا. */
+.al-zone { margin: 14px 0; border: 1px solid var(--card-border); border-radius: 14px;
+  background: var(--card); overflow: hidden; }
+.al-head { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer;
+  padding: 12px 14px; border: 0; border-inline-start: 4px solid var(--brand-gold);
+  background: var(--surface-soft); color: var(--text); text-align: start; font: inherit; }
+.al-head:hover { background: var(--surface-gold); }
+.al-head b { font-size: 15px; }
+.al-caret { font-size: 14px; color: var(--gold-light); transition: transform .15s; display: inline-block; }
+.al-zone.open .al-caret { transform: rotate(180deg); }
+.al-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.al-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; font-style: normal;
+  border: 1px solid var(--card-border); background: var(--bg0); color: var(--muted); }
+.al-chip.danger { border-color: var(--danger-border); background: var(--surface-red); color: var(--red); }
+.al-chip.warn { border-color: var(--gold-border); background: var(--surface-gold); color: var(--gold-light); }
+.al-chip.info { border-color: var(--field-border); background: var(--surface-soft); color: var(--blue); }
+.al-chip.ok { border-color: var(--success-border); background: var(--success-soft); color: var(--green); }
+.al-hint { font-size: 12px; color: var(--muted); }
+.al-body { padding: 0 14px 14px; }
+.al-note { font-size: 13px; color: var(--muted); line-height: 1.9; margin: 12px 0; }
+.al-empty { padding: 18px; text-align: center; color: var(--green); font-weight: 500; }
+.al-tools { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.al-only { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); }
+.al-dim { font-size: 12px; color: var(--muted); }
+.al-scroll { max-height: 60vh; overflow: auto; }
+.al-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.al-table th { position: sticky; top: 0; z-index: 1; background: var(--bg1); color: var(--gold-light);
+  padding: 9px 8px; border-bottom: 1px solid var(--card-border); white-space: nowrap; font-weight: 600; }
+.al-table td { padding: 8px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+.al-row.danger td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.al-row.warn td:first-child { box-shadow: inset 3px 0 0 var(--brand-gold); }
+.al-row.info td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+.al-row:hover td { background: var(--surface-soft); }
+.al-row.hide { display: none; }
+.al-day { display: inline-block; min-width: 26px; text-align: center; font-weight: 700;
+  color: var(--gold-light); text-decoration: none; }
+.al-span, .al-att { display: inline-block; font-size: 11px; font-style: normal; margin-inline-start: 5px;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid var(--gold-border);
+  background: var(--surface-gold); color: var(--gold-light); }
+.al-att { border-color: var(--field-border); background: var(--surface-soft); color: var(--blue); }
+.al-wd { display: block; font-size: 11px; color: var(--muted); }
+.al-name a { color: var(--text); font-weight: 600; text-decoration: none; }
+.al-name a:hover { color: var(--gold-light); }
+.al-type { display: block; font-size: 11px; color: var(--muted); }
+.al-issues ul { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+.al-issues li { padding: 3px 8px; border-radius: 7px; font-size: 12px; line-height: 1.7;
+  border-inline-start: 3px solid var(--card-border); background: var(--surface-soft); }
+.al-issues li.lvl-danger { border-color: var(--red); background: var(--surface-red); color: var(--red); }
+.al-issues li.lvl-warn { border-color: var(--brand-gold); background: var(--surface-gold); color: var(--gold-light); }
+.al-issues li.lvl-info { border-color: var(--blue); color: var(--blue); }
+.al-ok { color: var(--green); font-size: 12px; }
+@media (max-width: 760px) {
+  .al-head { flex-wrap: wrap; }
+  .al-chips { margin-inline-start: 0; }
+  .al-scroll { overflow-x: auto; }
+}

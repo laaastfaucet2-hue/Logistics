@@ -332,6 +332,29 @@ def range_mismatch_text(year, month, entity_id, day, day_to, officers, individua
     return "تنبيه الراغبين (عدم مطابقة): " + " — ".join(problems[:6]) +            (" — ومدة أخرى" if len(problems) > 6 else "") + " — تم الحفظ رغم ذلك"
 
 
+def month_willing_split(year, month, entity_id=None):
+    """راغبو كل يوم مفصولين فئة: {day: {officers, individuals}} — استعلام واحد للشهر.
+
+    يخدم جدول تنبيهات الشهر كله (لا يوم واحد) بلا استعلام لكل يوم.
+    """
+    conn = _conn(year, month)
+    sql = ("SELECT d.day AS day, p.category AS category, COUNT(*) AS c "
+           "FROM ragh_daily d JOIN ragh_persons p ON p.id = d.person_id "
+           "WHERE d.willing = 1")
+    params = []
+    if entity_id:
+        sql += " AND p.entity_id = ?"
+        params.append(entity_id)
+    sql += " GROUP BY d.day, p.category"
+    out = {}
+    for row in conn.execute(sql, params):
+        item = out.setdefault(row["day"], {"officers": 0, "individuals": 0})
+        key = "officers" if row["category"] == "officers" else "individuals"
+        item[key] = row["c"]
+    conn.close()
+    return out
+
+
 def day_willing_counts(year, month, entity_id=None):
     """عدد الراغبين (ضباط+أفراد) في كل يوم: {day: count} — لتقويم التاب اليومي."""
     conn = _conn(year, month)

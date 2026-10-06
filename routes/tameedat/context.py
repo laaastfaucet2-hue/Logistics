@@ -292,6 +292,18 @@ def _page_vars(tab):
         "save_token": secrets.token_urlsafe(16),
         "days_in_month": egtime.days_in_month(year, month),
     }
+    # جدول تنبيهات الشهر كله (تأميدات ↔ راغبين ↔ كوادر) — يُفتح ويُغلق في التاب
+    try:
+        from core.web import alerts_context
+
+        def _alert_href(day):
+            base = url_for("tameedat.page")
+            sep = "&" if "?" in base else "?"
+            return f"{base}{sep}tab=day&day={year:04d}-{month:02d}-{int(day):02d}"
+
+        variables.update(alerts_context(year, month, _alert_href))
+    except Exception:  # noqa: BLE001 — التنبيهات لا تسقط الصفحة أبدًا
+        pass
     # مودال الراغبين مدمج في الصفحة (يُفتح فورًا بلا جلب خارجي — والجلب تحديث اختياري)
     try:
         from services.raghibin import modal as rg_modal

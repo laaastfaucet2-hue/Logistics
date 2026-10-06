@@ -7,6 +7,18 @@ from core.auth_core import current_context
 from core.config import MONTH_NAMES, DAYS, SECTIONS, EXTRA_PAGES, STATIC_VER, nav_monthly
 
 
+def alerts_context(year, month, href_for_day):
+    """متغيرات جدول تنبيهات التاميدات↔الراغبين لكل أيام الشهر (توجيه ٠٦/١٠/٢٠٢٦).
+
+    href_for_day(day) يبني رابط الانتقال ليوم محدد في القسم الذي يعرض الجدول،
+    فيُستخدم الجدول نفسه في «التاميدات» و«الراغبين» بلا تكرار.
+    """
+    from services import tameed_alerts
+    return {"alert_rows": tameed_alerts.month_rows(year, month),
+            "alert_summary": tameed_alerts.summary(year, month),
+            "alert_day_href": href_for_day}
+
+
 def _letterhead_print_vars(year, month):
     """دباجة وتوقيعات الشهر النشط — لأي window.print() في المنظومة."""
     try:

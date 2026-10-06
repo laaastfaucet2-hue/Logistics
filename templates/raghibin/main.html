@@ -26,6 +26,8 @@
   {% endfor %}
 </nav>
 
+{% include "partials/alerts_table.html" %}
+
 {% if tab == 'cadres' %}
   {% include "raghibin/tab_cadres.html" %}
 {% elif tab == 'daily' %}

@@ -1,0 +1,76 @@
+{# جدول تنبيهات التاميدات ↔ الراغبين لكل أيام الشهر — يُفتح ويُغلق (توجيه ٠٦/١٠/٢٠٢٦).
+   يحتاج: alert_rows · alert_summary (من services/tameed_alerts.py) #}
+{% if alert_rows is defined and alert_summary %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}?v={{ static_ver }}">
+<section class="al-zone" id="alZone">
+  <button type="button" class="al-head" id="alToggle" aria-expanded="false" aria-controls="alBody">
+    <span class="al-caret" aria-hidden="true">▾</span>
+    <b>⚠️ تنبيهات التاميدات والراغبين — كل أيام الشهر</b>
+    <span class="al-chips">
+      {% if alert_summary.problem_rows %}
+        {% if alert_summary.danger %}<i class="al-chip danger">خطر {{ alert_summary.danger | aindic }}</i>{% endif %}
+        {% if alert_summary.warn %}<i class="al-chip warn">تنبيه {{ alert_summary.warn | aindic }}</i>{% endif %}
+        {% if alert_summary.info %}<i class="al-chip info">معلومة {{ alert_summary.info | aindic }}</i>{% endif %}
+      {% else %}
+        <i class="al-chip ok">✔ لا تنبيهات — كل الأيام متطابقة</i>
+      {% endif %}
+      <i class="al-chip dim">أيام الشهر: {{ alert_summary.rows | aindic }} صف</i>
+    </span>
+    <span class="al-hint">اضغط للفتح والإغلاق</span>
+  </button>
+
+  <div class="al-body" id="alBody" hidden>
+    <p class="al-note">
+      المقارنة على <b>الضباط والأفراد</b> فقط (المجندون خارج مقارنة الراغبين) —
+      «الكوادر المعتمدة» = أسماء القوة المسجلة في تاب «الجهات والكوادر المعتمدة».
+      التنبيهات إرشادية ولا تمنع أي حفظ.
+    </p>
+    {% if not alert_rows %}
+      <div class="al-empty">✔ مفيش أي تنبيه في {{ month_name }} — كل تأميدات الشهر مطابقة للراغبين والكوادر.</div>
+    {% else %}
+    <div class="al-tools">
+      <label class="al-only"><input type="checkbox" id="alOnlyIssues" checked> إظهار التنبيهات فقط</label>
+      <span class="al-dim">اضغط على أي صف للانتقال إلى يومه وسجلّه</span>
+    </div>
+    <div class="table-wrap al-scroll">
+      <table class="al-table">
+        <thead>
+          <tr>
+            <th>اليوم</th><th>التاريخ</th><th>الجهة</th>
+            <th title="أعداد التأميدة كما سُجلت">التأميدة (ض/أ/م)</th>
+            <th title="المسجلون بالأسماء راغبين في هذا اليوم">الراغبون المسجلون (ض/أ)</th>
+            <th title="قوة الجهة في الجهات والكوادر المعتمدة">الكوادر المعتمدة (ض/أ)</th>
+            <th>التنبيهات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in alert_rows %}
+          <tr class="al-row {{ row.level if row.issues else 'ok' }}"
+              data-issues="{{ 1 if row.issues else 0 }}">
+            <td><a class="al-day" href="{{ alert_day_href(row.day) }}">{{ row.day | aindic }}</a>
+              {% if row.range_days > 1 %}<i class="al-span" title="ضمن مدة زمنية {{ row.range_days }} أيام">مدة {{ row.range_days | aindic }}</i>{% endif %}
+            </td>
+            <td><bdi dir="ltr" class="date-display">{{ row.date_text }}</bdi>
+              <span class="al-wd">{{ row.weekday }}</span></td>
+            <td class="al-name"><a href="{{ alert_day_href(row.day) }}">{{ row.entity_name }}</a>
+              <span class="al-type">{{ row.entity_type }}</span>
+              {% if row.attachments %}<i class="al-att" title="جهات ملحقة على هذه التأميدة">ملحقات {{ row.attachments | aindic }}</i>{% endif %}
+            </td>
+            <td><bdi dir="ltr">{{ row.tameeda.officers | aindic }} / {{ row.tameeda.individuals | aindic }} / {{ row.recruits | aindic }}</bdi></td>
+            <td><bdi dir="ltr">{{ row.willing.officers | aindic }} / {{ row.willing.individuals | aindic }}</bdi></td>
+            <td><bdi dir="ltr">{{ row.cadres.officers | aindic }} / {{ row.cadres.individuals | aindic }}</bdi></td>
+            <td class="al-issues">
+              {% if row.issues %}
+                <ul>{% for issue in row.issues %}<li class="lvl-{{ issue.level }}">{{ issue.text }}</li>{% endfor %}</ul>
+              {% else %}<span class="al-ok">✔ مطابق</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</section>
+<script src="{{ url_for('static', filename='js/alerts.js') }}?v={{ static_ver }}"></script>
+{% endif %}

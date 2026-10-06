@@ -5,6 +5,8 @@
 <link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-modes.css') }}?v={{ static_ver }}">
+<script>/* وضع الألوان المحفوظ — قبل الرسم لمنع الوميض */try{var m=localStorage.getItem("logistics.theme")||"slate";if(["slate","white","blue"].indexOf(m)<0)m="slate";document.documentElement.dataset.theme=m;}catch(e){document.documentElement.dataset.theme="slate";}</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
 {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
@@ -29,7 +31,23 @@
     {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups'} %}
     {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
   </nav>
-  <div class="side-foot"><div class="sidebar-status"><i class="status-dot"></i>{{ 'تعمل محليًا على جهازك' if desktop_mode else 'بيئة المعاينة' }}</div><a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a></div>
+  <div class="side-foot">
+    <!-- قيادات القسم (توجيه المستخدم ٠٦/١٠/٢٠٢٦) -->
+    <div class="side-officials">
+      <div class="so-row"><small>رئيس قسم التعيينات</small><b>مقدم/ اسامة العجرودى</b></div>
+      <div class="so-row"><small>ضابط بقسم التعيينات</small><b>رائد/ مصطفى نصرالله</b></div>
+    </div>
+    <!-- مفتاح ألوان البرنامج: كحلي (الافتراضي) / أبيض / أزرق -->
+    <div class="theme-switch" id="themeSwitch" role="group" aria-label="ألوان البرنامج">
+      <span class="ts-label">{{ icon('brush') }}ألوان البرنامج</span>
+      <div class="ts-row">
+        <button type="button" class="ts-btn" data-theme-mode="slate" title="الهوية الافتراضية: كحلي داكن مع كهرماني">كحلي</button>
+        <button type="button" class="ts-btn" data-theme-mode="white" title="وضع نهاري فاتح بلمسة كهرمانية">أبيض</button>
+        <button type="button" class="ts-btn" data-theme-mode="blue" title="كحلي مزرق (أزرق ملكي) مع أزرق فاتح لامع">أزرق</button>
+      </div>
+    </div>
+    <a href="{{ url_for('logout') }}" class="logout-btn">{{ icon('logout') }}تسجيل الخروج</a>
+  </div>
 </aside>
 <div class="main"><header class="topbar">
   <button class="menu-btn" id="menuBtn" type="button" aria-label="القائمة"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
@@ -60,9 +78,11 @@
     {% if current_user %}{% include "partials/official_print_foot.html" %}{% endif %}
   {% endblock %}
 </main>
-<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>معاينة ويب · احتفظ بنسختك الاحتياطية</span>{% endif %}</footer>
+<footer class="footer"><span>وزارة الداخلية — منظومة التعيينات <span dir="ltr">/ {{ app_version }}</span> · بناء <b dir="ltr">{{ static_ver }}</b> · كل شهر، مساحة مستقلة</span>{% if desktop_mode %}<button type="button" data-window="data_folder">{{ icon('folder') }}مكان حفظ البيانات</button>{% else %}<span>تعمل محليًا على جهازك · احتفظ بنسخة احتياطية من بياناتك</span>{% endif %}</footer>
 </div></div>
 {% include 'partials/notifications.html' %}
+{% include 'partials/assistant.html' %}
+<script src="{{ url_for('static', filename='js/theme-mode.js') }}?v={{ static_ver }}"></script>
 <script type="application/json" id="dateConfig">{{ date_config | tojson }}</script>
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/dates.js') }}?v={{ static_ver }}"></script>

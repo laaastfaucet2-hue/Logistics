@@ -28,6 +28,16 @@ def _store_custom_rations(year, month, record_id):
         snap.save_payload(year, month, record_id, payload)
 
 
+def _alerts_warning(year, month, entity, day, day_to, counts):
+    """نص تنبيهات الراغبين/الكوادر للمدة المسجلة (خدمة مشتركة — بلا تكرار منطق)."""
+    try:
+        from services import tameed_alerts
+        return tameed_alerts.record_warning(year, month, entity, day, day_to,
+                                            counts["officers"], counts["individuals"])
+    except Exception:  # noqa: BLE001 — التنبيه لا يمنع الحفظ أبدًا
+        return None
+
+
 # ======================================================================
 # الصفحة الرئيسية — التويبات الأربعة
 # ======================================================================
@@ -106,6 +116,10 @@ def record_add():
                                             counts["officers"], counts["individuals"])
         if range_txt:
             warn = f"{warn} | {range_txt}" if warn else range_txt
+    # تنبيهات الراغبين والكوادر لكل أيام المدة (٠٦/١٠/٢٠٢٦) — لا تمنع الحفظ
+    alert_txt = _alerts_warning(year, month, entity, day, day_to, counts)
+    if alert_txt:
+        warn = f"{warn} | {alert_txt}" if warn else alert_txt
     return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok, warn=warn)
 
 
@@ -150,6 +164,10 @@ def record_edit(record_id):
                                             counts["officers"], counts["individuals"])
         if range_txt:
             warn = f"{warn} | {range_txt}" if warn else range_txt
+    # تنبيهات الراغبين والكوادر لكل أيام المدة (٠٦/١٠/٢٠٢٦) — لا تمنع الحفظ
+    alert_txt = _alerts_warning(year, month, entity, day, day_to, counts)
+    if alert_txt:
+        warn = f"{warn} | {alert_txt}" if warn else alert_txt
     return _rb(day=f"{year:04d}-{month:02d}-{day:02d}", ok=ok, warn=warn)
 
 
