@@ -43,6 +43,14 @@ TAB_XLSX = {
 
 # الأزرق الفاتح المعتمد لكل تصميمات Excel — بدل البرتقالي (توجيه ٢٨/٠٩)
 XLSX_BLUE = "BDD7EE"
+HEAD_ROW = 6          # صف العناوين بعد الدباجة (٥ صفوف) — قاعدة موحّدة مع كل الكشوف
+
+
+def signatures_rows(ws, row, year, month, ncols):
+    """التوقيعان الرسميان أسفل أي ورقة — نفس دالة الراغبين (مصدر واحد)."""
+    from services.raghibin import signatures_rows as _sr
+    _sr(ws, row, year, month, ncols)
+    return row
 
 HEADER_1 = "منطقة وسط وجنوب للأمن المركزي"
 HEADER_2 = "قطاع وسط سيناء - قسم التميينات"
@@ -199,17 +207,19 @@ def _snapshot_day_folders(year, month, records):
         book = Workbook()
         sheet = book.active
         sheet.title = "تأميدات يوم {}".format(arnum.to_arabic_indic(str(day)))
+        from documents.official_xlsx import add_letterhead
+        add_letterhead(sheet, year, month, 2)      # دباجة + لوجو على كل ملف محلي
         sheet.sheet_view.rightToLeft = True
         head = Font(bold=True, size=12)
         label = Font(bold=True, size=11)
         blue = PatternFill("solid", fgColor=XLSX_BLUE)
         right = Alignment(horizontal="right", vertical="center", readingOrder=2)
-        banner = sheet.cell(1, 1, "تأميدات يوم {} {} {}".format(
+        banner = sheet.cell(HEAD_ROW, 1, "تأميدات يوم {} {} {}".format(
             arnum.to_arabic_indic(str(day)), MONTH_NAMES[month - 1], year))
         banner.font = head
         banner.fill = blue
         banner.alignment = right
-        sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+        sheet.merge_cells(start_row=HEAD_ROW, start_column=1, end_row=HEAD_ROW, end_column=2)
         sheet.append([None, None])
         for rec in by_day[day]:
             sheet.append([None, None])
@@ -237,32 +247,55 @@ def _snapshot_day_folders(year, month, records):
                 sheet.cell(sheet.max_row, 1).font = label
         sheet.column_dimensions["A"].width = 34
         sheet.column_dimensions["B"].width = 46
+        signatures_rows(sheet, sheet.max_row + 2, year, month, 2)
         dataguard.atomic_save(book.save,
                               folder / "تاميدات اليوم {}.xlsx".format(
                                   arnum.to_arabic_indic(str(day))), zip_check=False)
 
 
-def _save_xlsx(path, sheets):
-    """يكتب ملف Excel عربي RTL من قائمة (اسم الورقة, العناوين, الصفوف) — مرآة مقروءة للمستخدم."""
+def _save_xlsx(path, sheets, year=None, month=None):
+    """يكتب ملف Excel عربي RTL — **بدباجة + لوجو + توقيعين** على كل ورقة.
+
+    القاعدة الذهبية (توجيه ٠٦/١٠/٢٠٢٦): كل ملف محلي يحمل الدباجة الرسمية واللوجو
+    والتوقيعين، ويرفضه الفحص الذكي (services/local_audit) إن نَقص أحدها.
+    """
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
+    from documents.official_xlsx import add_letterhead
     book = Workbook()
     first = True
     for title, headers, rows in sheets:
         sheet = book.active if first else book.create_sheet()
         sheet.title = title
-        sheet.sheet_view.rightToLeft = True
         first = False
-        sheet.append(headers)
-        for cell in sheet[sheet.max_row]:
+        ncols = max(len(headers), 3)
+        if year and month:
+            add_letterhead(sheet, year, month, ncols)      # صفوف ١–٤ (لوجو + وزارة)
+            head_row = HEAD_ROW
+            # صف ٥: عنوان الورقة + الشهر والسنة (القاعدة الذهبية: اسم الشهر في كل ملف)
+            sheet.merge_cells(start_row=5, start_column=1, end_row=5, end_column=ncols)
+            from core import arabic_numbers as arnum
+            stamp = sheet.cell(5, 1, f"{title} — {MONTH_NAMES[int(month) - 1]} "
+                                     f"{arnum.to_arabic_indic(year)}")
+            stamp.font = Font(name="Cairo", size=11, bold=True, color="132638")
+            stamp.alignment = Alignment(horizontal="center", vertical="center",
+                                        readingOrder=2)
+        else:                                              # بلا سياق شهر: تبقى المرآة مقروءة
+            head_row = 1
+        for col, name in enumerate(headers, start=1):
+            cell = sheet.cell(head_row, col, name)
             cell.fill = PatternFill("solid", fgColor=XLSX_BLUE)
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal="center")
         for row in rows:
             sheet.append(list(row))
-        for column_cells in sheet.columns:
-            width = max((len(str(c.value)) for c in column_cells if c.value is not None), default=10)
-            sheet.column_dimensions[column_cells[0].column_letter].width = min(max(width + 4, 12), 46)
+        for idx, name in enumerate(headers, start=1):        # العرض من البيانات (الدباجة مدمجة)
+            column = [str(row[idx - 1]) for row in rows if len(row) >= idx and row[idx - 1] is not None]
+            width = max([len(str(name))] + [len(v) for v in column] or [10])
+            from openpyxl.utils import get_column_letter
+            sheet.column_dimensions[get_column_letter(idx)].width = min(max(width + 4, 12), 46)
+        if year and month:
+            signatures_rows(sheet, sheet.max_row + 2, year, month, ncols)
     dataguard.atomic_save(book.save, path)   # ذرّي + لحظي لو الملف مفتوح عند المستخدم
 
 
@@ -275,6 +308,8 @@ def _save_day_xlsx(path, year, month, records):
     book = Workbook()
     sheet = book.active
     sheet.title = "تأميدات الشهر"
+    from documents.official_xlsx import add_letterhead
+    add_letterhead(sheet, year, month, 2)      # دباجة + لوجو على كل ملف محلي
     sheet.sheet_view.rightToLeft = True
     head = Font(bold=True, size=12)
     label = Font(bold=True, size=11)
@@ -296,8 +331,8 @@ def _save_day_xlsx(path, year, month, records):
             sheet.cell(sheet.max_row, 1).font = label
         sheet.append([None, None])
 
-    sheet.append(["البيان", "القيمة"])
-    for cell in sheet[1]:
+    for col, name in enumerate(("البيان", "القيمة"), start=1):
+        cell = sheet.cell(HEAD_ROW, col, name)
         cell.font = head
         cell.fill = blue
         cell.alignment = center
@@ -334,6 +369,7 @@ def _save_day_xlsx(path, year, month, records):
         block("تأميدة رقم {} — {}".format(rec["id"], rec["entity_name"]), pairs)
     sheet.column_dimensions["A"].width = 34
     sheet.column_dimensions["B"].width = 46
+    signatures_rows(sheet, sheet.max_row + 2, year, month, 2)
     from data_access import dataguard
     dataguard.atomic_save(book.save, path)   # لحظي (توجيه ٢٨/٠٩ ليلًا)
 
@@ -369,7 +405,7 @@ def _snapshot_xlsx(year, month, records, entities, summary):
             "قاموس الجهات",
             ["م", "الجهة", "النوع", "إجمالي ض", "إجمالي أ",
              "متوسط ض", "متوسط أ", "متوسط م", "عدد التأميدات", "ملحقة على", "ملاحظات"],
-            dict_rows)])
+            dict_rows)], year=year, month=month)
 
         momoda_rows = [(idx, r["name"], "ملحقة" if r["kind"] == "attachment" else "رئيسية",
                         r["entity_type"], r["active_days"], r["records"], r["total_officers"],
@@ -389,6 +425,7 @@ def _snapshot_xlsx(year, month, records, entities, summary):
              ["م", "الجهة", "الحالة", "النوع", "أيام التميد", "عدد التأميدات",
               "ض", "أ", "م", "الإجمالي"], momoda_rows),
             ("التواريخ من - إلى",
-             ["الجهة", "تأميدة رقم", "من", "إلى", "عدد الأيام", "ملحقة على"], date_rows)])
+             ["الجهة", "تأميدة رقم", "من", "إلى", "عدد الأيام", "ملحقة على"], date_rows)],
+            year=year, month=month)
     except Exception:
         logging.exception("tameedat xlsx mirror failed — JSON snapshots are intact")

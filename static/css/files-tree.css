@@ -62,3 +62,7 @@
 @media print {
   .ft-zone { display: none !important; }
 }
+
+  .ft-audit { text-decoration: none; color: var(--gold-light); border-color: var(--brand-gold);
+    display: inline-flex; align-items: center; gap: 4px; }
+  .ft-audit:hover { background: var(--bg0); }

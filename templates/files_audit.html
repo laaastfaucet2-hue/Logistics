@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}🛡️ الفحص الذكي للملفات المحلية • وزارة الداخلية — منظومة التعيينات{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/files-tree.css') }}?v={{ static_ver }}">
+<section class="ft-zone open">
+  <div class="ft-head" style="cursor:default">
+    <b>🛡️ الفحص الذكي — القواعد الذهبية على كل ملف محلي</b>
+    <span class="ft-chips">
+      <i class="ft-chip {{ 'live' if not report.problems else 'gold' }}">
+        {{ 'كل الملفات سليمة ✅' if not report.problems else 'ملفات ناقصة ⚠️' }}</i>
+      <i class="ft-chip">فُحص {{ report.checked | aindic }}</i>
+      <i class="ft-chip">سليم {{ report.ok | aindic }}</i>
+      <i class="ft-chip {{ 'gold' if report.problems }}">ناقص {{ report.problems | length | aindic }}</i>
+    </span>
+  </div>
+  <div class="ft-body">
+    <p class="ft-note">
+      <b>القواعد الذهبية:</b> الدباجة الرسمية («وزارة الداخلية · قطاع الأمن المركزي · قطاع وسط سيناء ·
+      قسم التعيينات») + <b>اللوجو</b> + <b>التوقيعان الرسميان</b> (رائد/ مصطفى نصرالله — مقدم/ اسامة العجرودى)
+      + اسم الشهر والسنة — على <b>كل</b> ملف إكسل و JSON و Word محلي.
+    </p>
+    {% for key, part in report.sections.items() %}
+    <div class="ft-bar">
+      <span class="ft-where">📂 <b>{{ 'التاميدات' if key == 'tameedat' else 'قسم الراغبين' }}</b>
+        — فُحص {{ part.checked | aindic }} · سليم {{ part.ok | aindic }} ·
+        ناقص {{ part.problems | aindic }}</span>
+    </div>
+    {% endfor %}
+
+    {% if report.problems %}
+    <div class="table-wrap" style="margin-top:10px">
+      <table class="rt-table">
+        <thead><tr><th>#</th><th>الملف</th><th>النواقص</th></tr></thead>
+        <tbody>
+          {% for row in report.problems %}
+          <tr>
+            <td class="num">{{ loop.index | aindic }}</td>
+            <td class="name"><bdi dir="ltr">{{ row.file }}</bdi></td>
+            <td>{{ row.missing | join(' · ') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="panel-hint" style="text-align:center;padding:18px 0">
+      ✅ كل ملفات الشهر المحلية مطابقة للقواعد الذهبية — لا ناقص واحد.</p>
+    {% endif %}
+    <p class="panel-hint" style="margin-top:10px">
+      الفحص <b>قراءة فقط</b>: لا يعدّل ولا يصلح أي ملف — يعرض الحالة كما هي على القرص لحظة الفتح.
+    </p>
+  </div>
+</section>
+{% endblock %}

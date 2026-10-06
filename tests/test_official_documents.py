@@ -91,10 +91,12 @@ def test_old_workbooks_and_letterhead_changes_rebuild_on_download(app):
     result.close()
 
 
-def test_logo_optional_empty_cells_not_none(app):
+def test_default_logo_and_clean_empty_cells(app):
+    """القاعدة الذهبية (توجيه ٠٦/١٠/٢٠٢٦): اللوجو الافتراضي موجود، والخلايا الفاضية
+    تبقى None نظيفة (نص «None» لا يظهر في أي خلية)."""
     wb = load_workbook(xlsx_rations.rebuild(2031, 10, "tamween"))
-    assert not wb.worksheets[0]._images
-    assert wb.worksheets[0]["A1"].value is None
+    assert wb.worksheets[0]._images                       # اللوجو الافتراضي (شعار المنظومة)
+    assert wb.worksheets[0]["A1"].value == "وزارة الداخلية"   # الدباجة الافتراضية
     assert "None" not in str([c.value for row in wb.worksheets[0] for c in row if c.value])
     wb.close()
 
@@ -125,13 +127,15 @@ def test_invalid_logo_does_not_replace_saved_settings(client):
 
 
 def test_upload_webp_and_remove_logo_updates_all_xlsx(client):
+    """بعد الحذف يرجع **اللوجو الافتراضي** (توجيه ٠٦/١٠/٢٠٢٦: لا ملف محلي بلا لوجو)."""
     response = client.post("/letterhead/save?year=2031&month=9", data={
         "lh_1": "شهر سبتمبر", "logo": (image_bytes("WEBP"), "logo.webp")},
         content_type="multipart/form-data", follow_redirects=True)
     assert response.status_code == 200
     assert lh.logo_path(2031, 9).suffix == ".png"
     client.post("/letterhead/logo/delete?year=2031&month=9")
+    assert lh.logo_path(2031, 9) is None                      # المرفوع اتشال
     for section in ("tamween", "contractor"):
         wb = load_workbook(xlsx_rations.ensure(2031, 9, section))
-        assert all(not ws._images for ws in wb)
+        assert any(ws._images for ws in wb)                   # والافتراضي مكانه
         wb.close()

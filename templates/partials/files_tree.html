@@ -18,9 +18,14 @@
       <span class="ft-where" id="ftWhere">📂 <bdi dir="ltr"></bdi></span>
       <span class="ft-live" id="ftLive"><i class="ft-dot"></i>مزامنة لحظية مع البرنامج</span>
       <button type="button" class="ft-refresh" id="ftRefresh">🔄 تحديث الآن</button>
+      <a class="ft-refresh ft-audit" href="{{ url_for('files_tree.audit_page') }}?section={{ ft_section }}"
+         title="القواعد الذهبية: الدباجة + اللوجو + التوقيعان على كل ملف محلي">
+        🛡️ الفحص الذكي ({{ ft_section == 'tameedat' and 'التاميدات' or 'الراغبين' }})</a>
     </div>
     <div class="ft-tree" id="ftTree" aria-live="polite"></div>
     <p class="ft-note">
+      <b>🛡️ الفحص الذكي:</b> زر «الفحص الذكي» يراجع كل ملف محلي على القرص بالقواعد الذهبية —
+      الدباجة الرسمية · اللوجو · التوقيعان · اسم الشهر — ويُظهر أي ملف ناقص فورًا.<br>
       كل ما تراه هنا هو <b>ما هو موجود فعلًا على القرص</b> داخل فولدر الشهر — الاسم والحجم
       ووقت آخر تحديث. أي حفظ أو تعديل في البرنامج (تأميدة، تسجيل راغب، قوة جهة) يُعيد كتابة
       الملفات المتأثرة <b>في نفس اللحظة</b>، ولو كان الملف مفتوحًا في Excel ولم يُقفل بعد:
