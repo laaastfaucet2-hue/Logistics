@@ -17,6 +17,7 @@ import logging
 
 from core import dates, egtime
 from core import labels
+from services import sheet_columns
 from core import colors as palette
 
 
@@ -397,6 +398,15 @@ def _snapshot_xlsx(year, month, records, entities, summary):
 
         stats = dt.dict_month_stats(year, month)   # المصدر الموحد — لا منطق متوازٍ هنا
         dict_rows = []
+        dict_dates = {}                      # «تواريخ التأميدات (من – إلى)» لكل جهة
+        for rec in records:
+            label = dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")
+            if rec["range_days"] > 1:
+                label += " → " + dates.format_date(
+                    f"{year:04d}-{month:02d}-{rec['day_to']:02d}")
+            dict_dates.setdefault(rec["entity_id"], []).append(label)
+        for key, parts in dict_dates.items():
+            dict_dates[key] = "، ".join(parts)
         for e in entities:
             st = stats.get(e["id"], {})
             own, att = st.get("own"), st.get("att")
@@ -412,19 +422,17 @@ def _snapshot_xlsx(year, month, records, entities, summary):
                               round(own["avg_individuals"], 3) if own else "—",
                               round(own["avg_recruits"], 3) if own else "—",
                               st.get("records_total", 0),
-                              (f"×{st['att_count']} — {'، '.join(st['att_parents'])}"
-                               if st.get("att_count") else "—"),
+                              dict_dates.get(e["id"]) or "—",
+                              f"×{st['att_count']} — {'، '.join(st['att_parents'])}"
+                              if st.get("att_count") else "—",
                               e.get("notes") or "—"))
         _save_xlsx(tab_dir(year, month, "dict") / TAB_XLSX["dict"], [(
-            "قاموس الجهات",
-            ["م", "الجهة", "النوع", "إجمالي ض", "إجمالي أ",
-             "متوسط ض", "متوسط أ", "متوسط م", "عدد التأميدات", "ملحقة على", "ملاحظات"],
+            "قاموس الجهات", sheet_columns.as_labels(sheet_columns.TAMEEDAT_DICT),
             dict_rows)], year=year, month=month)
 
-        momoda_rows = [(idx, r["name"], "ملحقة" if r["kind"] == "attachment" else "رئيسية",
-                        r["entity_type"], r["active_days"], r["records"], r["total_officers"],
-                        r["total_individuals"], r["total_recruits"], r["grand_total"])
-                       for idx, r in enumerate(summary, 1)]
+        momoda_rows = [(idx, r["name"], r["entity_type"], r["active_days"], r["records"],
+                        r["total_officers"], r["total_individuals"], r["total_recruits"],
+                        r["grand_total"]) for idx, r in enumerate(summary, 1)]
         date_rows = []
         for r in summary:
             for part in r["participations"]:
@@ -436,10 +444,9 @@ def _snapshot_xlsx(year, month, records, entities, summary):
         _save_xlsx(tab_dir(year, month, "momoda") / TAB_XLSX["momoda"], [(
             "مفتاح الحروف", ["الشرح"], [[labels.LEGEND]]),
             ("ملخص الجهات المومدة",
-             ["م", "الجهة", "الحالة", "النوع", "أيام التميد", "عدد التأميدات",
-              "ض", "أ", "م", "الإجمالي"], momoda_rows),
+             sheet_columns.as_labels(sheet_columns.TAMEEDAT_MOMODA), momoda_rows),
             ("التواريخ من - إلى",
-             ["الجهة", "تأميدة رقم", "من", "إلى", "عدد الأيام", "ملحقة على"], date_rows)],
+             sheet_columns.as_labels(sheet_columns.TAMEEDAT_DATES), date_rows)],
             year=year, month=month)
     except Exception:
         logging.exception("tameedat xlsx mirror failed — JSON snapshots are intact")

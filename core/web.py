@@ -51,6 +51,11 @@ def register(app):
     from core import colors
     app.add_template_global(colors.color_for, "color")
     app.add_template_global(colors.ring_style, "color_ring")
+    # «الورق = الإكسل»: أعمدة كل كشف من مصدر واحد (services/sheet_columns.py)
+    from services import sheet_columns as sc
+    app.add_template_global(sc.TAMEEDAT_DAY, "cols_day")
+    app.add_template_global(sc.TAMEEDAT_MOMODA, "cols_momoda")
+    app.add_template_global(sc.TAMEEDAT_DICT, "cols_dict")
 
     @app.context_processor
     def inject_bell():

@@ -26,8 +26,8 @@
   <div class="table-wrap">
     <table class="rt-table tm-table">
       <thead>
-        <tr><th>م</th><th>الجهة المومدة</th><th>النوع</th><th>أيام التميد</th><th>عدد التأميدات</th>
-            <th title="ضباط">ض</th><th title="أفراد">أ</th><th title="مجندين">م</th><th>الإجمالي</th></tr>
+        {# الأعمدة من services/sheet_columns.py — نفس أعمدة «ملخص الجهات المومدة.xlsx» #}
+        <tr>{% for c in cols_momoda %}<th>{{ c }}</th>{% endfor %}</tr>
       </thead>
       <tbody>
         {% for r in summary %}
