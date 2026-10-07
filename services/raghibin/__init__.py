@@ -88,10 +88,10 @@ def _header(ws, headers):
     ws.row_dimensions[7].height = 20
 
 
-def _cell(ws, row, col, value, bold=False, fill=None):
+def _cell(ws, row, col, value, bold=False, fill=None, font_color=""):
     cell = ws.cell(row, col, value)
     cell.alignment = CENTER
-    cell.font = Font(size=11, name="Cairo", bold=bold)
+    cell.font = Font(size=11, name="Cairo", bold=bold, color=font_color or "000000")
     if fill:
         cell.fill = PatternFill("solid", fgColor=fill)
     return cell
@@ -142,8 +142,11 @@ def _cadres_sheet(ws, year, month, entity_name, category_key, category_label, pe
         fill = FILL_EXCLUDED if excluded else ("F4F6FB" if row % 2 == 0 else None)
         values = [arnum.to_arabic_indic(serial), person["rank"] or "—",
                   person["full_name"], state, note or ""]
+        from core import colors as palette
+        name_color = (palette.color_for("person", person["full_name"]) or "").lstrip("#")
         for col, value in enumerate(values, start=1):
-            _cell(ws, row, col, value, bold=(col == 3), fill=fill)
+            _cell(ws, row, col, value, bold=(col == 3), fill=fill,
+                  font_color=name_color if col == 3 else "")
         row += 1
     active = sum(1 for p in persons if not p["excluded"])
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(headers))
@@ -159,8 +162,9 @@ def write_cadres_files(year, month, entity_id, entity_name):
     """بناء ملفي القوة (ضباط/أفراد) لجهة واحدة لحظيًا — يُستدعى بعد كل تعديل."""
     ensure_folders(year, month)
     persons = dr.list_persons(year, month, entity_id=entity_id)
-    for category_key, category_label in (("officers", "الضباط"),
-                                         ("individuals", "الأفراد والصف")):
+    # أسماء الشيتات: الحرف أولًا ثم الاسم الكامل (توجيه ٠٦/١٠/٢٠٢٦ — مفتاح الحروف ض/أ/م)
+    for category_key, category_label in (("officers", "ض — الضباط"),
+                                         ("individuals", "أ — الأفراد والصف")):
         book = Workbook()
         ws = book.active
         ws.title = category_label
@@ -207,6 +211,13 @@ def remove_entity_files(year, month, entity_name):
     for path in candidates:
         if path.exists():
             path.unlink()
+            removed += 1
+    # فولدرات الجهة داخل الأيام (شجرة «يوم N/<الجهة>/») — تُشال بكاملها
+    from .files_daily import day_dir
+    for folder in (root / FOLDERS["daily"]).glob(f"يوم */{entity_name}"):
+        if folder.is_dir():
+            import shutil
+            shutil.rmtree(folder, ignore_errors=True)
             removed += 1
     return removed
 

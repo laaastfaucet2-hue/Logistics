@@ -37,7 +37,8 @@
   <h4 class="tm-part">أولًا: التفصيل اليومي للتأميدات</h4>
   <table class="rt-table rc-print-table tm-print-table">
     <thead>
-      <tr><th>اليوم</th><th>التاريخ</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+      {# الأعمدة من services/sheet_columns.py — نفس أعمدة ملف الإكسل بالحرف #}
+      <tr>{% for c in cols_day %}<th>{{ c }}</th>{% endfor %}</tr>
     </thead>
     <tbody>
       {% for r in records %}
@@ -50,6 +51,7 @@
         <td class="num">{{ r.individuals | aindic }}</td>
         <td class="num">{{ r.recruits | aindic }}</td>
         <td class="num"><b>{{ r.total | aindic }}</b></td>
+        <td>{{ r.notes or '' }}</td>
       </tr>
       {% for a in r.attachments %}
       <tr>
@@ -60,6 +62,7 @@
         <td class="num">{{ a.individuals | aindic }}</td>
         <td class="num">{{ a.recruits | aindic }}</td>
         <td class="num">{{ (a.officers + a.individuals + a.recruits) | aindic }}</td>
+        <td></td>
       </tr>
       {% endfor %}
       {% if r.attachments %}
@@ -69,10 +72,11 @@
         <td class="num"><b>{{ (r.individuals + r.attachments | sum(attribute='individuals')) | aindic }}</b></td>
         <td class="num"><b>{{ (r.recruits + r.attachments | sum(attribute='recruits')) | aindic }}</b></td>
         <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
+        <td></td>
       </tr>
       {% endif %}
       {% else %}
-      <tr><td colspan="8" style="text-align:center">لا توجد تأميدات مسجلة في {{ month_name }} {{ year | aindic }} بعد</td></tr>
+      <tr><td colspan="{{ cols_day | length }}" style="text-align:center">لا توجد تأميدات مسجلة في {{ month_name }} {{ year | aindic }} بعد</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -80,7 +84,7 @@
   <h4 class="tm-part">ثانيًا: الملخص الشهري — الجهات المومدة</h4>
   <table class="rt-table rc-print-table tm-print-table">
     <thead>
-      <tr><th>م</th><th>الجهة</th><th>النوع</th><th>أيام التميد</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th></tr>
+      <tr>{% for c in cols_momoda %}<th>{{ c }}</th>{% endfor %}</tr>
     </thead>
     <tbody>
       {% for r in summary %}
@@ -89,18 +93,20 @@
         <td><b>{{ r.name }}</b></td>
         <td>{{ r.entity_type }}</td>
         <td class="num">{{ r.active_days | aindic }}</td>
+        <td class="num">{{ r.records | aindic }}</td>
         <td class="num">{{ r.total_officers | aindic }}</td>
         <td class="num">{{ r.total_individuals | aindic }}</td>
         <td class="num">{{ r.total_recruits | aindic }}</td>
         <td class="num"><b>{{ r.grand_total | aindic }}</b></td>
       </tr>
       {% else %}
-      <tr><td colspan="8" style="text-align:center">لا جهات مومدة هذا الشهر</td></tr>
+      <tr><td colspan="{{ cols_momoda | length }}" style="text-align:center">لا جهات مومدة هذا الشهر</td></tr>
       {% endfor %}
       {% if summary %}
       <tr class="tm-totalrow">
         <td></td><td><b>إجمالي القوة</b></td><td></td>
         <td class="num">{{ totals.active_days | aindic }}</td>
+        <td class="num">{{ totals.records | aindic }}</td>
         <td class="num">{{ totals.officers | aindic }}</td>
         <td class="num">{{ totals.individuals | aindic }}</td>
         <td class="num">{{ totals.recruits | aindic }}</td>

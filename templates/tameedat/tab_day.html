@@ -125,11 +125,11 @@
       </fieldset>
 
       <div class="tm-frow nums">
-        <div class="fld"><label>ضباط</label>
+        <div class="fld"><label title="ضباط">ض</label>
           <input name="officers" inputmode="numeric" placeholder="٠" value="{{ edit_record.officers | aindic if edit_record else '' }}"></div>
-        <div class="fld"><label>أفراد</label>
+        <div class="fld"><label title="أفراد">أ</label>
           <input name="individuals" inputmode="numeric" placeholder="٠" value="{{ edit_record.individuals | aindic if edit_record else '' }}"></div>
-        <div class="fld"><label>مجندين</label>
+        <div class="fld"><label title="مجندين">م</label>
           <input name="recruits" inputmode="numeric" placeholder="٠" value="{{ edit_record.recruits | aindic if edit_record else '' }}"></div>
         <div class="fld"><label>الإجمالي (تلقائي)</label>
           <input id="tmTotal" class="tm-total" readonly value="{{ edit_record.total | aindic if edit_record else '٠' }}"></div>
@@ -150,11 +150,11 @@
                 <input name="att_name" placeholder="اكتب اسم الجهة…" value="{{ a.name }}" required></label>
               <label class="tm-att-fld"><span>النوع</span>
                 <input name="att_type" placeholder="شرطية / حربية" value="{{ a.entity_type }}" data-combo="tmDictTypes" autocomplete="off"></label>
-              <label class="tm-att-fld tm-att-num"><span>ضباط</span>
+              <label class="tm-att-fld tm-att-num"><span title="ضباط">ض</span>
                 <input name="att_officers" inputmode="numeric" placeholder="٠" value="{{ a.officers | aindic }}" title="ضباط"></label>
-              <label class="tm-att-fld tm-att-num"><span>أفراد</span>
+              <label class="tm-att-fld tm-att-num"><span title="أفراد">أ</span>
                 <input name="att_individuals" inputmode="numeric" placeholder="٠" value="{{ a.individuals | aindic }}" title="أفراد"></label>
-              <label class="tm-att-fld tm-att-num"><span>مجندين</span>
+              <label class="tm-att-fld tm-att-num"><span title="مجندين">م</span>
                 <input name="att_recruits" inputmode="numeric" placeholder="٠" value="{{ a.recruits | aindic }}" title="مجندين"></label>
               <button class="icon-btn del tm-att-del" type="button" title="حذف الملحقة"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </div>
@@ -167,11 +167,11 @@
               <input name="att_name" placeholder="اكتب اسم الجهة…" required></label>
             <label class="tm-att-fld"><span>النوع</span>
               <input name="att_type" placeholder="شرطية / حربية" data-combo="tmDictTypes" autocomplete="off"></label>
-            <label class="tm-att-fld tm-att-num"><span>ضباط</span>
+            <label class="tm-att-fld tm-att-num"><span title="ضباط">ض</span>
               <input name="att_officers" inputmode="numeric" placeholder="٠" title="ضباط"></label>
-            <label class="tm-att-fld tm-att-num"><span>أفراد</span>
+            <label class="tm-att-fld tm-att-num"><span title="أفراد">أ</span>
               <input name="att_individuals" inputmode="numeric" placeholder="٠" title="أفراد"></label>
-            <label class="tm-att-fld tm-att-num"><span>مجندين</span>
+            <label class="tm-att-fld tm-att-num"><span title="مجندين">م</span>
               <input name="att_recruits" inputmode="numeric" placeholder="٠" title="مجندين"></label>
             <button class="icon-btn del tm-att-del" type="button" title="حذف الملحقة"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>
@@ -215,12 +215,12 @@
 <section class="panel">
   <div class="panel-head">
     <h3>📅 تأميدات يوم {{ date_text(sel_date_iso) }} — {{ day_count | aindic }} تأميدة</h3>
-    <span class="panel-hint">إجمالي اليوم: ضباط {{ day_totals.officers | aindic }} · أفراد {{ day_totals.individuals | aindic }} · مجندين {{ day_totals.recruits | aindic }} · <b>القوة {{ day_totals.grand | aindic }}</b>{{ ' (بالملحقات)' if day_records | selectattr('attachments') | list | length }}</span>
+    <span class="panel-hint">إجمالي اليوم: {{ pair3(day_totals.officers, day_totals.individuals, day_totals.recruits) }} · <b>القوة {{ day_totals.grand | aindic }}</b>{{ ' (بالملحقات)' if day_records | selectattr('attachments') | list | length }} <i class="sh-legend">({{ tri_legend }})</i></span>
   </div>
   <div class="table-wrap">
     <table class="rt-table tm-table">
       <thead>
-        <tr><th>م</th><th>الجهة</th><th>النوع</th><th>ضباط</th><th>أفراد</th><th>مجندين</th><th>الإجمالي</th><th>ملاحظات</th><th class="ops">إجراءات</th></tr>
+        <tr><th>م</th><th>الجهة</th><th>النوع</th><th title="ضباط">ض</th><th title="أفراد">أ</th><th title="مجندين">م</th><th>الإجمالي</th><th>ملاحظات</th><th class="ops">إجراءات</th></tr>
       </thead>
       <tbody>
         {% for r in day_records %}
@@ -306,3 +306,5 @@
     </table>
   </div>
 </section>
+
+{% include "partials/alerts_table.html" %}

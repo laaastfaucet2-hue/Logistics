@@ -1,4 +1,4 @@
-{# كشف وتسجيل أسماء الضباط والأفراد الراغبين — نفس تصميم النظام المرجعي.
+{# كشف وتسجيل أسماء ض/أ الراغبين — نفس تصميم النظام المرجعي.
    برمجة جديدة (٣٠/٠٩/٢٠٢٦ مساءً): كل الأزرار نماذج ولينكات تصفح عادي بـ sid —
    بلا أي جلب خفي. التشيك ↔ المربعات لمس محلي داخل الصفحة بلا طلبات.
    يحتاج: entity · sel_day · fcat · slots · force · force_persons ·
@@ -35,8 +35,8 @@
     <div class="rg-qa-grid">
       <div class="fld"><label>فئة العضو</label>
         <select name="qa_cat" class="rg-qa-cat">
-          <option value="officers" {{ 'selected' if fcat == 'officers' }}>ضباط</option>
-          <option value="individuals" {{ 'selected' if fcat == 'individuals' }}>أفراد وصف</option>
+          <option value="officers" {{ 'selected' if fcat == 'officers' }}>ض — ضباط</option>
+          <option value="individuals" {{ 'selected' if fcat == 'individuals' }}>أ — أفراد وصف</option>
         </select>
       </div>
       <div class="fld"><label>الرتبة / الدرجة</label>
@@ -64,11 +64,11 @@
   <div class="rg-ctabs">
     <a class="rg-ctab {{ 'on' if fcat == 'officers' }}"
        href="/raghibin/modal?c=officers&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
-      👮 الضباط المسجلون ({{ force['officers'] | length | aindic }})
+      👮 ض — الضباط المسجلون ({{ force['officers'] | length | aindic }})
     </a>
     <a class="rg-ctab {{ 'on' if fcat == 'individuals' }}"
        href="/raghibin/modal?c=individuals&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
-      👥 الأفراد والصفة ({{ force['individuals'] | length | aindic }})
+      👥 أ — الأفراد والصفة ({{ force['individuals'] | length | aindic }})
     </a>
   </div>
 
@@ -83,7 +83,7 @@
         <label class="rg-force-check">
           <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
                  data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
-          <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b>
+          <span>{{ p.rank or '—' }} / <b class="c-name ring" style="{{ color_ring('person', p.full_name) }}">{{ p.full_name }}</b>
             {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}</span>
         </label>
       </div>

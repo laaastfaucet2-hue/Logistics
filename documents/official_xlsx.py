@@ -1,5 +1,7 @@
 """Shared official XLSX letterhead: real cells + embedded logo, never a screen-only preview."""
 import io
+from pathlib import Path
+
 from openpyxl.drawing.image import Image
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
@@ -14,6 +16,7 @@ EXPORT_VERSION = "2.0-monthly-letterhead"
 
 
 def add_letterhead(ws, year, month, ncols):
+    ncols = max(int(ncols or 0), 3)      # الدباجة تحتاج ٣ أعمدة على الأقل للدمج
     values = lh.get_all(year, month)
     for row in range(1, 5):
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=ncols - 2)
@@ -24,8 +27,14 @@ def add_letterhead(ws, year, month, ncols):
         ws.row_dimensions[row].height = 25
     ws.row_dimensions[5].height = 12
     path = lh.logo_path(year, month)
-    if path:
-        image = Image(io.BytesIO(png_bytes(path, max_size=(116, 116))))
+    # القاعدة الذهبية (توجيه ٠٦/١٠/٢٠٢٦): اللوجو على **كل** ملف محلي — فإن لم يُرفع
+    # لوجو رسمي للشهر يُستخدم شعار المنظومة الافتراضي (static/img/app.ico) فلا يخلو ملف.
+    source = path
+    if not source:
+        default = Path(__file__).resolve().parents[1] / "static" / "img" / "app.ico"
+        source = default if default.is_file() else None
+    if source:
+        image = Image(io.BytesIO(png_bytes(source, max_size=(116, 116))))
         ws.add_image(image, f"{get_column_letter(ncols - 1)}1")
     ws.sheet_view.rightToLeft = True
     ws.sheet_view.showGridLines = False

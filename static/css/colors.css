@@ -1,0 +1,9 @@
+/* الألوان الثابتة للأصناف والجهات والأشخاص (توجيه ٠٦/١٠/٢٠٢٦) */
+.c-item{color:#fff;border-radius:6px;padding:1px 8px;font-weight:600}
+.c-item-soft{border-inline-start:4px solid var(--c);padding-inline-start:8px}
+.c-ent{border-inline-start:4px solid var(--c);padding-inline-start:8px;font-weight:600}
+.c-name{display:inline-block;border:1.5px solid transparent;border-radius:14px;
+        padding:1px 9px;line-height:1.7}
+.c-name.ring{box-shadow:0 0 0 2px rgba(0,0,0,.06)}
+.c-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-inline-end:6px;
+       vertical-align:middle}

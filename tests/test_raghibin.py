@@ -80,7 +80,7 @@ def test_cadres_files_official_and_states(app):
     ind_path = folder / f"{name} (أفراد).xlsx"
     assert off_path.exists() and ind_path.exists()
     ws = load_workbook(off_path).active
-    assert ws.title == "الضباط"
+    assert ws.title == "ض — الضباط"
     assert ws.cell(6, 1).value.startswith("الجهات والكوادر المعتمدة")
     names = [ws.cell(r, 3).value for r in range(8, 10)]
     assert "محمد محمود" in names and "ابراهيم ناجى عطا الله" in names
@@ -92,7 +92,7 @@ def test_cadres_files_official_and_states(app):
     total_row = 8 + 2   # صفان بيانات + صف الإجمالي في الصف العاشر
     assert "الإجمالي" in str(ws.cell(total_row, 1).value)
     ws_i = load_workbook(ind_path).active
-    assert ws_i.title == "الأفراد والصف"
+    assert ws_i.title == "أ — الأفراد والصف"
     assert ws_i.cell(8, 3).value == "أحمد محمد صابر"
 
 
@@ -109,17 +109,23 @@ def test_daily_save_flow_clear_and_set(app, client):
         "e": eid, "d": 22, "cat": "officers", "names": ["محمد محمود"]})
     assert r.status_code == 302
     assert drg.day_state(YEAR, MONTH, 22, eid) == {p1: True}
-    path = day_dir(YEAR, MONTH, 22) / f"{name}.xlsx"
-    assert path.exists()
-    ws = load_workbook(path).active
-    assert ws.title == "يوم ٢٢"
-    assert "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
-    marks = {ws.cell(r, 3).value: (ws.cell(r, 5).value, ws.cell(r, 4).value)
-             for r in range(8, 11)}
-    assert marks["محمد محمود"][0] == "✓ راغب بالوجبة"
-    assert marks["ابراهيم ناجى عطا الله"][0] == "⊘ غير راغب"
-    assert marks["أحمد محمد صابر"][0] == "✗ لا"
-    assert "الإجمالي: ١ راغبون من أصل ٣" in str(ws.cell(11, 1).value)
+    # الشجرة الجديدة: فولدر لكل يوم ⇒ فولدر لكل جهة ⇒ ملفان (ض + أ)
+    folder = day_dir(YEAR, MONTH, 22) / name
+    assert folder.is_dir()
+    off_path, ind_path = folder / "ض — الضباط.xlsx", folder / "أ — الأفراد والصف.xlsx"
+    assert off_path.exists() and ind_path.exists()
+    ws = load_workbook(off_path).active
+    assert ws.title == "ض — الضباط"
+    assert "الرغبين في وجبة الطعام" in str(ws.cell(6, 1).value) or \
+        "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
+    marks = {ws.cell(r, 3).value: ws.cell(r, 4).value for r in range(9, 11)}
+    assert marks["محمد محمود"] == "✓ راغب بالوجبة"
+    assert marks["ابراهيم ناجى عطا الله"] == "⊘ غير راغب"
+    assert "الإجمالي: ١ راغبون من أصل ٢" in str(ws.cell(11, 1).value)
+    ws_i = load_workbook(ind_path).active
+    assert ws_i.title == "أ — الأفراد والصف"
+    assert ws_i.cell(9, 3).value == "أحمد محمد صابر"      # الفرد في ملفه المستقل
+    assert ws_i.cell(9, 4).value == "✗ لا"
     # حفظ جديد بدون محمد محمود → تُلغى رغبته (clear-and-set) والمستثنى يتجاهل دايمًا
     r2 = client.post("/raghibin/daily/save", data={
         "e": eid, "d": 22, "cat": "officers",
@@ -208,7 +214,7 @@ def test_panel_fragment(app, client):
     assert 'class="rg-entity-select"' in body
     assert "الاسم رباعي" in body                   # تسمية الاسم رباعي
     assert "جهة شرطية معتمدة" in body
-    assert "الضباط المسجلون" in body and "الأفراد والصفة" in body
+    assert "ض — الضباط المسجلون" in body and "أ — الأفراد والصفة" in body
     assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
     assert "<details" in body and "قائمة قوة الضباط المعتمدة" in body  # قابلة للطي
     assert "rg-force-del" not in body              # بدون زر الحذف (من الكوادر فقط)
@@ -270,7 +276,7 @@ def test_daily_page_calendar_folders_and_mismatch(app, client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "عدم تطابق يوم ٢٢" in body                     # ١٠ تأميدة مقابل ٢ راغبين
-    assert "الضباط ٢/١٠" in body and "الأفراد ٠/١٠" in body   # عداد المربعات
+    assert "ض ٢/١٠" in body and "أ ٠/١٠" in body             # عداد المربعات بالحروف
     root = rfs.tab_dir(YEAR, MONTH, "daily")
     assert (root / "يوم ١").exists() and (root / "يوم ٣٠").exists()   # فولدرات الشهر كاملة
 
@@ -326,8 +332,8 @@ def test_monthly_tab_and_file(app, client):
     drg.set_daily(YEAR, MONTH, p2, 22, True)
     path = mfs.write_monthly_file(YEAR, MONTH, eid, name)
     book = load_workbook(path)
-    assert book.sheetnames == ["الضباط", "الأفراد والصف"]
-    ws = book["الضباط"]
+    assert book.sheetnames == ["ض — الضباط", "أ — الأفراد والصف"]
+    ws = book["ض — الضباط"]
     assert ws.cell(8, 2).value == "رائد / محمد محمود" and ws.cell(8, 3).value == "٢"
     assert ws.cell(9, 3).value == "١"                       # نقيب / مصطفى — وجبة
     names = [ws.cell(r, 2).value for r in range(8, 11)]     # المستثنى خارج الكشف
@@ -338,7 +344,7 @@ def test_monthly_tab_and_file(app, client):
     body = r.get_data(as_text=True)
     assert "رائد / محمد محمود" in body
     assert "إجمالي الوجبات: ٣ وجبة" in body
-    assert "الضباط" in body and "الأفراد" in body
+    assert "ض — الضباط" in body and "أ — الأفراد" in body
 
 
 def test_monthly_rebuilds_on_save(app, client):
@@ -346,7 +352,7 @@ def test_monthly_rebuilds_on_save(app, client):
     drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
     client.post("/raghibin/daily/save", data={
         "e": eid, "d": 5, "cat": "officers", "names": ["محمد محمود"]})
-    ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["الضباط"]
+    ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["ض — الضباط"]
     assert ws.cell(8, 3).value == "١"
     assert "إجمالي الوجبات: ١ وجبة" in str(ws.cell(9, 1).value)
 
@@ -367,13 +373,22 @@ def test_rag_check_range_warning_excess_only(app, client):
         "notes": "", "rag_check": "1", "custom_rations_json": ""})
     assert "warn=" in r.headers["Location"]
     assert "%D8%B9%D8%AF%D9%85%20%D9%85%D8%B7%D8%A7%D8%A8%D9%82%D8%A9" in r.headers["Location"]
-    # تأميدة ١٠ ضباط والراغبين ٢ → نقص → لا تنبيه (تجاهل النقص)
+    # تأميدة ١٠ ضباط والراغبين ٢ → نقص: شيك «عدم مطابقة الأسماء» نفسه لا يزيد تنبيهًا
+    # (قاعدته تجاوز الزيادة فقط)، لكن تنبيهات الراغبين/الكوادر (توجيه ٠٦/١٠/٢٠٢٦) تُنبّه
+    # بالنقص وبأرقام الراغبين المسجلة فعلًا — وهذا هو المطلوب صراحة من المستخدم.
+    client.post("/raghibin/daily/save", data={      # راغبان مسجلان يوم ٢٥ (نقص عن ١٠)
+        "e": eid, "d": 25, "cat": "officers",
+        "names": ["محمد محمود", "مصطفى عبدالحميد"]})
     r2 = client.post("/tameedat/records/add", data={
         "save_token": "tok-short", "entity_name": name, "day_from": "25",
         "day_to": "25", "officers": "10", "individuals": "10", "recruits": "0",
         "notes": "", "rag_check": "1", "custom_rations_json": ""})
     loc2 = r2.headers["Location"]
-    assert "warn=" not in loc2
+    assert "warn=" in loc2
+    from urllib.parse import unquote
+    assert "عدم مطابقة" not in unquote(loc2)          # شيك الزيادة فقط كما كان
+    assert "أقل من التأميدة" in unquote(loc2)          # تنبيه النقص الجديد
+    assert "الراغبون المسجلون ضباط ٢" in unquote(loc2)  # يذكر الأرقام المسجلة فعلًا
 
 
 def test_note_marker_and_inline_edit(app, client):
@@ -418,7 +433,7 @@ def test_no_double_dropdown_and_daily_tabs(app, client):
     cadres = client.get(f"/raghibin?tab=cadres&e={eid}").get_data(as_text=True)
     assert 'list="' not in cadres
     daily = client.get(f"/raghibin?tab=daily&e={eid}&d=22").get_data(as_text=True)
-    assert "rg-cat-tabs" in daily and "👮 الضباط" in daily and "👥 الأفراد" in daily
+    assert "rg-cat-tabs" in daily and "👮 ض" in daily and "👥 أ" in daily   # مفتاح الحروف
     assert "الاسم رباعي" in cadres
 
 

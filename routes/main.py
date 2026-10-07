@@ -133,6 +133,10 @@ def register(app):
         if key == "calc2":
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("calc2.page", **params))
+        if key == "occasions":
+            # صفحة «التوثيق والمناسبات» — دائمة لا تتبع الشهر (توجيه ٠٦/١٠/٢٠٢٦)
+            params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            return redirect(url_for("occasions.page", **params))
         if key == "cold_stores":
             # قسم «المخازن والثلاجات» = صفحة المخازن الموحدة (سجل + حركة وكشف أرصدة)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}

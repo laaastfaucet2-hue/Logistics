@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/dates.html" import date_field, date_text %}
+{% block title %}التوثيق والمناسبات • منظومة التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/occasions.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="oc-head panel">
+  <div class="oc-head-main">
+    <b class="tm-l2">📸 التوثيق والمناسبات</b>
+    <span class="oc-dim">صفحة دائمة لا تتبع شهرًا ولا سنة — سجّل الزيارات والتفتيشات، ارفع الصور
+      والفيديو، واستخرج التقرير الرسمي بالدباجة والتوقيعات.</span>
+  </div>
+  <div class="oc-stats">
+    <span class="oc-chip">🗂️ المناسبات <b>{{ stats.occasions | aindic }}</b></span>
+    <span class="oc-chip">🖼️ الصور <b>{{ stats.photos | aindic }}</b></span>
+    <span class="oc-chip">🎬 الفيديو <b>{{ stats.videos | aindic }}</b></span>
+    <span class="oc-chip">🏷️ الأنواع <b>{{ stats.kinds | aindic }}</b></span>
+  </div>
+</div>
+
+{% if ok %}<div class="flash flash-ok oc-flash"><span>{{ ok }}</span></div>{% endif %}
+{% if err %}<div class="flash flash-error oc-flash"><span>{{ err }}</span></div>{% endif %}
+
+<div class="oc-grid">
+  <!-- ═══ العمود الأيمن: التسجيل + الفهرس ═══ -->
+  <div class="oc-col">
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>➕ تسجيل مناسبة</h3>
+        <span class="panel-hint">اكتب المسمى كما تريده — والنوع تختاره من القائمة أو تكتبه</span></div>
+      <form method="post" action="{{ url_for('occasions.create') }}" class="oc-form" autocomplete="off">
+        <label class="oc-wide">مسمى المناسبة
+          <input name="title" required placeholder="مثال: زيارة السيد اللواء مدير الأمن"></label>
+        <label>النوع
+          <input name="kind" list="ocKinds" value="{{ kinds[0] }}" data-combo="ocKinds">
+          <datalist id="ocKinds">{% for k in kinds %}<option value="{{ k }}">{% endfor %}</datalist>
+        </label>
+        {{ date_field("date_iso", "التاريخ", today) }}
+        <label>المكان <input name="place" placeholder="مثال: قطاع وسط سيناء — بوابة الدخول"></label>
+        <label>القوة / الوفد <input name="force_text" placeholder="مثال: ١٠ أفراد · ٣ ضباط"></label>
+        <label>إطار <input name="frame" placeholder="مثال: إطار رسمي مصوّر"></label>
+        <label>إخطار <input name="alert" placeholder="مثال: إخطار داخلي لرئيس القسم"></label>
+        <label class="oc-wide">الوصف / مجريات المناسبة
+          <textarea name="notes" rows="3" placeholder="اكتب كل تفاصيل المناسبة — يُنقل حرفيًا إلى التقرير"></textarea></label>
+        <div class="oc-actions">
+          <button class="rt-btn gold" type="submit">💾 تسجيل المناسبة وإنشاء فولدرها</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>🔎 البحث الذكي</h3>
+        <span class="panel-hint">يبحث في المسمى والنوع والمكان والوصف — وبالتاريخ من/إلى</span></div>
+      <form method="get" action="{{ url_for('occasions.page') }}" class="oc-form oc-search">
+        <label class="oc-wide">بحث <input name="q" value="{{ q }}" placeholder="زيارة · تفتيش · اسم مكان"></label>
+        {{ date_field("from", "من تاريخ", date_from) }}
+        {{ date_field("to", "إلى تاريخ", date_to) }}
+        <div class="oc-actions">
+          <button class="rt-btn" type="submit">🔍 ابحث</button>
+          <a class="rt-btn dim" href="{{ url_for('occasions.page') }}">↩ الكل</a>
+        </div>
+      </form>
+      <div class="oc-index">
+        {% for it in items %}
+        <a class="oc-item {{ 'on' if selected and selected.folder == it.folder }}"
+           href="{{ url_for('occasions.page', folder=it.folder) }}">
+          <b>{{ it.title }}</b>
+          <span class="oc-dim">{{ it.kind }} · {{ date_text(it.date_iso) }}{% if it.place %} · {{ it.place }}{% endif %}</span>
+          <span class="oc-item-media">🖼️ {{ it.photos | length | aindic }} · 🎬 {{ it.videos | length | aindic }}</span>
+        </a>
+        {% else %}
+        <p class="oc-empty">لا مناسبات مطابقة — سجّل أول مناسبة من الأعلى.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ العمود الأيسر: تفاصيل المناسبة ═══ -->
+  <div class="oc-col">
+    {% if selected %}
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>🗂️ {{ selected.title }}</h3>
+        <span class="panel-hint">{{ selected.kind }} · {{ date_text(selected.date_iso) }}</span></div>
+      <form method="post" action="{{ url_for('occasions.save') }}" class="oc-form" autocomplete="off">
+        <input type="hidden" name="folder" value="{{ selected.folder }}">
+        <label class="oc-wide">المسمى <input name="title" value="{{ selected.title }}"></label>
+        <label>النوع
+          <input name="kind" list="ocKindsEdit" value="{{ selected.kind }}" data-combo="ocKindsEdit">
+          <datalist id="ocKindsEdit">{% for k in kinds %}<option value="{{ k }}">{% endfor %}</datalist>
+        </label>
+        {{ date_field("date_iso", "التاريخ", selected.date_iso) }}
+        <label>المكان <input name="place" value="{{ selected.place }}"></label>
+        <label>القوة / الوفد <input name="force_text" value="{{ selected.force_text }}"></label>
+        <label>إطار <input name="frame" value="{{ selected.frame }}"></label>
+        <label>إخطار <input name="alert" value="{{ selected.alert }}"></label>
+        <label class="oc-wide">الوصف / مجريات المناسبة
+          <textarea name="notes" rows="4">{{ selected.notes }}</textarea></label>
+        <div class="oc-actions">
+          <button class="rt-btn gold" type="submit">💾 حفظ التعديل وإعادة بناء التقرير</button>
+          <a class="rt-btn" target="_blank" rel="noopener"
+             href="{{ url_for('occasions.print_report') }}?sid={{ sid_token }}&folder={{ selected.folder | urlencode }}">
+            🖨️ طباعة التقرير الرسمي</a>
+          <a class="rt-btn dim" href="{{ url_for('occasions.report') }}?sid={{ sid_token }}&kind=xlsx&folder={{ selected.folder | urlencode }}">⬇️ التقرير Excel</a>
+          <a class="rt-btn dim" href="{{ url_for('occasions.report') }}?sid={{ sid_token }}&kind=docx&folder={{ selected.folder | urlencode }}">⬇️ التقرير Word</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>⬆️ إضافة صور وفيديو</h3>
+        <span class="panel-hint">تُنسخ داخل فولدر المناسبة نفسه (صور/ · فيديو/) — بلا إنترنت</span></div>
+      <form method="post" action="{{ url_for('occasions.media_upload') }}"
+            enctype="multipart/form-data" class="oc-form">
+        <input type="hidden" name="folder" value="{{ selected.folder }}">
+        <label class="oc-wide">صور (يمكن اختيار أكثر من صورة)
+          <input type="file" name="photos" accept="image/*" multiple></label>
+        <label class="oc-wide">فيديو (mp4/webm/mov)
+          <input type="file" name="videos" accept="video/*" multiple></label>
+        <div class="oc-actions"><button class="rt-btn gold" type="submit">⬆️ ارفع داخل المناسبة</button></div>
+      </form>
+    </div>
+
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>🖼️ معرض الصور ({{ selected.photos | length | aindic }})</h3>
+        <span class="panel-hint">اضغط أي صورة لتكبيرها</span></div>
+      <div class="oc-gallery">
+        {% for photo in selected.photos %}
+        <figure class="oc-photo">
+          <img src="{{ url_for('occasions.media', kind='photo', name=photo.name) }}?sid={{ sid_token }}&folder={{ selected.folder | urlencode }}"
+               alt="{{ photo.name }}" loading="lazy" data-full="{{ url_for('occasions.media', kind='photo', name=photo.name) }}?sid={{ sid_token }}&folder={{ selected.folder | urlencode }}">
+          <figcaption>{{ photo.name }}
+            <form method="post" action="{{ url_for('occasions.media_delete') }}" class="oc-del">
+              <input type="hidden" name="folder" value="{{ selected.folder }}">
+              <input type="hidden" name="kind" value="photo">
+              <input type="hidden" name="name" value="{{ photo.name }}">
+              <button class="icon-btn" type="submit" title="حذف الصورة" aria-label="حذف">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+              </button>
+            </form>
+          </figcaption>
+        </figure>
+        {% else %}
+        <p class="oc-empty">لا صور بعد — ارفع أول صورة من الأعلى.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="panel oc-card">
+      <div class="panel-head"><h3>🎬 معرض الفيديو ({{ selected.videos | length | aindic }})</h3>
+        <span class="panel-hint">يُشغَّل من داخل البرنامج — تقديم/إيقاف/صوت/تكبير</span></div>
+      <div class="oc-videos">
+        {% for video in selected.videos %}
+        <div class="oc-video">
+          <video controls preload="metadata"
+                 src="{{ url_for('occasions.media', kind='video', name=video.name) }}?sid={{ sid_token }}&folder={{ selected.folder | urlencode }}"></video>
+          <div class="oc-video-foot">
+            <b>{{ video.name }}</b>
+            <form method="post" action="{{ url_for('occasions.media_delete') }}" class="oc-del">
+              <input type="hidden" name="folder" value="{{ selected.folder }}">
+              <input type="hidden" name="kind" value="video">
+              <input type="hidden" name="name" value="{{ video.name }}">
+              <button class="icon-btn" type="submit" title="حذف الفيديو" aria-label="حذف">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <p class="oc-empty">لا فيديو بعد — ارفع أول مقطع من الأعلى.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="panel oc-card oc-danger">
+      <form method="post" action="{{ url_for('occasions.delete') }}"
+            onsubmit="return confirm('حذف المناسبة بكل صورها وفيديوهاتها؟');">
+        <input type="hidden" name="folder" value="{{ selected.folder }}">
+        <button class="rt-btn danger" type="submit">🗑️ حذف المناسبة كاملة</button>
+        <span class="oc-dim">تُحذف معها الصور والفيديو وملفات التقارير.</span>
+      </form>
+    </div>
+    {% else %}
+    <div class="panel oc-card">
+      <p class="oc-empty">اختر مناسبة من الفهرس — أو سجّل مناسبة جديدة لتظهر معارضها وتقريرها هنا.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="oc-lightbox" id="ocLightbox" hidden>
+  <button class="icon-btn oc-lb-close" type="button" aria-label="إغلاق">✕</button>
+  <img src="" alt="">
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/occasions.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

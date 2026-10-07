@@ -218,13 +218,13 @@ def _rag_warning(entity, counts):
     problems = []
     if entity.get("rag_officers") is not None and counts["officers"] > entity["rag_officers"]:
         problems.append(
-            f"الضباط ({arnum.to_arabic_indic(counts['officers'])}) أكثر من راغبين "
-            f"الضباط المسجلين ({arnum.to_arabic_indic(entity['rag_officers'])})")
+            f"ض ({arnum.to_arabic_indic(counts['officers'])}) أكثر من راغبين "
+            f"ض المسجلين ({arnum.to_arabic_indic(entity['rag_officers'])})")
     if (entity.get("rag_individuals") is not None
             and counts["individuals"] > entity["rag_individuals"]):
         problems.append(
-            f"الأفراد ({arnum.to_arabic_indic(counts['individuals'])}) أكثر من راغبين "
-            f"الأفراد المسجلين ({arnum.to_arabic_indic(entity['rag_individuals'])})")
+            f"أ ({arnum.to_arabic_indic(counts['individuals'])}) أكثر من راغبين "
+            f"أ المسجلين ({arnum.to_arabic_indic(entity['rag_individuals'])})")
     if problems:
         return "تنبيه: " + "، ".join(problems) + " — تم الحفظ رغم ذلك حسب رغبتك"
     return None
@@ -292,6 +292,18 @@ def _page_vars(tab):
         "save_token": secrets.token_urlsafe(16),
         "days_in_month": egtime.days_in_month(year, month),
     }
+    # جدول تنبيهات الشهر كله (تأميدات ↔ راغبين ↔ كوادر) — يُفتح ويُغلق في التاب
+    try:
+        from core.web import alerts_context
+
+        def _alert_href(day):
+            base = url_for("tameedat.page")
+            sep = "&" if "?" in base else "?"
+            return f"{base}{sep}tab=day&day={year:04d}-{month:02d}-{int(day):02d}"
+
+        variables.update(alerts_context(year, month, _alert_href))
+    except Exception:  # noqa: BLE001 — التنبيهات لا تسقط الصفحة أبدًا
+        pass
     # مودال الراغبين مدمج في الصفحة (يُفتح فورًا بلا جلب خارجي — والجلب تحديث اختياري)
     try:
         from services.raghibin import modal as rg_modal

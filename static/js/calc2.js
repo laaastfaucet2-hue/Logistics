@@ -153,8 +153,8 @@
         "<td class=\"num\">" + ar(it.days) + "</td>" +
         "<td class=\"num\">" + qty3(it.auto) + "</td>" +
         "<td><input name=\"actual_" + prefix + "_" + it.name + "\" class=\"c2-actual\" inputmode=\"decimal\" value=\"" + qty3(it.auto) + "\"></td>" +
-        "<td class=\"dim\">قيد التطوير</td>" +
-        "<td class=\"dim\">قيد التطوير</td>" +
+        "<td class=\"num c2-avail\" data-item=\"" + it.name + "\"></td>" +
+        "<td class=\"c2-state\" data-item=\"" + it.name + "\"></td>" +
         "</tr>";
     }).join("");
     Array.prototype.forEach.call(tb.querySelectorAll("td.name b"), function (b, i) {
@@ -176,9 +176,71 @@
       .then(function (data) {
         fillBody("tamween", data.tamween || []);
         fillBody("contractor", data.contractor || []);
+        refreshStock("tamween");
+        refreshStock("contractor");
       })
       .catch(function () { /* الإبقاء على الجدول الحالي */ });
   }
+  var stockUrl = (document.currentScript &&
+    document.currentScript.getAttribute("data-stock-url")) || "/calc2/stock";
+  function rowNeeded(prefix, name) {
+    var input = document.querySelector("[name=\"actual_" + prefix + "_" + name + "\"]");
+    var v = input ? input.value : "";
+    v = String(v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); })
+                 .replace("٫", ".");
+    var n = parseFloat(v);
+    return isFinite(n) ? n : 0;
+  }
+  function paint(prefix, info) {
+    var tb = document.getElementById("c2Body-" + prefix);
+    if (!tb) return;
+    Object.keys(info.items || {}).forEach(function (name) {
+      var st = info.items[name];
+      var cell = tb.querySelector(".c2-avail[data-item=\"" + name + "\"]");
+      var state = tb.querySelector(".c2-state[data-item=\"" + name + "\"]");
+      if (cell) {
+        cell.innerHTML = qty3(st.avail) + (st.unit ? " " + st.unit : "") +
+          (st.pack ? " — " + st.pack : "") +
+          "<small class=\"c2-aval-after\">بعد الإذن: " + qty3(st.remaining) +
+          (st.unit ? " " + st.unit : "") + "</small>";
+      }
+      if (state) {
+        state.className = "c2-state " + st.key;
+        state.textContent = st.status;
+      }
+    });
+    var legend = document.querySelector(".c2-stock-legend");
+    if (legend && info.totals) {
+      legend.innerHTML = "<i class=\"c2-dot safe\"></i> آمن " + ar(info.totals["آمن"] || 0) +
+        "<i class=\"c2-dot low\"></i> يوشك على النفاذ " + ar(info.totals["يوشك على النفاذ"] || 0) +
+        "<i class=\"c2-dot none\"></i> لا يوجد " + ar(info.totals["لا يوجد"] || 0);
+    }
+  }
+  function refreshStock(prefix) {
+    var tb = document.getElementById("c2Body-" + prefix);
+    if (!tb) return;
+    var parts = [];
+    Array.prototype.forEach.call(tb.querySelectorAll(".c2-avail[data-item]"), function (cell) {
+      var name = cell.getAttribute("data-item");
+      parts.push(name + ":" + rowNeeded(prefix, name));
+    });
+    if (!parts.length) return;
+    var url = stockUrl + (stockUrl.indexOf("?") >= 0 ? "&" : "?") +
+      "section=" + encodeURIComponent(prefix) + "&items=" + encodeURIComponent(parts.join(","));
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (info) { paint(prefix, info); })
+      .catch(function () { /* تبقى آخر أرصدة معروضة */ });
+  }
+  var stockTimer = null;
+  document.addEventListener("input", function (ev) {
+    var el = ev.target;
+    if (!el || !el.classList || !el.classList.contains("c2-actual")) return;
+    var m = /^actual_(tamween|contractor)_/.exec(el.getAttribute("name") || "");
+    if (!m) return;
+    clearTimeout(stockTimer);
+    stockTimer = setTimeout(function () { refreshStock(m[1]); }, 600);
+  });
   function toggle(key) {
     if (!key || !byKey[key]) return;
     var keys = chosen();

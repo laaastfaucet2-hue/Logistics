@@ -52,11 +52,15 @@ def create_app():
     from routes.health import health_bp
     from routes.tarfea import tarfea_bp
     from routes.raghibin import raghibin_bp
+    from routes.assistant import assistant_bp
+    from routes.files_tree import files_tree_bp
+    from routes.occasions import occasions_bp
     app.register_blueprint(copy_bp)
     web.register(app)
     main.register(app)
     for bp in (rations_bp, letterhead_bp, backups_bp, recruits_bp, tameedat_bp, calc2_bp,
-               warehouses_bp, stores_bp, health_bp, tarfea_bp, raghibin_bp):
+               warehouses_bp, stores_bp, health_bp, tarfea_bp, raghibin_bp,
+               assistant_bp, files_tree_bp, occasions_bp):
         app.register_blueprint(bp)
     app.add_url_rule("/health", "health", lambda: {"status": "ready", "version": APP_VERSION})
 

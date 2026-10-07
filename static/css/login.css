@@ -1,8 +1,11 @@
 /* Original open navy/gold login composition; keep the new readable typography. */
 .login-body { min-height: 100vh; background: var(--bg0); padding: 0; }
-.login-wrap { max-width: 1160px; margin: auto; display: grid; grid-template-columns: 1.15fr 1fr;
-  gap: 90px; align-items: center; padding: 55px 40px; min-height: calc(100vh - 88px); }
-.login-hero { background: none; color: var(--text); padding: 0; position: relative; }
+.login-wrap { max-width: 1160px; margin: auto; display: grid; grid-template-columns: 460px 1fr;
+  gap: 80px; align-items: center; padding: 55px 40px; min-height: calc(100vh - 88px); }
+.login-card { order: 0; }        /* الكارت أولًا = ناحية اليمين في الاتجاه العربي */
+.login-hero { order: 1; }
+.login-hero { background: none; color: var(--text); padding: 0; position: relative;
+  text-align: right; }
 .login-identity { display: flex; gap: 13px; align-items: center; margin-bottom: 35px; }
 .login-identity img { width: 51px; height: 51px; }
 .login-identity strong { font-size: 21px; display: block; }
@@ -14,13 +17,16 @@
 .login-art .warehouse-art { left: auto; right: 30px; top: 0; width: 330px; height: 245px; }
 .login-art .art-caption { bottom: 0; left: auto; right: 25px; font-size: 10px; }
 .login-card { background: var(--card); padding: 38px; display: flex; flex-direction: column; justify-content: center;
-  border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 30px 75px #0002; position: relative; }
+  border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 30px 75px #0002; position: relative;
+  text-align: right; }
+.login-card .field span, .login-card .remember span { text-align: right; }
 .login-card::before { content: ""; width: 48px; height: 2px; background: var(--brand-gold); position: absolute; top: 0; right: 38px; }
 .login-card h2 { font-size: 30px; margin: 13px 0 5px; }
 .login-sub { font-size: 15px; color: var(--muted); margin-bottom: 25px; }
 .login-card .field { margin-top: 16px; }
 .login-card .field input { height: 49px; background: var(--field-bg); }
-.field input[name=username] { direction: ltr; text-align: left; }
+.field input[name=username], .field input[name=password] { direction: rtl; text-align: right; }
+.login-card .field input, .login-card .pw-wrap input { text-align: right; }
 .login-card .btn-block { display: flex; justify-content: space-between; padding: 13px 18px; min-height: 48px; }
 .login-card .btn-block svg { height: 18px; width: 18px; flex-shrink: 0; }
 .login-security { display: flex; align-items: center; gap: 9px; padding-top: 23px; margin-top: 26px;
@@ -31,7 +37,7 @@
 .login-card .flash { font-size: 14px; padding: 12px; line-height: 1.8; }
 .login-session { display: none; }
 @media (max-width: 1050px) {
-  .login-wrap { gap: 50px; padding: 45px 30px; }
+  .login-wrap { grid-template-columns: 400px 1fr; gap: 45px; padding: 45px 30px; }
   .login-hero h1 { font-size: 37px; }
   .login-card { padding: 30px; }
   .login-art .warehouse-art { right: 0; width: 285px; }
@@ -52,3 +58,6 @@
   .login-card h2 { font-size: 27px; }
   .login-foot { flex-wrap: wrap; padding: 0 22px 20px; gap: 7px; }
 }
+/* سطر التصميم والتنفيذ (بدل WORKSPACE / الإصدار) */
+.login-foot .login-credit { color: var(--muted); letter-spacing: .2px; }
+.login-foot .login-credit::before { content: "✎ "; color: var(--brand-gold); }

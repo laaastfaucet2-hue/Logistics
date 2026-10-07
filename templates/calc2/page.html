@@ -128,7 +128,13 @@
   {% macro items_table(title, rows, prefix) %}
   <div class="panel">
     <div class="panel-head"><h3>{{ title }}</h3>
-      <span class="panel-hint">الكمية = (فطار+غداء+عشاء إن وُجد) × قوة كل جهة × أيام صرف الصنف</span></div>
+      <span class="panel-hint">الكمية = (فطار+غداء+عشاء إن وُجد) × قوة كل جهة × أيام صرف الصنف</span>
+      {% set tot = stock_totals[prefix] %}
+      <span class="c2-stock-legend">
+        <i class="c2-dot safe"></i> آمن {{ tot['آمن'] | aindic }}
+        <i class="c2-dot low"></i> يوشك على النفاذ {{ tot['يوشك على النفاذ'] | aindic }}
+        <i class="c2-dot none"></i> لا يوجد {{ tot['لا يوجد'] | aindic }}
+      </span></div>
     <div class="table-wrap">
       <table class="rt-table c2-table">
         <thead>
@@ -143,7 +149,7 @@
           {% for it in rows %}
           <tr>
             <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
-            <td class="name"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+            <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
             <td class="c2-pp">
               <div class="c2-meal"><span>فطار</span><b>{{ it.breakfast | qty3 }}</b></div>
               <div class="c2-meal"><span>غداء</span><b>{{ it.lunch | qty3 }}</b></div>
@@ -161,8 +167,17 @@
             <td class="num">{{ it.auto | qty3 }}</td>
             <td><input name="actual_{{ prefix }}_{{ it.name }}" class="c2-actual"
                        inputmode="decimal" value="{{ it.auto | qty3 }}"></td>
-            <td class="dim">قيد التطوير</td>
-            <td class="dim">قيد التطوير</td>
+            {% set st = stock[prefix].get(it.name) %}
+            <td class="num c2-avail" data-item="{{ it.name }}">
+              {% if st %}
+                {{ st.avail | qty3 }} {{ st.unit }}{% if st.pack %} — {{ st.pack }}{% endif %}
+                <small class="c2-aval-after">بعد الإذن: {{ st.remaining | qty3 }} {{ st.unit }}</small>
+              {% else %}<span class="dim">لا صنف مطابق في المخازن</span>{% endif %}
+            </td>
+            <td class="c2-state {{ st.key if st else '' }}" data-item="{{ it.name }}"
+                title="{{ 'الاحتياج ' ~ it.auto | qty3 ~ ' — الحد ' ~ (stock_low_ratio * 100) | round | aindic ~ '٪' }}">
+              {% if st %}{{ st.status }}{% else %}—{% endif %}
+            </td>
           </tr>
           {% else %}
           <tr><td colspan="8" class="empty">أضف جهة للمربع بالأعلى لظهور الأصناف — أو خصّص المقررات من التأميدة.</td></tr>
@@ -177,13 +192,20 @@
   {{ items_table("مقررات المتعهد (الطازجة والمجمدة)", contractor, "contractor") }}
 
   <div class="c2-save">
-    <button class="rt-btn gold big" type="submit">تحديث وحفظ الإذن الحالي</button>
+    <button class="rt-btn gold big" type="submit" id="c2SaveMain">تحديث وحفظ الإذن الحالي</button>
+    <button class="rt-btn big" type="submit" formnovalidate
+            title="يحفظ بنفس رقم الإذن فيستبدل القديم — خصم واحد فقط في ٢ مخازن والتفريدة">
+      💾 تحديث الإذن (بدون خصم مزدوج)</button>
   </div>
+  <p class="panel-hint c2-save-note">الحفظ بنفس رقم الإذن <b>يستبدل</b> الإذن السابق (لا يُكرّره) —
+    فيتعدّل الرصيد في المخازنين والتفريدة <b>فورًا</b> وبخصم واحد فقط.</p>
 </form>
+<script type="application/json" id="c2LowRatio">{{ stock_low_ratio | tojson }}</script>
 <script type="application/json" id="c2PicksData">{{ picks | tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/calc2.js') }}?v={{ static_ver }}"
+        data-stock-url="{{ url_for('calc2.stock') }}"
         data-rows="{{ url_for('calc2.rows') }}"></script>
 {% endblock %}

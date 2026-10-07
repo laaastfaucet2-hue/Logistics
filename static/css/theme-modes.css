@@ -1,0 +1,162 @@
+/* أوضاع ألوان البرنامج (توجيه المستخدم ٠٦/١٠/٢٠٢٦): كحلي (الافتراضي) · أبيض · أزرق.
+   القاعدة: لا نلمس ألوان المستندات الرسمية الورقية (.a4 / .rc-doc / .tm-doc / الطباعة)
+   — هذه الملفات تعرض الورق الأبيض بألوانه المعتمدة أبدًا.
+   كل ما هنا داخل @media screen حتى لا يتأثر أي مستند مطبوع بالأوضاع. */
+@media screen {
+
+  /* ═══════════ الوضع الأبيض (نهاري فاتح) ═══════════ */
+  [data-theme="white"] {
+    color-scheme: light;
+    --brand-purple: #ffffff;
+    --brand-navy: #ffffff;
+    --window-bg: #ffffff;
+    --bg0: #eef2f7;
+    --bg1: #ffffff;
+    --card: #ffffff;
+    --card-border: #d5dce6;
+    --field-border: #bcc7d6;
+    --field-bg: #ffffff;
+    --surface-soft: #f2f5f9;
+    --surface-gold: #fdf3d9;
+    --surface-red: #fdecec;
+
+    --brand-orange: #d97706;
+    --brand-gold: #e08c0b;
+    --brand-gold-hover: #f59e0b;
+    --on-orange: #ffffff;
+    --on-gold: #ffffff;
+    --gold: #d97706;
+    --gold-light: #b45309;
+    --gold-dark: #92400e;
+    --gold-border: #e9cd94;
+    --gold-rgb: 217, 119, 6;
+
+    --text: #16233a;
+    --muted: #5a6779;
+    --green: #047857;
+    --blue: #0369a1;
+    --status-other: #6d28d9;
+    --red: #b91c1c;
+    --danger-solid: #b91c1c;
+    --orange: #c2410c;
+    --success-soft: #ecfdf5;
+    --success-border: #a7f3d0;
+    --danger-border: #f3c0c0;
+    --success-rgb: 4, 120, 87;
+    --danger-rgb: 185, 28, 28;
+    --info-rgb: 3, 105, 161;
+    --shadow: 0 8px 24px #16233a1a;
+    --focus-ring: 0 0 0 3px #d9770640;
+  }
+  /* الأسطح الداكنة المثبتة في ملفات التنسيق القديمة — تُفتح في الوضع الأبيض */
+  [data-theme="white"] .nav-link { color: #3d4a5e; }
+  [data-theme="white"] .nav-link:hover { background: #16233a0a; }
+  [data-theme="white"] .tm-hero,
+  [data-theme="white"] .wk-hero,
+  [data-theme="white"] .hero {
+    background: linear-gradient(110deg, #ffffff, #f6f8fb 55%, #eef3fa) !important;
+    color: var(--text); }
+  [data-theme="white"] .tm-att-num input,
+  [data-theme="white"] .tm-form input,
+  [data-theme="white"] .tm-form select,
+  [data-theme="white"] .tm-form textarea,
+  [data-theme="white"] .ctx-sel,
+  [data-theme="white"] option { background: #ffffff; color: #16233a; }
+  [data-theme="white"] option { background: #ffffff; color: #16233a; }
+  [data-theme="white"] ::-webkit-scrollbar-thumb { background: #c3ccda; }
+  [data-theme="white"] .btn-gold, [data-theme="white"] .rt-btn.gold,
+  [data-theme="white"] .tm-openbtn, [data-theme="white"] .logout-btn { color: #ffffff; }
+  [data-theme="white"] .btn-gold, [data-theme="white"] .rt-btn.gold { background: #d97706; }
+  [data-theme="white"] .btn-gold:hover, [data-theme="white"] .rt-btn.gold:hover { background: #f59e0b; }
+  [data-theme="white"] .bell-btn, [data-theme="white"] .asst-btn { color: #b45309; background: #ffffff; }
+  [data-theme="white"] .tm-hero-lines .tm-l1, [data-theme="white"] .tm-hero-lines .tm-l2 { color: #92400e; }
+  /* الجداول: رؤوس فاتحة وحدود واضحة */
+  [data-theme="white"] .tm-table th, [data-theme="white"] .rt-table th,
+  [data-theme="white"] .al-table th, [data-theme="white"] table.wh-table th {
+    background: #f2f5f9 !important; color: #92400e !important; }
+  [data-theme="white"] .al-row:hover td, [data-theme="white"] .rt-table tbody tr:hover td { background: #f7f9fc; }
+
+  /* ═══════════ الوضع الأزرق (كحلي مزرق) ═══════════ */
+  [data-theme="blue"] {
+    color-scheme: dark;
+    --brand-purple: #071a3a;
+    --brand-navy: #071a3a;
+    --window-bg: #030d21;
+    --bg0: #030d21;
+    --bg1: #071a3a;
+    --card: #0a2145;
+    --card-border: #16386b;
+    --field-border: #24558f;
+    --field-bg: #0d2a55;
+    --surface-soft: #0d2445;
+    --surface-gold: #082f52;
+    --surface-red: #2b1214;
+
+    --brand-orange: #38bdf8;
+    --brand-gold: #38bdf8;
+    --brand-gold-hover: #7dd3fc;
+    --on-orange: #04122b;
+    --on-gold: #04122b;
+    --gold: #38bdf8;
+    --gold-light: #a5e4ff;
+    --gold-dark: #0369a1;
+    --gold-border: #1d5f96;
+    --gold-rgb: 56, 189, 248;
+
+    --text: #dbeafe;
+    --muted: #8fb3d9;
+    --green: #5eead4;
+    --blue: #bae6fd;
+    --status-other: #c4b5fd;
+    --red: #fca5a5;
+    --orange: #fdba74;
+    --success-soft: #052a3f;
+    --success-border: #0e4e6b;
+    --danger-border: #6b2121;
+    --success-rgb: 94, 234, 212;
+    --danger-rgb: 252, 165, 165;
+    --info-rgb: 186, 230, 253;
+    --shadow: 0 8px 28px #00000059;
+    --focus-ring: 0 0 0 3px #38bdf840;
+  }
+  [data-theme="blue"] .nav-link { color: #a7c4e8; }
+  [data-theme="blue"] .nav-link:hover { background: #38bdf814; }
+  [data-theme="blue"] .tm-hero,
+  [data-theme="blue"] .wk-hero,
+  [data-theme="blue"] .hero {
+    background: linear-gradient(110deg, #061634, #0a2145 55%, #0d2d5c) !important;
+    border-color: var(--gold-border); }
+  [data-theme="blue"] option,
+  [data-theme="blue"] .tm-att-num input { background: #071a3a; color: #dbeafe; }
+  [data-theme="blue"] ::-webkit-scrollbar-thumb { background: #24558f; }
+
+  /* مفتاح الألوان — في الفوتر بين الجملتين (توجيه المستخدم ٠٦/١٠/٢٠٢٦) */
+  .theme-switch { display: flex; align-items: center; gap: 9px; padding: 4px 12px;
+    border: 1px solid var(--card-border); border-radius: 999px; background: var(--bg0);
+    box-shadow: inset 0 1px 0 #ffffff08; }
+  .ts-label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted);
+    white-space: nowrap; }
+  .ts-label svg { width: 14px; height: 14px; color: var(--brand-gold); }
+  .ts-row { display: flex; align-items: center; gap: 3px; padding: 2px;
+    border-radius: 999px; background: var(--card); }
+  .ts-btn { font: inherit; font-size: 12px; font-weight: 500; padding: 4px 13px; cursor: pointer;
+    border: 1px solid transparent; border-radius: 999px; background: none;
+    color: var(--muted); transition: .15s; white-space: nowrap; }
+  .ts-btn:hover { color: var(--gold-light); border-color: var(--gold-border); }
+  .ts-btn.on { background: var(--brand-gold); border-color: var(--brand-gold);
+    color: var(--on-gold); font-weight: 700; box-shadow: 0 2px 10px #0003; }
+  .side-officials { padding: 10px 13px 4px; display: flex; flex-direction: column; gap: 7px; }
+  .so-row { display: flex; flex-direction: column; gap: 2px; }
+  .so-row small { font-size: 11px; color: var(--muted); }
+  .so-row b { font-size: 13px; color: var(--gold-light); font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .side-officials { padding: 8px 10px 2px; }
+  }
+}
+
+
+/* موجة صغيرة جنب «أزرق» في مفتاح الألوان (توجيه ٠٦/١٠/٢٠٢٦) */
+.ts-btn.ts-blue{display:inline-flex;align-items:center;gap:5px}
+.ts-wave{width:14px;height:14px;color:#5aa9e6;flex:0 0 auto}
+.ts-btn.ts-blue:hover .ts-wave,.ts-btn.ts-blue.is-active .ts-wave{color:#8fd0ff}

@@ -1,0 +1,68 @@
+/* 📁 لوحة حصر الملفات المحلية — شجرة تُفتح وتُغلق (توجيه المستخدم ٠٦/١٠/٢٠٢٦).
+   كل ما هنا داخل @media screen حتى لا تتأثر المستندات الرسمية المطبوعة. */
+@media screen {
+  .ft-zone { margin: 18px 0 8px; border: 1px solid var(--card-border); border-radius: 12px;
+    background: var(--card); overflow: hidden; }
+  .ft-head { display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;
+    font: inherit; text-align: right; color: var(--text); background: none; border: 0;
+    padding: 13px 16px; }
+  .ft-head:hover { background: var(--bg0); }
+  .ft-head b { font-size: 14.5px; font-weight: 600; }
+  .ft-caret { color: var(--brand-gold); font-size: 13px; transition: transform .15s; }
+  .ft-zone.open .ft-caret { transform: rotate(180deg); }
+  .ft-chips { display: flex; align-items: center; gap: 6px; margin-inline-start: auto; }
+  .ft-chip { font-style: normal; font-size: 11.5px; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--card-border); color: var(--text); white-space: nowrap; }
+  .ft-chip.dim { color: var(--muted); }
+  .ft-chip.gold { border-color: var(--brand-gold); color: var(--gold-light); }
+  .ft-chip.live { border-color: var(--green); color: var(--green); }
+  .ft-hint { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .ft-body { border-top: 1px solid var(--card-border); padding: 12px 16px 14px; }
+  .ft-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ft-where { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px;
+    direction: ltr; unicode-bidi: plaintext; text-align: left; }
+  .ft-live { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--green); }
+  .ft-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 0 0 var(--green); animation: ftPulse 2s infinite; }
+  @keyframes ftPulse { 0% { box-shadow: 0 0 0 0 #2e9e6b66; } 70% { box-shadow: 0 0 0 7px #2e9e6b00; }
+    100% { box-shadow: 0 0 0 0 #2e9e6b00; } }
+  .ft-refresh { margin-inline-start: auto; font: inherit; font-size: 12px; cursor: pointer;
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--field-border);
+    background: var(--bg0); color: var(--text); }
+  .ft-refresh:hover { border-color: var(--brand-gold); color: var(--gold-light); }
+
+  .ft-tree { font-size: 13px; }
+  .ft-list { list-style: none; margin: 0; padding: 0; }
+  .ft-list .ft-list { margin-inline-start: 18px; border-inline-start: 1px dashed var(--card-border);
+    padding-inline-start: 10px; }
+  .ft-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 7px; }
+  .ft-row + .ft-list { margin-top: 2px; }
+  .ft-row:hover { background: var(--bg0); }
+  .ft-row.fresh { background: color-mix(in srgb, var(--green) 12%, transparent); }
+  .ft-arrow { font: inherit; background: none; border: 0; color: var(--muted); cursor: pointer;
+    width: 16px; padding: 0; font-size: 11px; transition: transform .15s; }
+  .ft-folder.closed > .ft-arrow { transform: rotate(-90deg); }
+  .ft-folder.closed > .ft-list { display: none; }
+  .ft-ico { width: 18px; text-align: center; flex-shrink: 0; }
+  .ft-name { color: var(--text); }
+  .ft-folder > .ft-row .ft-name { font-weight: 600; }
+  .ft-meta { margin-inline-start: auto; display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .ft-now { color: var(--green); font-weight: 600; }
+  .ft-empty { color: var(--muted); font-size: 12.5px; padding: 6px; }
+  .ft-note { color: var(--muted); font-size: 12px; line-height: 1.9; margin: 12px 2px 0; }
+
+  @media (max-width: 760px) {
+    .ft-head { flex-wrap: wrap; gap: 8px; }
+    .ft-chips { margin-inline-start: 0; }
+    .ft-hint { display: none; }
+    .ft-meta { font-size: 10.5px; gap: 7px; }
+  }
+}
+@media print {
+  .ft-zone { display: none !important; }
+}
+
+  .ft-audit { text-decoration: none; color: var(--gold-light); border-color: var(--brand-gold);
+    display: inline-flex; align-items: center; gap: 4px; }
+  .ft-audit:hover { background: var(--bg0); }

@@ -69,6 +69,7 @@
         action="{% if edit_item %}{{ url_for('rations.item_edit', section=section, item_id=edit_item.id) }}{% else %}{{ url_for('rations.item_add', section=section) }}{% endif %}"
         class="rt-form" autocomplete="off">
     <input type="hidden" name="kind" value="{{ kind }}">
+    <p class="rt-form-note">🧩 <b>قائمة موحّدة للتموين والمتعهد</b> — اكتب أي وحدة غير موجودة لتُحفظ وتظهر في القسمين فورًا.</p>
     <div class="fld wide">
       <label>اسم الصنف</label>
       <input name="name" required placeholder="مثال: أرز بلدي، سكر، شاي..."
@@ -81,7 +82,6 @@
       <input name="unit" data-combo="unitsList" placeholder="كجم، لتر، شيكارة..."
              value="{{ edit_item.unit if edit_item else '' }}">
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
-      <small class="panel-hint">قائمة موحّدة للتموين والمتعهد — اكتب أي وحدة غير موجودة لتُحفظ وتظهر في القسمين.</small>
     </div>
     <div class="fld">
       <label>فطار</label>
@@ -132,7 +132,7 @@
         {% for it in items %}
         <tr>
           <td class="num">{{ it.serial | aindic }}</td>
-          <td class="name">{{ it.name }}</td>
+          <td class="name"><span class="c-item" style="background:{{ color('item', it.name) }}">{{ it.name }}</span></td>
           <td>{{ it.unit or '—' }}</td>
           <td class="num">{{ num(it.breakfast) }}</td>
           <td class="num">{{ num(it.lunch) }}</td>

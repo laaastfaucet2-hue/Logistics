@@ -267,8 +267,8 @@ def test_raghebeen_excess_is_warning_only_saves_normally(client):
         "officers": "٦", "individuals": "٤٥", "recruits": "٩٩٩"})
     toast = _toast(response)
     assert "warn=" in toast and "تنبيه:" in toast
-    assert "الضباط (٦) أكثر من راغبين الضباط المسجلين (٥)" in toast
-    assert "الأفراد (٤٥) أكثر من راغبين الأفراد المسجلين (٤٠)" in toast
+    assert "ض (٦) أكثر من راغبين ض المسجلين (٥)" in toast
+    assert "أ (٤٥) أكثر من راغبين أ المسجلين (٤٠)" in toast
     assert "٩٩٩" not in toast  # المجندون خارج مقارنة الراغبين تمامًا
     assert "تم الحفظ رغم ذلك حسب رغبتك" in toast
     assert len(dt.month_records(YEAR, MONTH)) == 1  # لم يُمنع الحفظ
@@ -370,10 +370,10 @@ def test_time_range_covers_every_day_and_scales_monthly_totals(client):
     assert summary[0]["active_days"] == 4 and summary[0]["grand_total"] == 800
     assert summary[0]["avg_officers"] == 5 and summary[0]["avg_recruits"] == 160
     momoda_page = _get(client, "/tameedat/?tab=momoda")
-    assert "٨٠٠" in momoda_page.text and "متوسط ضباط" not in momoda_page.text   # المتوسطات انتقلت إلى القاموس
+    assert "٨٠٠" in momoda_page.text and "متوسط ض" not in momoda_page.text   # المتوسطات انتقلت إلى القاموس
     dict_page = _get(client, "/tameedat/?tab=dict")
-    assert "متوسط ضباط" in dict_page.text and "متوسط أفراد" in dict_page.text
-    assert "متوسط مجندين" in dict_page.text and "عدد التأميدات" in dict_page.text
+    assert "متوسط ض" in dict_page.text and "متوسط أ" in dict_page.text
+    assert "متوسط م" in dict_page.text and "عدد التأميدات" in dict_page.text
     assert "ملحقة؟" in dict_page.text and "افتح التواريخ" in dict_page.text
 
 

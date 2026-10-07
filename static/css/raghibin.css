@@ -185,3 +185,23 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
   padding: 26px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
 .rg-files b { font-size: .95rem; }
 @media (max-width: 720px) { .rg-addform, .rg-exclform { flex-direction: column; align-items: stretch; } }
+
+/* تنبيهات اليوم المفتوح + أزرار ملفات الجهات (توجيه ٠٦/١٠/٢٠٢٦) */
+.rg-alert-list { list-style: none; margin: 8px 0 6px; padding: 0;
+  display: flex; flex-direction: column; gap: 5px; }
+.rg-alert-list li { padding: 5px 10px; border-radius: 8px; font-size: 13px; line-height: 1.8;
+  border-inline-start: 3px solid var(--card-border); background: var(--surface-soft); }
+.rg-alert-list li.lvl-danger { border-color: var(--red); background: var(--surface-red); color: var(--red); }
+.rg-alert-list li.lvl-warn { border-color: var(--brand-gold); background: var(--surface-gold); color: var(--gold-light); }
+.rg-alert-list li.lvl-info { border-color: var(--blue); color: var(--blue); }
+.rg-xls { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 7px 12px; border-radius: 9px; font-size: 12.5px; font-weight: 500;
+  border: 1px solid var(--gold-border); background: var(--bg0); color: var(--gold-light);
+  text-decoration: none; }
+.rg-xls:hover { background: var(--surface-gold); }
+.rg-entity-row { display: flex; align-items: center; gap: 8px; }
+.rg-entity-row .rg-entity { flex: 1; }
+@media (max-width: 700px) {
+  .rg-entity-row { flex-wrap: wrap; }
+  .rg-xls { width: 100%; justify-content: center; }
+}

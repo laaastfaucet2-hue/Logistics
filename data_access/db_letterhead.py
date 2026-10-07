@@ -8,6 +8,15 @@ KEYS = ["lh_1", "lh_2", "lh_3", "lh_4", "sig_right_rank", "sig_right_name",
 # يمين الصفحة: المسؤول المباشر — شمالها: جهة الاعتماد.
 # تُطبع في كل ملفات Excel وWord والطباعة لكل الشهور، ولا تتأثر
 # بالحفظ من الواجهة ولا بالنسخ بين الشهور ولا بأي قيم مخزّنة قديمة.
+# 🏛️ سطور الدباجة الافتراضية (توجيه ٠٦/١٠/٢٠٢٦ — القواعد الذهبية): تُطبَّق تلقائيًا
+# إذا لم يسجّل المستخدم سطورًا خاصة بالشهر، فلا يخرج أي ملف محلي بدون دباجة رسمية.
+DEFAULT_LETTERHEAD = {
+    "lh_1": "وزارة الداخلية",
+    "lh_2": "قطاع الأمن المركزي",
+    "lh_3": "قطاع وسط سيناء",
+    "lh_4": "قسم التعيينات",
+}
+
 PINNED = {
     "sig_right_rank": "رائد",
     "sig_right_name": "مصطفى نصرالله",
@@ -27,7 +36,11 @@ def get_all(year, month):
     try:
         saved = dict(conn.execute("SELECT key, value FROM month_settings"))
         pinned = {key: PINNED[key] for key in KEYS if key in PINNED}
-        return {**{key: saved.get(key, "") for key in KEYS}, **pinned}
+        base = {key: (saved.get(key, "") or "").strip() for key in KEYS}
+        for key, text in DEFAULT_LETTERHEAD.items():          # الدباجة لا تفرغ أبدًا
+            if not base.get(key):
+                base[key] = text
+        return {**base, **pinned}
     finally:
         conn.close()
 

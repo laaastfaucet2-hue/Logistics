@@ -35,7 +35,7 @@
         <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
            href="{{ base }}&e={{ ent.id }}&c={{ fcat }}{{ '&q=' + q if q }}">
           <b>{{ ent.name }}</b>
-          <span class="rg-dim">{{ ent.entity_type }} · ضباط {{ c.officers | aindic }} · أفراد {{ c.individuals | aindic }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
+          <span class="rg-dim">{{ ent.entity_type }} · {{ pair2(c.officers, c.individuals) }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
         </a>
         <form method="post" action="/raghibin/cadres/entity_delete/{{ ent.id }}" class="rg-entity-del"
               onsubmit="return confirm('حذف جهة «{{ ent.name }}» وكل أسمائها نهائيًا من هذا الشهر؟')">
@@ -53,7 +53,7 @@
   <div class="rg-card">
     <div class="rg-card-head">
       <b>قوة: {{ entity.name }}</b>
-      <span class="rg-dim">الضباط: {{ c.officers | aindic }} (غير راغبين {{ c.officers_excluded | aindic }}) — الأفراد: {{ c.individuals | aindic }} (غير راغبين {{ c.individuals_excluded | aindic }})</span>
+      <span class="rg-dim">ض: {{ c.officers | aindic }} (غير راغبين {{ c.officers_excluded | aindic }}) — أ: {{ c.individuals | aindic }} (غير راغبين {{ c.individuals_excluded | aindic }})</span>
     </div>
 
     <!-- فئتا القوة: ضباط / أفراد وصف -->

@@ -7,6 +7,9 @@
   min-width: 0; gap: 10px; font-size: 12px; }
 .window-brand img { width: 23px; height: 23px; }
 .window-brand small { font-size: 10px; letter-spacing: 1.5px; }
+/* سطر التصميم والتنفيذ (بدل اسم المنتج الإنجليزي) — بلا تباعد حروف عربي */
+.window-brand .window-credit { letter-spacing: 0; font-size: 11px; color: var(--gold-light);
+  border-inline-start: 1px solid var(--card-border); padding-inline-start: 10px; }
 .window-brand i { width: 1px; height: 14px; background: #ffffff22; }
 .window-edition { font-size: 12px; }
 .window-edition b { font-weight: 400; margin-right: 8px; }
@@ -98,8 +101,11 @@
 .ctx-del svg { width: 15.5px; height: 15.5px; }
 .ctx-del:hover { background: rgba(239, 68, 68, .16); }
 .content { padding: 28px 32px 40px; flex: 1; max-width: 1600px; width: 100%; margin: 0 auto; }
-.footer { display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  padding: 15px 30px; color: var(--muted); border-top: 1px solid var(--card-border); font-size: 12px; }
+.footer { display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  padding: 12px 30px; color: var(--muted); border-top: 1px solid var(--card-border);
+  font-size: 12px; flex-wrap: wrap; }
+.footer .foot-app, .footer .foot-note { line-height: 1.7; }
+.footer .theme-switch { margin: 0; }
 .footer button { border: 0; background: none; color: var(--text); display: flex; align-items: center; gap: 7px; }
 .footer svg { width: 16px; height: 16px; }
 .ctx-strip { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; margin-bottom: 18px;

@@ -164,11 +164,15 @@ def _slots_vars(year, month, entity, selected):
 
 
 def _daily_vars(year, month, entity, selected):
-    """متغيرات تاب «الراغبين (يومي)»: التقويم + المربعات + عدادات + تحذير التطابق."""
+    """متغيرات تاب «الراغبين (يومي)»: التقويم + المربعات + عدادات + تنبيهات اليوم."""
     eid = entity["id"] if entity else None
     counts_map = dr.day_willing_counts(year, month, eid) if eid else {}
     base = _slots_vars(year, month, entity, selected)
     slots = base["slots"]
+    day_counts = {"officers": slots["officers"]["count"],
+                  "individuals": slots["individuals"]["count"],
+                  "officers_total": slots["officers"]["tameeda"],
+                  "individuals_total": slots["individuals"]["tameeda"]}
     return {
         "sel_day": selected,
         "weeks": _day_grid(year, month, selected, counts_map),
@@ -176,11 +180,31 @@ def _daily_vars(year, month, entity, selected):
         "slots": slots,
         "force": base["force"],
         "tameed_totals": base["tameed_totals"],
-        "day_counts": {"officers": slots["officers"]["count"],
-                       "individuals": slots["individuals"]["count"],
-                       "officers_total": slots["officers"]["tameeda"],
-                       "individuals_total": slots["individuals"]["tameeda"]},
+        "day_counts": day_counts,
+        # تنبيهات اليوم المفتوح بنفس محرك جدول الشهر: عدد الراغبين + غياب الكوادر
+        "day_alert_issues": _day_alert_issues(year, month, entity, base["tameed_totals"],
+                                              day_counts),
+        "day_cadres": _cadres_of(year, month, entity),
     }
+
+
+def _cadres_of(year, month, entity):
+    """أعداد قوة الجهة في «الجهات والكوادر المعتمدة» — لعرضها في بنر التنبيهات."""
+    if not entity:
+        return {"officers": 0, "individuals": 0}
+    from services import tameed_alerts
+    return tameed_alerts.entity_cadres(year, month, entity["id"])
+
+
+def _day_alert_issues(year, month, entity, tameed_totals, day_counts):
+    """تنبيهات اليوم المفتوح: التأميدة مقابل الراغبين المسجلين مقابل الكوادر المعتمدة."""
+    if not entity or not tameed_totals:
+        return []
+    from services import tameed_alerts
+    return tameed_alerts.record_day_issues(
+        {"officers": tameed_totals["officers"], "individuals": tameed_totals["individuals"]},
+        {"officers": day_counts["officers"], "individuals": day_counts["individuals"]},
+        tameed_alerts.entity_cadres(year, month, entity["id"]))
 
 
 def _category():
@@ -226,7 +250,23 @@ def _page_vars(tab):
         "individual_ranks": dr.RANKS["individuals"],
         "section_folder": rfs.base_dir(year, month),
         "total_force": sum(c["officers"] + c["individuals"] for c in counts.values()),
+        **_alerts_vars(year, month),
     }
+
+
+def _alerts_vars(year, month):
+    """جدول تنبيهات التاميدات ↔ الراغبين لكل أيام الشهر (يُفتح ويُغلق)."""
+    try:
+        from core.web import alerts_context
+
+        def _alert_href(day):
+            base = url_for("raghibin.page")
+            sep = "&" if "?" in base else "?"
+            return f"{base}{sep}tab=daily&d={int(day)}"
+
+        return alerts_context(year, month, _alert_href)
+    except Exception:  # noqa: BLE001 — التنبيهات لا تسقط الصفحة أبدًا
+        return {}
 
 
 @raghibin_bp.route("")

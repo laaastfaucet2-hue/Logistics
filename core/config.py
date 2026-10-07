@@ -39,6 +39,7 @@ HEALTH_SECTION_INDEX = len(SECTIONS)  # آخر قسم مضاف
 EXTRA_PAGES = [
     {"key": "letterhead", "name": "الدباجة والتوقيعات الرسمية", "icon": "📜"},
     {"key": "calc2",      "name": "آلة حاسبة 2 مخازن",          "icon": "🧮"},
+    {"key": "occasions",  "name": "التوثيق والمناسبات",          "icon": "📸"},
     {"key": "backups",    "name": "النسخ الاحتياطي والحماية",    "icon": "💾"},
 ]
 EXTRA_MAP = {p["key"]: p for p in EXTRA_PAGES}
@@ -73,6 +74,11 @@ RATION_KINDS = [
     ("ramadan", "رمضان", "🌙"),
 ]
 RATION_KIND_MAP = {k: {"name": n, "icon": i} for k, n, i in RATION_KINDS}
+
+# آلة حاسبة ٢ مخازن — حدّ «الحالة الكلية للرصيد» (توجيه ٠٦/١٠/٢٠٢٦: يحدده المستخدم)
+# القاعدة: المتوفر صفر ⇒ «لا يوجد» · المتبقي بعد الإذن أقل من (الاحتياج × النسبة) ⇒
+# «يوشك على النفاذ» · وما فوق ذلك ⇒ «آمن». عدّل رقم النسبة هنا فقط.
+STOCK_LOW_RATIO = 0.25
 
 # الوجبات
 MEALS = [("breakfast", "فطار"), ("lunch", "غداء"), ("dinner", "عشاء")]
@@ -147,4 +153,4 @@ def section_folder(number, section_name):
 
 
 # إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
-STATIC_VER = 120
+STATIC_VER = 126

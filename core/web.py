@@ -7,6 +7,18 @@ from core.auth_core import current_context
 from core.config import MONTH_NAMES, DAYS, SECTIONS, EXTRA_PAGES, STATIC_VER, nav_monthly
 
 
+def alerts_context(year, month, href_for_day):
+    """متغيرات جدول تنبيهات التاميدات↔الراغبين لكل أيام الشهر (توجيه ٠٦/١٠/٢٠٢٦).
+
+    href_for_day(day) يبني رابط الانتقال ليوم محدد في القسم الذي يعرض الجدول،
+    فيُستخدم الجدول نفسه في «التاميدات» و«الراغبين» بلا تكرار.
+    """
+    from services import tameed_alerts
+    return {"alert_rows": tameed_alerts.month_rows(year, month),
+            "alert_summary": tameed_alerts.summary(year, month),
+            "alert_day_href": href_for_day}
+
+
 def _letterhead_print_vars(year, month):
     """دباجة وتوقيعات الشهر النشط — لأي window.print() في المنظومة."""
     try:
@@ -27,6 +39,23 @@ def register(app):
     app.add_template_filter(dates.format_date, "datefmt")
     app.add_template_filter(dates.input_date, "dateinput")
     app.add_template_global(dates.period_date, "period_date")
+    # مفتاح الحروف ض/أ/م — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٦/١٠/٢٠٢٦)
+    from core import labels
+    app.add_template_global(labels.pair3, "pair3")
+    app.add_template_global(labels.pair2, "pair2")
+    app.add_template_global(labels.triple_slash, "slash3")
+    app.add_template_global(labels.slash2, "slash2")
+    app.add_template_global(labels.LEGEND, "tri_legend")
+    app.add_template_global(labels.LEGEND_TWO, "pair_legend")
+    # الألوان الثابتة للأصناف/الجهات/الأشخاص (توجيه ٠٦/١٠/٢٠٢٦)
+    from core import colors
+    app.add_template_global(colors.color_for, "color")
+    app.add_template_global(colors.ring_style, "color_ring")
+    # «الورق = الإكسل»: أعمدة كل كشف من مصدر واحد (services/sheet_columns.py)
+    from services import sheet_columns as sc
+    app.add_template_global(sc.TAMEEDAT_DAY, "cols_day")
+    app.add_template_global(sc.TAMEEDAT_MOMODA, "cols_momoda")
+    app.add_template_global(sc.TAMEEDAT_DICT, "cols_dict")
 
     @app.context_processor
     def inject_bell():
@@ -83,6 +112,12 @@ def register(app):
     def aindic_number(value):
         """عرض الرقم بالأرقام العربية المشرقية: 2026 → ٢٠٢٦"""
         return arnum.to_arabic_indic(value)
+
+
+    @app.template_filter("qty")
+    def qty_number(value):
+        """كمية بلا أصفار زائدة: 2.25 → «٢٫٢٥» و7500 → «٧٥٠٠» — نفس ما يُكتب في الإكسل."""
+        return arnum.fmt_qty_trim(value)
 
 
     @app.template_filter("qty3")

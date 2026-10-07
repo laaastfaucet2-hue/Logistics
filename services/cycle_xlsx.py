@@ -62,6 +62,11 @@ def _expiry_left(expiry, year, month, day):
     return arnum.to_arabic_indic(str(left)) + " يوم"
 
 
+def expiry_left_label(expiry, year, month, day):
+    """«الصلاحية المتبقية» — نفس نص ملف الإكسل بالحرف (قاعدة الورق = الإكسل)."""
+    return _expiry_left(expiry, year, month, day)
+
+
 def _detailed_pack(r):
     if not (r.get("pack_kind") or r.get("pack_count") or r.get("pack_loose")):
         return ("بدون تغليف", "—", "—", "—", "—", "—", "—", "—")

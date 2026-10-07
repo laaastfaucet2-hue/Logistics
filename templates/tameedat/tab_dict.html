@@ -15,7 +15,7 @@
       <h3>{% if dict_edit %}✏️ تعديل جهة «{{ dict_edit.name }}»{% else %}➕ إضافة جهة إلى قاموس {{ month_name }} {{ year | aindic }}{% endif %}</h3>
       {% if dict_edit %}<a class="tm-link" href="{{ url_for('tameedat.page') }}&tab=dict">إلغاء التعديل</a>{% endif %}
     </div>
-    <p class="tm-hint" style="margin-bottom:14px">القاموس شهري ويبدأ فارغًا — الجهة الجديدة من شاشة التأميدات تُضاف هنا تلقائيًا بعد تنبيهك، <b>وكذلك أي جهة ملحقة جديدة</b>. جدول القاموس يعرض لكل جهة: <b>متوسط الضباط/الأفراد/المجندين</b> و<b>عدد التأميدات</b> وزرًا يفتح <b>كل تواريخها (من – إلى)</b> مع بيان ما إن كانت <b>ملحقة</b> على جهة أخرى وعلى مَن وكم مرة. أرقام الراغبين اختيارية وتُستخدم لتنبيه التجاوز فقط (الضباط والأفراد — لا تشمل المجندين).</p>
+    <p class="tm-hint" style="margin-bottom:14px">القاموس شهري ويبدأ فارغًا — الجهة الجديدة من شاشة التأميدات تُضاف هنا تلقائيًا بعد تنبيهك، <b>وكذلك أي جهة ملحقة جديدة</b>. جدول القاموس يعرض لكل جهة: <b>متوسط (ض/أ/م)</b> و<b>عدد التأميدات</b> وزرًا يفتح <b>كل تواريخها (من – إلى)</b> مع بيان ما إن كانت <b>ملحقة</b> على جهة أخرى وعلى مَن وكم مرة. أرقام الراغبين اختيارية وتُستخدم لتنبيه التجاوز فقط (الضباط والأفراد — لا تشمل المجندين).</p>
     <form method="post" autocomplete="off"
           action="{% if dict_edit %}{{ url_for('tameedat.entity_edit', entity_id=dict_edit.id) }}{% else %}{{ url_for('tameedat.entity_add') }}{% endif %}">
       <div class="tm-frow">
@@ -32,9 +32,9 @@
                value="{{ cur_type if cur_type not in ['شرطية','حربية'] else '' }}" {{ '' if cur_type not in ['شرطية','حربية'] else 'hidden' }}>
       </fieldset>
       <div class="tm-frow nums">
-        <div class="fld"><label>راغبين ضباط (اختياري)</label>
+        <div class="fld"><label>راغبين ض (اختياري)</label>
           <input name="rag_officers" inputmode="numeric" placeholder="—" value="{{ dict_edit.rag_officers | aindic if dict_edit and dict_edit.rag_officers is not none else '' }}"></div>
-        <div class="fld"><label>راغبين أفراد (اختياري)</label>
+        <div class="fld"><label>راغبين أ (اختياري)</label>
           <input name="rag_individuals" inputmode="numeric" placeholder="—" value="{{ dict_edit.rag_individuals | aindic if dict_edit and dict_edit.rag_individuals is not none else '' }}"></div>
         <div class="fld wide"><label>ملاحظات</label>
           <input name="notes" placeholder="اختياري…" value="{{ dict_edit.notes if dict_edit else '' }}"></div>
@@ -53,15 +53,20 @@
     <div class="table-wrap">
       <table class="rt-table tm-table" id="tmDictTable">
         <thead>
-          <tr><th>م</th><th>الجهة</th><th>النوع</th><th>متوسط ضباط</th><th>متوسط أفراد</th><th>متوسط مجندين</th><th>عدد التأميدات</th><th>تواريخ التأميدات (من – إلى)</th><th>ملحقة؟</th><th>ملاحظات</th><th class="ops">إجراءات</th></tr>
+          {# الأعمدة من services/sheet_columns.py — نفس أعمدة «قاموس الجهات.xlsx» بالحرف #}
+          <tr>{% for c in cols_dict %}<th>{{ c }}</th>{% endfor %}<th class="ops">إجراءات</th></tr>
         </thead>
         <tbody>
           {% for e in entities %}
           {% set st = dict_stats.get(e.id, {}) %}
           <tr>
             <td class="num">{{ e.serial | aindic }}</td>
-            <td class="name"><b>{{ e.name }}</b></td>
+            <td class="name c-ent" style="--c:{{ color('entity', e.name) }}"><b>{{ e.name }}</b></td>
             <td><span class="tm-type t-{{ 'base' if e.entity_type in ['شرطية','حربية'] else 'other' }}">{{ e.entity_type }}</span></td>
+            {% set tot_o = (st.own.total_officers if st.own else 0) + (st.att.total_officers if st.att else 0) %}
+            {% set tot_i = (st.own.total_individuals if st.own else 0) + (st.att.total_individuals if st.att else 0) %}
+            <td class="num tot">{{ tot_o | aindic if st.records_total else '—' }}</td>
+            <td class="num tot">{{ tot_i | aindic if st.records_total else '—' }}</td>
             <td class="num avg">{{ st.own.avg_officers | qty3 if st.own else '—' }}</td>
             <td class="num avg">{{ st.own.avg_individuals | qty3 if st.own else '—' }}</td>
             <td class="num avg">{{ st.own.avg_recruits | qty3 if st.own else '—' }}</td>

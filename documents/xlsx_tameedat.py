@@ -16,6 +16,7 @@ from core.config import MONTH_NAMES
 from data_access import dataguard
 from data_access import db_letterhead as lhdb
 from data_access import db_tameedat as dt
+from services import sheet_columns
 from documents.official_xlsx import add_letterhead, TITLE_ROW, TABLE_ROW, DATA_ROW, EXPORT_VERSION
 from services import tameedat_fs
 
@@ -84,8 +85,7 @@ def _signatures(ws, row, ncols, year, month):
 
 def _daily_sheet(wb, year, month, records):
     ws = wb.create_sheet("التفصيل اليومي")
-    headers = ["اليوم", "التاريخ", "الجهة", "النوع", "ضباط", "أفراد", "مجندين",
-               "الإجمالي", "ملاحظات"]
+    headers = sheet_columns.as_labels(sheet_columns.TAMEEDAT_DAY)   # الورق = الإكسل
     add_letterhead(ws, year, month, len(headers))
     _title(ws, f"التقرير الشامل للتأميدات — التفصيل اليومي — "
                f"{MONTH_NAMES[month - 1]} {arnum.to_arabic_indic(year)}", len(headers))
@@ -142,9 +142,7 @@ def day_count_cell(rec, month, year):
 
 def _summary_sheet(wb, year, month, summary, totals):
     ws = wb.create_sheet("الملخص الشهري")
-    headers = ["م", "الجهة المومدة", "النوع", "أيام التميد", "عدد التأميدات",
-               "ضباط", "أفراد", "مجندين", "الإجمالي",
-               "متوسط ضباط", "متوسط أفراد", "متوسط مجندين"]
+    headers = sheet_columns.as_labels(sheet_columns.TAMEEDAT_MOMODA)   # الورق = الإكسل
     add_letterhead(ws, year, month, len(headers))
     _title(ws, f"الجهات المومدة بالشهر الحالي — {MONTH_NAMES[month - 1]} "
                f"{arnum.to_arabic_indic(year)}", len(headers))
@@ -158,10 +156,7 @@ def _summary_sheet(wb, year, month, summary, totals):
                   arnum.to_arabic_indic(item["total_officers"]),
                   arnum.to_arabic_indic(item["total_individuals"]),
                   arnum.to_arabic_indic(item["total_recruits"]),
-                  arnum.to_arabic_indic(item["grand_total"]),
-                  arnum.fmt_qty(round(item["avg_officers"], 3)),
-                  arnum.fmt_qty(round(item["avg_individuals"], 3)),
-                  arnum.fmt_qty(round(item["avg_recruits"], 3))]
+                  arnum.to_arabic_indic(item["grand_total"])]
         for col, value in enumerate(values, start=1):
             _cell(ws, row, col, value, bold=(col == 2),
                   fill=("E9EDF7" if item["kind"] == "attachment"
@@ -172,13 +167,13 @@ def _summary_sheet(wb, year, month, summary, totals):
                     arnum.to_arabic_indic(totals["officers"]),
                     arnum.to_arabic_indic(totals["individuals"]),
                     arnum.to_arabic_indic(totals["recruits"]),
-                    arnum.to_arabic_indic(totals["grand"]), "", "", ""]
+                    arnum.to_arabic_indic(totals["grand"])]
     for col, value in enumerate(total_values, start=1):
         _cell(ws, row, col, value, bold=True, fill=SUBTOTAL)
     row += 2
     _signatures(ws, row, len(headers), year, month)
     ws.print_area = f"A1:{get_column_letter(len(headers))}{row + 1}"
-    for col, width in enumerate([6, 28, 10, 11, 12, 9, 9, 10, 10, 12, 12, 12], start=1):
+    for col, width in enumerate([6, 28, 10, 11, 12, 9, 9, 10, 12], start=1):
         ws.column_dimensions[get_column_letter(col)].width = width
 
 
