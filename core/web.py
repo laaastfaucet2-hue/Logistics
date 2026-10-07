@@ -56,10 +56,6 @@ def register(app):
     app.add_template_global(sc.TAMEEDAT_DAY, "cols_day")
     app.add_template_global(sc.TAMEEDAT_MOMODA, "cols_momoda")
     app.add_template_global(sc.TAMEEDAT_DICT, "cols_dict")
-    app.add_template_global(sc.FREE_RATE, "cols_ft_rate")
-    app.add_template_global(sc.FREE_SHEET, "cols_ft_sheet")
-    app.add_template_global(sc.FREE_POINT, "cols_ft_point")
-    app.add_template_global(sc.FREE_DIST, "cols_ft_dist")
 
     @app.context_processor
     def inject_bell():
