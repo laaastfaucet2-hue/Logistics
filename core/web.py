@@ -56,6 +56,10 @@ def register(app):
     app.add_template_global(sc.TAMEEDAT_DAY, "cols_day")
     app.add_template_global(sc.TAMEEDAT_MOMODA, "cols_momoda")
     app.add_template_global(sc.TAMEEDAT_DICT, "cols_dict")
+    app.add_template_global(sc.FREE_RATE, "cols_ft_rate")
+    app.add_template_global(sc.FREE_SHEET, "cols_ft_sheet")
+    app.add_template_global(sc.FREE_POINT, "cols_ft_point")
+    app.add_template_global(sc.FREE_DIST, "cols_ft_dist")
 
     @app.context_processor
     def inject_bell():
@@ -112,6 +116,12 @@ def register(app):
     def aindic_number(value):
         """عرض الرقم بالأرقام العربية المشرقية: 2026 → ٢٠٢٦"""
         return arnum.to_arabic_indic(value)
+
+
+    @app.template_filter("qty")
+    def qty_number(value):
+        """كمية بلا أصفار زائدة: 2.25 → «٢٫٢٥» و7500 → «٧٥٠٠» — نفس ما يُكتب في الإكسل."""
+        return arnum.fmt_qty_trim(value)
 
 
     @app.template_filter("qty3")

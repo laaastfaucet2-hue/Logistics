@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}التفاريد الحرة وتفاريد الدول • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}التفاريد الحرة وتفاريد الدول — {{ month_name }} {{ year | aindic }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/free-tafreed.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<header class="ft-hero">
+  <div class="ft-hero-lines">
+    <b class="ft-l1">🌍 بوابة تفاريد الخطوط والنقاط — حراسة الدول</b>
+    <b class="ft-l2">حسابة الصرف وطباعة الإذن · عمل التفريدة · تفريدات الدول · معدلات الأصناف —
+      <u>قسم مستقل تمامًا</u>: تعديلاته لا تمس مقررات المتعهد ولا التموينيات ولا أرصدة المخازن، وله ملفاته المحلية المستقلة</b>
+  </div>
+  <div class="ft-hero-meta">
+    <span class="ft-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
+    <span class="ft-chip dim">📁 14-التفاريد الحرة</span>
+  </div>
+</header>
+
+<nav class="ft-tabs no-print" aria-label="تابات التفاريد الحرة">
+  {% for key, name, icon in tabs %}
+  <a class="ft-tab {{ 'on' if tab == key }}"
+     href="{{ url_for('free_tafreed.page', tab=key, year=year, month=month, sid=request.args.get('sid')) }}">
+    <span class="ft-tab-ic">{{ icon }}</span><span>{{ name }}</span>
+  </a>
+  {% endfor %}
+  <a class="ft-tab" href="{{ url_for('free_tafreed.open_folder', year=year, month=month, sid=request.args.get('sid')) }}"
+     title="يفتح فولدر ملفات القسم المستقل">
+    <span class="ft-tab-ic">📂</span><span>فتح المجلد</span>
+  </a>
+</nav>
+
+<div class="ft-openers no-print">
+  {% for label, icon in openers %}
+  <a class="ft-opener" href="#ft-{{ loop.index }}">{{ icon }} {{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if tab == 'calc' %}{% include "free_tafreed/tab_calc.html" %}
+{% elif tab == 'make' %}{% include "free_tafreed/tab_make.html" %}
+{% elif tab == 'intl' %}{% include "free_tafreed/tab_intl.html" %}
+{% elif tab == 'rates' %}{% include "free_tafreed/tab_rates.html" %}
+{% endif %}
+
+<script type="application/json" id="ftData">{{ {"compute": url_for('free_tafreed.compute'), "sid": request.args.get('sid') or ''} | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/free-tafreed.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

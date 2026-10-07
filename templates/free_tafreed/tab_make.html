@@ -1,0 +1,70 @@
+{# تاب ٢: عمل التفريدة — إنشاء تفريدة إدارية منفصلة (حساب فوري بموجب القوة وعدد الأيام) #}
+<section class="panel" id="ft-1">
+  <div class="panel-head"><h3>➕ عمل تفريدة إدارية منفصلة (تسجيل حر)</h3>
+    <span class="panel-hint">حساب فوري بموجب القوة وعدد الأيام — ثم «توليد كشف التفريدة الإدارية وحماية الصرف»</span></div>
+  <form method="post" action="{{ url_for('free_tafreed.save_sheet') }}" class="ft-sheet-form" autocomplete="off">
+    <input type="hidden" name="tab" value="make">
+    {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+    <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+    <div class="ft-fields">
+      <label>اسم الجهة المستلمة<input name="title" required placeholder="مثال: قطاع وسط سيناء — حراسة الدول"></label>
+      <label>من يوم<input name="date_from" inputmode="numeric" value="{{ day_from | aindic }}"></label>
+      <label>إلى يوم<input name="date_to" inputmode="numeric" value="{{ day_to | aindic }}"></label>
+      <label>القوة (أفراد)<input name="force" inputmode="numeric" value="10"></label>
+      <label>عدد الأيام<input name="days" inputmode="numeric" value="{{ (day_to - day_from + 1) | aindic }}"></label>
+      <label>أمين المخزن (المخشّم)<input name="holder" placeholder="اسم أمين المخزن"></label>
+      <label>كاتب التعهدات المنظم<input name="writer" placeholder="اسم كاتب التعهدات"></label>
+    </div>
+    <div class="ft-picks">
+      <b>الأصناف الداخلة في التفريدة (الكل افتراضيًا):</b>
+      <div class="ft-picks-grid">
+        {% for rate in rates %}
+        <label class="ft-pick"><input type="checkbox" name="pick" value="{{ rate.name }}" checked>
+          {{ rate.name }} <small>({{ rate.unit }} — معدل {{ rate.rate | qty }})</small></label>
+        {% else %}
+        <p class="ft-note">لا معدلات بعد — اسحبها من تاب «معدلات الأصناف» أولًا.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="ft-actions">
+      <button class="rt-btn gold big" type="submit">🧾 توليد كشف التفريدة الإدارية وحماية الصرف</button>
+      <span class="ft-note">الحفظ بنفس العنوان لتفريدة قائمة = <b>استبدال</b> لا تكرار.</span>
+    </div>
+  </form>
+</section>
+
+<section class="panel no-print">
+  <div class="panel-head"><h3>أرشيف التفريدات المنجزة والمصروفة</h3>
+    <span class="panel-hint">كل تفريدة لها ملف محلي (إكسل + JSON) في 14-التفاريد الحرة/التفاريد الحرة</span></div>
+  <div class="table-wrap">
+    <table class="rt-table" id="ftArchiveTable">
+      <thead><tr><th>م</th><th>العنوان</th><th>من – إلى</th><th>القوة</th><th>الأيام</th>
+                 <th>عدد الأصناف</th><th>أمين المخزن</th><th class="ops">إجراءات</th></tr></thead>
+      <tbody>
+        {% for sheet in sheets_free %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td><b>{{ sheet.title }}</b></td>
+          <td class="num">يوم {{ sheet.date_from | aindic }} – {{ sheet.date_to | aindic }}</td>
+          <td class="num">{{ sheet.force | aindic }}</td>
+          <td class="num">{{ sheet.days | aindic }}</td>
+          <td class="num">{{ sheet.payload.get('rows', []) | length | aindic }}</td>
+          <td>{{ sheet.holder or '—' }}</td>
+          <td class="ops ft-row-ops">
+            <a class="rt-btn dim" target="_blank"
+               href="{{ url_for('free_tafreed.print_sheet', kind='permit', sheet=sheet.id, year=year, month=month, sid=request.args.get('sid')) }}">🖨</a>
+            <a class="rt-btn dim" href="{{ url_for('free_tafreed.sheet_file', sheet_id=sheet.id, fmt='xlsx', year=year, month=month, sid=request.args.get('sid')) }}">📗</a>
+            <form method="post" action="{{ url_for('free_tafreed.sheet_delete', sheet_id=sheet.id) }}" class="ft-inline-form">
+              {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+              <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+              <button class="rt-btn dim danger" type="submit" title="حذف التفريدة وملفاتها">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty">لا تفريدات محفوظة بعد — أنشئ أول تفريدة من الأعلى.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
