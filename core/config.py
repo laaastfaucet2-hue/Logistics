@@ -39,6 +39,7 @@ HEALTH_SECTION_INDEX = len(SECTIONS)  # آخر قسم مضاف
 EXTRA_PAGES = [
     {"key": "letterhead", "name": "الدباجة والتوقيعات الرسمية", "icon": "📜"},
     {"key": "calc2",      "name": "آلة حاسبة 2 مخازن",          "icon": "🧮"},
+    {"key": "occasions",  "name": "التوثيق والمناسبات",          "icon": "📸"},
     {"key": "backups",    "name": "النسخ الاحتياطي والحماية",    "icon": "💾"},
 ]
 EXTRA_MAP = {p["key"]: p for p in EXTRA_PAGES}
@@ -152,4 +153,4 @@ def section_folder(number, section_name):
 
 
 # إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
-STATIC_VER = 125
+STATIC_VER = 126

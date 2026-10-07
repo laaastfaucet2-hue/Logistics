@@ -1,0 +1,61 @@
+/* صفحة التوثيق والمناسبات — توجيه ٠٦/١٠/٢٠٢٦ (تنسيق مستقل عن ملفات الأشهر) */
+.oc-head{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.oc-head-main{display:flex;flex-direction:column;gap:4px}
+.oc-dim{color:#94a3b8;font-size:12.5px}
+.oc-stats{display:flex;gap:8px;flex-wrap:wrap}
+.oc-chip{background:rgba(20,32,54,.55);border:1px solid rgba(148,163,184,.25);border-radius:10px;
+  padding:6px 10px;font-size:12.5px;color:#cbd5e1}
+.oc-chip b{color:#f5c451}
+.oc-flash{max-width:1100px;margin:10px auto}
+.oc-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:14px;align-items:start}
+@media(max-width:1000px){.oc-grid{grid-template-columns:1fr}}
+.oc-col{display:flex;flex-direction:column;gap:14px}
+.oc-card{overflow:visible}
+.oc-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.oc-form label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:#cbd5e1}
+.oc-form input,.oc-form textarea,.oc-form select{background:rgba(9,16,30,.6);border:1px solid rgba(148,163,184,.28);
+  border-radius:9px;padding:8px 10px;color:#e6edf7;font-family:inherit;font-size:13px}
+.oc-form textarea{resize:vertical;line-height:1.7}
+.oc-wide{grid-column:1/-1}
+.oc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.oc-index{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-inline-end:4px}
+.oc-item{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:11px;
+  border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.5);color:inherit;text-decoration:none}
+.oc-item:hover{border-color:#f5c451}
+.oc-item.on{border-color:#f5c451;background:rgba(245,196,81,.12)}
+.oc-item-media{font-size:11.5px;color:#94a3b8}
+.oc-empty{color:#94a3b8;font-size:13px;padding:10px 4px}
+.oc-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.oc-photo{margin:0;display:flex;flex-direction:column;gap:5px}
+.oc-photo img{width:100%;height:100px;object-fit:cover;border-radius:10px;cursor:zoom-in;
+  border:1px solid rgba(148,163,184,.25)}
+.oc-photo figcaption{display:flex;align-items:center;justify-content:space-between;gap:6px;
+  font-size:11px;color:#94a3b8;word-break:break-all}
+.oc-del{margin:0}
+.oc-del button{width:26px;height:26px}
+.oc-videos{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.oc-video{display:flex;flex-direction:column;gap:6px;background:rgba(15,23,42,.5);
+  border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:8px}
+.oc-video video{width:100%;border-radius:9px;background:#000;max-height:220px}
+.oc-video-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;color:#cbd5e1}
+.oc-danger{border-color:rgba(220,38,38,.35)}
+.rt-btn.danger{background:#7f1d1d;border-color:#b91c1c}
+.oc-lightbox{position:fixed;inset:0;z-index:90;background:rgba(2,6,16,.92);display:flex;
+  align-items:center;justify-content:center}
+.oc-lightbox img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.oc-lb-close{position:fixed;top:18px;inset-inline-end:20px;width:38px;height:38px;font-size:16px}
+/* ——— ورقة التقرير المطبوعة ——— */
+.oc-toolbar{display:flex;gap:10px;align-items:center;justify-content:center}
+.oc-doc-title{text-align:center;color:#f5c451;margin:6px 0 14px;font-size:20px}
+.oc-doc-table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.oc-doc-table th,.oc-doc-table td{border:1px solid rgba(148,163,184,.4);padding:8px 10px;text-align:right;font-size:13px}
+.oc-doc-table th{background:rgba(20,32,54,.6);color:#f5c451;width:12%}
+.oc-doc-sub{color:#f5c451;font-size:15px;margin:12px 0 8px}
+.oc-doc-body{border:1px solid rgba(148,163,184,.4);border-radius:10px;padding:12px;min-height:120px;
+  white-space:pre-wrap;line-height:1.9;font-size:13.5px}
+.oc-doc-meta{color:#94a3b8;font-size:12.5px;margin-top:10px}
+@media print{
+  .oc-toolbar,.no-print{display:none!important}
+  .oc-doc,.oc-doc *{color:#000!important;border-color:#000!important;background:#fff!important}
+  .oc-doc-title,.oc-doc-sub{color:#000!important}
+}

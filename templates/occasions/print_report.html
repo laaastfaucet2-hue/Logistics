@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_text %}
+{% block body_class %}own-letterhead{% endblock %}
+{% block official_print_head %}{% endblock %}
+{% block official_print_foot %}{% endblock %}
+{% block title %}طباعة تقرير «{{ item.title }}» • مستند رسمي{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/occasions.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ تقرير المناسبة الرسمي — نفس الورق المحفوظ في فولدر المناسبة (Excel وWord)</span>
+  <span class="sep">•</span><span class="dim">يمكنك اختيار «حفظ PDF» من نافذة الطباعة</span>
+</div>
+<div class="panel oc-toolbar no-print">
+  <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة التقرير">
+    <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  </button>
+  <a class="rt-btn dim" href="{{ url_for('occasions.page', folder=item.folder) }}">↩ عودة للمناسبة</a>
+</div>
+
+<div class="panel rc-doc oc-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ letterhead.lh[i] }}</div>{% endfor %}</div>
+      {% if letterhead.has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <h1 class="oc-doc-title">تقرير مناسبة — {{ item.title }}</h1>
+    <table class="oc-doc-table">
+      <tr><th>النوع</th><td>{{ item.kind }}</td><th>التاريخ</th><td>{{ date_text(item.date_iso) }}</td></tr>
+      <tr><th>المكان</th><td>{{ item.place or '—' }}</td><th>القوة / الوفد</th><td>{{ item.force_text or '—' }}</td></tr>
+      <tr><th>إطار</th><td>{{ item.frame or '—' }}</td><th>إخطار</th><td>{{ item.alert or '—' }}</td></tr>
+    </table>
+    <h3 class="oc-doc-sub">الوصف / مجريات المناسبة</h3>
+    <div class="oc-doc-body">{{ item.notes or '—' }}</div>
+    <p class="oc-doc-meta">مرفقات المناسبة: {{ item.photos | length | aindic }} صورة ·
+      {{ item.videos | length | aindic }} فيديو — محفوظة داخل فولدر المناسبة.</p>
+    <div class="pd-foot">
+      <div class="pd-sig">
+        <b>{{ letterhead.sig_right[0] or '........................' }}</b>
+        <span>{{ letterhead.sig_right[1] or '........................' }}</span>
+      </div>
+      <div class="pd-sig">
+        <b>{{ letterhead.sig_left[0] or '........................' }}</b>
+        <span>{{ letterhead.sig_left[1] or '........................' }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
