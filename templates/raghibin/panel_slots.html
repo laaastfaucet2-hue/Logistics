@@ -32,6 +32,7 @@
   <div class="rg-slots-grid">
     {% for name in group.boxes %}
     <input class="rag-slot" name="names" value="{{ name or '' }}"
+           {% if name %}style="{{ color_ring('person', name) }}"{% endif %}
            data-combo="{{ dlist }}" autocomplete="off"
            placeholder="{{ loop.index | aindic }}. اكتب اسم الراغب (بحث ذكي)">
     {% endfor %}

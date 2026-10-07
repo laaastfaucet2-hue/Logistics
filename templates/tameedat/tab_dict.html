@@ -60,7 +60,7 @@
           {% set st = dict_stats.get(e.id, {}) %}
           <tr>
             <td class="num">{{ e.serial | aindic }}</td>
-            <td class="name"><b>{{ e.name }}</b></td>
+            <td class="name c-ent" style="--c:{{ color('entity', e.name) }}"><b>{{ e.name }}</b></td>
             <td><span class="tm-type t-{{ 'base' if e.entity_type in ['شرطية','حربية'] else 'other' }}">{{ e.entity_type }}</span></td>
             <td class="num avg">{{ st.own.avg_officers | qty3 if st.own else '—' }}</td>
             <td class="num avg">{{ st.own.avg_individuals | qty3 if st.own else '—' }}</td>

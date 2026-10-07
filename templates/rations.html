@@ -132,7 +132,7 @@
         {% for it in items %}
         <tr>
           <td class="num">{{ it.serial | aindic }}</td>
-          <td class="name">{{ it.name }}</td>
+          <td class="name"><span class="c-item" style="background:{{ color('item', it.name) }}">{{ it.name }}</span></td>
           <td>{{ it.unit or '—' }}</td>
           <td class="num">{{ num(it.breakfast) }}</td>
           <td class="num">{{ num(it.lunch) }}</td>

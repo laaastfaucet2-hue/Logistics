@@ -83,7 +83,7 @@
         <label class="rg-force-check">
           <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
                  data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
-          <span>{{ p.rank or '—' }} / <b>{{ p.full_name }}</b>
+          <span>{{ p.rank or '—' }} / <b class="c-name ring" style="{{ color_ring('person', p.full_name) }}">{{ p.full_name }}</b>
             {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}</span>
         </label>
       </div>

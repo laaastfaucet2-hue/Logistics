@@ -18,6 +18,12 @@ from data_access import db_raghibin as dr
 from documents.official_xlsx import add_letterhead
 
 from . import FILL_EXCLUDED, signatures_rows, tab_dir
+from core import colors as palette
+
+
+def person_color(full_name):
+    """لون الشخص الثابت (بلا #) لخط الاسم في الإكسل — نفس لون قوسه في الشاشة."""
+    return (palette.color_for("person", full_name) or "").lstrip("#") or "000000"
 
 FILL_WILLING = "E8F5EE"
 CENTER = Alignment(horizontal="center", vertical="center", readingOrder=2)
@@ -99,10 +105,12 @@ def _write_category(folder, year, month, day, entity_name, persons, state, cat,
             mark, fill = "✗ لا", None
         values = [arnum.to_arabic_indic(str(serial)), person["rank"] or "—",
                   person["full_name"], mark, person["exclude_note"] or ""]
+        name_color = person_color(person["full_name"])
         for col, value in enumerate(values, start=1):
             cell = ws.cell(row, col, value)
             cell.alignment = CENTER
-            cell.font = Font(size=11, name="Cairo", bold=(col == 3))
+            cell.font = Font(size=11, name="Cairo", bold=(col == 3),
+                             color=name_color if col == 3 else "000000")
             if fill:
                 cell.fill = PatternFill("solid", fgColor=fill)
         row += 1

@@ -57,7 +57,10 @@ def _sheet(ws, year, month, entity_name, category_label, persons, meals):
         for col, value in enumerate(values, start=1):
             cell = ws.cell(row, col, value)
             cell.alignment = CENTER
-            cell.font = Font(size=11, name="Cairo", bold=(col == 2))
+            from core import colors as palette
+            name_color = (palette.color_for("person", person["full_name"]) or "").lstrip("#")
+            cell.font = Font(size=11, name="Cairo", bold=(col == 2),
+                             color=name_color if col == 2 else "000000")
             if row % 2 == 0:
                 cell.fill = PatternFill("solid", fgColor="F4F6FB")
         row += 1

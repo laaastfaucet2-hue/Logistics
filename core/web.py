@@ -47,6 +47,10 @@ def register(app):
     app.add_template_global(labels.slash2, "slash2")
     app.add_template_global(labels.LEGEND, "tri_legend")
     app.add_template_global(labels.LEGEND_TWO, "pair_legend")
+    # الألوان الثابتة للأصناف/الجهات/الأشخاص (توجيه ٠٦/١٠/٢٠٢٦)
+    from core import colors
+    app.add_template_global(colors.color_for, "color")
+    app.add_template_global(colors.ring_style, "color_ring")
 
     @app.context_processor
     def inject_bell():

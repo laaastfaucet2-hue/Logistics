@@ -45,7 +45,10 @@ def _sheet(ws, year, month, entity_name, category_label, persons):
         for col, value in enumerate(values, start=1):
             cell = ws.cell(row, col, value)
             cell.alignment = CENTER
-            cell.font = Font(size=11, name="Cairo", bold=(col == 3))
+            from core import colors as palette
+            name_color = (palette.color_for("person", person["full_name"]) or "").lstrip("#")
+            cell.font = Font(size=11, name="Cairo", bold=(col == 3),
+                             color=name_color if col == 3 else "000000")
             cell.fill = PatternFill("solid", fgColor=FILL_EXCLUDED)
         row += 1
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=COLS)

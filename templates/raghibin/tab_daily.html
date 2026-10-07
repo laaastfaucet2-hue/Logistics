@@ -72,7 +72,7 @@
       <div class="rg-entity-row">
         <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
            href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}&c={{ fcat }}">
-          <b>{{ ent.name }}</b>
+          <b class="c-ent" style="--c:{{ color('entity', ent.name) }}">{{ ent.name }}</b>
           <span class="rg-dim">{{ ent.entity_type }} · ض {{ (counts.get(ent.id, {}).officers or 0) | aindic }} · أ {{ (counts.get(ent.id, {}).individuals or 0) | aindic }}</span>
         </a>
         <a class="rg-xls" href="{{ url_for('raghibin.open_entity_excel') }}&d={{ sel_day }}&e={{ ent.id }}"

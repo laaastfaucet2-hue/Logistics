@@ -149,7 +149,7 @@
           {% for it in rows %}
           <tr>
             <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
-            <td class="name"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+            <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
             <td class="c2-pp">
               <div class="c2-meal"><span>فطار</span><b>{{ it.breakfast | qty3 }}</b></div>
               <div class="c2-meal"><span>غداء</span><b>{{ it.lunch | qty3 }}</b></div>

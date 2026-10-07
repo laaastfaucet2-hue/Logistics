@@ -17,6 +17,12 @@ import logging
 
 from core import dates, egtime
 from core import labels
+from core import colors as palette
+
+
+def entity_color(name):
+    """لون الجهة الثابت (بلا #) — نفس لون شريطها في الشاشات."""
+    return (palette.color_for("entity", name) or "").lstrip("#") or "132638"
 from core.config import SECTIONS, MONTH_NAMES
 from data_access import dataguard, storage
 from data_access import db_tameedat as dt
@@ -289,6 +295,14 @@ def _save_xlsx(path, sheets, year=None, month=None):
             cell.alignment = Alignment(horizontal="center")
         for row in rows:
             sheet.append(list(row))
+        # لون الجهة الثابت على خلية اسمها (نفس لون شريط الجهة في الشاشات — توجيه ٠٦/١٠)
+        entity_col = next((i for i, name in enumerate(headers, start=1) if name == "الجهة"), None)
+        if entity_col:
+            for r in range(head_row + 1, sheet.max_row + 1):
+                value = sheet.cell(r, entity_col).value
+                if value:
+                    sheet.cell(r, entity_col).font = Font(
+                        name="Cairo", size=11, bold=True, color=entity_color(value))
         for idx, name in enumerate(headers, start=1):        # العرض من البيانات (الدباجة مدمجة)
             column = [str(row[idx - 1]) for row in rows if len(row) >= idx and row[idx - 1] is not None]
             width = max([len(str(name))] + [len(v) for v in column] or [10])
