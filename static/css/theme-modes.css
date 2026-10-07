@@ -154,3 +154,9 @@
     .side-officials { padding: 8px 10px 2px; }
   }
 }
+
+
+/* موجة صغيرة جنب «أزرق» في مفتاح الألوان (توجيه ٠٦/١٠/٢٠٢٦) */
+.ts-btn.ts-blue{display:inline-flex;align-items:center;gap:5px}
+.ts-wave{width:14px;height:14px;color:#5aa9e6;flex:0 0 auto}
+.ts-btn.ts-blue:hover .ts-wave,.ts-btn.ts-blue.is-active .ts-wave{color:#8fd0ff}
