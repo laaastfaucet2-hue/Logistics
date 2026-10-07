@@ -264,6 +264,78 @@ def _seed_rations(year, month):
         print(f"✅ {section}: {len(items)} صنفًا و{added} جهة مسحوبة من المقرر الصيفي")
 
 
+def _seed_warehouses(year, month):
+    """مستودعات وسجلات: موردون + أرصدة أول المدة بالتغليف + أذون صرف بتفريدتها.
+
+    يجعل تاب «٢ مخازن تفاريد» وأعمدة «الرصيد المتوفر بالمخازن / الحالة الكلية للرصيد»
+    في آلة حاسبة ٢ مخازن تعرض أرقامًا حقيقية في المعاينة.
+    """
+    from data_access import db_permits as dp, db_warehouses as dw, db_tameedat as dt
+    from core import egtime
+
+    for cycle, supplier in (("supply", "شركة الإمداد المركزية"),
+                            ("contractor", "مورد المتعهد — دواجن سيناء")):
+        dw.add_supplier(year, month, cycle, supplier, contact="مقدم/ مسؤول التوريد",
+                        phone="0100000000", activity="توريد مواد غذائية")
+    # أسماء التغليف بأسماء أصناف المقرر نفسها (قاعدة: لا صنف خارج المقرر)
+    pack_plan = {"أرز": ("شكارة", 50.0), "سكر": ("شكارة", 50.0),
+                 "مكرونة": ("كرتونة", 10.0), "زيت طعام": ("جركن", 20.0),
+                 "شاي": ("كرتونة", 5.0), "ملح طعام": ("شكارة", 25.0),
+                 "فول مدمس": ("كرتونة", 12.0), "صلصة": ("كرتونة", 12.0),
+                 "خبز": ("كرتونة", 20.0), "لحوم": ("كرتونة", 10.0),
+                 "دواجن": ("كرتونة", 10.0), "خضروات": ("شكارة", 20.0),
+                 "فواكه": ("شكارة", 20.0), "أرز معدة": ("شكارة", 25.0)}
+    seeded_items = 0
+    for cycle in ("supply", "contractor"):
+        for item in dw.ration_catalog(year, month, cycle):
+            name, unit = item["name"], item["unit"] or "كجم"
+            pack_kind, capacity = pack_plan.get(name.strip(), ("بدون تغليف", 0.0))
+            qty = 300.0 if pack_kind == "بدون تغليف" else capacity * 6
+            if dw.has_opener(year, month, (dw.resolve_item(year, month, cycle, name, unit) or
+                                           ({}, False))[0].get("id")):
+                seeded_items += 1         # رصيد موجود من بذر سابق
+                continue
+            try:
+                dw.add_opener(year, month, cycle, name, qty, 1, handle_unit_hint=unit,
+                              exp_iso=egtime.today().replace(year=year + 1).isoformat(),
+                              producer="مصنع الإنتاج الغذائي",
+                              pack_kind=pack_kind, pack_count=6 if capacity else 0,
+                              pack_capacity=capacity)
+                seeded_items += 1
+            except ValueError:
+                continue        # صنف له رصيد مسجّل بالفعل (إعادة بذر)
+    # أذون صرف مرتبطة بتأميدات الشهر ⇒ تظهر تفريدتها (FEFO) في تاب ٢ مخازن تفاريد
+    records = dt.month_records(year, month)
+    permits = 0
+    if records:
+        for index, rec in enumerate(records[:3], start=1):
+          for cycle, section in (("supply", "tamween"), ("contractor", "contractor")):
+            entity = dt.get_entity(year, month, rec["entity_id"]) or {}
+            catalog = dw.ration_catalog(year, month, cycle)
+            actuals = {f"{section}_{it['name']}": round(float(rec["officers"] + rec["individuals"])
+                                                        * 0.100, 3)
+                       for it in catalog[:4]}
+            if not actuals:
+                continue
+            dp.save_permit(year, month, {
+                "number": index if cycle == "supply" else index + 100,
+                "fiscal_year": egtime.permit_fiscal_year(),
+                "date_from": rec["day"], "date_to": rec.get("day_to") or rec["day"],
+                "issue_days": 1, "mode": "box",
+                "entity_label": entity.get("name") or rec["entity_name"],
+                "officers": rec["officers"], "individuals": rec["individuals"],
+                "recruits": rec["recruits"], "meals": ["breakfast", "lunch", "dinner"],
+                "receiver_kind": "مندوب الجهة", "receiver_rank": "رائد",
+                "receiver_name": "مندوب استلام", "issuer_name": "أمين عهدة ٢ مخازن",
+                "record_ids": [rec["id"]], "actuals": actuals,
+            })
+            permits += 1
+    from services import warehouses_fs
+    warehouses_fs.snapshot_all(year, month)
+    print(f"✅ المستودعات: {seeded_items} صنفًا برصيد افتتاحي و{permits} إذن صرف "
+          f"(التفريدة وملفات ٢ مخازن اتحدثت)")
+
+
 def _rebuild_files(year, month):
     from documents import xlsx_rations
     from services import tameedat_fs
@@ -292,6 +364,7 @@ def main():
             _reset(year, month)
         _seed_tameedat(year, month)
         _seed_rations(year, month)
+        _seed_warehouses(year, month)
         persons = _seed_force(year, month)
         _rebuild_files(year, month)
         _rebuild_raghibin_files(year, month, persons)

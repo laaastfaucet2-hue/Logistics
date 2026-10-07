@@ -1,0 +1,106 @@
+{# تاب «٢ مخازن تفاريد» — تفريدة صرف كل إذن بالدفعات (FEFO) ورصيد المخزن قبل/بعد
+   قاعدة «الورق = الإكسل» (توجيه ٠٦/١٠): الأعمدة هنا هي نفس أعمدة ملف
+   «٢ مخازن تفاريد مجمع.xlsx» بالحرف: م · الجهة · الصنف · الكمية المنصرفة · الوحدة ·
+   المنصرف بالتغليف · تغليف الدفعة · مخزن · تاريخ الانتهاء · الصلاحية المتبقية ·
+   إذن رقم · ملاحظات #}
+<div class="wh-subhead">
+  <div>
+    <b class="wh-subtitle">🧾 تفاريد ٢ مخازن — {{ cycle_name }}</b>
+    <span class="wh-dim">كل سطر = دفعة خرجت من مخزنها بالأقرب صلاحية أولًا (FEFO)،
+      بالمنصرف مفككًا بعبواته ورصيد المخزن قبل الصرف وبعده.</span>
+  </div>
+  <div class="wh-chips">
+    <span class="wh-chip">أسطر التفريدة <b>{{ tafreeda_all | length | aindic }}</b></span>
+    <span class="wh-chip">أذون مفلّحة <b>{{ taf_popup | length | aindic }}</b></span>
+    <span class="wh-chip dim">نفس بيانات الملف المجمع وملفات أيامه — تُبنى بعد كل حفظ</span>
+  </div>
+</div>
+
+{% if taf_popup %}
+{% for no, pg in taf_popup.items() %}
+<div class="panel wh-card">
+  <div class="panel-head">
+    <h3>إذن صرف رقم {{ no | aindic }}
+      {% if pg.main_entity %} — {{ pg.main_entity }}{% endif %}</h3>
+    <span class="panel-hint">
+      من يوم {{ pg.date_from | aindic }} إلى يوم {{ pg.date_to | aindic }} ·
+      إجمالي المنصرف <b>{{ pg.total | qty3 }}</b>
+      {% if pg.extras %} · ملحقات: {% for ex in pg.extras %}{{ ex.name }}{% if not loop.last %}، {% endif %}{% endfor %}{% endif %}
+    </span>
+  </div>
+  <div class="table-wrap">
+    <table class="rt-table wh-table">
+      <thead>
+        <tr>
+          <th>م</th><th>الجهة</th><th>الصنف</th>
+          <th title="المنصرف من هذه الدفعة">الكمية المنصرفة</th><th>الوحدة</th>
+          <th title="المنصرف مفككًا بعبوات الدفعة">المنصرف بالتغليف</th>
+          <th title="بيانات تغليف الدفعة (وارد ١ مخازن)">تغليف الدفعة</th>
+          <th>مخزن</th><th>تاريخ الانتهاء</th><th>الصلاحية المتبقية</th>
+          <th>ملاحظات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in pg.lines_list %}
+        <tr>
+          <td class="num">{{ t.seq | aindic }}</td>
+          <td class="dim">{{ t.entity_label or '—' }}</td>
+          <td class="name"><b>{{ t.item }}</b> <small class="dim">(دفعة {{ t.receipt_serial | aindic }})</small></td>
+          <td class="num">{{ t.qty | qty3 }} <small class="dim">(قبل: {{ t.rem_before_label or '—' }} — بعد: {{ t.rem_after_label or '—' }})</small></td>
+          <td>{{ t.unit or '—' }}</td>
+          <td class="dim">{{ t.issued_label or '—' }}</td>
+          <td class="dim">{{ t.pack_label or '—' }}</td>
+          <td>{{ t.store_name or '—' }}</td>
+          <td class="num">{{ t.expiry | datefmt if t.expiry else '—' }}</td>
+          <td class="num">{{ t.expiry_left or '—' }}</td>
+          <td class="dim">{{ t.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="panel">
+  <p class="panel-hint" style="padding:18px 0;text-align:center">
+    لا تفاريد في هذا الشهر بعد — سجّل إذن صرف من «٢ مخازن — إذون الصرف» أو من آلة حاسبة ٢ مخازن،
+    وستظهر تفريدته هنا وفي ملف «٢ مخازن تفاريد مجمع.xlsx» فورًا.
+  </p>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head"><h3>كل أسطر التفريدة (نفس ملف «٢ مخازن تفاريد مجمع.xlsx»)</h3>
+    <span class="panel-hint">م · الجهة · الصنف · الكمية المنصرفة · الوحدة · المنصرف بالتغليف ·
+      تغليف الدفعة · مخزن · تاريخ الانتهاء · الصلاحية المتبقية · إذن رقم · ملاحظات</span></div>
+  <div class="table-wrap">
+    <table class="rt-table wh-table">
+      <thead>
+        <tr><th>م</th><th>الجهة</th><th>الصنف</th><th>الكمية المنصرفة</th><th>الوحدة</th>
+          <th>المنصرف بالتغليف</th><th>تغليف الدفعة</th><th>مخزن</th><th>تاريخ الانتهاء</th>
+          <th>الصلاحية المتبقية</th><th>إذن رقم</th><th>ملاحظات</th></tr>
+      </thead>
+      <tbody>
+        {% for t in tafreeda_all %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="dim">{{ t.entity_label or '—' }}</td>
+          <td class="name"><b>{{ t.item }}</b></td>
+          <td class="num">{{ t.qty | qty3 }}</td>
+          <td>{{ t.unit or '—' }}</td>
+          <td class="dim">{{ t.issued_label or '—' }}</td>
+          <td class="dim">{{ t.pack_label or '—' }}</td>
+          <td>{{ t.store_name or '—' }}</td>
+          <td class="num">{{ t.expiry | datefmt if t.expiry else '—' }}</td>
+          <td class="num">{{ t.expiry_left or '—' }}</td>
+          <td class="num">{{ t.permit_no | aindic }}</td>
+          <td class="dim">{{ t.notes or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="12" class="empty">لا أسطر تفريدة بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -30,10 +30,15 @@ def _norm(value):
     return " ".join(str(value or "").split())
 
 
-def _sheet_text(ws, max_row=200, max_col=12):
-    """نص أعلى الورقة (الدباجة + العنوان) — يكفي لفحص القواعد."""
+def _sheet_text(ws, max_row=None, max_col=12):
+    """نص الورقة كاملًا (الدباجة أعلى + التوقيعان آخر الجدول) — لفحص القواعد.
+
+    كان الحد القديم ٢٠٠ صف فقط، فكانت الملفات الطويلة (إجمالي الشهر ٢٨٥ صفًا)
+    تُبلَّغ خطأً بأن التوقيعين ناقصان وهما في آخرها (تصحيح ٠٧/١٠/٢٠٢٦).
+    """
+    last = max_row or min(getattr(ws, "max_row", 1) or 1, 5000)
     parts = []
-    for row in ws.iter_rows(min_row=1, max_row=max_row, max_col=max_col, values_only=True):
+    for row in ws.iter_rows(min_row=1, max_row=last, max_col=max_col, values_only=True):
         parts.extend(str(cell) for cell in row if cell not in (None, ""))
     return _norm(" ".join(parts))
 

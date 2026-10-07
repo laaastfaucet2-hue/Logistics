@@ -29,6 +29,7 @@ TABS = [
     ("wh1", "١ مخازن — إذون الإضافة", "📥"),
     ("wh2", "٢ مخازن — إذون الصرف", "📤"),
     ("wh3", "٣ مخازن — دفتر الأصناف", "📒"),
+    ("tafreeda", "٢ مخازن تفاريد", "🧾"),
 ]
 SUB_KEYS = {t[0] for t in TABS}
 
@@ -203,11 +204,17 @@ def page():
     catalog_missing = [c for c in dw.ration_catalog(year, month, cycle)
                        if c["name"].lower() not in item_name_set]
 
-    permits = dw.permits_book(year, month, cycle) if sub == "wh2" else []
+    permits = dw.permits_book(year, month, cycle) if sub in ("wh2", "tafreeda") else []
     tafreeda = dw.tafreeda_rows(year, month, cycle)
+    _taf_entities = {p["number"]: (p.get("entity_label") or "—") for p in permits}
     for _t in tafreeda:
         _t["wday"] = _wday(year, month, _t["date_from"])
         _t["fdate_iso"] = f"{year:04d}-{month:02d}-{int(_t['date_from']):02d}"
+        # أعمدة تاب «٢ مخازن تفاريد» = أعمدة ملف «٢ مخازن تفاريد مجمع.xlsx» بالحرف
+        _t["entity_label"] = _taf_entities.get(_t["permit_no"], "—")
+        from services.cycle_xlsx import expiry_left_label
+        _t["expiry_left"] = expiry_left_label(_t.get("expiry"), year, month,
+                                              int(_t.get("date_from") or 1))
     # التفريدة كاملة للنافذة المنبثقة: إذن ← صنف (الإجمالي) ← مخازن بالتفكيك
     taf_popup = {}
     for _t in tafreeda:
@@ -238,6 +245,9 @@ def page():
         _pe = next((q for q in permits if q["number"] == no), None)
         pg["main_entity"] = _pe["main_entity"] if _pe else ""
         pg["extras"] = _pe["extras"] if _pe else []
+        # تاب «٢ مخازن تفاريد»: أسطر الإذن بترتيب مسلسلها (نفس ترتيب ملف الإكسل)
+        pg["lines_list"] = sorted(tafreeda_by_permit.get(no, []),
+                                  key=lambda r: (r.get("seq") or 0, r["item"]))
     stores_registry = db_stores.list_stores()
     pack_kinds = dw.collect_pack_kinds()
     packs_map = dw.pack_specs_map(year, month, cycle)
@@ -276,7 +286,8 @@ def page():
         "key": "tarfea", "name": "سجل الترفية", "icon": "🎖️", "section": "tarfea"}
     tab_file = wf.TAB_XLSX[sub]
     counts = {"suppliers": len(suppliers), "wh1": len(receipts),
-              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items)}
+              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items),
+              "tafreeda": len(tafreeda)}
     items_data = {}
     for it in items:
         base, factor = unit_base(it["handle_unit"])

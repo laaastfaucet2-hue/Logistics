@@ -193,3 +193,27 @@ def test_audit_routes_respond(client):
 def test_audit_route_rejects_unknown_section(client):
     _init()
     assert client.get("/files/audit?section=nope").status_code == 400
+
+
+def test_signatures_are_found_at_the_bottom_of_long_sheets(app):
+    """تصحيح ٠٧/١٠/٢٠٢٦: الملفات الطويلة (٢٠٠ صف وأكثر) كان توقيعها في آخرها
+    فيُبلَّغ خطأً بأنه ناقص — الفحص الآن يقرأ الورقة كلها حتى آخر صف."""
+    from openpyxl import Workbook
+    from core import paths
+    from data_access import dataguard
+    from services import local_audit as la
+    _init()
+    book = Workbook()
+    ws = book.active
+    ws.cell(1, 1, "وزارة الداخلية — قطاع وسط سيناء - قسم التعيينات")
+    ws.cell(2, 1, "الشهر: سبتمبر")
+    for row in range(3, 260):                     # جدول طويل يتجاوز الحد القديم
+        ws.cell(row, 1, f"صف {row}")
+    ws.cell(261, 1, "رائد")
+    ws.cell(262, 1, "مصطفى نصرالله")
+    ws.cell(261, 3, "مقدم")
+    ws.cell(262, 3, "اسامة العجرودى")
+    path = paths.DATA_DIR / "long.xlsx"
+    dataguard.atomic_save(book.save, str(path))
+    missing = la.audit_workbook(path, YEAR, MONTH)
+    assert not [m for m in missing if m.startswith("التوقيع")], missing
