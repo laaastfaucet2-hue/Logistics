@@ -22,6 +22,7 @@ from data_access import db_warehouses as dw
 from data_access import db_stores
 from services import tarfea_fs as tf
 from services import warehouses_fs as wf
+from routes.warehouses import prepare_card
 
 tarfea_bp = Blueprint("tarfea", __name__, url_prefix="/tarfea")
 
@@ -81,9 +82,17 @@ def page():
         r["notes"] = dw.user_notes(r["notes"])
     groups = dw.receipt_groups(year, month, CYCLE)
 
+    # معدلات الأصناف تتبع المقررات التموينية (توجيه ٠٨/١٠/٢٠٢٦): لكل صنف ترفية
+    # يطابق اسمًا في المقرر التموني النشط نعرض معدله حيًّا — يتجدد مع كل تغيير
+    # في المقرر من غير أي كتابة يدوية هنا.
+    rate_map = tf._tw_rate_map(year, month)
+    for it in items:
+        it["tw_rate"] = rate_map.get(" ".join(it["name"].split()))
+
     v = {"sub": sub, "tabs": TABS, "year": year, "month": month,
          "month_name": MONTH_NAMES[month - 1],
-         "items": items, "receipts": receipts, "groups": groups,
+         "items": items, "rate_map": rate_map,
+         "receipts": receipts, "groups": groups,
          "cycle_key": CYCLE, "cycle_name": CYCLE_NAME,
          "days_in_month": egtime.days_in_month(year, month),
          "default_day": _default_day(year, month),
@@ -147,36 +156,22 @@ def page():
         v.update(store=rep, store_per_item=per_item,
                  store_balances=balance_rows)
     elif sub == "wh3":
+        # دفتر ٣ مخازن الترفيهي = دفتر ٣ مخازن المستودعات بالظبط (توجيه ٠٨/١٠):
+        # نفس السياق — كارت + تفاريد المقسم + فورم رصيد أول المدة (جديد/تعديل).
+        packs_map_wh3 = dw.pack_specs_map(year, month, CYCLE)
         card = None
         if request.args.get("item"):
             card = dw.item_card(year, month, arnum.parse_int(request.args.get("item")) or 0)
             if card and card["item"]["cycle"] != CYCLE:
                 card = None
-        if card:
-            for row in card["rows"]:
-                row["wday"] = _wday(year, month, row["day"])
-            card["moved"] = dw.item_has_movement(year, month, CYCLE, card["item"]["id"])
-            _specs = dw.pack_specs_map(year, month, CYCLE).get(card["item"]["name"], {})
-            card["pack_note"] = ""
-            if _specs and card["balance"] > 0:
-                _pk = list(_specs)[-1]
-                _sp = _specs[_pk]
-                card["pack_note"] = dw.pack_breakdown(
-                    _pk, _sp.get("capacity"), _sp.get("inner_count"),
-                    _sp.get("inner_capacity"), card["balance"],
-                    card["item"]["handle_unit"], inner_kind=_sp.get("inner_kind"))
-            taf3 = wf.taf3_pack_rows(year, month, CYCLE, card["item"]["id"])
-            if taf3:
-                for row in taf3["rows"]:
-                    row["wday"] = _wday(year, month, row["day"])
-            v["taf3"] = taf3
-            try:   # تاب «٣ مخازن تغليف» (توجيه ٢٨/٠٩ ليلًا)
-                card["pack_rows"] = dw.card_pack_rows(year, month, CYCLE, card)
-            except Exception:
-                card["pack_rows"] = []
-        v["card"] = card
-        v["stock"] = dt.stock_report(year, month)
-        v["catalog_missing"] = []
+        opener_edit = prepare_card(card, year, month, CYCLE, packs_map_wh3)
+        taf3_all = wf.taf3_all(year, month, CYCLE, items)
+        taf3_active_id = (card["item"]["id"] if card else
+                          (items[0]["id"] if items else None))
+        v.update(card=card, opener_edit=opener_edit, taf3_all=taf3_all,
+                 taf3_active_id=taf3_active_id,
+                 stock=dt.stock_report(year, month),
+                 catalog_missing=[])
     elif sub == "wh5":
         v.update(t5=dt.t5_rows(year, month))
 
@@ -188,13 +183,15 @@ def page():
         items_data[it["name"]] = {"unit": it["handle_unit"], "base": base,
                                   "factor": factor, "id": it["id"],
                                   "packs": packs_map.get(it["name"], {})}
+    from data_access import db_tameedat as dtm
     v.update(units=__import__("data_access.db_rations", fromlist=["collect_units"])
              .collect_units(year, month),
              producers=sorted({r["producer"] for r in receipts if r["producer"]}),
              supplier_names=[],
              items_data=items_data, unit_base_data=UNIT_BASE,
              stores_registry=db_stores.list_stores(),
-             pack_kinds=dw.collect_pack_kinds())
+             pack_kinds=dw.collect_pack_kinds(),
+             entity_names=dtm.entity_names(year, month))
     return render_template("tarfea.html", **v)
 
 
@@ -286,13 +283,17 @@ def items_delete():
 @tarfea_bp.route("/wh2/add", methods=["POST"])
 @login_required
 def wh2_add():
+    from data_access import db_tameedat as dtm
     try:
+        year, month = _ctx()
         serial = dt.add_issue(
-            *_ctx(), day=arnum.parse_int(request.form.get("day"))
-            or _default_day(*_ctx()),
+            year, month, day=arnum.parse_int(request.form.get("day"))
+            or _default_day(year, month),
             item_id=arnum.parse_int(request.form.get("item_id")) or 0,
             qty=arnum.parse_float(request.form.get("qty")) or 0,
-            receiver=request.form.get("receiver"),
+            # اسم الجهة يتبع قاموس جهات البرنامج (توجيه ٠٨/١٠)
+            receiver=dtm.normalize_entity_name(year, month,
+                                               request.form.get("receiver")),
             responsible=request.form.get("responsible"),
             notes=request.form.get("notes"),
             serial=arnum.parse_int(request.form.get("serial")))

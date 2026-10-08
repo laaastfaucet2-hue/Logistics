@@ -355,3 +355,30 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 
 /* خلايا الشركات في كروت المخازن: نص هادئ محسوم (توجيه ٢٨/٠٩) */
 .wh-table td.wh-co { font-size: .8rem; color: var(--muted); white-space: normal; min-width: 110px; }
+
+/* ===== ٢ مخازن — التغليف: إجمالي قابل للضغط + النافذة المتراصة (توجيه ٠٨/١٠) ===== */
+.wh-total-btn { border: 1px dashed var(--gold-border); background: var(--surface-gold);
+  color: var(--gold-light); border-radius: 9px; padding: 3px 14px; cursor: pointer;
+  font-weight: 800; font-size: .98rem; font-family: inherit; }
+.wh-total-btn:hover { background: var(--gold); color: #020617; border-style: solid; }
+.pack-stack { display: flex; flex-direction: column; gap: 10px; }
+.pack-item { border: 1px solid var(--card-border); border-inline-start: 4px solid var(--gold);
+  border-radius: 12px; padding: 10px 14px; background: var(--surface-1); }
+.pack-item-name { font-size: 1.02rem; margin-bottom: 6px; color: var(--gold-light); }
+.pack-line { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; padding: 4px 0; border-top: 1px dashed var(--card-border); }
+.pack-line span { color: var(--muted); font-size: .85rem; }
+.pack-line b { font-size: .98rem; }
+.pack-line.pack b { color: var(--gold-light); }
+.pack-patch { margin-top: 6px; font-size: .78rem; color: var(--muted);
+  background: var(--surface-soft); border-radius: 8px; padding: 3px 10px;
+  display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.pack-extras { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pack-total { margin-top: 14px; padding-top: 10px; border-top: 2px solid var(--card-border);
+  text-align: start; color: var(--gold-light); font-size: 1rem; }
+
+/* ===== ٣ مخازن — التابان الرئيسيان + تفاريد بتاب لكل صنف (توجيه ٠٨/١٠) ===== */
+.wh-wh3top { padding: 14px 16px; }
+.wh-wh3taf { padding-top: 2px; }
+.wh-wh3taf .wh-subtabs { position: sticky; top: 0; z-index: 2; background: var(--card); }
+.wh-wh3taf .wh-subtab small { font-weight: 400; opacity: .75; }

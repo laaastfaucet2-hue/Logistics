@@ -1,4 +1,4 @@
-{# كشف وتسجيل أسماء ض/أ الراغبين — نفس تصميم النظام المرجعي.
+{# كشف وتسجيل أسماء ضابط/فرد الراغبين — نفس تصميم النظام المرجعي.
    برمجة جديدة (٣٠/٠٩/٢٠٢٦ مساءً): كل الأزرار نماذج ولينكات تصفح عادي بـ sid —
    بلا أي جلب خفي. التشيك ↔ المربعات لمس محلي داخل الصفحة بلا طلبات.
    يحتاج: entity · sel_day · fcat · slots · force · force_persons ·
@@ -64,11 +64,11 @@
   <div class="rg-ctabs">
     <a class="rg-ctab {{ 'on' if fcat == 'officers' }}"
        href="/raghibin/modal?c=officers&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
-      👮 ض — الضباط المسجلون ({{ force['officers'] | length | aindic }})
+      👮 ضابط — الضباط المسجلون ({{ force['officers'] | length | aindic }})
     </a>
     <a class="rg-ctab {{ 'on' if fcat == 'individuals' }}"
        href="/raghibin/modal?c=individuals&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
-      👥 أ — الأفراد والصفة ({{ force['individuals'] | length | aindic }})
+      👥 فرد — الأفراد والصفة ({{ force['individuals'] | length | aindic }})
     </a>
   </div>
 

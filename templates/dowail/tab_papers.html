@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — أوراق وإيصالات الصرف{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>📦 تفاريد خط الحدود الدولى — النقط الحدودية</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+{% macro line_matrix(lp) %}
+{% set items = lp.line_paper.rows %}
+{% if lp.points_papers or items %}
+<div class="dw-matrix-wrap">
+  <table class="rt-table dw-matrix">
+    <thead>
+      <tr>
+        <th>المادة</th>
+        {% for pp in lp.points_papers %}
+        <th>{{ pp.point.name }}<br><small class="dim">قوة {{ pp.point.force | aindic }}</small></th>
+        {% endfor %}
+        <th class="dw-linenum">مجمع الخط<br><small class="dim">قوة {{ lp.line.total_force | aindic }}</small></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in range(items | length) %}
+      <tr>
+        <td><b>{{ items[i].name }}</b>{% if items[i].unit %} <small>{{ items[i].unit }}</small>{% endif %}
+          {% if lp.points_papers %}<br><small class="dim">معدل الفرد {{ lp.points_papers[0].rows[i].rate | qty3 }}</small>{% endif %}</td>
+        {% for pp in lp.points_papers %}
+        <td class="num {{ 'dw-off' if (pp.point.force or 0) == 0 }}">{{ pp.rows[i].total | qty3 }}</td>
+        {% endfor %}
+        <td class="num dw-linenum"><b>{{ items[i].total | qty3 }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ (lp.points_papers | length) + 2 }}" class="empty">مفيش أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endmacro %}
+
+<div class="panel dw-gate">
+  <div class="panel-head"><h3>بوابة تفاريد وأذونات صرف خط الحدود الدولى</h3>
+    <span class="panel-hint">الحصيلة = معدل الفرد × القوة × أيام الصرف + مخصص الأيام · الحفظ يدوي والقديم كله في الارشيف</span></div>
+
+  <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar">
+    <input type="hidden" name="tab" value="papers">
+    <label>من يوم<input name="from" inputmode="numeric" value="{{ day_from | aindic }}"></label>
+    <label>إلى يوم<input name="to" inputmode="numeric" value="{{ day_to | aindic }}"></label>
+    <label>أيام الصرف<input name="days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
+    <label>أمين المخازن<input name="store_keeper" value="{{ request.args.get('store_keeper') or '' }}" placeholder="اسم أمين المخازن"></label>
+    <button class="rt-btn gold" type="submit">تطبيق</button>
+  </form>
+
+  <div class="dw-actions">
+    <form method="post" action="{{ url_for('dowail.save_tafreeda') }}">
+      <input type="hidden" name="date_from" value="{{ day_from }}">
+      <input type="hidden" name="date_to" value="{{ day_to }}">
+      <input type="hidden" name="issue_days" value="{{ issue_days }}">
+      <input type="hidden" name="store_keeper" value="{{ request.args.get('store_keeper') or '' }}">
+      <button class="rt-btn green big" type="submit">💾 حفظ التوزيعة على القرص</button>
+    </form>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>🟢 الحالى — التوزيعة الحالية (من القوى والمعدلات الحالية)</h3>
+    <span class="panel-hint">يوم {{ day_from | aindic }} إلى {{ day_to | aindic }} ({{ issue_days | aindic }} يوم صرف) · اختر خط من القائمة</span></div>
+
+  <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar dw-filterbar">
+    <input type="hidden" name="tab" value="papers">
+    {% for k in ('from', 'to', 'days') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
+    <label>الخط
+      <select name="line">
+        <option value="">كل الخطوط</option>
+        {% for l in lines %}
+        <option value="{{ l.id }}" {{ 'selected' if l.id == sel_line_id }}>{{ l.name }} (قوة {{ l.total_force | aindic }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="rt-btn gold small" type="submit">تطبيق</button>
+  </form>
+
+  {% if current_papers %}
+  {% for lp in current_papers %}
+  <h4 class="dw-h">🚧 {{ lp.line.name }} <small class="dim">(نقاط نشطة {{ lp.active_count | aindic }} من {{ lp.line.count | aindic }} — قوة الخط {{ lp.line.total_force | aindic }})</small></h4>
+  {{ line_matrix(lp) }}
+  {% endfor %}
+  {% else %}
+  <p class="panel-hint" style="padding:16px 0;text-align:center">مفيش خطوط لسه — ابدأ من «إدارة الخطوط والنقاط».</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>📦 الارشيف — التوزيعات المحفوظة على القرص ({{ saves | length | aindic }})</h3>
+    <span class="panel-hint">توزيعة محفوظة = ثابتة بقيم وقت حفظها · اختر واحدة لعرض أوراقها</span></div>
+
+  {% if saves %}
+  <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar dw-filterbar">
+    <input type="hidden" name="tab" value="papers">
+    {% for k in ('from', 'to', 'days') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
+    <label>التوزيعة المحفوظة
+      <select name="dist">
+        <option value="">— اختر توزيعة محفوظة —</option>
+        {% for s in saves %}
+        <option value="{{ s.id }}" {{ 'selected' if dist_save and dist_save.id == s.id }}>{{ 'الأحدث · ' if loop.first else '' }}يوم {{ s.date_from | aindic }} — {{ s.date_to | aindic }} ({{ s.issue_days | aindic }} يوم) · حفظ {{ s.id | aindic }}{% if s.store_keeper %} · {{ s.store_keeper }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="rt-btn gold small" type="submit">تطبيق</button>
+  </form>
+
+  <div class="table-wrap">
+    <table class="rt-table">
+      <thead><tr><th>#</th><th>الفترة</th><th>أمين المخازن</th><th>حُفظ</th><th>الملفات</th><th></th></tr></thead>
+      <tbody>
+        {% for s in saves %}
+        <tr class="{{ 'dw-archived' if not loop.first }}">
+          <td class="num">{{ s.id | aindic }}</td>
+          <td class="num">يوم {{ s.date_from | aindic }} — {{ s.date_to | aindic }} ({{ s.issue_days | aindic }} يوم)</td>
+          <td>{{ s.store_keeper or '—' }}</td>
+          <td class="dim">{{ (s.created_at or '')[:16] }}</td>
+          <td>
+            {% for f in s.files %}
+            <a class="dw-filelink" href="{{ url_for('dowail.save_file', save_id=s.id, filename=f) }}">📎 {{ f.split('/')[-1] }}</a>
+            {% endfor %}
+          </td>
+          <td>
+            <form method="post" action="{{ url_for('dowail.save_delete', save_id=s.id) }}"
+                  onsubmit="return confirm('حذف التوزيعة رقم {{ s.id | aindic }} وملفاتها من القرص؟');">
+              <button class="dw-mini danger" type="submit">🗑️ حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="panel-hint">مفيش توزيعة محفوظة على القرص بعد — عدّل القوى والمعدلات ودوس «حفظ التوزيعة».</p>
+  {% endif %}
+
+  {% if dist_save and dist_save.data and dist_save.data.papers %}
+  <h4 class="dw-h">تفاصيل التوزيعة المحفوظة رقم {{ dist_save.id | aindic }}
+    <small class="dim">(يوم {{ dist_save.date_from | aindic }} — {{ dist_save.date_to | aindic }} · {{ dist_save.issue_days | aindic }} يوم · أمين المخازن: {{ dist_save.store_keeper or '—' }})</small></h4>
+  {% for lp in dist_save.data.papers %}
+  <h4 class="dw-h">🚧 {{ lp.line.name }} <small class="dim">(قوة الخط {{ lp.line.total_force | aindic }})</small></h4>
+  {{ line_matrix(lp) }}
+  {% endfor %}
+  {% elif dist_save %}
+  <p class="panel-hint">التوزيعة رقم {{ dist_save.id | aindic }} محفوظة من غير أوراق خطوط (كان مفيش خطوط وقت الحفظ).</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>🔍 بحث سريع عن نقطة</h3></div>
+  <form method="get" action="{{ url_for('dowail.page') }}" class="dw-search">
+    <input type="hidden" name="tab" value="papers">
+    {% for k in ('from', 'to', 'days', 'line') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
+    <input name="q" value="{{ search_q }}" placeholder="اكتب اسم النقطة">
+    <button class="rt-btn navy small" type="submit">بحث</button>
+  </form>
+  {% if search_q and search_hit %}
+  <div class="dw-hitbox">
+    <p class="dw-hit">«<b>{{ search_hit.point.name }}</b>» — خط «{{ search_hit.line.name }}»
+      · القوة: <b>{{ search_hit.point.force | aindic }}</b>
+      {% if search_hit.point.responsible %}· المسؤول: <b>{{ search_hit.point.responsible }}</b>{% endif %}</p>
+    <table class="rt-table dw-paper-table">
+      <thead><tr><th>م</th><th>المادة</th><th>الوحدة</th><th>المعدل اليومى</th><th>أيام الصرف</th><th>المضاف (مخصص)</th><th>الحصيلة</th></tr></thead>
+      <tbody>
+        {% for i, r in search_hit.rows %}
+        <tr>
+          <td class="num">{{ (i + 1) | aindic }}</td>
+          <td><b>{{ r.name }}</b></td>
+          <td>{{ r.unit }}</td>
+          <td class="num">{{ r.rate | qty3 }}</td>
+          <td class="num">{{ r.days | aindic }}</td>
+          <td class="num">{{ r.custom_total | qty3 }}</td>
+          <td class="num">{{ r.total | qty3 }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty">مفيش أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif search_q %}
+  <p class="dw-hit dw-nohit">مفيش نقطة باسم «{{ search_q }}».</p>
+  {% endif %}
+</div>
+{% endblock %}

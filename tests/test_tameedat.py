@@ -372,7 +372,7 @@ def test_time_range_covers_every_day_and_scales_monthly_totals(client):
     momoda_page = _get(client, "/tameedat/?tab=momoda")
     assert "٨٠٠" in momoda_page.text and "متوسط ض" not in momoda_page.text   # المتوسطات انتقلت إلى القاموس
     dict_page = _get(client, "/tameedat/?tab=dict")
-    assert "متوسط ض" in dict_page.text and "متوسط أ" in dict_page.text
+    assert "متوسط ضابط" in dict_page.text and "متوسط فرد" in dict_page.text
     assert "متوسط م" in dict_page.text and "عدد التأميدات" in dict_page.text
     assert "ملحقة؟" in dict_page.text and "افتح التواريخ" in dict_page.text
 
@@ -451,10 +451,13 @@ def test_attachments_are_independent_in_momoda_and_dictionary(client):
 
 
 def test_each_tab_has_named_open_folder_and_file_buttons(client):
-    """قاعدة أزرار الملفات: كل تويب بزرّي فتح المجلد/الملف باسميهما الصريحين."""
+    """قاعدة أزرار الملفات: كل تويب بزرّي فتح المجلد/الملف باسميهما الصريحين.
+
+    تبويب «تأميدات اليوم المحدد» استثناء مقصود (توجيه المستخدم ٠٧/١٠/٢٠٢٦):
+    زر المجلد يتبع **اليوم المفتوح** فيسمّيه صراحةً — يوم ٧ ⇒ «تأميدات يوم ٧».
+    """
     _ctx()
     expectations = {
-        "day": ("فتح مجلد «تأميدات اليوم المحدد»", "فتح ملف «إجمالي الشهر.xlsx»"),
         "momoda": ("فتح مجلد «الجهات المومدة بالشهر الحالي»",
                    "فتح ملف «ملخص الجهات المومدة.xlsx»"),
         "dict": ("فتح مجلد «قاموس ودليل الجهات»", "فتح ملف «قاموس الجهات.xlsx»"),
@@ -467,6 +470,89 @@ def test_each_tab_has_named_open_folder_and_file_buttons(client):
         assert f"/tameedat/open-folder/{tab}" in page.text
         assert f"/tameedat/open-file/{tab}" in page.text
         assert "tm-openbar" in page.text
+    # تبويب اليوم: المجلد **والملف** باسم اليوم المفتوح (والافتراضي يوم ١ خارج شهر اليوم)
+    page = _get(client, "/tameedat/?tab=day&day=2031-09-01")
+    assert "فتح مجلد «تأميدات يوم ١»" in page.text
+    assert "فتح ملف «تاميدات اليوم ١.xlsx»" in page.text          # مصدر واحد لاسم الملف
+    assert "«إجمالي الشهر.xlsx»" in page.text                     # وملف الشهر بجواره لا يضيع
+    assert "/tameedat/open-folder/day?day=2031-09-01" in page.text.replace("&amp;", "&")
+    assert "/tameedat/open-file/day?day=2031-09-01" in page.text.replace("&amp;", "&")
+    assert "/tameedat/open-file/day?scope=month" in page.text.replace("&amp;", "&")
+    assert "tm-openbar" in page.text
+
+
+def test_day_folder_button_follows_the_open_day(client, monkeypatch):
+    """«كل يوم يتب بيومة»: الزر يسمّي اليوم المفتوح ويفتح فولدر ذلك اليوم بعينه."""
+    _ctx()
+    client.post("/tameedat/records/add", data={
+        "day": "٠٩/٠٩/٢٠٣١", "entity_name": "وحدة يوم ٩", "officers": "٥",
+        "individuals": "٣٥", "recruits": "١٦٠"})
+    page = _get(client, "/tameedat/?tab=day&day=2031-09-09")
+    assert "فتح مجلد «تأميدات يوم ٩»" in page.text
+    assert "open-folder/day?day=2031-09-09" in page.text.replace("&amp;", "&")
+    # سطح المكتب: يفتح فولدر يوم ٩ نفسه ويعلن اسمه بالعربية
+    opened = []
+    monkeypatch.setattr(routes_tameedat, "_open_path",
+                        lambda path: opened.append(path) or True)
+    page = client.get("/tameedat/open-folder/day?day=2031-09-09",
+                      follow_redirects=True).data.decode()
+    assert "تم فتح مجلد «تأميدات يوم ٩»" in page
+    assert [p.name for p in opened] == ["يوم ٩"]
+    assert opened[0].is_dir()
+    # والملف اليومي المحفوظ فعلًا داخل فولدر يوم ٩ (سجلات اليوم نفسه)
+    assert (opened[0] / "تاميدات اليوم ٩.xlsx").is_file()
+    # معاينة الويب: رسالة صادقة تذكر اليوم واسم التبويب — بلا تظاهر بالنجاح
+    monkeypatch.setattr(routes_tameedat, "_open_path", lambda path: False)
+    page = client.get("/tameedat/open-folder/day?day=2031-09-09",
+                      follow_redirects=True).data.decode()
+    assert "تأميدات يوم ٩" in page and "نسخة سطح المكتب" in page
+    assert "تأميدات اليوم المحدد" in page
+    assert "/tameedat/day-file/9" in page            # بديل حقيقي: تنزيل ملف اليوم
+    blob = client.get("/tameedat/day-file/9")
+    assert blob.status_code == 200
+    assert "spreadsheetml" in blob.headers["Content-Type"]
+    # يوم بلا تأميدات: الفولدر فاضي والرسالة تقولها صراحةً بدل الفشل الصامت
+    page = client.get("/tameedat/open-folder/day?day=2031-09-07",
+                      follow_redirects=True).data.decode()
+    assert "بلا تأميدات مسجلة" in page
+    assert client.get("/tameedat/day-file/7").status_code == 302
+    assert client.get("/tameedat/day-file/99").status_code == 404
+
+
+def test_day_file_button_follows_the_open_day(client, monkeypatch):
+    """«كل يوم يتب بيومه» على زر الملف كذلك: يوم ٩ ⇒ ملف «تاميدات اليوم ٩.xlsx» بعينه."""
+    _ctx()
+    client.post("/tameedat/records/add", data={
+        "day": "٠٩/٠٩/٢٠٣١", "entity_name": "وحدة ملف اليوم", "officers": "٥",
+        "individuals": "٣٥", "recruits": "١٦٠"})
+    page = _get(client, "/tameedat/?tab=day&day=2031-09-09")
+    assert "فتح ملف «تاميدات اليوم ٩.xlsx»" in page.text
+    assert "/tameedat/open-file/day?day=2031-09-09" in page.text.replace("&amp;", "&")
+    assert "«إجمالي الشهر.xlsx»" in page.text                 # ملف الشهر بجواره بطلب scope
+    # سطح المكتب: يفتح ملف يوم ٩ نفسه من فولدره
+    opened = []
+    monkeypatch.setattr(routes_tameedat, "_open_path",
+                        lambda path: opened.append(path) or True)
+    page = client.get("/tameedat/open-file/day?day=2031-09-09",
+                      follow_redirects=True).data.decode()
+    assert "تم فتح ملف «تاميدات اليوم ٩.xlsx»" in page and "تأميدات يوم ٩" in page
+    assert opened[0].name == "تاميدات اليوم ٩.xlsx"
+    assert opened[0].parent.name == "يوم ٩" and opened[0].is_file()
+    # وملف الشهر الكامل يبقى متاحًا بالطلب نفسه
+    page = client.get("/tameedat/open-file/day?scope=month",
+                      follow_redirects=True).data.decode()
+    assert "تم فتح ملف «إجمالي الشهر.xlsx»" in page
+    assert opened[-1].name == "إجمالي الشهر.xlsx"
+    # معاينة الويب: رسالة صادقة برابط تنزيل اليوم نفسه، لا تظاهر بالنجاح
+    monkeypatch.setattr(routes_tameedat, "_open_path", lambda path: False)
+    page = client.get("/tameedat/open-file/day?day=2031-09-09",
+                      follow_redirects=True).data.decode()
+    assert "تاميدات اليوم ٩.xlsx" in page and "نسخة سطح المكتب" in page
+    assert "/tameedat/day-file/9" in page
+    # يوم بلا تأميدات: يقولها صراحةً ويوجّه لملف الشهر بدل الفشل الصامت
+    page = client.get("/tameedat/open-file/day?day=2031-09-11",
+                      follow_redirects=True).data.decode()
+    assert "مفيه تأميدات مسجلة" in page and "scope=month" in page
 
 
 def test_tab_open_routes_behave_in_web_preview_and_desktop(client, monkeypatch):
@@ -479,11 +565,13 @@ def test_tab_open_routes_behave_in_web_preview_and_desktop(client, monkeypatch):
     monkeypatch.setattr(routes_tameedat, "_open_path", lambda path: False)
     page = client.get("/tameedat/open-folder/day", follow_redirects=True).data.decode()
     assert "نسخة سطح المكتب" in page and "تأميدات اليوم المحدد" in page
-    page = client.get("/tameedat/open-file/day", follow_redirects=True).data.decode()
+    page = client.get("/tameedat/open-file/day?scope=month",
+                      follow_redirects=True).data.decode()
     assert "إجمالي الشهر.xlsx" in page and "نسخة سطح المكتب" in page
-    # سطح المكتب: يعلن نجاحه بأنوثة صريحة مع اسم الملف
+    # سطح المكتب: يعلن نجاحه باسم الملف الصريح
     monkeypatch.setattr(routes_tameedat, "_open_path", lambda path: True)
-    page = client.get("/tameedat/open-file/day", follow_redirects=True).data.decode()
+    page = client.get("/tameedat/open-file/day?scope=month",
+                      follow_redirects=True).data.decode()
     assert "تم فتح ملف «إجمالي الشهر.xlsx»" in page
     page = client.get("/tameedat/open-file/report", follow_redirects=True).data.decode()
     assert "لا يوجد ملف تقرير محفوظ بعد" in page                # قبل بناء التقرير

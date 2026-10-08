@@ -255,13 +255,20 @@ def test_opener_balance_entered_with_full_details_once(client):
     # التغليف له عموده المستقل — لا يُخلط في الملاحظات (قاعدة ٢٦/٠٩)
     assert "شكارة" in (card["opener_row"]["pack_label"] or "")
     assert "تغليف" not in card["opener_row"]["notes"]
-    # مرة واحدة فقط لكل صنف
+    # مرة واحدة لكل صنف — والثانية بقى «تعديل» (توجيه ٠٨/١٠): السطر يتحدّث
+    # والأرصدة كلها تتحسب من جديد مع تقرير بكل اللي اتغير
     response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
         "cycle": "supply", "item_id": item["id"], "qty": "٩", "day": "٢",
         "exp_date": "٠١/٠٦/٢٠٢٧"}, follow=True)
-    assert "لا يُسجل مرتين" in response.data.decode("utf-8")
+    body = response.data.decode("utf-8")
+    assert "عُدّل رصيد أول المدة" in body
+    assert "الكمية: ٥٠٫٠٠٠ ← ٩٫٠٠٠ طن" in body          # تقرير التغيرات
+    assert "الرصيد الختامى" in body
+    card = dw.item_card(YEAR, MONTH, item["id"])
+    assert card["opener_row"]["added"] == 9.0 and int(card["opener_row"]["day"]) == 2
+    assert card["balance"] == 29.0                       # ٩ بعد التعديل + ٢٠ إذن
     page = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={item['id']}")
-    assert "رصيد أول المدة" in page and "رصيد السنة الماضية" in page
+    assert "تعديل رصيد أول المدة" in page and "whOpenerEditForm" in page
     assert "لم يُسجَّل بعد" not in page
 
 
@@ -350,9 +357,11 @@ def test_excel_mirrors_for_all_subtabs_and_download(client):
     _post(client, "/warehouses/suppliers/add?cycle=supply",
           {"cycle": "supply", "name": "شركة المرايا"})
     _page(client, "/warehouses?cycle=supply")                   # فتح القسم يكتب المرايا
-    for sub in ("suppliers", "wh1", "wh2", "wh3"):
+    for sub in ("suppliers", "wh1", "wh3"):
         path = wf.file_path(YEAR, MONTH, "supply", sub)
-        assert path.exists(), sub
+        assert path is not None and path.exists(), sub
+    # ٢ مخازن: مفيش ملف واحد — كل إذن في إكسله جوا فولدر يومه (توجيه ٠٨/١٠)
+    assert wf.file_path(YEAR, MONTH, "supply", "wh2") is None
     response = client.get("/warehouses/download/supply/suppliers")
     assert response.status_code == 200
     assert b"PK" in response.data[:4]                            # ملف إكسل حقيقي
@@ -452,9 +461,10 @@ def test_tafreeda_fefo_nearest_expiry_first_then_older(client):
     rows2 = [r for r in rows if r["permit_no"] == 2]
     assert rows2[0]["receipt_serial"] == 3 and rows2[0]["qty"] == 5.0   # بقايا الأقدم إضافةً أولًا
     assert rows2[1]["receipt_serial"] == 4 and rows2[1]["qty"] == 10.0
-    # التفاريد في دفتر ٢ مخازن: سطر بالإذن + نافذة فيها المخازن
+    # التغليف في دفتر ٢ مخازن: سطر بالإذن + النافذة المتراصة فيها المخازن (توجيه ٠٨/١٠)
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    assert "🧾 التفاريد" in page and "المخزن الرئيسي" in page
+    assert "التغليف" in page and "المخزن الرئيسي" in page
+    assert 'data-taf-open="packDialog-1"' in page
 
 
 def test_stores_page_tabs_and_unified_cycles(client):
@@ -772,28 +782,30 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
         "selected_json": "[\"main:%d\"]" % rec_id, "entity_label": "جهة التفاريد",
         "meal_lunch": "1", "actual_tamween_أرز بلدي": "60"})
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    # تابان فرعيان جنب بعض: «التفاريد» الافتراضي فوق + «سجلات ٢ مخازن»
+    # تابان فرعيان جنب بعض: «أذونات الصرف» (الافتراضي) + «التغليف» (توجيه ٠٨/١٠)
     assert 'data-wh2sub="tafared"' in page and 'data-wh2sub="sijlat"' in page
-    assert "سجلات ٢ مخازن" in page
-    # قائمة التفاريد: سطر برقم الإذن + زرار عرض الإذن يفتح النافذة
-    assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
+    assert "أذونات الصرف" in page
+    # قائمة التغليف: سطر برقم الإذن + إجمالي قابل للضغط يفتح النافذة المتراصة
+    assert "📦 التغليف" in page and 'data-taf-open="packDialog-1"' in page
     assert "عرض الإذن" in page
-    # أزرار إغلاق نافذة التفريدة تشاور على معرفها الصحيح (توجيه ٢٧/٠٩: كانت ميتة)
-    assert 'data-taf-close="tafDialog-1"' in page and 'data-taf-close="1"' not in page
+    # أزرار إغلاق النوافذ شايرة على معرفها الصحيح (توجيه ٢٧/٠٩: كانت ميتة)
+    assert 'data-taf-close="packDialog-1"' in page and 'data-taf-close="1"' not in page
+    assert 'data-taf-close="sijDialog-1"' in page
     # «الجهة المستلمة»: الرئيسية فقط + دائرة ملحقات تفتح الجهات الأخرى
     assert "الجهة المستلمة" in page and "جهة التفاريد" in page
     assert 'data-taf-open="extrasDialog-1"' in page
-    assert page.count("جهة ملحقة تجريبية") == 1        # الملحقة داخل نافذتها فقط
+    assert page.count("جهة ملحقة تجريبية") >= 1   # الملحقة جوه النوافذ (المتراصة + الملحقات)
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
-    # النافذة: الجدول ثمانية أعمدة بالظبط — بلا رصيد ولا شركة منتجة
-    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page and "ملاحظات" in page
-    # قائمة التفاريد بلا «من يوم/إلى يوم» — السجلات فقط فيهاها
+    # النافذة المتراصة: ٣ سطور للصنف (بالوحدة/بالتغليف) + سطر الباتش
+    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page
+    assert "تغليف الدفعة" in page and "الانتهاء" in page
+    # قائمة التغليف بلا «من يوم/إلى يوم» — سجلات الأذونات هي اللي فيها
     assert page.count(">من يوم<") == 1 and page.count(">إلى يوم<") == 1
     assert "رصيد المخزن قبل" not in page and "الرصيد بعد الصرف" not in page
     assert "الشركة المنتجة" not in page
-    # نافذتا التفاريد والسجلات مختلفتان: التفاريد فيها «المنصرف بالتغليف» والسجلات لأ
+    # نافذتا التغليف والسجلات مختلفتان: المتراصة فيها «بالتغليف» والسجلات لأ
     import re as _re2
-    _taf = _re2.search(r'id="tafDialog-1".*?</dialog>', page, _re2.S).group(0)
+    _taf = _re2.search(r'id="packDialog-1".*?</dialog>', page, _re2.S).group(0)
     _sij = _re2.search(r'id="sijDialog-1".*?</dialog>', page, _re2.S).group(0)
     assert "المنصرف بالتغليف" in _taf and "المنصرف بالتغليف" not in _sij
     assert "المنصرف بالوحدة" in _sij
@@ -804,7 +816,7 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     assert "مطاحن الاختبار" in page1
     assert "مخازن: مخزن التفريدة" not in page1
     # مفيش تابات مستقلة للتفاريد في الشريط
-    assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
+    assert "sub=tafreeda" not in page and "التفاريد المصروفة" not in page
     # ٣ مخازن: القائمة بلا صنف مفتوح → إرشاد فقط
     page3 = _page(client, "/warehouses?cycle=supply&sub=wh3")
     assert "دفتر ٣ مخازن" in page3
@@ -813,9 +825,10 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     _m = _re.search(r"item=(\d+)", page3)
     assert _m, "لا يوجد صنف في الكتالوج"
     page3 = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={_m.group(1)}")
-    # تابان بعد فتح الصنف: «دفتر ٣ مخازن» الافتراضي + «دفتر ٣ مخازن تفاريد»
-    assert 'data-wh3sub="daftar"' in page3 and 'data-wh3sub="tafared"' in page3
-    assert 'data-wh3panel="daftar"' in page3 and 'data-wh3panel="tafared"' in page3
+    # الكارت بلا تابات فرعية (توجيه ٠٨/١٠: «التغليف» و«التفاريد» جواه اتحشوا) —
+    # والتفريدي بالتغليف في تاب «٣ مخازن تفاريد» الرئيسي (تاب لكل صنف)
+    assert 'data-wh3sub="' not in page3
+    assert 'data-wh3top="taf3"' in page3 and 'data-wh3tabpanel="' in page3
     assert "١ شكارة + ١٠ طن" in page3                       # منصرف بالتغليف (صيغة المصروف)
     assert "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page3   # الرصيد بالتغليف
     # الكارت العادي: عمود «التغليف» اتشال — ٩ أعمدة بالظبط

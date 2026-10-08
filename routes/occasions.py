@@ -4,13 +4,13 @@
 
 توجيه ٠٦/١٠/٢٠٢٦: تسجيل كل مناسبة مهمة (زيارة رسمية / تفتيش / مسمى حر) + معرض صور
 + معرض فيديو يُشغَّل من داخل البرنامج + تقرير على الدباجة والتوقيعات واللوجو وتعديله
-وطباعته + إطار وإخطار. الملفات المحلية لكل مناسبة في فولدرها الخاص (occasions_fs).
+وطباعته + إطار. الملفات المحلية لكل مناسبة في فولدرها الخاص (occasions_fs).
 """
 from flask import (Blueprint, render_template, request, redirect, url_for, g, jsonify,
-                   send_file, flash)
-from werkzeug.utils import secure_filename
+                   send_file, flash, current_app)
 
 from core.auth_core import login_required, current_context, current_session
+from core import arabic_numbers as arnum
 from core import dates, egtime
 from data_access import dataguard
 from documents import occasions_docs
@@ -58,6 +58,55 @@ def _values():
     return values
 
 
+def _upload_files(folder):
+    """يحفظ ملفات الرفعة داخل فولدر المناسبة — ويُرجع (المحفوظ، المرفوض، الخطأ).
+
+    الحدود (قرار المستخدم): ٣٠ ملفًا في الرفعة الواحدة — وكل ملف حتى ٢ جيجا
+    (السقف يُفرض في app.py عبر MAX_CONTENT_LENGTH، وتجاوزه يعرض صفحة عربية).
+    """
+    saved = {"photo": 0, "video": 0}
+    rejected = []
+    picked = []
+    for kind, bucket in (("photo", "photos"), ("video", "videos")):
+        for upload in request.files.getlist(bucket):
+            if upload and upload.filename:
+                picked.append((kind, upload))
+    limit = arnum.to_arabic_indic(str(ofs.MAX_FILES_PER_UPLOAD))
+    if len(picked) > ofs.MAX_FILES_PER_UPLOAD:
+        return saved, rejected, (f"الحد الأقصى {limit} ملفًا في الرفعة الواحدة — "
+                                 f"اخترت {arnum.to_arabic_indic(str(len(picked)))}؛ "
+                                 "قسّمها على دفعتين وارفع تاني.")
+    for kind, upload in picked:
+        if ofs.add_media(folder, kind, upload) is None:
+            rejected.append(upload.filename)
+        else:
+            saved[kind] += 1
+    return saved, rejected, ""
+
+
+def _upload_message(saved, rejected):
+    """رسالة عربية واحدة تلخّص نتيجة الرفعة (بلا None ولا صفر مخفي)."""
+    limit = arnum.to_arabic_indic(str(ofs.MAX_FILES_PER_UPLOAD))
+    parts = []
+    if saved["photo"] or saved["video"]:
+        parts.append(f"أُضيف {arnum.to_arabic_indic(str(saved['photo']))} صورة و"
+                     f"{arnum.to_arabic_indic(str(saved['video']))} فيديو داخل فولدر المناسبة")
+    if rejected:
+        parts.append(f"وتُرفض {arnum.to_arabic_indic(str(len(rejected)))} ملفًا بنوع غير مدعوم")
+    if not parts:
+        parts.append(f"لم يُختر أي ملف — الصور وفيديو المناسبة حتى {limit} ملفًا في المرة")
+    return " ".join(parts)
+
+
+def _limits_payload():
+    """حدود الرفع للواجهة (يعرضها النموذج وقسم الرفع بالأرقام العربية)."""
+    return {"max_files": ofs.MAX_FILES_PER_UPLOAD,
+            "max_files_text": arnum.to_arabic_indic(str(ofs.MAX_FILES_PER_UPLOAD)),
+            "max_bytes": ofs.MAX_UPLOAD_BYTES,
+            "max_text": ofs.UPLOAD_LIMIT_TEXT,
+            "photos": sorted(ofs.IMAGE_EXT), "videos": sorted(ofs.VIDEO_EXT)}
+
+
 @occasions_bp.route("")
 @occasions_bp.route("/")
 @login_required
@@ -69,13 +118,21 @@ def page():
     items = ofs.list_occasions(date_from or None, date_to or None, query)
     current = _folder_arg()
     selected = ofs.load(current) if current else None
+    # التاب النشط: «search» عند وجود مناسبة مفتوحة أو بحث — و«create» في أول استخدام أو بطلب صريح
+    tab = (request.args.get("tab") or "").lower()
+    if tab not in ("create", "search"):
+        tab = "search" if (selected or query or date_from or date_to) else "create"
     _, token = current_session()
     return render_template(
         "occasions/main.html", sid_token=token or "",
-        items=items, selected=selected, stats=ofs.stats(),
+        items=items, selected=selected, item=selected,
+        letterhead=_letterhead(selected) if selected else {},
+        stats=ofs.stats(),
         kinds=ofs.kinds_in_use(), field_keys=ofs.FIELD_KEYS,
         q=query, date_from=date_from, date_to=date_to, today=egtime.today().isoformat(),
+        main_tab=tab,
         ok=request.args.get("ok") or "", err=request.args.get("err") or "",
+        limits=_limits_payload(),
     )
 
 
@@ -87,26 +144,44 @@ def create():
     if not values["title"]:
         return _back(err="اكتب مسمى المناسبة الأول (زيارة رسمية / تفتيش / أي مسمى تختاره)")
     folder, payload = ofs.create(values)
+    saved, rejected, problem = _upload_files(folder)   # ملفات نفس النموذج (اختيارية)
+    if problem:
+        return _back(err=f"سُجلت المناسبة «{payload['title']}» — {problem}", folder=str(folder))
     item = ofs.load(folder)
     occasions_docs.build_all(item)          # التقريران يُبنيان فورًا بالدباجة والتوقيعين
-    return _back(ok=f"سُجلت المناسبة «{payload['title']}» في فولدرها المحلي مع تقريرها الرسمي",
+    note = _upload_message(saved, rejected) if (saved["photo"] or saved["video"] or rejected) else ""
+    return _back(ok=(f"سُجلت المناسبة «{payload['title']}» في فولدرها المحلي مع تقريرها الرسمي"
+                     + (f" — {note}" if note else "")),
                  folder=str(folder))
 
 
 @occasions_bp.route("/save", methods=["POST"])
 @login_required
 def save():
+    """حفظ تعديل المناسبة + إعادة بناء تقريريها (Excel + Word).
+
+    مع معاينة الورق الحية: النموذج قد يطلب ردًّا JSON (data-json=1) ليعرف أن الحفظ
+    تم ثم ينزّل Word/Excel بالحالي — وبلا JSON يبقى السلوك القديم (عودة للصفحة برسالة).
+    """
     _ctx()
     folder = _folder_arg()
+    wants_json = bool(request.form.get("json") or request.args.get("json"))
     if folder is None:
+        if wants_json:
+            return jsonify({"ok": False, "message": "المناسبة المطلوبة غير موجودة"}), 404
         return _back(err="المناسبة المطلوبة غير موجودة")
     values = _values()
     if not values["title"]:
+        if wants_json:
+            return jsonify({"ok": False, "message": "المسمى لا يبقى فارغًا"}), 400
         return _back(err="المسمى لا يبقى فارغًا", folder=str(folder))
     ofs.save(folder, values)
     occasions_docs.build_all(ofs.load(folder))
-    return _back(ok="تم حفظ تعديلات المناسبة وإعادة بناء تقريرها (Excel + Word)",
-                 folder=str(folder))
+    message = "تم حفظ تعديلات المناسبة وإعادة بناء تقريرها (Excel + Word)"
+    if wants_json:
+        return jsonify({"ok": True, "message": message, "folder": str(folder)})
+    return _back(ok=message, folder=str(folder))
+
 
 
 @occasions_bp.route("/media/upload", methods=["POST"])
@@ -116,17 +191,41 @@ def media_upload():
     folder = _folder_arg()
     if folder is None:
         return _back(err="المناسبة المطلوبة غير موجودة")
-    saved = {"photo": 0, "video": 0}
-    for kind, bucket in (("photo", "photos"), ("video", "videos")):
-        for upload in request.files.getlist(bucket):
-            if upload and upload.filename:
-                ofs.add_media(folder, kind, upload)
-                saved[kind] += 1
-    if not (saved["photo"] or saved["video"]):
+    saved, rejected, problem = _upload_files(folder)
+    if problem:
+        return _back(err=problem, folder=str(folder))
+    if not (saved["photo"] or saved["video"] or rejected):
         return _back(err="اختر صورة أو فيديو أولًا (البرنامج يحفظه داخل فولدر المناسبة)",
                      folder=str(folder))
-    return _back(ok=f"أُضيفت {saved['photo']} صورة و{saved['video']} فيديو داخل فولدر المناسبة",
-                 folder=str(folder))
+    return _back(ok=_upload_message(saved, rejected), folder=str(folder))
+
+
+@occasions_bp.route("/media/upload-json", methods=["POST"])
+@login_required
+def media_upload_json():
+    """رفع ملف واحد من قسم الرفع الآمن في الواجهة (JS) — فيديو الكبير لا يقطع الصفحة.
+
+    يُرجع JSON فيه التقدم والرسالة العربية، ويُستدعى من js/occasions.js مرة لكل ملف.
+    """
+    _ctx()
+    folder = _folder_arg()
+    if folder is None:
+        return jsonify({"ok": False, "message": "المناسبة المطلوبة غير موجودة"}), 404
+    saved, rejected, problem = _upload_files(folder)
+    ok = bool(saved["photo"] or saved["video"])
+    return jsonify({"ok": ok and not problem, "message": problem or _upload_message(saved, rejected),
+                    "photo": saved["photo"], "video": saved["video"],
+                    "rejected": rejected, "stats": ofs.stats()})
+
+
+@occasions_bp.route("/upload-limits")
+@login_required
+def upload_limits():
+    """حدود الرفع كما يفرضها البرنامج فعلًا (تقرؤها الواجهة بلا تخمين)."""
+    _ctx()
+    payload = _limits_payload()
+    payload["server_max_bytes"] = int(current_app.config.get("MAX_CONTENT_LENGTH") or 0)
+    return jsonify(payload)
 
 
 @occasions_bp.route("/media/<kind>/<path:name>")
@@ -184,6 +283,20 @@ def print_report():
     item = ofs.load(folder)
     _, token = current_session()
     return render_template("occasions/print_report.html", item=item, sid_token=token or "",
+                           letterhead=_letterhead(item))
+
+
+@occasions_bp.route("/paper")
+@login_required
+def paper():
+    """معاينة «صفحة ورق» حية للتقرير — بنفس الدباجة والتوقيعات واللوجو (مثل تقارير الصحة)."""
+    _ctx()
+    folder = _folder_arg()
+    if folder is None:
+        return _back(err="المناسبة المطلوبة غير موجودة")
+    item = ofs.load(folder)
+    _, token = current_session()
+    return render_template("occasions/paper_report.html", item=item, sid_token=token or "",
                            letterhead=_letterhead(item))
 
 

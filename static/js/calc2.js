@@ -261,4 +261,28 @@
     });
   }
   renderBox(chosen());
+
+  /* تنبيه فوري على رقم إذن مكرر — على الكتابة (توجيه ٠٨/١٠) */
+  var numInput = document.getElementById("c2NumberInput");
+  var dupWarn = document.getElementById("c2DupWarn");
+  if (numInput && dupWarn) {
+    var usedMap = {};
+    try {
+      JSON.parse(document.getElementById("c2UsedNumbers").textContent || "[]")
+        .forEach(function (u) { usedMap[String(u.n)] = u; });
+    } catch (e) { usedMap = {}; }
+    function dupCheck() {
+      var latin = numInput.value.replace(/[٠-٩]/g, function (d) {
+        return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));
+      });
+      var n = parseInt(latin, 10);
+      var u = (!numInput.value.trim() || isNaN(n)) ? null : usedMap[String(n)];
+      if (!u) { dupWarn.hidden = true; return; }
+      dupWarn.textContent = "⚠️ رقم الإذن ده مستخدم بالفعل (يوم " + ar(u.day) +
+        (u.label ? " — " + u.label : "") + ") — الحفظ بهيستبدل الإذن القديم";
+      dupWarn.hidden = false;
+    }
+    numInput.addEventListener("input", dupCheck);
+    dupCheck();
+  }
 })();

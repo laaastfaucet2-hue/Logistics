@@ -54,13 +54,16 @@
   </form>
   {% if items %}
   <div class="wh-scroll"><table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th><th>وحدة القاعدة</th><th>عليه حركة</th><th class="no-print">إجراءات</th></tr></thead>
+    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th>
+      <th title="القيمة تتبع المقررات التموينية تلقائيًا — لو الصنف في المقرر النشط يظهر معدله، ولو اتغير المقرر يتغير هو علطول">معدل التموينية</th>
+      <th>وحدة القاعدة</th><th>عليه حركة</th><th class="no-print">إجراءات</th></tr></thead>
     <tbody>
       {% for it in items %}
       <tr>
         <td class="num">{{ loop.index | aindic }}</td>
         <td class="name"><b>{{ it.name }}</b></td>
         <td>{{ it.handle_unit }}</td>
+        <td class="num">{% if it.tw_rate is not none %}{{ it.tw_rate | qty3 }}{% else %}—{% endif %}</td>
         <td>{{ it.base_unit }}</td>
         <td>{{ 'نعم' if has_move.get(it.id) else 'لا' }}</td>
         <td class="no-print">
@@ -108,7 +111,9 @@
         <label class="wh-f">الكمية المنصرفة (بوحدة التعامل)
           <input name="qty" inputmode="decimal" autocomplete="off" required></label>
         <label class="wh-f">منصرف إلى (الجهة/الشخص)
-          <input name="receiver" autocomplete="off" dir="rtl"></label>
+          <input name="receiver" data-combo="tarfeaEntitiesList" autocomplete="off" dir="rtl"
+                 title="اسم الجهة يتبع قاموس جهات البرنامج"></label>
+        <datalist id="tarfeaEntitiesList">{% for n in entity_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
         <label class="wh-f">المسؤول عن الصرف
           <input name="responsible" autocomplete="off" dir="rtl"></label>
         <label class="wh-f">ملاحظات
@@ -268,14 +273,14 @@
 <datalist id="whProducersList">{% for n in producers %}<option value="{{ n }}"></option>{% endfor %}</datalist>
 <datalist id="whItemsList">{% for n in items_data %}<option value="{{ n }}"></option>{% endfor %}</datalist>
 <datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
-<datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
+<datalist id="whStoresList"><option value="مخزن الترفية"></option>{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
 <datalist id="whMissingList"></datalist>
 <datalist id="whLooseUnitsList"><option value="كجم"></option><option value="لتر"></option><option value="جرام"></option><option value="علبة"></option></datalist>
 <datalist id="whInnerKindsList">{% for u in units %}<option value="{{ u }}"></option>{% endfor %}{% for k in pack_kinds %}{% if k != "بدون تغليف" %}<option value="{{ k }}"></option>{% endif %}{% endfor %}<option value="باكت"></option><option value="علبة"></option></datalist>
 <script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
 <script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
-<script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>
-<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month} | tojson }}</script>
+<script type="application/json" id="whStoresData">{{ ([{"name": "مخزن الترفية", "id": 0}] + stores_registry) | tojson }}</script>
+<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month, "cycle": "tarfea"} | tojson }}</script>
 {% endblock %}
 
 {% block scripts %}

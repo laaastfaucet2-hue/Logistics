@@ -16,6 +16,7 @@ def alerts_context(year, month, href_for_day):
     from services import tameed_alerts
     return {"alert_rows": tameed_alerts.month_rows(year, month),
             "alert_summary": tameed_alerts.summary(year, month),
+            "alert_ignored_names": tameed_alerts.ignored_names(year, month),
             "alert_day_href": href_for_day}
 
 
@@ -25,10 +26,11 @@ def _letterhead_print_vars(year, month):
         from data_access.db_letterhead import template_vars
         return template_vars(year, month)
     except Exception:  # noqa: BLE001 — الطباعة لا تسقط الصفحة
-        try:  # التوقيعات المثبّتة تظل تُطبع حتى لو تعذّرت قراءة قاعدة الشهر
-            from data_access.db_letterhead import PINNED
-            right = (PINNED["sig_right_rank"], PINNED["sig_right_name"])
-            left = (PINNED["sig_left_rank"], PINNED["sig_left_name"])
+        try:  # التوقيعان يظلان يُطبعان حتى لو تعذّرت قراءة قاعدة الشهر (محفوظان في system.db)
+            from data_access.db_letterhead import get_signatures
+            signatures = get_signatures()
+            right = (signatures["sig_right_rank"], signatures["sig_right_name"])
+            left = (signatures["sig_left_rank"], signatures["sig_left_name"])
         except Exception:  # noqa: BLE001
             right = left = ("", "")
         return {"lh": ["", "", "", ""], "sig_right": right, "sig_left": left,
@@ -39,7 +41,7 @@ def register(app):
     app.add_template_filter(dates.format_date, "datefmt")
     app.add_template_filter(dates.input_date, "dateinput")
     app.add_template_global(dates.period_date, "period_date")
-    # مفتاح الحروف ض/أ/م — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٦/١٠/٢٠٢٦)
+    # تسميات فئات القوة (ضابط/فرد/مجندين) — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٨/١٠/٢٠٢ — الحروف اتشالت)
     from core import labels
     app.add_template_global(labels.pair3, "pair3")
     app.add_template_global(labels.pair2, "pair2")
@@ -56,6 +58,9 @@ def register(app):
     app.add_template_global(sc.TAMEEDAT_DAY, "cols_day")
     app.add_template_global(sc.TAMEEDAT_MOMODA, "cols_momoda")
     app.add_template_global(sc.TAMEEDAT_DICT, "cols_dict")
+    # أسماء ملفات التاميدات المحلية — مصدر واحد يقرأ منه زر «فتح ملف» (يوم يتب بيومه)
+    from services import tameedat_fs
+    app.add_template_global(tameedat_fs.day_file_name, "day_file_name")
 
     @app.context_processor
     def inject_bell():

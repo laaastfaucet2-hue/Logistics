@@ -15,7 +15,7 @@ import logging
 from datetime import date
 
 from core import arabic_numbers as arnum, dates, egtime
-from core.config import SECTIONS, MONTH_NAMES
+from core.config import SECTIONS, MONTH_NAMES, is_measure_unit
 from data_access import dataguard, storage
 from data_access import db_warehouses as dw, packaging
 
@@ -24,17 +24,22 @@ SUB_FOLDERS = {
     "suppliers": "الشركات الموردة",
     "wh1": "١ مخازن إذون الإضافة",
     "wh2": "٢ مخازن",
-    "wh3": "٣ مخازن دفتر الأصناف",
-    "tafreeda": "٢ مخازن تفاريد",
+    "wh3": "٣ مخازن",
 }
 # ملفات Excel التي يفتحها المستخدم بزر «فتح ملف» — كلها Excel (توجيه ٢٣/٠٩)
 TAB_XLSX = {
     "suppliers": "الشركات الموردة.xlsx",
     "wh1": "إذون إضافة ١ مخازن.xlsx",
-    "wh2": "٢ مخازن مجمع.xlsx",
     "wh3": "دفتر ٣ مخازن.xlsx",
-    "tafreeda": "٢ مخازن تفاريد مجمع.xlsx",
 }
+# الملف التاني لـ ٣ مخازن: «٣ مخازن\٣ مخازن تفاريد\٣ مخازن تفاريد.xlsx» (توجيه ٠٨/١٠: ٢ شيت إكسل)
+TAB_XLSX_2 = {"wh3": "٣ مخازن تفاريد.xlsx"}
+# جوا ٢ مخازن: فولدرين بفولدرات أيام — كل إذن في إكسل منفصل (توجيه ٠٨/١٠)
+WH2_ISSUES = "أذونات الصرف"
+WH2_TAFARID = "تفاريد"
+# جوا ٣ مخازن: فولدر الدفتر وفولدر التفاريد (توجيه ٠٨/١٠)
+WH3_BOOK_DIR = "٣ مخازن"
+WH3_TAF_DIR = "٣ مخازن تفاريد"
 
 HEADER_1 = "منطقة وسط وجنوب للأمن المركزي"
 HEADER_2 = "قطاع وسط سيناء - قسم التعيينات"
@@ -61,9 +66,30 @@ def cycle_dir(year, month, cycle, sub):
     return path
 
 
-def file_path(year, month, cycle, sub):
-    """مسار ملف Excel للتبويب — بلا إنشاء."""
-    return base_dir(year, month, cycle) / SUB_FOLDERS[sub] / TAB_XLSX[sub]
+def file_path(year, month, cycle, sub, second=False):
+    """مسار ملف Excel للتبويب — بلا إنشاء (None للتبويب اللي كل إذن في ملفه)."""
+    root = base_dir(year, month, cycle) / SUB_FOLDERS[sub]
+    if sub == "wh2":
+        return None
+    if sub == "wh3":
+        if second:
+            return root / WH3_TAF_DIR / TAB_XLSX_2["wh3"]
+        return root / WH3_BOOK_DIR / TAB_XLSX["wh3"]
+    return root / TAB_XLSX[sub]
+
+
+def wh2_permit_dir(year, month, cycle, taf=False):
+    """٢ مخازن\أذونات الصرف أو ٢ مخازن\تفاريد — فولدرات «يوم N» بإكسل لكل إذن."""
+    return cycle_dir(year, month, cycle, "wh2") / (WH2_TAFARID if taf else WH2_ISSUES)
+
+
+def wh2_permit_file_path(year, month, cycle, permit_no, day, taf=False):
+    """مسار إكسل إذن منفصل: ٢ مخازن\{أذونات الصرف،تفاريد}\يوم N\إذن M.xlsx — بلا إنشاء."""
+    from core import arabic_numbers as arnum
+    from services.cycle_xlsx import WH2_PERMIT_FILE, _day_folder, _file_name
+    return (cycle_dir(year, month, cycle, "wh2") / (WH2_TAFARID if taf else WH2_ISSUES)
+            / _day_folder(int(day))
+            / _file_name(WH2_PERMIT_FILE.format(arnum.to_arabic_indic(str(permit_no)))))
 
 
 def ensure_folders(year, month):
@@ -71,17 +97,39 @@ def ensure_folders(year, month):
     for cycle in CYCLE_FOLDERS:
         for sub in SUB_FOLDERS:
             cycle_dir(year, month, cycle, sub)
+        wh2 = cycle_dir(year, month, cycle, "wh2")
+        (wh2 / WH2_ISSUES).mkdir(exist_ok=True)
+        (wh2 / WH2_TAFARID).mkdir(exist_ok=True)
+        wh3 = cycle_dir(year, month, cycle, "wh3")
+        (wh3 / WH3_BOOK_DIR).mkdir(exist_ok=True)
+        (wh3 / WH3_TAF_DIR).mkdir(exist_ok=True)
         _migrate_old_names(year, month, cycle)
     return base_dir(year, month, "supply").parent
 
 
 def _migrate_old_names(year, month, cycle):
-    """أسماء قديمة اتجددت — المرايا تتبع الهيكل الجديد فقط (توجيه ٢٨/٠٩ ليلًا)."""
+    """أسماء قديمة اتجددت — المرايا تتبع الهيكل الجديد فقط (توجيه ٠٨/١٠).
+
+    البنية الجديدة: ٢ مخازن\{أذونات الصرف،تفاريد}\يوم N\إذن M.xlsx (إكسل لكل إذن)
+    و ٣ مخازن\{٣ مخازن،٣ مخازن تفاريد} — والملفات الموحدة القديمة اتلغت (قرار المستخدم)."""
     import shutil
     root = base_dir(year, month, cycle)
-    old = root / "٢ مخازن إذون الصرف"
-    if old.is_dir():
-        shutil.rmtree(old, ignore_errors=True)
+    for old in ("٢ مخازن إذون الصرف", "٢ مخازن تفاريد", "٣ مخازن دفتر الأصناف"):
+        path = root / old
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+    wh2 = root / "٢ مخازن"
+    if wh2.is_dir():
+        for day in wh2.glob("يوم *"):        # فولدرات الأيام القديمة كانت جوا ٢ مخازن مباشر
+            shutil.rmtree(day, ignore_errors=True) if day.is_dir() else day.unlink()
+        agg = wh2 / "٢ مخازن مجمع.xlsx"
+        if agg.exists():
+            agg.unlink()
+    wh3 = root / "٣ مخازن"
+    if wh3.is_dir():
+        old_book = wh3 / "دفتر ٣ مخازن تغليف.xlsx"
+        if old_book.exists():
+            old_book.unlink()
 
 
 def _save_json(path, payload):
@@ -208,25 +256,15 @@ def snapshot_cycle(year, month, cycle):
             "رقم الإذن": row["permit_no"] or "—", "البيان": row["label"],
             "مضاف": row["added"], "منصرف": row["issued"], "الرصيد": row["balance"],
         } for name, _unit, row in moves]})
-    balance_rows = [(idx, it["name"], it["handle_unit"], it["ration_unit"] or "—",
-                     it["balance"]) for idx, it in enumerate(items, 1)]
-    move_rows = [(idx, name, _wday(row["day"], year, month), row["day"], _d(row["day"], year, month),
-                  row["permit_no"] or "—", row["label"], row["added"], row["issued"],
-                  row["balance"], row["notes"] or "—")
-                 for idx, (name, _unit, row) in enumerate(moves, 1)]
-    _save_xlsx(cycle_dir(year, month, cycle, "wh3") / TAB_XLSX["wh3"], [
-        ("أرصدة الأصناف",
-         ["م", "الصنف", "وحدة التعامل", "وحدة المقرر", "الرصيد"], balance_rows),
-        ("حركات الدفتر",
-         ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن", "البيان",
-          "مضاف", "منصرف", "الرصيد", "ملاحظات"], move_rows)])
+    # الدفتران الإكسل (٣ مخازن\٣ مخازن + ٣ مخازن\٣ مخازن تفاريد) يكتبلهما cycle_xlsx
 
     # ---------- ٢ مخازن (عرض) ----------
     _save_json(cycle_dir(year, month, cycle, "wh2") / "إذون الصرف.json", {
         "الجهة": HEADER_1, "القسم": HEADER_2, "الدورة": cycle_name,
         "الشهر": MONTH_NAMES[month - 1], "السنة": year,
         "آخر تحديث": egtime.now().isoformat(timespec="seconds"),
-        "ملاحظة": "الخصم التلقائي لدفاتر ٣ مخازن يُبنى مع مراحل ٤–٧ مخازن",
+        "ملاحظة": "كل إذن في إكسل منفصل: ٢ مخازن\أذونات الصرف\يوم N\إذن M.xlsx"
+                  " + ٢ مخازن\تفاريد\يوم N\إذن M.xlsx",
         "الإذون": [{
             "رقم الإذن": p["number"], "السنة المالية": p["fiscal_year"],
             "من يوم": p["date_from"], "إلى يوم": p["date_to"],
@@ -235,24 +273,6 @@ def snapshot_cycle(year, month, cycle):
             "أصناف الدورة": [{"الصنف": it["name"], "الكمية": it["qty"],
                               "الوحدة": it["unit"] or "—"} for it in p["cycle_items"]],
         } for p in permits]})
-    permit_rows = []
-    for p in permits:
-        for it in p["cycle_items"]:
-            permit_rows.append((p["number"], p["fiscal_year"], p["date_from"],
-                                p["date_to"], p["issue_days"], p["entity_label"] or "—",
-                                it["name"], it["qty"], it["unit"] or "—"))
-    tafreeda = dw.tafreeda_rows(year, month, cycle)
-    taf_rows = [(t.get("seq") or 0, t["item"], t["unit"], t["qty"],
-                 t.get("issued_label") or arnum.fmt_qty(t["qty"]),
-                 t["store_name"], _date_or_dash(t["expiry"]),
-                 t.get("notes") or "—") for t in tafreeda]
-    _save_xlsx(cycle_dir(year, month, cycle, "wh2") / TAB_XLSX["wh2"], [
-        ("دفتر إذون صرف ٢ مخازن",
-         ["رقم الإذن", "السنة المالية", "من يوم", "إلى يوم", "أيام الصرف",
-          "الجهات", "الصنف", "الكمية الفعلية", "الوحدة"], permit_rows),
-        ("التفريدة التلقائية",
-         ["م", "الصنف", "الوحدة", "المنصرف بالوحدة", "المنصرف بالتغليف",
-          "المخزن", "تاريخ الانتهاء", "ملاحظات"], taf_rows)])
 
     try:   # الهيكل اليومي والشيتات الجديدة (توجيه ٢٨/٠٩ مساءً)
         from services import cycle_xlsx
@@ -338,7 +358,9 @@ def taf3_pack_rows(year, month, cycle, item_id):
         added_pack = r.get("pack_label") or (f"{arnum.fmt_qty(r['added'])} {unit}" if r["added"] else "—")
         if r["kind"] != "issue2":
             cnt, kind, cap, loose = packaging.parse_pack_label(added_pack)
-            if cnt > 0:
+            # «٦٠ كجم» (رقم + وحدة قياس بلا «×») = كمية سادة مش عبوات —
+            # من غيرها بيتفسر ٦٠ «عبوة» ويطلع الرصيد بالتغليف غلط (جولة ٢٤)
+            if cnt > 0 and not is_measure_unit(kind):
                 led.set_kind(kind, cap)
                 over = round(float(r["added"] or 0) - (cnt * cap + loose), 6)
                 led.add(cnt, loose + (over if over > 0 else 0))
@@ -356,3 +378,19 @@ def taf3_pack_rows(year, month, cycle, item_id):
                      "bal_pack": (_brk(r["balance"], fb, "سائب") if count_pack else led.label()),
                      "notes": r.get("notes") or ""})
     return {"item": item, "rows": rows, "balance_pack": rows[-1]["bal_pack"] if rows else ""}
+
+
+def taf3_all(year, month, cycle, items):
+    """دفاتر التفاريد (بالكامل بالتغليف) لكل أصناف الدورة — لتاب «٣ مخازن تفاريد»
+    المقسم: تاب/كارت لكل صنف وجدوله بمضاف/منصرف/الرصيد بالتغليف (توجيه ٠٨/١٠)."""
+    out = {}
+    for it in items:
+        taf = taf3_pack_rows(year, month, cycle, it["id"])
+        if not taf or not taf["rows"]:
+            continue
+        for row in taf["rows"]:
+            row["wday"] = _wday(row["day"], year, month)
+        taf["total_added"] = sum(float(r["added"] or 0) for r in taf["rows"])
+        taf["total_issued"] = sum(float(r["issued"] or 0) for r in taf["rows"])
+        out[it["id"]] = taf
+    return out

@@ -7,7 +7,7 @@
 
 التوزيعة على القرص (مستقلة تمامًا عن فولدرات الأشهر):
     database/occasions/<السنة>/<المسمى>/
-        بيانات.json          ← النوع · التاريخ · المكان · القوة · الوصف · الإطار/الإخطار
+        بيانات.json          ← النوع · التاريخ · المكان · القوة · الوصف · الإطار
         صور/                 ← كل صور المناسبة (jpg/png/webp)
         فيديو/               ← كل فيديوهاتها (mp4/webm/mov)
         التقرير.xlsx          ← التقرير الرسمي (بون المناسبة)
@@ -36,6 +36,11 @@ REPORT_DOCX = "التقرير.docx"
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 VIDEO_EXT = {".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv"}
 
+# حدود الرفع (قرار المستخدم ٠٨/١٠/٢٠٢٦): ٣٠ ملفًا في الرفعة — وحتى ٢ جيجا للفيديو
+MAX_FILES_PER_UPLOAD = 30
+MAX_UPLOAD_BYTES = 2048 * 1024 * 1024
+UPLOAD_LIMIT_TEXT = "٢ جيجابايت"
+
 # أنواع المناسبات المحفوظة (يختارها المستخدم من قائمة، ويمكنه كتابة مسمّى حر)
 KINDS = ["زيارة رسمية", "تفتيش", "زيارة ميدانية", "اجتماع", "حفل", "مناسبة أخرى"]
 
@@ -44,7 +49,7 @@ Path = Path   # يعاد تصديره لاستخدام المسارات في ا�
 FIELD_KEYS = [
     ("title", "المسمى"), ("kind", "النوع"), ("date_iso", "التاريخ"),
     ("place", "المكان"), ("force_text", "القوة/الوفد"), ("notes", "الوصف"),
-    ("frame", "إطار"), ("alert", "إخطار"),
+    ("frame", "إطار"),
 ]
 
 
@@ -124,6 +129,18 @@ def _media_kind(path):
     return ""
 
 
+def size_text(size):
+    """حجم مقروء بأرقام عربية — بايت / كيلوبايت / ميجابايت / جيجابايت."""
+    size = int(size or 0)
+    if size < 1024:
+        return f"{arnum.to_arabic_indic(str(size))} بايت"
+    if size < 1024 * 1024:
+        return f"{arnum.fmt_qty(round(size / 1024, 1))} كيلوبايت"
+    if size < 1024 * 1024 * 1024:
+        return f"{arnum.fmt_qty(round(size / (1024 * 1024), 1))} ميجابايت"
+    return f"{arnum.fmt_qty(round(size / (1024 * 1024 * 1024), 2))} جيجابايت"
+
+
 def media_list(folder, kind=None):
     """قائمة الوسائط داخل المناسبة (صور/فيديو) بترتيب زمني — قابلة للفلترة."""
     out = []
@@ -136,8 +153,9 @@ def media_list(folder, kind=None):
             continue
         for path in sorted(target.iterdir()):
             if path.is_file() and not path.name.startswith("~$"):
+                size = path.stat().st_size
                 out.append({"kind": key, "name": path.name, "sub": sub,
-                            "size": path.stat().st_size,
+                            "size": size, "size_text": size_text(size),
                             "modified": datetime.fromtimestamp(
                                 path.stat().st_mtime).isoformat(timespec="seconds")})
     return out
@@ -154,8 +172,16 @@ def media_path(folder, kind, name):
 
 
 def add_media(folder, kind, storage_file):
-    """إضافة صورة/فيديو: تُنسخ داخل فولدرها الفرعي باسمها الأصلي (بعد تجنّب التكرار)."""
+    """إضافة صورة/فيديو: تُنسخ داخل فولدرها الفرعي باسمها الأصلي (بعد تجنّب التكرار).
+
+    تُرجع المسار النهائي — أو None لو كان الملف بلا اسم أو بامتداد غير مدعوم
+    (فلا يدخل فولدر المناسبة أي ملف غريب لا يفتحه البرنامج).
+    """
     name = _safe(Path(storage_file.filename).name)
+    if not name or name.startswith("~$"):
+        return None
+    if _media_kind(name) != kind:
+        return None
     sub = SUB_PHOTOS if kind == "photo" else SUB_VIDEOS
     target = Path(folder) / sub / name
     stem, suffix = target.stem, target.suffix

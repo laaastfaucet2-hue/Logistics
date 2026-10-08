@@ -15,14 +15,19 @@
         <i class="al-chip ok">✔ لا تنبيهات — كل الأيام متطابقة</i>
       {% endif %}
       <i class="al-chip dim">أيام الشهر: {{ alert_summary.rows | aindic }} صف</i>
+      {% if alert_summary.ignored %}
+        <label class="al-chip dim al-ig-toggle" title="التنبيهات اللي اتضغطت عليها «تجاهل التنبيه»">
+          <input type="checkbox" id="alShowIgnored"> إظهار المُتجاهَل ({{ alert_summary.ignored | aindic }})
+        </label>
+      {% endif %}
     </span>
     <span class="al-hint">اضغط للفتح والإغلاق</span>
   </button>
 
   <div class="al-body" id="alBody" hidden>
     <p class="al-note">
-      المقارنة على <b>ض/أ</b> فقط (المجندون خارج مقارنة الراغبين) —
-      <b>{{ tri_legend }}</b> — «الكوادر المعتمدة» = أسماء القوة المسجلة في تاب «الجهات والكوادر المعتمدة».
+      المقارنة على <b>ضابط/فرد</b> فقط (المجندون خارج مقارنة الراغبين) —
+      «الكوادر المعتمدة» = أسماء القوة المسجلة في تاب «الجهات والكوادر المعتمدة».
       التنبيهات إرشادية ولا تمنع أي حفظ.
     </p>
     {% if not alert_rows %}
@@ -37,16 +42,17 @@
         <thead>
           <tr>
             <th>اليوم</th><th>التاريخ</th><th>الجهة</th>
-            <th title="أعداد التأميدة كما سُجلت">التأميدة (ض/أ/م)</th>
-            <th title="المسجلون بالأسماء راغبين في هذا اليوم">الراغبون المسجلون (ض/أ)</th>
-            <th title="قوة الجهة في الجهات والكوادر المعتمدة">الكوادر المعتمدة (ض/أ)</th>
+            <th title="أعداد التأميدة كما سُجلت">التأميدة (ضابط/فرد/مجندين)</th>
+            <th title="المسجلون بالأسماء راغبين في هذا اليوم">الراغبون المسجلون (ضابط/فرد)</th>
+            <th title="قوة الجهة في الجهات والكوادر المعتمدة">الكوادر المعتمدة (ضابط/فرد)</th>
             <th>التنبيهات</th>
           </tr>
         </thead>
         <tbody>
           {% for row in alert_rows %}
           <tr class="al-row {{ row.level if row.issues else 'ok' }}"
-              data-issues="{{ 1 if row.issues else 0 }}">
+              data-issues="{{ 1 if row.issues else 0 }}"
+              data-ignored="{{ row.ignored_issues | length }}">
             <td><a class="al-day" href="{{ alert_day_href(row.day) }}">{{ row.day | aindic }}</a>
               {% if row.range_days > 1 %}<i class="al-span" title="ضمن مدة زمنية {{ row.range_days }} أيام">مدة {{ row.range_days | aindic }}</i>{% endif %}
             </td>
@@ -60,8 +66,18 @@
             <td><bdi dir="ltr">{{ slash2(row.willing.officers, row.willing.individuals) }}</bdi></td>
             <td><bdi dir="ltr">{{ slash2(row.cadres.officers, row.cadres.individuals) }}</bdi></td>
             <td class="al-issues">
-              {% if row.issues %}
-                <ul>{% for issue in row.issues %}<li class="lvl-{{ issue.level }}">{{ issue.text }}</li>{% endfor %}</ul>
+              {% set shown_issues = (row.issues + row.ignored_issues) %}
+              {% if shown_issues %}
+                <ul>{% for issue in shown_issues %}
+                  <li class="lvl-{{ issue.level }}{% if issue in row.ignored_issues %} al-ignored{% endif %}"
+                      data-entity="{{ row.entity_id }}" data-day="{{ row.day }}" data-key="{{ issue.key }}">
+                    <span class="al-ig-text">{{ issue.text }}</span>
+                    <button type="button" class="al-ig-btn"
+                            data-act="{{ 'restore' if issue in row.ignored_issues else 'ignore' }}"
+                            title="{{ 'رجّع التنبيه' if issue in row.ignored_issues else 'تجاهل التنبيه' }}">
+                      {{ 'رجّع' if issue in row.ignored_issues else 'تجاهل' }}
+                    </button>
+                  </li>{% endfor %}</ul>
               {% else %}<span class="al-ok">✔ مطابق</span>{% endif %}
             </td>
           </tr>

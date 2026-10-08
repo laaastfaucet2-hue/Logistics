@@ -12,6 +12,8 @@
   <span class="dim">{{ month_name }} {{ year | aindic }} — سنة الإذن {{ fiscal_year | aindic }}/{{ (fiscal_year + 1) | aindic }}</span>
   {% include "partials/print_btn.html" %}
 </div>
+{% set cur_tab = 'main' %}
+{% include "calc2/tabs.html" %}
 
 <form method="get" action="{{ url_for('calc2.page') }}" class="panel c2-bar" id="c2Filter">
   <div class="c2-dates">
@@ -95,7 +97,10 @@
       <label>عدد الأفراد<input name="individuals" id="c2Ind" inputmode="numeric" value="{{ individuals | aindic }}"></label>
       <label>عدد الجنود (مجندين)<input name="recruits" id="c2Rec" inputmode="numeric" value="{{ recruits | aindic }}"></label>
       <label class="wide">اسم الجهة / القطاع الطالب
-        <input name="entity_label" id="c2Label" value="{{ entity_label }}"></label>
+        <input name="entity_label" id="c2Label" value="{{ entity_label }}"
+               data-combo="c2EntitiesList" autocomplete="off"
+               title="الاسم يتبع قاموس جهات البرنامج — اختاره من القائمة أو اكتبه ويُحفظ بالاسم الرسمي"></label>
+      <datalist id="c2EntitiesList">{% for n in entity_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
       <label>أيام الصرف (المدة)
         <input name="issue_days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
     </div>
@@ -121,7 +126,8 @@
                placeholder="حاضر بشهادة صحية أو اكتب اسمًا"></label>
       <datalist id="c2Issuers">{% for r in issuers %}<option value="{{ r.name }}">{% endfor %}</datalist>
       <label>رقم إذن الصرف (بون ٢ مخازن)
-        <input name="number" inputmode="numeric" value="{{ next_number | aindic }}"></label>
+        <input name="number" inputmode="numeric" id="c2NumberInput" value="{{ next_number | aindic }}">
+        <small class="c2-dup-warn" id="c2DupWarn" hidden></small></label>
     </div>
   </div>
 
@@ -202,6 +208,7 @@
 </form>
 <script type="application/json" id="c2LowRatio">{{ stock_low_ratio | tojson }}</script>
 <script type="application/json" id="c2PicksData">{{ picks | tojson }}</script>
+<script type="application/json" id="c2UsedNumbers">{{ used_numbers | tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>

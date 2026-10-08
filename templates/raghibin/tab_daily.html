@@ -24,7 +24,7 @@
     التأميدة مسجّلة: {{ pair2(day_counts.officers_total, day_counts.individuals_total) }} —
     الراغبون المسجلون بالأسماء: {{ pair2(day_counts.officers, day_counts.individuals) }} —
     الكوادر المعتمدة: {{ pair2(day_cadres.officers or 0, day_cadres.individuals or 0) }}
-    <i class="sh-legend">({{ pair_legend }})</i>.
+    .
   </span>
   <ul class="rg-alert-list">
     {% for issue in day_alert_issues %}
@@ -89,7 +89,7 @@
   <div class="rg-card">
     <div class="rg-card-head">
       <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
-      <span class="rg-dim">المربعات بعدد التأميدة — ض {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · أ {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }} <i class="sh-legend">({{ pair_legend }})</i></span>
+      <span class="rg-dim">المربعات بعدد التأميدة — ضابط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · فرد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
     </div>
     <div class="tm-tabs rg-cat-tabs" aria-label="فئات الراغبين">
       <a class="tm-tab {{ 'on' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">

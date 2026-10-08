@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — تعديل معدلات الأصناف{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>⚙️ تفاريد خط الحدود الدولى — تعديل معدلات الأصناف</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<div class="panel">
+  <div class="panel-head"><h3>الفرع الثالث: تعديل معدلات تفريد الدولى</h3>
+    <span class="panel-hint">معدلات للدولى بس — منفصلة عن ٢ مخازن العادية والحرة · التفعيل = الصنف يدخل التوزيعات والإجماليات</span></div>
+
+  <form method="post" action="{{ url_for('dowail.rates_add') }}" class="dw-addrow dw-addrow-wide">
+    <input name="name" placeholder="+ إضافة صنف جديد (اسم الصنف)" required>
+    <input name="unit" placeholder="الوحدة (كجم / علبة...)" class="dw-w-narrow">
+    <input name="rate" inputmode="decimal" placeholder="مقرر اليومى للفرد" class="dw-w-narrow">
+    <select name="section">
+      <option value="tamween">تمويني</option>
+      <option value="contractor">متنوع (متعهد)</option>
+    </select>
+    <button class="rt-btn gold small" type="submit">+ إضافة الصنف</button>
+  </form>
+
+  {% macro rates_section(title, items, section) %}
+  <h4 class="dw-h">{{ title }}</h4>
+  {% if items %}
+  <div class="table-wrap">
+    <table class="rt-table dw-rates">
+      <thead>
+        <tr>
+          <th title="مسلسل">م</th><th>اسم الصنف</th><th>قاعدة المقرر</th>
+          <th>مخصص الأيام (يُضاف)</th><th>معدل اليومى (حر)</th>
+          <th>التفعيل</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr class="{{ '' if it.enabled else 'dw-off' }}">
+          <td class="num">{{ it.serial | aindic }}</td>
+          <td class="name"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}
+            {% if it.is_extra %} <small class="dw-extra">إضافي</small>{% endif %}</td>
+          <td class="num">{{ it.base | qty3 }}</td>
+          <td>
+            {% if it.custom %}
+            <div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip" title="يُضاف فوق المعدل في {{ c.label }}">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>
+            {% else %}<span class="dim">—</span>{% endif %}
+            {% if it.item_id %}
+            <button type="button" class="dw-mini custom-btn"
+                    data-id="{{ it.item_id }}" data-name="{{ it.name }}"
+                    data-custom="{{ it.custom_entries | tojson }}"
+                    title="تعديل مخصص الأيام لهذا الصنف">🗓️ تخصيص</button>
+            {% endif %}
+          </td>
+          <td>
+            {% if it.rate_id %}
+            <form method="post" action="{{ url_for('dowail.rates_update', rate_id=it.rate_id) }}" class="dw-inline">
+              <input name="rate" inputmode="decimal" value="{{ it.rate | qty3 }}" class="dw-w-narrow" title="معدل الفرد اليومى">
+              <input name="unit" value="{{ it.unit }}" class="dw-w-mini" placeholder="الوحدة">
+              <button class="dw-mini" type="submit">حفظ</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('dowail.rates_add') }}" class="dw-inline">
+              <input type="hidden" name="section" value="{{ section }}">
+              <input type="hidden" name="name" value="{{ it.name }}">
+              <input type="hidden" name="unit" value="{{ it.unit }}">
+              <input name="rate" inputmode="decimal" value="0" class="dw-w-narrow" title="اكتب المعدل ثم اضغط تفعيل">
+              <button class="dw-mini" type="submit">تفعيل</button>
+            </form>
+            {% endif %}
+          </td>
+          <td>
+            {% if it.rate_id %}
+            <form method="post" action="{{ url_for('dowail.rates_toggle', rate_id=it.rate_id) }}">
+              <button class="dw-mini {{ 'on' if it.enabled else '' }}" type="submit"
+                      title="{{ 'إلغاء التفعيل' if it.enabled else 'تفعيل' }}">{{ '✅ مفعل' if it.enabled else '⛔ غير مفعل' }}</button>
+            </form>
+            {% else %}<span class="dim">—</span>{% endif %}
+          </td>
+          <td>
+            {% if it.rate_id %}
+            <form method="post" action="{{ url_for('dowail.rates_delete', rate_id=it.rate_id) }}"
+                  onsubmit="return confirm('حذف معدل الصنف «{{ it.name }}» من الدولى؟');">
+              <button class="dw-mini danger" type="submit">🗑️</button>
+            </form>
+            {% else %}<span class="dim">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="panel-hint">لا أصناف في هذا القسم — أضف صنفًا جديدًا بالأعلى أو فعّل من القائمة.</p>
+  {% endif %}
+  {% endmacro %}
+
+  {{ rates_section("أصناف التموينية (مقررات التموين)", rates_view.tamween, "tamween") }}
+  {{ rates_section("أصناف المتعهد", rates_view.contractor, "contractor") }}
+
+  {% if rate_statements %}
+  <div class="dw-archbox">
+    <h4 class="dw-h">📦 ارشيف المعدلات (بيان إكسل مع كل تغيير)</h4>
+    <ul class="dw-stmtlist">
+      {% for day, path in rate_statements %}
+      <li>
+        <span class="dim">يوم {{ day | aindic }}</span>
+        <a class="dw-filelink" href="{{ url_for('dowail.statement_file', filename=path) }}">📎 فتح بيان المعدلات</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- نافذة مخصص الأيام — نفس مقررات ٢ مخازن المشتركة (التموين/المتعهد) -->
+<div class="modal" id="customModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🗓️ مخصص أيام: <span id="customItemName"></span></h3>
+      <button class="modal-x" type="button" id="customClose">✕</button>
+    </div>
+    <p class="modal-hint">الكمية المكتوبة تُضاف <b>فوق معدل الفرد</b> في يومها ووجبتها (فطار/غداء/عشاء)
+      وتدخل في حصائل التوزيعات والمصفوفة. الخانة الفاضية = ما يُمضافش في اليوم ده.</p>
+    <form method="post" id="customForm" autocomplete="off"
+          data-template="{{ url_for('dowail.custom_save', item_id=0) }}">
+      <table class="grid-days">
+        <thead><tr><th>اليوم</th>{% for m, label in meals %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for d in range(7) %}
+          <tr>
+            <td class="dname">{{ days[d] }}</td>
+            {% for m, label in meals %}
+            <td><input name="c_{{ d }}_{{ m }}" inputmode="decimal" placeholder="٠"></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="modal-foot">
+        <button class="rt-btn gold" type="submit">💾 حفظ المخصص</button>
+        <button class="rt-btn dim" type="button" id="customCancel">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
+{% endblock %}

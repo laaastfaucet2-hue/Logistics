@@ -1,12 +1,16 @@
-{# المساعد المحلي 🤖 — زر جانبي مثل الإشعارات: يُفتح ويُغلق، ولا يظهر في الطباعة.
-   محلي بالكامل: بلا إنترنت وبلا أي نموذج خارجي (services/assistant.py). #}
+{# المساعد المحلي — زر جانبي مثل الإشعارات: يُفتح ويُغلق، ولا يظهر في الطباعة.
+   محلي بالكامل: بلا إنترنت وبلا أي خدمة خارجية (services/assistant/).
+   الشعار: ضابط (SVG محلي) بدل أيقونة الروبوت — بتوجيه المستخدم ٠٧/١٠/٢٠٢٦. #}
 {% if current_user %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}?v={{ static_ver }}">
 <div class="asst-wrap" id="asstWrap">
   <div class="asst-inner">
-    <button class="asst-btn" id="asstBtn" type="button" title="المساعد المحلي — اسأل أو اكتب اسم تاب"
+    <button class="asst-btn" id="asstBtn" type="button"
+            title="المساعد المحلي — اسأل عن أي تاب أو رقم في المنظومة"
             aria-haspopup="dialog" aria-expanded="false" aria-controls="asstPanel">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path><path d="M8 9h8M8 13h5"></path></svg>
+      <img class="asst-face" width="42" height="42"
+           src="{{ url_for('static', filename='img/assistant-officer.svg') }}"
+           alt="" aria-hidden="true">
       <span class="asst-dot" aria-hidden="true"></span>
     </button>
     <button class="asst-toggle" id="asstToggle" type="button" title="طي المساعد">−</button>
@@ -14,21 +18,71 @@
 
   <div class="asst-panel" id="asstPanel" role="dialog" aria-modal="false" aria-labelledby="asstTitle">
     <div class="asst-head">
-      <b id="asstTitle">🤖 المساعد المحلي</b>
-      <span class="asst-tag" title="يعمل داخل البرنامج بلا إنترنت وبلا خدمة خارجية">أوفلاين</span>
-      <button type="button" class="asst-x" id="asstClose" aria-label="إغلاق المساعد" title="إغلاق">✕</button>
+      <img class="asst-head-face" width="28" height="28"
+           src="{{ url_for('static', filename='img/assistant-officer.svg') }}"
+           alt="شعار المساعد" aria-hidden="true">
+      <span class="asst-head-text">
+        <b id="asstTitle">المساعد المحلي</b>
+        <small class="asst-head-sub">ضابط المنظومة — يفتح التابات ويقرأ أرقام الشهر</small>
+      </span>
+      <span class="asst-tag" id="asstTag" title="يعمل داخل البرنامج بلا إنترنت وبلا خدمة خارجية">
+        محلي · بلا إنترنت</span>
+      <button type="button" class="asst-x" id="asstClose" aria-label="إغلاق المساعد" title="إغلاق ✕">✕</button>
     </div>
+
+    {# قائمة «تبديل الموديل» المنسدلة في الشات نفسه (بتوجيه المستخدم ٠٨/١٠/٢٠٢٦):
+       اختَر «المكتبة الذكية» (محرك البرنامج بلا موديل) أو أي موديل GGUF باسمه.
+       الخيارات تُبنى من /assistant/capabilities — والموديلات من فولدر الموديلات. #}
+    <div class="asst-modelbar" id="asstModelBar">
+      <label class="asst-model-label" for="asstModelInput">تبديل الموديل:</label>
+      <input type="text" class="asst-modelselect" id="asstModelInput"
+             data-combo="asstModelList" autocomplete="off" spellcheck="false"
+             value="المكتبة الذكية"
+             title="اختَر: «المكتبة الذكية» (محرك البرنامج بلا موديل) أو موديل GGUF بالاسم">
+      <datalist id="asstModelList"><option value="المكتبة الذكية"></option></datalist>
+      <span class="asst-modelstate" id="asstModelState"></span>
+    </div>
+
     <div class="asst-log" id="asstLog" aria-live="polite"></div>
-    <div class="asst-prompts" id="asstPrompts"></div>
+
+    <div class="asst-suggest" id="asstPrompts" aria-label="اقتراحات سريعة"></div>
+    <div class="asst-history" id="asstHistory" aria-label="آخر أسئلتك" hidden></div>
+
+    {# وصلات سريعة = أسئلة جاهزة تُضغط فتُسأل فورًا (توجيه المستخدم: «أسئلة مش تابات») #}
+    <div class="asst-quick" aria-label="أسئلة سريعة">
+      <b class="asst-quick-label">اسأل بضغطة:</b>
+      <button class="asst-qlink" type="button" data-ask="ملخص الشهر">ملخص الشهر</button>
+      <button class="asst-qlink" type="button" data-ask="عدد التأميدات">عدد التأميدات</button>
+      <button class="asst-qlink" type="button" data-ask="الجهات المومدة">الجهات المومدة</button>
+      <button class="asst-qlink" type="button" data-ask="إجمالي القوة">إجمالي القوة</button>
+      <button class="asst-qlink" type="button" data-ask="أرصدة المخازن">أرصدة المخازن</button>
+      <button class="asst-qlink" type="button" data-ask="إذون ٢ مخازن">إذون ٢ مخازن</button>
+      <button class="asst-qlink" type="button" data-ask="تأميدات يوم ٧">تأميدات يوم ٧</button>
+      <button class="asst-qlink" type="button" data-ask="تنبيهات الشهر">تنبيهات الشهر</button>
+      <button class="asst-qlink" type="button" data-ask="مين أكبر جهة">مين أكبر جهة</button>
+      <button class="asst-qlink" type="button" data-ask="أيام بدون تسجيل">أيام بدون تسجيل</button>
+      <button class="asst-qlink" type="button" data-ask="عدد الملفات">ملفاتي المحلية</button>
+      <button class="asst-qlink" type="button" data-ask="يعني إيه مومدة">يعني إيه مومدة</button>
+      <button class="asst-qlink" type="button" data-ask="مساعدة">كل الأسئلة</button>
+    </div>
+
     <form class="asst-form" id="asstForm" autocomplete="off">
-      <input type="text" id="asstInput" name="q" placeholder="اكتب: افتح التاميدات · تنبيهات · عدد التأميدات…"
-             aria-label="سؤال المساعد">
-      <button type="submit" class="asst-send" title="إرسال">➤</button>
+      <input type="text" id="asstInput" name="q" aria-label="سؤال المساعد"
+             placeholder="اسأل: كم تأميدة يوم ٧؟ · أرصدة المخازن · إزاي أسجّل راغبين…">
+      <button type="submit" class="asst-send" id="asstSend" title="إرسال" aria-label="إرسال السؤال">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path d="M3.4 20.4 21 12 3.4 3.6l2.3 6.6 9.1 1.8-9.1 1.8z"
+                fill="currentColor" stroke="currentColor" stroke-width="1"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
     </form>
-    <p class="asst-foot">يقترح ويفتح التابات ويقرأ بيانات الشهر النشط — ولا يحفظ ولا يعدّل أي بيانات.</p>
   </div>
 </div>
 <script src="{{ url_for('static', filename='js/assistant.js') }}?v={{ static_ver }}"
         data-ask="{{ url_for('assistant.ask') }}"
-        data-prompts="{{ url_for('assistant.prompts') }}"></script>
+        data-prompts="{{ url_for('assistant.prompts') }}"
+        data-capabilities="{{ url_for('assistant.capabilities') }}"
+        data-modelselect="{{ url_for('assistant.model_select') }}"
+        data-sid="{{ sid }}"></script>
 {% endif %}

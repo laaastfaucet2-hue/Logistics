@@ -2,7 +2,7 @@
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """ملفات «2. عدم الراغبين/» — سجل المستثنين (ضباط/أفراد) لكل جهة.
 
-لكل جهة ملفان: «<الجهة> (ضباط غير راغبين).xlsx» و«<الجهة> (أفراد غير راغبين).xlsx»
+لكل جهة ملفان: «<الجهة> (ضباط غير راغبين).xlsx» و«<الجهة> (أفراد غير راغبين).xlsx» — العناوين بكلمات عادية بلا حروف مختصرة
 الأعمدة: م | الرتبة | الاسم الرتبعي الكامل | ملاحظات / حالة الغياب + صف الإجمالي.
 بالدباجة والتوقيعات الرسمية، وبالترتيب بالأقدمية (توجيه ٣٠/٠٩/٢٠٢٦) — لحظي.
 """
@@ -23,7 +23,7 @@ COLS = len(HEADERS)
 
 
 def _sheet(ws, year, month, entity_name, category_label, persons):
-    """category_label يحمل الحرف أولًا («ض — الضباط») توجيه ٠٦/١٠/٢٠٢٦."""
+    """category_label يحمل الكلمة أولًا («ضابط — الضباط») — بلا حروف مختصرة (توجيه ٠٨/١٠/٢٠٢٦)."""
     add_letterhead(ws, year, month, COLS)
     ws.merge_cells(start_row=6, start_column=1, end_row=6, end_column=COLS)
     title = ws.cell(6, 1, f"سجل {category_label} — غير الراغبين — {entity_name} — "
@@ -56,7 +56,7 @@ def _sheet(ws, year, month, entity_name, category_label, persons):
     short = labels.SHORT["officers"] if category_label.startswith(labels.SHORT["officers"]) \
         else labels.SHORT["individuals"]
     total = ws.cell(row, 1, f"الإجمالي: {arnum.to_arabic_indic(str(len(persons)))} "
-                            f"{short} غير راغبين  —  {labels.LEGEND_TWO}")
+                            f"{short} غير راغبين")
     total.font = Font(size=12, name="Cairo", bold=True)
     total.alignment = CENTER
     signatures_rows(ws, row + 2, year, month, COLS)
@@ -66,8 +66,8 @@ def write_excluded_files(year, month, entity_id, entity_name):
     """بناء ملفي المستثنين (ضباط/أفراد) لجهة واحدة — بعد كل تعليم استثناء."""
     folder = tab_dir(year, month, "excluded")
     for category_key, category_label, suffix in (
-            ("officers", "ض — الضباط", "ضباط غير راغبين"),
-            ("individuals", "أ — الأفراد والصف", "أفراد غير راغبين")):
+            ("officers", "ضابط — الضباط", "ضباط غير راغبين"),
+            ("individuals", "فرد — الأفراد والصف", "أفراد غير راغبين")):
         persons = dr.list_persons(year, month, entity_id=entity_id,
                                   category=category_key, excluded=True)
         book = Workbook()

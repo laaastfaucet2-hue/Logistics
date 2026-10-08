@@ -56,9 +56,14 @@ def applied_meals(orig, over):
 
 
 def daily_qty(item, weekday):
-    """مقرر الفرد لهذا اليوم من الأسبوع (0=سبت). بلا صرف = ٠."""
-    if item.get("is_custom"):
-        if weekday not in item.get("days", []):
+    """مقرر الفرد لهذا اليوم من الأسبوع (0=سبت). بلا صرف = ٠.
+
+    - صنف بأيام محددة (days/day_qty من تخصيص الجهة) = يُصرف في أيامه فقط.
+    - صنف بمخصص أيام+وجبة (custom من المقرر) = يُصرف في الأيام المملوءة فقط.
+    - غير ذلك = القاعدة اليومية (فطار+غداء+عشاء).
+    """
+    if item.get("days"):
+        if weekday not in item["days"]:
             return 0.0
         qty = item.get("day_qty", {}).get(weekday)
         if qty not in (None, ""):

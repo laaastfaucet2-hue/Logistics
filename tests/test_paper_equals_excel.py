@@ -119,18 +119,53 @@ def test_raghibin_day_file_columns_are_shared_constant():
 # ٥) ٢ مخازن تفاريد: التبويب = الملف (حرس رجوع)
 # ======================================================================
 def test_tafreeda_tab_columns_match_excel(client):
+    """جولة ٢٣: تاب التفاريد جوه صفحة ٢ مخازن — وكل إذن في إكسل منفصل،
+    والنافذة المتراصة (بالوحدة/بالتغليف) = شيتي ملف الإذن حرفيًا."""
     from services import warehouses_fs
-    from data_access import db_warehouses as dw, db_rations as dr, months
+    from data_access import db_stores, db_tameedat as dt
+    from data_access import db_rations as dr, months
     months.init_month(YEAR, MONTH)
-    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0.075, 0)
-    dr.set_activation(YEAR, MONTH, "tamween", "summer")
-    dw.add_opener(YEAR, MONTH, "supply", "أرز بلدي", 100, 1, handle_unit_hint="كجم",
-                  exp_iso="2027-06-30")
-    page = client.get("/warehouses?cycle=supply&sub=tafreeda").get_data(as_text=True)
+    dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "طن", 0, 0, 0)
+    db_stores.add_store("مخزن التفريدة")
+    store = db_stores.list_stores()[0]
+    assert client.post("/warehouses/wh1/add?cycle=supply", data={
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "٥٠٠", "day": "٣",
+        "pack_kind": "شكارة", "pack_count": "١٠", "pack_capacity": "٥٠",
+        "producer": "مطاحن الاختبار",
+        "store_id": [str(store["id"])], "store_qty": ["٥٠٠"]}).status_code == 302
+    ent_id = dt.add_entity(YEAR, MONTH, "جهة التفاريد", "شرطية")
+    rec_id = dt.add_record(YEAR, MONTH, 5, dt.get_entity(YEAR, MONTH, ent_id), 1, 5, 0, "")
+    assert client.post("/calc2/save", data={
+        "date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
+        "selected_json": '["main:%d"]' % rec_id, "entity_label": "جهة التفاريد",
+        "meal_lunch": "1", "actual_tamween_أرز بلدي": "60"}).status_code == 302
+    # الرابط القديم بيريدريكت لصفحة ٢ مخازن جوا تاب التفاريد
+    page = client.get("/warehouses?cycle=supply&sub=tafreeda",
+                      follow_redirects=True).get_data(as_text=True)
+    assert 'data-wh2sub="tafared"' in page
     assert page.count("<th") > 0
-    headers = _table_headers(page)
-    assert "الصنف" in headers and "الكمية المنصرفة" in headers
+    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page
     warehouses_fs.snapshot_cycle(YEAR, MONTH, "supply")
-    root = warehouses_fs.base_dir(YEAR, MONTH, "supply")
-    files = sorted(p.name for p in root.rglob("*تفاريد*"))
-    assert files, "ملف التفاريد لم يُبنَ"
+    path = warehouses_fs.wh2_permit_file_path(YEAR, MONTH, "supply", 1, 5, taf=True)
+    assert path.is_file(), "ملف التفاريد لم يُبنَ"
+
+    def _cols(sheet_title, first):
+        ws = load_workbook(path)[sheet_title]
+        for row in ws.iter_rows(min_row=1, max_row=30, values_only=True):
+            vals = [str(v or "").strip() for v in row]
+            if vals and vals[0] == first:
+                return [v for v in vals if v]
+        raise AssertionError(f"لا صف أعمدة في {sheet_title}")
+
+    # الورق = الإكسل: نفس الأعمدة الحرفية جوه شيتي الإذن
+    assert _cols("الأصناف", "م") == ["م", "الصنف", "المنصرف بالوحدة", "الوحدة",
+                                     "المنصرف بالتغليف"]
+    assert _cols("التفريدة", "م") == ["م", "الصنف", "الكمية بالوحدة", "المنصرف بالتغليف",
+                                      "تغليف الدفعة", "المخزن", "تاريخ الانتهاء",
+                                      "الصلاحية المتبقية", "ملاحظات"]
+    # نفس الكمية حرفيًا: قيمة شيت «الأصناف» = سطر «المنصرف بالوحدة» في النافذة المتراصة
+    window = re.search(r'id="packDialog-1".*?</dialog>', page, re.S).group(0)
+    item_row = next(r for r in load_workbook(path)["الأصناف"].iter_rows(min_row=2, values_only=True)
+                    if str(r[1] or "").strip() == "أرز بلدي")
+    qty = str(item_row[2] or "").strip()
+    assert qty and qty in window

@@ -57,6 +57,17 @@ CREATE TABLE IF NOT EXISTS tameed_save_tokens (
     token TEXT PRIMARY KEY,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS tm_alert_ignores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    entity_id INTEGER NOT NULL DEFAULT 0,
+    entity_name TEXT NOT NULL DEFAULT '',
+    day INTEGER NOT NULL DEFAULT 0,
+    issue_key TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (year, month, entity_id, day, issue_key, entity_name)
+);
 """
 
 BASE_TYPES = ("شرطية", "حربية")          # «أخرى» = أي نوع حر خارج هذين
@@ -115,6 +126,20 @@ def list_entities(year, month):
 
 def entity_names(year, month):
     return [e["name"] for e in list_entities(year, month)]
+
+
+def normalize_entity_name(year, month, label):
+    """اسم الجهة يتبع قاموس الجهات (توجيه ٠٨/١٠/٢٠٢٦): لو جزء من الاسم
+    (في الإذون المدمجة بـ« + ») مطابق لاسم بالقاموس متجاهلًا الفراغات،
+    يُكتب بالاسم الرسمي من القاموس بالظبط — والباقي يبقى زي ما اتكتب."""
+    label = (label or "").strip()
+    if not label:
+        return label
+    names = {" ".join(n.split()): n for n in entity_names(year, month)}
+    if not names:
+        return label
+    return " + ".join(names.get(" ".join(part.split()), part)
+                      for part in label.split(" + "))
 
 
 def get_entity(year, month, entity_id):
@@ -494,3 +519,48 @@ def dict_month_stats(year, month):
 
 
 
+
+# ======================================================================
+# تجاهل تنبيهات التاميدات↔الراغبين — زرار «تجاهل التنبيه» جنب كل تنبيه
+# ======================================================================
+def add_alert_ignore(year, month, entity_id, day, issue_key, name=""):
+    """يسجّل تجاهل تنبيه (سطر جدول: entity+day+key — أو تنبيه الفورم الحي بالاسم)."""
+    conn = _conn(year, month)
+    conn.execute(
+        "INSERT OR IGNORE INTO tm_alert_ignores"
+        " (year, month, entity_id, entity_name, day, issue_key, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (int(year), int(month), int(entity_id or 0), str(name or "").strip(),
+         int(day or 0), str(issue_key or "").strip(), _stamp()))
+    conn.commit()
+    conn.close()
+
+
+def remove_alert_ignore(year, month, entity_id, day, issue_key, name=""):
+    conn = _conn(year, month)
+    conn.execute(
+        "DELETE FROM tm_alert_ignores WHERE year=? AND month=? AND entity_id=?"
+        " AND entity_name=? AND day=? AND issue_key=?",
+        (int(year), int(month), int(entity_id or 0), str(name or "").strip(),
+         int(day or 0), str(issue_key or "").strip()))
+    conn.commit()
+    conn.close()
+
+
+def alert_ignores(year, month):
+    """كل تجاهلات الشهر — قائمة سطور (entity_id, day, issue_key, entity_name)."""
+    conn = _conn(year, month)
+    rows = [dict(r) for r in conn.execute(
+        "SELECT * FROM tm_alert_ignores WHERE year=? AND month=?", (int(year), int(month)))]
+    conn.close()
+    return rows
+
+
+def alert_ignored_names(year, month):
+    """أسماء الجهات اللي اتتجاهل تنبيهها الحي («غير مسجلة») — عشان ما يظهرش تاني في الشهر."""
+    conn = _conn(year, month)
+    names = {r["entity_name"] for r in conn.execute(
+        "SELECT entity_name FROM tm_alert_ignores WHERE year=? AND month=?"
+        " AND issue_key='unknown_dict' AND entity_name != ''", (int(year), int(month)))}
+    conn.close()
+    return sorted(names)
