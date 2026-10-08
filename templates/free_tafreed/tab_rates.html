@@ -1,0 +1,111 @@
+{# تاب ٤: تعديل معدلات الأصناف — لقطة حرة من المقررات ثم تعديل بحرية بلا أي مساس بها #}
+
+{# زرّا فتح المجلد/الملف باسميهما — قاعدة أزرار الملفات الملزمة (قاعدة ٢١) #}
+<div class="ft-openbar no-print">
+  <a class="ft-openbtn" href="{{ url_for('free_tafreed.open_tab_folder', tab='rates', year=year, month=month, sid=request.args.get('sid')) }}"
+    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «معدلات الأصناف»</a>
+  <a class="ft-openbtn" href="{{ url_for('free_tafreed.open_tab_file', tab='rates', year=year, month=month, sid=request.args.get('sid')) }}"
+    title="يفتح ملف الإكسل المحلي للتبويب على جهازك">📗 فتح ملف «{{ tab_file_name }}» (Excel)</a>
+</div>
+
+<section class="panel no-print">
+  <div class="panel-head"><h3>⚙️ تعديل معدلات التفاريد الحرة</h3>
+    <span class="panel-hint">اسم الصنف · الوحدة · المعدل اليومي للفرد · تفعيل الصنف · أيام الصرف ١..١٠</span></div>
+  <div class="ft-toolbar">
+    <form method="post" action="{{ url_for('free_tafreed.rates_seed') }}" class="ft-inline-form">
+      {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+      <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+      <button class="rt-btn gold" type="submit">⤓ اسحب الأصناف من مقررات الشهر (لقطة حرة)</button>
+    </form>
+    <span class="ft-chip dim">تعديل هذه المعدلات <b>لا يمس</b> مقررات التموين ولا المتعهد ولا أرصدة المخازن</span>
+  </div>
+
+  <form method="post" action="{{ url_for('free_tafreed.rates_save') }}" class="ft-rate-form" autocomplete="off">
+    {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+    <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+    <div class="ft-fields">
+      <label>اسم الصنف<input name="name" required placeholder="مثال: أرز بلدي"></label>
+      <label>الوحدة
+        <select name="unit">
+          {% for unit in ['كجم','جم','علبة','باكت','قطعة','فتلة','كيس','عبوة'] %}
+          <option value="{{ unit }}">{{ unit }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>المعدل اليومي للفرد<input name="rate" inputmode="decimal" value="٠٫٠٧٥"></label>
+      <label>دفتر المقرر
+        <select name="kind">
+          <option value="tamween">التموينيات</option>
+          <option value="contractor">المتعهد</option>
+        </select>
+      </label>
+      <label class="ft-switch"><input type="checkbox" name="active" value="1" checked> تفعيل الصنف</label>
+    </div>
+    <div class="ft-days">
+      <b>أيام الصرف المفعّلة:</b>
+      {% for day in days_range %}
+      <label class="ft-day"><input type="checkbox" name="day_{{ day }}" value="1" checked> {{ day | aindic }}</label>
+      {% endfor %}
+    </div>
+    <div class="ft-actions"><button class="rt-btn gold" type="submit">➕ إضافة/تعديل الصنف</button></div>
+  </form>
+</section>
+
+{% for kind_key, title, rows in [('tamween', 'أصناف التعهدات التموينية', rates_tamween),
+                                 ('contractor', 'أصناف المتعهد', rates_contractor)] %}
+<section class="panel no-print">
+  <div class="panel-head"><h3>{{ title }}</h3>
+    <span class="panel-hint">عدد الأصناف: {{ rows | length | aindic }} — اضغط رقم اليوم لتفعيله/إيقافه</span></div>
+  <div class="table-wrap">
+    <table class="rt-table ft-rates-table" id="ftRates-{{ kind_key }}">
+      <thead>
+        <tr><th>م</th><th>الصنف</th><th>الوحدة</th><th>المعدل اليومي للفرد</th>
+            <th colspan="{{ days_range | length }}">أيام الصرف</th><th>تفعيل</th><th class="ops">إجراءات</th></tr>
+        <tr class="ft-days-head"><th colspan="4"></th>
+            {% for day in days_range %}<th>{{ day | aindic }}</th>{% endfor %}
+            <th></th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for rate in rows %}
+        <tr>
+          <td class="num">{{ rate.serial | aindic }}</td>
+          <td><b>{{ rate.name }}</b></td>
+          <td>{{ rate.unit or '—' }}</td>
+          <td class="num">{{ rate.rate | qty }}</td>
+          {% for day in days_range %}
+          <td class="ft-day-cell">
+            <form method="post" action="{{ url_for('free_tafreed.rates_action', rate_id=rate.id, action='day') }}" class="ft-inline-form">
+              {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+              <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+              <input type="hidden" name="day" value="{{ day }}">
+              <input type="hidden" name="on" value="{{ 0 if day in (rate.days or []) else 1 }}">
+              <button class="ft-day-btn {{ 'on' if day in (rate.days or []) else '' }}" type="submit"
+                      title="{{ 'إيقاف' if day in (rate.days or []) else 'تفعيل' }} يوم {{ day | aindic }}">{{ day | aindic }}</button>
+            </form>
+          </td>
+          {% endfor %}
+          <td>
+            <form method="post" action="{{ url_for('free_tafreed.rates_action', rate_id=rate.id, action='toggle') }}" class="ft-inline-form">
+              {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+              <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+              <input type="hidden" name="on" value="{{ 0 if rate.active else 1 }}">
+              <button class="rt-btn dim" type="submit">{{ 'مفعّل' if rate.active else 'موقوف' }}</button>
+            </form>
+          </td>
+          <td class="ops">
+            <form method="post" action="{{ url_for('free_tafreed.rates_action', rate_id=rate.id, action='delete') }}" class="ft-inline-form">
+              {% if request.args.get('sid') %}<input type="hidden" name="sid" value="{{ request.args.get('sid') }}">{% endif %}
+              <input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="month" value="{{ month }}">
+              <button class="rt-btn dim danger" type="submit" title="حذف من معدلات التفاريد الحرة">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ days_range | length + 7 }}" class="empty">لا أصناف في هذا الدفتر —
+          اسحب الأصناف من المقررات ثم عدّلها بحرية.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}

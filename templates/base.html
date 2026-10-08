@@ -29,7 +29,7 @@
     <a href="{{ url_for('section_page', key=s.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=s.key), active_paths.get(s.key, '')] }}">{{ icon(s.key) }}{{ s.name }}</a>
     {% endfor %}
     <div class="nav-title">أدوات المنظومة</div>
-    {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups', 'occasions':'/occasions', 'calc2':'/calc2'} %}
+    {% set extra_paths = {'letterhead':'/letterhead', 'backups':'/backups', 'free_tafreed':'/free-tafreed', 'occasions':'/occasions', 'calc2':'/calc2'} %}
     {% for p in extra_pages %}<a href="{{ url_for('section_page', key=p.key, year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path.rstrip('/') in [url_for('section_page', key=p.key), extra_paths.get(p.key, '')] }}">{{ icon(p.key) }}{{ p.name }}</a>{% endfor %}
   </nav>
   <div class="side-foot">

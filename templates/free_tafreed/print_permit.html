@@ -1,0 +1,65 @@
+{# إذن صرف بون تعيينات مجمع — مطابق للورق المحلي بالحرف (الورق = الإكسل) #}
+{% extends "base.html" %}
+{% block body_class %}own-letterhead{% endblock %}
+{% block official_print_head %}{% endblock %}
+{% block official_print_foot %}{% endblock %}
+{% block title %}إذن صرف بون تعيينات مجمع • مستند رسمي{% endblock %}
+{% block print_doc_title %}إذن صرف بون تعيينات مجمع — {{ title }} — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/free-tafreed.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ إذن صرف بون تعيينات مجمع — نفس أعمدة ملف الإكسل المحفوظ في «التفاريد الحرة»</span>
+</div>
+<div class="panel ft-toolbar no-print">
+  <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة الإذن">
+    <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  </button>
+  <a class="rt-btn dim" href="{{ url_for('free_tafreed.page', tab='make', year=year, month=month, sid=request.args.get('sid')) }}">↩ عودة</a>
+</div>
+
+<div class="panel rc-doc ft-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ lh[i] }}</div>{% endfor %}</div>
+      {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <h1 class="ft-doc-title">إذن صرف بون تعيينات مجمع</h1>
+    <div class="ft-doc-meta">
+      <div>اسم القطاع الجغرافي: <b>{{ title or '—' }}</b></div>
+      <div>إجمالي القوة العسكرية للخط: <b>{{ force | aindic }}</b> فرد / يوم</div>
+      <div>النقاط الممثلة بالصرف: <b>{{ (sheet.payload.get('lines', []) | sum(attribute='active') if sheet else 0) | aindic }}</b> نقطة</div>
+      <div>فترة بون الصرف والتحميل: عن الفترة من <b>يوم {{ (sheet.date_from if sheet else day_from) | aindic }}</b>
+        إلى <b>يوم {{ (sheet.date_to if sheet else day_to) | aindic }}</b>
+        (<b>{{ days | aindic }}</b> أيام) — {{ month_name }} {{ year | aindic }}</div>
+    </div>
+    <table class="rt-table ft-print-table">
+      <thead>
+        <tr>{% for col in cols_ft_sheet %}<th>{{ col }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ row.name }}</b></td>
+          <td>{{ row.unit or '—' }}</td>
+          <td class="num">{{ row.rate | qty }}</td>
+          <td class="num">{{ row.days | aindic }}</td>
+          <td class="num"><b>{{ row.total | qty }} {{ row.unit }}</b></td>
+          <td></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty">لا أصناف في هذه التفريدة — احفظ التفريدة أولًا من تاب
+          «عمل التفريدة» أو «تفريدات الدول».</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="ft-print-note">هذا الكشف يمثل إجمالي أذونات وحصص التعيينات المصروفة لكل نقطة (خط) دفعة واحدة مجمعة للتحميل.</p>
+    <div class="print-sigs">
+      <span class="ps"><b>{{ sig_right[0] }}</b><b>{{ sig_right[1] }}</b></span>
+      <span class="ps"><b>{{ sig_left[0] }}</b><b>{{ sig_left[1] }}</b></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
