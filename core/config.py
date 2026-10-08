@@ -153,4 +153,4 @@ def section_folder(number, section_name):
 
 
 # إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
-STATIC_VER = 154
+STATIC_VER = 155
