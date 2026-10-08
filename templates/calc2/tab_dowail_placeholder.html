@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}تفاريد الدويلي • منظومة التعيينات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>📦 تفاريد الدويلي — النقط الحدودية</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }}</span>
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+
+<div class="panel" style="text-align:center;padding:48px 24px">
+  <div style="font-size:40px">🚧</div>
+  <h2 style="margin:12px 0 8px">جارٍ تجهيز هذا التاب</h2>
+  <p class="panel-hint" style="max-width:560px;margin:0 auto;line-height:2">
+    سيتضمن: أوراق وإيصالات الصرف لكل نقطة وخط · إجمالي خطوط التوزيع · إدارة الخطوط والنقاط · تعديل معدلات الأصناف.
+  </p>
+</div>
+{% endblock %}

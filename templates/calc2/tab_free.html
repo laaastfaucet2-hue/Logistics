@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}٢ مخازن حرة (تجريبي) • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}إذن صرف ٢ مخازن حرة رقم {{ (preview.number if preview else next_free_number) | aindic }} — {{ month_name }} {{ year | aindic }} (تجريبي){% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>🧮 حاسبة إذن صرف المواد التموينية (٢ مخازن حرة)</span>
+  <span class="c2-trial-badge">تجريبي</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }} — سنة الإذن {{ fiscal_year | aindic }}/{{ (fiscal_year + 1) | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'free' %}
+{% include "calc2/tabs.html" %}
+
+{% if preview %}
+  {# ============ معاينة إذن تجريبي محفوظ ============ #}
+  <div class="panel c2-preview-head">
+    <div class="panel-head">
+      <h3>📄 معاينة إذن تجريبي رقم {{ preview.number | aindic }}</h3>
+      <span class="c2-trial-badge">تجريبي</span>
+    </div>
+    <div class="c2-force">
+      <label>من يوم<input value="{{ preview.date_from | aindic }}" readonly></label>
+      <label>إلى يوم<input value="{{ preview.date_to | aindic }}" readonly></label>
+      <label>أيام الصرف<input value="{{ preview.issue_days | aindic }}" readonly></label>
+      <label class="wide">الجهة<input value="{{ preview.entity_label }}" readonly></label>
+      <label>القوة<input value="{{ ((preview.officers or 0) + (preview.individuals or 0) + (preview.recruits or 0)) | aindic }} ({{ preview.officers | aindic }} / {{ preview.individuals | aindic }} / {{ preview.recruits | aindic }})" readonly></label>
+    </div>
+    <div class="c2-meals">
+      <b>الوجبات:</b>
+      {% for key, label in meals %}
+      {% if key in preview.meals %}<span class="c2-meal-tag">{{ label }}</span>{% endif %}
+      {% endfor %}
+      {% if preview.receiver_name %}<span class="c2-meal-tag">المستلم: {{ preview.receiver_kind }} {{ preview.receiver_rank }} {{ preview.receiver_name }}</span>{% endif %}
+      {% if preview.issuer_name %}<span class="c2-meal-tag">الصرف: {{ preview.issuer_name }}</span>{% endif %}
+      <span class="c2-meal-tag">حُفظ: {{ (preview.created_at or '')[:16] }}</span>
+    </div>
+  </div>
+
+  {% macro free_table(title, rows, prefix, readonly) %}
+  <div class="panel">
+    <div class="panel-head"><h3>{{ title }}</h3>
+      <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × أيام الصرف</span></div>
+    <div class="table-wrap">
+      <table class="rt-table c2-table c2-table-free">
+        <thead>
+          <tr>
+            <th title="مسلسل">م</th><th>اسم الصنف</th><th>معدل الفرد اليومى</th>
+            <th>أيام الصرف</th><th>الكمية (معدل × قوة × أيام)</th><th>الكمية الفعلية</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in rows %}
+          <tr>
+            <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
+            <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+            <td class="num">{{ it.rate | qty3 }}</td>
+            <td class="num">{{ it.days | aindic }}</td>
+            <td class="num">{{ it.auto | qty3 }}</td>
+            <td class="num">{{ it.actual | qty3 }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty">لا أصناف في هذا القسم.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endmacro %}
+
+  {{ free_table("المقررات التموينية", tamween, "tamween", true) }}
+  {{ free_table("مقررات المتعهد (الطازجة والمجمدة)", contractor, "contractor", true) }}
+
+  <div class="c2-save">
+    <a class="rt-btn big" href="{{ url_for('calc2_free.free_page') }}">← العودة لقائمة الإذون التجريبية</a>
+  </div>
+{% else %}
+  {# ============ شاشة الآلة الحاسبة الحرة ============ #}
+  <form method="get" action="{{ url_for('calc2_free.free_page') }}" class="panel c2-bar" id="c2Filter">
+    <div class="c2-dates">
+      <label>تاريخ بدء إذن الصرف
+        <input name="from" inputmode="numeric" value="{{ day_from | aindic }}" aria-label="من يوم"></label>
+      <label>تاريخ نهاية الصرف
+        <input name="to" inputmode="numeric" value="{{ day_to | aindic }}" aria-label="إلى يوم"></label>
+      <button class="rt-btn gold" type="submit">تحميل قائمة التأميدات</button>
+    </div>
+  </form>
+
+  <form method="post" action="{{ url_for('calc2_free.free_save') }}" class="c2-form" autocomplete="off" id="c2Form">
+    <input type="hidden" name="date_from" value="{{ day_from }}">
+    <input type="hidden" name="date_to" value="{{ day_to }}">
+    <input type="hidden" name="selected_json" id="c2SelectedJson" value="{{ selected | map(attribute='key') | list | tojson }}">
+
+    <div class="panel">
+      <div class="panel-head"><h3>تحميل قائمة التأميدات</h3>
+        <span class="panel-hint">مرتّبة حسب الأيام — كل تأميدة في مربع، والرئيسية وملحقاتها سطور مستقلة داخله</span></div>
+      {% if pick_groups %}
+      <div class="c2-list" id="c2List">
+        {% for g in pick_groups %}
+        <section class="c2-day" data-day="{{ g.day }}">
+          <h4 class="c2-day-h">{{ g.label }}</h4>
+          {% for tm in g.tameedat %}
+          <div class="c2-tm c{{ tm.color }}" data-rid="{{ tm.record_id }}">
+            <div class="c2-tm-head">تأميدة «{{ tm.title }}» — {{ tm.range_label }}</div>
+            {% for p in tm.picks %}
+            <button type="button" class="c2-pickrow {{ 'on' if p in selected }}" data-key="{{ p.key }}"
+                    title="أضف هذه الجهة وحدها إلى مربع الإذن">
+              <span class="c2-pick-who">
+                <b>{{ p.name }}</b>
+                {% if p.is_attachment %}<small>ملحقة</small>{% else %}<small class="main">رئيسية</small>{% endif %}
+              </span>
+              <span class="c2-chip-force">القوة {{ (p.officers + p.individuals + p.recruits) | aindic }}
+                ({{ p.officers | aindic }} / {{ p.individuals | aindic }} / {{ p.recruits | aindic }})</span>
+            </button>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </section>
+        {% endfor %}
+      </div>
+      <p class="tm-hint">{{ picks | length | aindic }} جهة — اضغط السطر لإضافته أو حذفه من مربع الإذن.</p>
+      {% else %}
+      <p class="panel-hint" style="padding:16px 0;text-align:center">لا تأميدات في هذه المدة — غيّر التاريخ أو سجّل تأميدة أولًا.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>الجهات المحددة في هذا الإذن <span id="c2BoxCount">({{ selected | length | aindic }})</span></h3>
+        <span class="panel-hint">المربع فاضي إلى أن تضيف جهات — صرف الملحقة دون الرئيسية يُظهر مربع التأميدة وفي داخله الملحقة فقط</span></div>
+      <div class="c2-box" id="c2Box">
+        {% if selected_groups %}
+          {% for g in selected_groups %}
+            {% for tm in g.tameedat %}
+            <div class="c2-tm c{{ tm.color }}" data-rid="{{ tm.record_id }}">
+              <div class="c2-tm-head">تأميدة «{{ tm.title }}» · {{ g.label }} — {{ tm.range_label }}</div>
+              {% for p in tm.picks %}
+              <span class="c2-chip" data-key="{{ p.key }}">
+                <b>{{ p.name }}</b>
+                {% if p.is_attachment %}<small>ملحقة</small>{% else %}<small class="main">رئيسية</small>{% endif %}
+                <span class="c2-chip-force">القوة: {{ (p.officers + p.individuals + p.recruits) | aindic }}
+                  (ضباط {{ p.officers | aindic }} · أفراد {{ p.individuals | aindic }} · مجندين {{ p.recruits | aindic }})</span>
+                <button type="button" class="c2-x" aria-label="إزالة">×</button>
+              </span>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+        <span class="c2-box-empty" id="c2Empty">المربع فاضي — اختر جهة من قائمة التأميدات بالأعلى</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>بيانات القوة والصرف</h3></div>
+      <div class="c2-force">
+        <label>عدد الضباط<input name="officers" id="c2Off" inputmode="numeric" value="{{ officers | aindic }}"></label>
+        <label>عدد الأفراد<input name="individuals" id="c2Ind" inputmode="numeric" value="{{ individuals | aindic }}"></label>
+        <label>عدد الجنود (مجندين)<input name="recruits" id="c2Rec" inputmode="numeric" value="{{ recruits | aindic }}"></label>
+        <label class="wide">اسم الجهة / القطاع الطالب
+          <input name="entity_label" id="c2Label" value="{{ entity_label }}"></label>
+        <label>أيام الصرف (المدة)
+          <input name="issue_days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
+      </div>
+      <div class="c2-meals">
+        <b>أقسام الوجبات المستحقة للصرف في هذا الإذن:</b>
+        {% for key, label in meals %}
+        <label><input type="checkbox" name="meal_{{ key }}" value="1" checked> {{ label }}</label>
+        {% endfor %}
+        <span class="c2-force-total">إجمالي القوة البشرية المستفيدة: <b id="c2Force">{{ force | aindic }}</b> فرد</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>بيانات الصرف</h3></div>
+      <div class="c2-meta">
+        <label>المندوب المستلم — النوع
+          <input name="receiver_kind" data-combo="c2Kinds" autocomplete="off" placeholder="ضابط / فرد / مجند"></label>
+        <datalist id="c2Kinds"><option value="ضابط"><option value="فرد"><option value="مجند"></datalist>
+        <label>الرتبة<input name="receiver_rank" placeholder="مثال: رائد / رقيب"></label>
+        <label>اسم المندوب<input name="receiver_name" placeholder="مندوب الاستلام / عسكر"></label>
+        <label>المسؤول عن الصرف
+          <input name="issuer_name" data-combo="c2Issuers" autocomplete="off"
+                 placeholder="حاضر بشهادة صحية أو اكتب اسمًا"></label>
+        <datalist id="c2Issuers">{% for r in issuers %}<option value="{{ r.name }}">{% endfor %}</datalist>
+        <label>رقم الإذن التجريبي
+          <input value="{{ next_free_number | aindic }}" readonly>
+          <small class="c2-free-note">ترقيم تجريبي مستقل — لا يلمس ترقيم الإذون الحقيقي</small></label>
+      </div>
+    </div>
+
+    {% macro free_table(title, rows, prefix) %}
+    <div class="panel">
+      <div class="panel-head"><h3>{{ title }}</h3>
+        <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × أيام الصرف — المعدل من جدول التوزيع الحر (قابل للتعديل)</span></div>
+      <div class="table-wrap">
+        <table class="rt-table c2-table c2-table-free">
+          <thead>
+            <tr>
+              <th title="مسلسل">م</th><th>اسم الصنف</th><th>معدل الفرد اليومى</th>
+              <th>أيام الصرف</th><th>الكمية (معدل × قوة × أيام)</th><th>الكمية الفعلية</th>
+            </tr>
+          </thead>
+          <tbody id="c2Body-{{ prefix }}">
+            {% for it in rows %}
+            <tr data-force-days="{{ it.force_days }}" data-name="{{ it.name }}">
+              <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
+              <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+              <td><input name="freerate_{{ prefix }}_{{ it.name }}" class="c2-rate-input"
+                         inputmode="decimal" value="{{ it.rate | qty3 }}"></td>
+              <td class="num c2-days">{{ it.days | aindic }}</td>
+              <td class="num c2-auto">{{ it.auto | qty3 }}</td>
+              <td><input name="actual_{{ prefix }}_{{ it.name }}" class="c2-actual"
+                         inputmode="decimal" value="{{ it.auto | qty3 }}"></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="empty">أضف جهة للمربع بالأعلى لظهور الأصناف.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endmacro %}
+
+    {{ free_table("المقررات التموينية", tamween, "tamween") }}
+    {{ free_table("مقررات المتعهد (الطازجة والمجمدة)", contractor, "contractor") }}
+
+    <div class="c2-save">
+      <button class="rt-btn gold big" type="submit" id="c2SaveMain">💾 حفظ إذن تجريبي برقم مستقل</button>
+    </div>
+    <p class="panel-hint c2-save-note c2-free-note">
+      <b>تجريبي بالكامل:</b> الحفظ هنا <b>لا يخصم من المخازن</b> ولا يدخل التفريدة ولا يلمس ترقيم الإذون الحقيقي —
+      الإذن يتحفظ في سجل الإذون التجريبية للشهر (يمكن إعادة طبعته أو حذفه).</p>
+
+    <div class="panel">
+      <div class="panel-head"><h3>الإذون التجريبية المحفوظة هذا الشهر</h3>
+        <span class="panel-hint">{{ permits | length | aindic }} إذن — ترقيم مستقل عن الإذون الحقيقية</span></div>
+      {% if permits %}
+      <div class="table-wrap">
+        <table class="rt-table">
+          <thead>
+            <tr><th>رقم تجريبي</th><th>الفترة</th><th>الجهة</th><th>القوة</th><th>حُفظ</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for p in permits %}
+            <tr>
+              <td class="num">{{ p.number | aindic }}</td>
+              <td class="num">{{ p.date_from | aindic }} — {{ p.date_to | aindic }} ({{ p.issue_days | aindic }} يوم)</td>
+              <td>{{ p.entity_label }}</td>
+              <td class="num">{{ ((p.officers or 0) + (p.individuals or 0) + (p.recruits or 0)) | aindic }}</td>
+              <td class="dim">{{ (p.created_at or '')[:16] }}</td>
+              <td class="c2-acts">
+                <a class="rt-btn small navy" href="{{ url_for('calc2_free.free_page', permit=p.id) }}">📄 معاينة وطباعة</a>
+                <form method="post" action="{{ url_for('calc2_free.free_delete', permit_id=p.id) }}"
+                      onsubmit="return confirm('متأكد إنك عايز تحذف الإذن التجريبي رقم {{ p.number | aindic }}؟');">
+                  <button class="rt-btn small dim" type="submit">🗑️ حذف</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="panel-hint" style="padding:12px 0;text-align:center">مفيش إذون تجريبية محفوظة في هذا الشهر بعد.</p>
+      {% endif %}
+    </div>
+  </form>
+  <script type="application/json" id="c2PicksData">{{ picks | tojson }}</script>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
+{% if not preview %}
+<script src="{{ url_for('static', filename='js/calc2_free.js') }}?v={{ static_ver }}"
+        data-rows="{{ url_for('calc2_free.free_rows') }}"></script>
+{% endif %}
+{% endblock %}

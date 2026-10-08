@@ -12,6 +12,8 @@
   <span class="dim">{{ month_name }} {{ year | aindic }} — سنة الإذن {{ fiscal_year | aindic }}/{{ (fiscal_year + 1) | aindic }}</span>
   {% include "partials/print_btn.html" %}
 </div>
+{% set cur_tab = 'main' %}
+{% include "calc2/tabs.html" %}
 
 <form method="get" action="{{ url_for('calc2.page') }}" class="panel c2-bar" id="c2Filter">
   <div class="c2-dates">
@@ -121,7 +123,8 @@
                placeholder="حاضر بشهادة صحية أو اكتب اسمًا"></label>
       <datalist id="c2Issuers">{% for r in issuers %}<option value="{{ r.name }}">{% endfor %}</datalist>
       <label>رقم إذن الصرف (بون ٢ مخازن)
-        <input name="number" inputmode="numeric" value="{{ next_number | aindic }}"></label>
+        <input name="number" inputmode="numeric" id="c2NumberInput" value="{{ next_number | aindic }}">
+        <small class="c2-dup-warn" id="c2DupWarn" hidden></small></label>
     </div>
   </div>
 
@@ -202,6 +205,7 @@
 </form>
 <script type="application/json" id="c2LowRatio">{{ stock_low_ratio | tojson }}</script>
 <script type="application/json" id="c2PicksData">{{ picks | tojson }}</script>
+<script type="application/json" id="c2UsedNumbers">{{ used_numbers | tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
