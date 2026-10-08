@@ -1,11 +1,15 @@
 <!-- تبويب «تأميدات اليوم المحدد» — تقويم الشهر + سجلات اليوم + نموذج التسجيل -->
 
-<!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21) -->
+<!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21)
+     والاثنان **يتبعان اليوم المفتوح** فيسمّيانه صراحةً (كل يوم يتب بيومه — نفس سلوك الراغبين)،
+     وملف الشهر الكامل يبقى بجوارهما بطلب واحد (?scope=month) فلا يفقد المستخدم شيئًا -->
 <div class="tm-openbar">
-  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='day') }}"
-    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «تأميدات اليوم المحدد»</a>
-  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='day') }}"
-    title="يفتح ملف الإكسل المحلي للتبويب على جهازك">📗 فتح ملف «إجمالي الشهر.xlsx» (Excel)</a>
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='day', day=sel_date_iso) }}"
+    title="يفتح فولدر «تأميدات يوم {{ sel_day | aindic }}» نفسه داخل «تأميدات اليوم المحدد» على جهازك">📂 فتح مجلد «تأميدات يوم {{ sel_day | aindic }}»</a>
+  <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='day', day=sel_date_iso) }}"
+    title="يفتح ملف إكسل «تاميدات اليوم {{ sel_day | aindic }}.xlsx» — تأميدات اليوم المفتوح نفسه">📗 فتح ملف «{{ day_file_name(sel_day) }}»</a>
+  <a class="tm-openbtn dim" href="{{ url_for('tameedat.open_tab_file', tab='day', scope='month') }}"
+    title="يفتح ملف إكسل الشهر كله (كل تأميدات الشهر ببطاقاتها) على جهازك">📗 «إجمالي الشهر.xlsx»</a>
   {% include "partials/print_btn.html" %}
 </div>
 
@@ -107,7 +111,11 @@
                  data-combo="tmDictNames" value="{{ edit_record.entity_name if edit_record else '' }}"
                  {{ 'readonly class=locked' if edit_record }}>
           <datalist id="tmDictNames">{% for n in entity_names %}<option value="{{ n }}">{% endfor %}</datalist>
-          <small class="tm-hint warn" id="tmUnknownWarn" hidden>⚠️ جهة غير مسجلة في قاموس الشهر — ستُضاف إليه تلقائيًا عند الحفظ.</small>
+          <small class="tm-hint warn" id="tmUnknownWarnWrap" hidden>
+            <span id="tmUnknownWarn">⚠️ جهة غير مسجلة في قاموس الشهر — ستُضاف إليه تلقائيًا عند الحفظ.</span>
+            <button type="button" class="al-ig-btn" id="tmUnknownIgnore"
+                    title="تجاهل التنبيه لهذه الجهة في الشهر — مش هيظهر تاني لاسمها">تجاهل</button>
+          </small>
           {% if edit_record %}<small class="tm-hint">لا يمكن تغيير الجهة أثناء التعديل — احذف السجل وأضفه لجهة أخرى.</small>{% endif %}
         </div>
       </div>

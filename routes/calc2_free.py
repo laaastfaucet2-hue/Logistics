@@ -23,13 +23,11 @@ MEAL_KEYS = ("breakfast", "lunch", "dinner")
 
 
 def _base_args():
-    """الفترة والأيام من الطلب (نفس منطق صفحة ٢ مخازن)."""
+    """الفترة والأيام من الطلب — الافتراضي: الشهر كله (تظهر كل التأميدات)."""
     year, month = _ctx()
     last = egtime.days_in_month(year, month)
-    today = egtime.today()
-    default = today.day if today.year == year and today.month == month else 1
-    day_from = _day(year, month, request.args.get("from") or request.form.get("date_from"), default)
-    day_to = _day(year, month, request.args.get("to") or request.form.get("date_to"), day_from)
+    day_from = _day(year, month, request.args.get("from") or request.form.get("date_from"), 1)
+    day_to = _day(year, month, request.args.get("to") or request.form.get("date_to"), last)
     if day_to < day_from:
         day_to = day_from
     issue_days = arnum.parse_int(request.args.get("days") or request.form.get("issue_days")) \
@@ -96,8 +94,21 @@ def free_page():
     _, token = current_session()
     ok = request.args.get("ok") or ""
     err = request.args.get("err") or ""
+    view = request.args.get("view") or ""
+    catalog = {"tamween": [], "contractor": []}
+    if view == "rates":
+        catalog = {"tamween": fb.catalog_rows(year, month, "tamween", rates),
+                   "contractor": fb.catalog_rows(year, month, "contractor", rates)}
+    sub_args = {}
+    if request.args.get("from"):
+        sub_args["from"] = request.args.get("from")
+    if request.args.get("to"):
+        sub_args["to"] = request.args.get("to")
+    sub_args_rates = dict(sub_args)
+    sub_args_rates["view"] = "rates"
     return render_template(
         "calc2/tab_free.html",
+        view=view, catalog=catalog,
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
         day_from=day_from, day_to=day_to, issue_days=issue_days,
         picks=picks, pick_groups=pb.pick_groups(year, month, picks),
@@ -111,7 +122,7 @@ def free_page():
         next_free_number=nxt, fiscal_year=fiscal, days_in_month=last,
         permits=permits, preview=preview, preview_id=preview_id,
         sid=token or "", ok=ok, err=err,
-        cur_tab="free",
+        cur_tab="free", sub_args=sub_args, sub_args_rates=sub_args_rates,
     )
 
 
@@ -213,21 +224,34 @@ def free_save():
                                "selected": ",".join(p["key"] for p in selected)}))
 
 
+@calc2_free_bp.route("/rates/save", methods=["POST"])
+@login_required
+def free_rates_save():
+    """حفظ معدلات التوزيع الحرة كاملة (من تاب «معدلات التوزيع»)."""
+    year, month = _ctx()
+    _free_rates(year, month)
+    saved = 0
+    for key, raw in request.form.items():
+        if not key.startswith("rate_"):
+            continue
+        parts = key.split("_", 2)
+        if len(parts) != 3 or parts[1] not in ("tamween", "contractor"):
+            continue
+        name = " ".join(parts[2].split())
+        if not name:
+            continue
+        value = arnum.parse_float(raw)
+        if value is None:
+            continue
+        c2f.save_rate(year, month, parts[1], name, value)
+        saved += 1
+    return redirect(url_for("calc2_free.free_page", view="rates",
+                            ok="اتحفظت معدلات التوزيع الحرة (" + arnum.to_arabic_indic(saved) + " صنف)"))
+
+
 @calc2_free_bp.route("/delete/<int:permit_id>", methods=["POST"])
 @login_required
 def free_delete(permit_id):
     year, month = _ctx()
     c2f.delete_permit(year, month, permit_id)
     return redirect(url_for("calc2_free.free_page", ok="اتحذف الإذن التجريبي"))
-
-
-@calc2_free_bp.route("/dowail")
-@login_required
-def dowail_page():
-    """تب «تفاريد الدويلي» — المرحلة القادمة (خطوط/نقاط + أوراق + إجماليات)."""
-    _, token = current_session()
-    year, month = _ctx()
-    return render_template("calc2/tab_dowail_placeholder.html",
-                           year=year, month=month,
-                           month_name=MONTH_NAMES[month - 1],
-                           sid=token or "", cur_tab="dowail")

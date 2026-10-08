@@ -65,6 +65,7 @@
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/raghibin_modal.js') }}?v={{ static_ver }}"></script>
 <script type="application/json" id="tmEntities">{{ entity_names | tojson }}</script>
+<script type="application/json" id="tmIgnoredNames">{{ alert_ignored_names | tojson if alert_ignored_names is defined else "[]" }}</script>
 <script src="{{ url_for('static', filename='js/tameedat.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/tameedat_rations.js') }}?v={{ static_ver }}"
         data-preview="{{ url_for('tameedat.rations_preview') }}"></script>

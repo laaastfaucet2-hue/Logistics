@@ -91,13 +91,15 @@
 
   /* فتح/قفل نماذج الزر الأمبر + فورمات رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
   [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"],
-   ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"]].forEach(function (pair) {
+   ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"],
+   ["whOpenerEditToggle", "whOpenerEditForm"]].forEach(function (pair) {
     var btn = document.getElementById(pair[0]);
     var form = document.getElementById(pair[1]);
     if (!btn || !form) return;
     var lbl = btn.querySelector(".wh-newbtn-label");
     var plus = btn.querySelector(".wh-newbtn-plus");
     var closedTxt = lbl ? lbl.textContent : "";
+    var closedPlus = plus ? plus.textContent : "＋";
     btn.addEventListener("click", function () {
       var open = form.hidden;
       form.hidden = !open;
@@ -105,7 +107,7 @@
       btn.setAttribute("aria-expanded", open ? "true" : "false");
       /* الزر الأمبر يوضح حالته: لما الفورم يفتح يبقى «قفل… ✕» — وزرار الحفظ آخر الفورم جواه */
       if (lbl) lbl.textContent = open ? ("قفل " + closedTxt) : closedTxt;
-      if (plus) plus.textContent = open ? "✕" : "＋";
+      if (plus) plus.textContent = open ? "✕" : closedPlus;
       if (open) {
         var first = form.querySelector("input:not([type=hidden])");
         if (first) first.focus();
@@ -681,7 +683,11 @@
     refresh();
   }
 
-  wirePackaging(document, null);   /* احتياط للنماذج القديمة — الكروت تُربط في wireLineCard */
+  /* فورمات رصيد أول المدة (تسجيل/جديد/تعديل): كل فورم بيتربط بمعادلته هو —
+     عشان «data-item-name» على الفورم نفسه يعطي بيانات الصنف الصح (توجيه ٠٨/١٠) */
+  Array.prototype.forEach.call(document.querySelectorAll("form.wh-opener"), function (f) {
+    if (f.querySelector('[name="pack_kind"]')) wirePackaging(f, null);
+  });
 
   /* توزيع الكمية على المخازن — صناديق متعددة (١ مخازن + رصيد أول المدة) بكومبو متمثّم */
 
@@ -719,7 +725,7 @@
     }
     SPLIT_REFRESH.push(refresh);
 
-    function addRow() {
+    function addRow(preName, preQty) {
       var row = document.createElement("div");
       row.className = "wh-split-row";
       row.innerHTML =
@@ -729,6 +735,9 @@
         '<button type="button" class="icon-btn del js-split-del" title="إزالة المخزن">' +
         '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
       rows.appendChild(row);
+      if (preName) row.querySelector('[name="' + prefix + 'store_name"]').value = preName;
+      if (preName) row.querySelector('[name="' + prefix + 'store_id"]').value = storeIdByName(preName) || "";
+      if (preQty) row.querySelector('[name="' + prefix + 'store_qty"]').value = preQty;
       if (window.LogisticsCombo) window.LogisticsCombo.enhance(row);
       row.querySelector('[name="' + prefix + 'store_name"]').addEventListener("change", function () {
         row.querySelector('[name="' + prefix + 'store_id"]').value = storeIdByName(this.value) || "";
@@ -744,6 +753,12 @@
 
     add.addEventListener("click", addRow);
     if (box.dataset.autoRow === "1" && !rows.children.length) addRow();
+    var preRows = box.dataset.preRows;
+    if (preRows) {
+      try {
+        JSON.parse(preRows).forEach(function (sp) { addRow(sp.name, sp.qty); });
+      } catch (e) {}
+    }
     refresh();
   }
 
@@ -910,6 +925,34 @@ document.addEventListener("click", function (ev) {
   });
   Array.prototype.forEach.call(scope.querySelectorAll("[" + pan + "]"), function (p) {
     p.hidden = p.getAttribute(pan) !== btn.getAttribute(sub);
+  });
+});
+
+/* ٣ مخازن — التابان الرئيسيان الفرعيان: «٣ مخازن» + «٣ مخازن تفاريد» (توجيه ٠٨/١٠) */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-wh3top]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-wh3top");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh3top]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh3toppanel]"), function (p) {
+    p.hidden = p.getAttribute("data-wh3toppanel") !== btn.getAttribute("data-wh3top");
+  });
+});
+
+/* ٣ مخازن تفاريد — تاب لكل صنف: الضغط يعرض دفتر التغليف الخاص بيه فقط (توجيه ٠٨/١٠) */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-wh3tab]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-wh3taf");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh3tab]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-wh3tabpanel]"), function (p) {
+    p.hidden = p.getAttribute("data-wh3tabpanel") !== btn.getAttribute("data-wh3tab");
   });
 });
 

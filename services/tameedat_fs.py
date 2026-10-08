@@ -16,6 +16,7 @@ import json
 import logging
 
 from core import dates, egtime
+from core import arabic_numbers as arnum
 from core import labels
 from services import sheet_columns
 from core import colors as palette
@@ -93,6 +94,27 @@ def ensure_folders(year, month):
 
 def report_dir(year, month):
     return tab_dir(year, month, "report")
+
+
+def day_dir(year, month, day):
+    """فولدر «يوم N» بأرقام عربية داخل تبويب «تأميدات اليوم المحدد» — مصدر واحد للتسمية.
+
+    الزر «📂 فتح مجلد «تأميدات يوم N»» يفتح هذا الفولدر بعينه لليوم المفتوح على الشاشة،
+    وفولدرات اللقطات (#_snapshot_day_folders) تُبنى بنفس الاسم فلا يفترق الاثنان أبدًا.
+    """
+    path = tab_dir(year, month, "day") / "يوم {}".format(arnum.to_arabic_indic(str(day)))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def day_file_name(day):
+    """اسم ملف إكسل اليوم المحلي — مصدر واحد (الكتابة والتنزيل يقرآن منه)."""
+    return "تاميدات اليوم {}.xlsx".format(arnum.to_arabic_indic(str(day)))
+
+
+def day_file(year, month, day):
+    """مسار ملف إكسل اليوم داخل فولدره (لا يكون مُنشأً إذا كان اليوم بلا تأميدات)."""
+    return day_dir(year, month, day) / day_file_name(day)
 
 
 def _meta(year, month):
@@ -207,8 +229,7 @@ def _snapshot_day_folders(year, month, records):
     for rec in records:
         by_day.setdefault(rec["day"], []).append(rec)
     for day in range(1, egtime.days_in_month(year, month) + 1):
-        folder = root / "يوم {}".format(arnum.to_arabic_indic(str(day)))
-        folder.mkdir(exist_ok=True)
+        folder = day_dir(year, month, day)      # نفس اسم وتسمية زر «فتح المجلد» اليومية
         if not by_day.get(day):
             continue
         book = Workbook()
@@ -255,9 +276,7 @@ def _snapshot_day_folders(year, month, records):
         sheet.column_dimensions["A"].width = 34
         sheet.column_dimensions["B"].width = 46
         signatures_rows(sheet, sheet.max_row + 2, year, month, 2)
-        dataguard.atomic_save(book.save,
-                              folder / "تاميدات اليوم {}.xlsx".format(
-                                  arnum.to_arabic_indic(str(day))), zip_check=False)
+        dataguard.atomic_save(book.save, folder / day_file_name(day), zip_check=False)
 
 
 def _save_xlsx(path, sheets, year=None, month=None):

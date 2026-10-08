@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}تفاريد الدولى — إدارة الخطوط والنقاط{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>📦 تفاريد الدولى — النقط الحدودية</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<div class="panel">
+  <div class="panel-head"><h3>الفرع الثاني: إدارة مركز الخطوط والنقاط — الدولى</h3></div>
+
+  <div class="dw-cols">
+    <div>
+      <h4 class="dw-h">الخطوط القائمة</h4>
+      {% if lines %}
+      <ul class="dw-lines">
+        {% for l in lines %}
+        <li class="dw-line {{ 'on' if l.id == sel_line_id }}">
+          <a href="{{ url_for('dowail.page', tab='lines', line=l.id, from=day_from, to=day_to) }}"><b>{{ l.name }}</b></a>
+          <small>{{ l.count | aindic }} ورقة | {{ l.active | aindic }} نشطة | قوة {{ l.total_force | aindic }}</small>
+          <form method="post" action="{{ url_for('dowail.delete_line', line_id=l.id) }}"
+                onsubmit="return confirm('متأكد من حذف «{{ l.name }}» وكل نقاطه؟');">
+            <button class="dw-mini danger" type="submit">🗑️ حذف</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="panel-hint">مفيش خطوط لسه — ابدأ بإضافة خط.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('dowail.add_line') }}" class="dw-addrow">
+        <input name="name" placeholder="اسم الخط الجديد (مثال: خط الشمال)" required>
+        <button class="rt-btn gold small" type="submit">+ إضافة الخط</button>
+      </form>
+    </div>
+
+    <div>
+      <h4 class="dw-h">نقاط الخط المحدد</h4>
+      {% set sel = (lines | selectattr('id', 'equalto', sel_line_id) | list | first) or (lines[0] if lines else none) %}
+      {% if sel %}
+      <p class="panel-hint">خط: <b>{{ sel.name }}</b> — قوة الخط {{ sel.total_force | aindic }}</p>
+      {% if sel.points %}
+      <table class="rt-table dw-points">
+        <thead><tr><th>النقطة</th><th>القوة (قابلة للتعديل)</th><th></th></tr></thead>
+        <tbody>
+          {% for p in sel.points %}
+          <tr>
+            <td><b>{{ p.name }}</b></td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.update_point', point_id=p.id) }}" class="dw-inline">
+                <input name="force" inputmode="numeric" value="{{ p.force | aindic }}">
+                <input type="hidden" name="from_tab" value="lines">
+                <button class="dw-mini" type="submit">حفظ</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.delete_point', point_id=p.id) }}"
+                    onsubmit="return confirm('حذف «{{ p.name }}»؟');">
+                <button class="dw-mini danger" type="submit">🗑️</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-hint">مفيش نقاط في هذا الخط بعد.</p>
+      {% endif %}
+      {% else %}
+      <p class="panel-hint">أضف خط أولًا.</p>
+      {% endif %}
+      {% if lines %}
+      <form method="post" action="{{ url_for('dowail.add_point') }}" class="dw-addrow dw-addrow-wide">
+        <input type="hidden" name="line_id" value="{{ sel.id }}">
+        <input name="name" placeholder="+ إضافة نقطة جديدة لخط {{ sel.name }}" required>
+        <input name="force" inputmode="numeric" placeholder="القوة" class="dw-w-narrow">
+        <button class="rt-btn gold small" type="submit">إضافة النقطة</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -103,16 +103,47 @@
       });
     });
 
-    // تنبيه الجهة غير المسجلة في قاموس الشهر — قبل الإضافة الفعلية عند الحفظ
+    // تنبيه الجهة غير مسجلة في قاموس الشهر — قبل الإضافة الفعلية عند الحفظ
+    // + زرار «تجاهل» جنبه (توجيه ٠٨/١٠): يتجاهل لاسم الجهة في الشهر كله
     var entityInput = document.getElementById("tmEntity");
-    var warn = document.getElementById("tmUnknownWarn");
+    var warn = document.getElementById("tmUnknownWarnWrap");
+    var ignoreBtn = document.getElementById("tmUnknownIgnore");
     var known = [];
     try { known = JSON.parse(document.getElementById("tmEntities").textContent); } catch (e) { known = []; }
+    var ignoredNames = [];
+    try { ignoredNames = JSON.parse(document.getElementById("tmIgnoredNames").textContent); } catch (e) { ignoredNames = []; }
+    var sessionIgnored = {};
     if (entityInput && warn) {
-      entityInput.addEventListener("input", function () {
-        var name = entityInput.value.trim().replace(/\s+/g, " ");
-        warn.hidden = !name || known.indexOf(name) !== -1;
-      });
+      function warnName() {
+        return entityInput.value.trim().replace(/\s+/g, " ");
+      }
+      function refreshWarn() {
+        var name = warnName();
+        warn.hidden = !name || known.indexOf(name) !== -1 ||
+          ignoredNames.indexOf(name) !== -1 || !!sessionIgnored[name];
+      }
+      entityInput.addEventListener("input", refreshWarn);
+      if (ignoreBtn) {
+        ignoreBtn.addEventListener("click", function () {
+          var name = warnName();
+          if (!name) return;
+          ignoreBtn.disabled = true;
+          fetch("/tameedat/alerts/ignore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: "unknown_dict", name: name })
+          }).then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok) throw new Error(data.err || "فشلت العملية");
+              sessionIgnored[name] = true;
+              ignoredNames.push(name);
+              refreshWarn();
+            }).catch(function (err) {
+              window.alert("تعذر تجاهل التنبيه: " + err.message);
+            }).finally(function () { ignoreBtn.disabled = false; });
+        });
+      }
+      refreshWarn();
     }
   }
 

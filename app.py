@@ -67,6 +67,7 @@ def create_app():
     from routes.tameedat import tameedat_bp
     from routes.calc2 import calc2_bp
     from routes.calc2_free import calc2_free_bp
+    from routes.dowail import dowail_bp
     from routes.month_copy import copy_bp
     from routes.warehouses import warehouses_bp
     from routes.stores import stores_bp
@@ -80,7 +81,7 @@ def create_app():
     web.register(app)
     main.register(app)
     for bp in (rations_bp, letterhead_bp, backups_bp, recruits_bp, tameedat_bp, calc2_bp,
-               calc2_free_bp, warehouses_bp, stores_bp, health_bp, tarfea_bp,
+               calc2_free_bp, dowail_bp, warehouses_bp, stores_bp, health_bp, tarfea_bp,
                raghibin_bp, assistant_bp, files_tree_bp, occasions_bp):
         app.register_blueprint(bp)
     app.add_url_rule("/health", "health", lambda: {"status": "ready", "version": APP_VERSION})

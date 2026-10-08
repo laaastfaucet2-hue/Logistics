@@ -145,6 +145,10 @@ def page():
     nxt, fiscal = dp.peek_next_number(egtime.today())
     stock = {"tamween": stock_link.for_rows(year, month, "tamween", tamween),
              "contractor": stock_link.for_rows(year, month, "contractor", contractor)}
+    # الأرقام المستخدمة في الشهر — تنبيه فوري على الكتابة لو الرقم مكرر (توجيه ٠٨/١٠)
+    used_numbers = [{"n": p["number"], "day": p["date_from"],
+                     "label": p.get("entity_label") or ""}
+                    for p in dp.list_permits(year, month)]
     return render_template(
         "calc2/page.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
@@ -158,6 +162,7 @@ def page():
         stock=stock, stock_low_ratio=STOCK_LOW_RATIO,
         stock_totals={k: stock_link.totals(v) for k, v in stock.items()},
         next_number=nxt, fiscal_year=fiscal, days_in_month=last,
+        used_numbers=used_numbers,
         meal_on={"breakfast": True, "lunch": True, "dinner": True},
     )
 

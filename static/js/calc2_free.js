@@ -1,6 +1,6 @@
 // ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر
-/* «٢ مخازن حرة» — نفس آلية ٢ مخازن لكن بمعدل فرد/يوم واحد قابل للتعديل
-   وبلا أعمدة المخزون — الكمية = المعدل × القوة × أيام الصرف. */
+/* «٢ مخازن حرة» — نفس آلية ٢ مخازن لكن بمعدل فرد/يوم قابل للتعديل + مخصصات أيام.
+   الكمية = المعدل × (القوة×أيام القاعدة) + (المخصص × قواه) — إعادة حساب لحظية. */
 (function () {
   "use strict";
   var dataEl = document.getElementById("c2PicksData");
@@ -125,6 +125,13 @@
     markList(keys);
     loadRows(keys);
   }
+  function chipsHtml(chips) {
+    if (!chips || !chips.length) return "";
+    return '<div class="c2-custom-chips">' + chips.map(function (c) {
+      return '<span class="c2-custom-chip" title="يُضاف فوق المعدل في ' + c.label + '">' +
+        c.label + " — " + qty3(c.qty) + "</span>";
+    }).join("") + "</div>";
+  }
   function fillBody(prefix, rows) {
     var tb = document.getElementById("c2Body-" + prefix);
     if (!tb) return;
@@ -134,9 +141,10 @@
     }
     tb.innerHTML = rows.map(function (it) {
       var unit = it.unit ? " <small>" + it.unit + "</small>" : "";
-      return "<tr data-force-days=\"" + it.force_days + "\" data-name=\"" + it.name + "\">" +
+      return "<tr data-base-force-days=\"" + it.base_force_days +
+        "\" data-auto-custom=\"" + it.auto_custom + "\">" +
         "<td class=\"num\" title=\"مسلسل\">" + ar(it.serial) + "</td>" +
-        "<td class=\"name c-item-soft\"><b>" + it.name + "</b>" + unit + "</td>" +
+        "<td class=\"name c-item-soft\"><b>" + it.name + "</b>" + unit + chipsHtml(it.custom) + "</td>" +
         "<td><input name=\"freerate_" + prefix + "_" + it.name + "\" class=\"c2-rate-input\"" +
           " inputmode=\"decimal\" value=\"" + qty3(it.rate) + "\"></td>" +
         "<td class=\"num c2-days\">" + ar(it.days) + "</td>" +
@@ -152,7 +160,7 @@
       inp.addEventListener("input", recalcRow);
     });
   }
-  /* إعادة حساب لحظية: الكمية = المعدل × (القوة × الأيام الفعلية للصنف) */
+  /* الكمية = المعدل × (القوة×أيام القاعدة) + (المخصص × قواه) */
   function recalcRow(ev) {
     var inp = ev.target;
     var tr = inp.closest("tr");
@@ -162,9 +170,10 @@
     }).replace("٫", ".");
     var rate = parseFloat(v);
     if (!isFinite(rate)) rate = 0;
-    var fd = Number(tr.getAttribute("data-force-days")) || 0;
+    var bfd = Number(tr.getAttribute("data-base-force-days")) || 0;
+    var ac = Number(tr.getAttribute("data-auto-custom")) || 0;
     var autoCell = tr.querySelector(".c2-auto");
-    if (autoCell) autoCell.textContent = qty3(rate * fd);
+    if (autoCell) autoCell.textContent = qty3(rate * bfd + ac);
   }
   var rowsUrl = (document.currentScript && document.currentScript.getAttribute("data-rows")) || "/calc2/free/rows";
   function loadRows(keys) {
@@ -174,7 +183,8 @@
     var url = rowsUrl + (rowsUrl.indexOf("?") >= 0 ? "&" : "?") +
       "from=" + encodeURIComponent(fromEl ? fromEl.value : "") +
       "&to=" + encodeURIComponent(toEl ? toEl.value : "") +
-      "&days=" + encodeURIComponent(daysEl ? daysEl.value : "");
+      "&days=" + encodeURIComponent(daysEl ? daysEl.value : "") +
+      "&selected=" + encodeURIComponent((keys || []).join(","));
     fetch(url, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (data) {

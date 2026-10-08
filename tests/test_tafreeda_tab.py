@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""تاب «٢ مخازن تفاريد» — تفريدة كل إذن بالدفعات FEFO ورصيد المخزن قبل/بعد.
+"""تاب «٢ مخازن — التغليف» (توجيه ٠٨/١٠): النافذة المتراصة وملف الإذن المنفصل.
 
-توجيه ٠٦/١٠/٢٠٢٦ (الدفعة هـ): التاب الجديد يعرض نفس بيانات ملف
-«٢ مخازن تفاريد مجمع.xlsx» وملفات أيامه — قاعدة «الورق = الإكسل».
-"""
+التاب المنفصل «٢ مخازن تفاريد» اتلغى — بيانات التغليف بقت في سب-تاب «التغليف»
+جوه تاب ٢ مخازن: سطر لكل إذن بإجمالي منصرف قابل للضغط يفتح النافذة المتراصة
+(الأصناف فوق بعض، كل صنف ٣ سطور: الصنف/بالوحدة/بالتغليف + سطر باتش صغير:
+تغليف الدفعة·مخزن·انتهاء)، وكل إذن في إكسل منفصل:
+٢ مخازن\أذونات الصرف\يوم N\إذن M.xlsx + ٢ مخازن\تفاريد\يوم N\إذن M.xlsx."""
 from data_access import db_permits as dp, db_rations as dr
 from data_access import db_warehouses as dw, months
 from services import warehouses_fs as wf
@@ -27,53 +29,83 @@ def _seed_stock_and_permit(number=3, qty=60):
         "actuals": {"tamween_أرز": qty}})
 
 
-def test_tab_is_registered_with_folder_and_file(app):
+def _header_row(ws):
+    """سطر العناوين تحت الدباجة (٦ صفوف) — أول سطر فيه «الصنف»."""
+    for row in ws.iter_rows(values_only=True):
+        vals = [v for v in row if v not in (None, "")]
+        if "الصنف" in vals:
+            return vals
+    return []
+
+
+def test_tabs_registered_with_new_folders(app):
     _init()
-    assert ("tafreeda", "٢ مخازن تفاريد", "🧾") in __import__("routes.warehouses",
-                                                             fromlist=["TABS"]).TABS
-    assert wf.SUB_FOLDERS["tafreeda"] == "٢ مخازن تفاريد"
-    assert wf.TAB_XLSX["tafreeda"] == "٢ مخازن تفاريد مجمع.xlsx"
+    from routes.warehouses import TABS
+    keys = [t[0] for t in TABS]
+    assert "tafreeda" not in keys                      # التاب المنفصل اتلغى
+    assert ("wh2", "٢ مخازن", "📤") in TABS
+    assert ("wh3", "٣ مخازن", "📒") in TABS
+    assert wf.SUB_FOLDERS["wh2"] == "٢ مخازن"
+    assert wf.SUB_FOLDERS["wh3"] == "٣ مخازن"
+    assert wf.WH2_ISSUES == "أذونات الصرف" and wf.WH2_TAFARID == "تفاريد"
+    assert wf.file_path(YEAR, MONTH, "supply", "wh2") is None   # كل إذن في ملفه
+    assert wf.TAB_XLSX_2["wh3"] == "٣ مخازن تفاريد.xlsx"
 
 
-def test_tab_shows_fefo_lines_with_before_after(client):
+def test_packaging_subtab_opens_stack_window(client):
     _init()
     _seed_stock_and_permit()
-    page = client.get("/warehouses?cycle=supply&sub=tafreeda").data.decode("utf-8")
-    for token in ("٢ مخازن تفاريد", "إذن صرف رقم", "الصلاحية المتبقية", "تغليف الدفعة",
-                  "المخزن قبل", "المنصرف بالتغليف", "جهة التفريدة"):
-        assert token in page, token
-    assert "٦٠ كجم" in page                     # المنصرف بالوحدة (أرقام عربية)
-    assert "٢٠٠ كجم" in page and "١٤٠ كجم" in page   # رصيد المخزن قبل/بعد
+    page = client.get("/warehouses?cycle=supply&sub=wh2").data.decode("utf-8")
+    # تابان فرعيان: «أذونات الصرف» (الافتراضي) + «التغليف»
+    assert 'data-wh2sub="sijlat"' in page and 'data-wh2sub="tafared"' in page
+    assert "أذونات الصرف" in page and "التغليف" in page
+    # إجمالي المنصرف قابل للضغط يفتح النافذة المتراصة
+    assert "wh-total-btn" in page and 'data-taf-open="packDialog-3"' in page
+    # النافذة: كل صنف ٣ سطور + سطر باتش صغير + إجماليات
+    import re as _re
+    _dlg = _re.search(r'id="packDialog-3".*?</dialog>', page, _re.S).group(0)
+    assert "المنصرف بالوحدة" in _dlg and "المنصرف بالتغليف" in _dlg
+    assert "تغليف الدفعة" in _dlg and "المخزن" in _dlg and "الانتهاء" in _dlg
+    assert "إجمالي المنصرف" in _dlg
+    assert "جهة التفريدة" in page
+    assert "٦٠" in _dlg                                # المنصرف بالوحدة (أرقام عربية)
 
 
-def test_tab_empty_state_is_explicit_and_never_crashes(client):
+def test_packaging_subtab_empty_state_is_explicit(client):
     _init()
-    page = client.get("/warehouses?cycle=contractor&sub=tafreeda").data.decode("utf-8")
-    assert "لا تفاريد في هذا الشهر بعد" in page
-    assert "٢ مخازن تفاريد" in page             # التاب ظاهر رغم الفراغ
+    page = client.get("/warehouses?cycle=contractor&sub=wh2").data.decode("utf-8")
+    assert 'data-wh2panel="tafared"' in page
+    assert "لا منصرف مسجّل" in page                    # حالة فارغة صريحة
+    assert "sub=tafreeda" not in page                  # مفيش وداد للتبويب الملغي
 
 
-def test_tafreeda_tab_columns_match_its_local_file(client):
-    """قاعدة «الورق = الإكسل»: أعمدة الشاشة هي أعمدة ملف «٢ مخازن تفاريد مجمع.xlsx»."""
+def test_permit_files_exist_with_same_columns_as_the_view(client):
+    """قاعدة «الورق = الإكسل»: ملف «تفاريد\يوم N\إذن M.xlsx» بنفس بيانات الشاشة."""
     from openpyxl import load_workbook
     _init()
     _seed_stock_and_permit(number=9, qty=30)
     wf.snapshot_cycle(YEAR, MONTH, "supply")
-    path = wf.file_path(YEAR, MONTH, "supply", "tafreeda")
-    assert path.exists()
-    ws = load_workbook(path).active
-    headers = [c.value for c in ws[1] if c.value]
-    page = client.get("/warehouses?cycle=supply&sub=tafreeda").data.decode("utf-8")
-    # نفس أعمدة الملف بالحرف — «الورق = الإكسل» (توجيه ٠٦/١٠)
-    for name in ("م", "الجهة", "الصنف", "الكمية المنصرفة", "الوحدة", "المنصرف بالتغليف",
-                 "تغليف الدفعة", "مخزن", "تاريخ الانتهاء", "الصلاحية المتبقية",
-                 "إذن رقم", "ملاحظات"):
-        assert name in headers and name in page, name
+    taf_path = wf.wh2_permit_dir(YEAR, MONTH, "supply", taf=True) / "يوم ١" / "إذن ٩.xlsx"
+    issues_path = wf.wh2_permit_dir(YEAR, MONTH, "supply", taf=False) / "يوم ١" / "إذن ٩.xlsx"
+    assert taf_path.exists()
+    assert issues_path.exists()
+    wb = load_workbook(taf_path)
+    assert "التفريدة" in wb.sheetnames
+    headers = _header_row(wb["التفريدة"])
+    for name in ("الصنف", "الكمية بالوحدة", "المنصرف بالتغليف",
+                 "تغليف الدفعة", "المخزن", "تاريخ الانتهاء", "الصلاحية المتبقية"):
+        assert name in headers, name
+    # هيدر الإذن: كل حاجة بتعريفه
+    head = wb.worksheets[0]
+    head_text = " ".join(str(c) for row in head.iter_rows(values_only=True)
+                         for c in row if c is not None)
+    for token in ("الجهة المستلمة", "المسؤول عن الصرف", "من يوم", "إلى يوم", "أيام الصرف"):
+        assert token in head_text, token
 
 
-def test_tab_counts_appear_in_tab_bar(client):
+def test_tab_bar_counts_and_no_legacy_tab(client):
     _init()
     _seed_stock_and_permit(number=11, qty=25)
     page = client.get("/warehouses?cycle=supply&sub=wh2").data.decode("utf-8")
-    assert "٢ مخازن تفاريد" in page             # تويب التاب ظاهر في شريط التويبات
-    assert "/warehouses?cycle=supply&amp;sub=tafreeda" in page or "sub=tafreeda" in page
+    assert "sub=tafreeda" not in page                  # مفيش تاب منفصل في الشريط
+    assert "wh2" in page and "٢ مخازن" in page

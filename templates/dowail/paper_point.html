@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}ورقة نقطة — {{ point.name }}{% endblock %}
+{% block print_doc_title %}نقطة تأميد ومراقبة «{{ point.name }}» — «{{ line.name }}»{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>📦 تفاريد الدولى — ورقة نقطة</span>
+  <span class="sep">•</span>
+  <span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<div class="panel dw-paper">
+  <div class="dw-paper-title">نقطة تأميد ومراقبة «{{ point.name }}»</div>
+  <div class="dw-paper-meta">
+    <span>الخط: <b>{{ line.name }}</b></span>
+    <span>قوة النقطة: <b>{{ point.force | aindic }}</b> فرد</span>
+    <span>الفترة: يوم {{ day_from | aindic }} — يوم {{ day_to | aindic }} ({{ issue_days | aindic }} يوم)</span>
+    {% if store_keeper or scribe %}<span>أمين المخزن: <b>{{ store_keeper or '—' }}</b> · كاتب التمييزات: <b>{{ scribe or '—' }}</b></span>{% endif %}
+    <span class="dw-resp">
+      <form method="post" action="{{ url_for('dowail.update_point', point_id=point.id) }}" class="dw-inline">
+        اسم المسؤول المنوط بالتفريدة:
+        <input name="responsible" value="{{ point.responsible }}" class="dw-w-wide">
+        <input type="hidden" name="responsible_only" value="1">
+        <button class="dw-mini" type="submit">حفظ</button>
+      </form>
+    </span>
+  </div>
+  <div class="table-wrap">
+    <table class="rt-table dw-paper-table">
+      <thead>
+        <tr>
+          <th>م</th><th>المادة التموينية المصروفة</th><th>الوحدة</th>
+          <th>المعدل اليومى</th><th>أيام الصرف</th><th>الحصيلة الإجمالية للنقطة</th><th>ملاحظات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i, r in rows %}
+        <tr>
+          <td class="num">{{ (i + 1) | aindic }}</td>
+          <td><b>{{ r.name }}</b>{% if r.production_year %} <small>(دفعة {{ r.production_year | aindic }})</small>{% endif %}</td>
+          <td>{{ r.unit }}</td>
+          <td class="num">{{ r.rate | qty3 }}</td>
+          <td class="num">{{ r.days | aindic }}</td>
+          <td class="num">{{ r.total | qty3 }}</td>
+          <td></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty">لا أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="dw-sigs">
+    <div class="dw-sig">أمين المخزن (المُسهم)<br><small>(أمين)</small></div>
+    <div class="dw-sig">المندوب المستلم بالتفريدة (المُسهم)</div>
+  </div>
+  <div class="c2-save">
+    <a class="rt-btn" href="{{ url_for('dowail.page', tab='papers', from=day_from, to=day_to, days=issue_days) }}">← العودة للبوابة</a>
+    {% if line %}<a class="rt-btn navy" href="{{ url_for('dowail.line_paper', line_id=line.id, from=day_from, to=day_to, days=issue_days) }}">📄 ورقة الخط المجمعة</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

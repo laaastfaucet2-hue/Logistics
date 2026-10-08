@@ -33,7 +33,8 @@ def test_occasions_page_is_permanent_and_lists_kinds_and_filters(client):
     page = client.get("/occasions").data.decode("utf-8")
     assert "التوثيق والمناسبات" in page
     assert "صفحة دائمة لا تتبع شهرًا ولا سنة" in page
-    assert "🔎 البحث الذكي" in page and 'name="from"' in page and 'name="to"' in page
+    # «بحث» (توجيه: مربع البحث الذكى سمية «بحث» — بلا إيموجي على الأزرار)
+    assert 'class="oc-wide">بحث <input name="q"' in page and 'name="from"' in page and 'name="to"' in page
     # النوع يُختار من قائمة (ويمكن كتابة مسمّى حر) — قرار المستخدم
     assert 'name="kind"' in page and "<datalist" in page
 

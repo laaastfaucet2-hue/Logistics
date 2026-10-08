@@ -20,6 +20,7 @@ from core import arabic_numbers as arnum, dates, egtime
 from data_access import months
 from data_access import db_rations as dr
 from data_access import db_warehouses as dw
+from data_access import packaging
 from services import warehouses_fs as wf
 
 warehouses_bp = Blueprint("warehouses", __name__, url_prefix="/warehouses")
@@ -27,9 +28,8 @@ warehouses_bp = Blueprint("warehouses", __name__, url_prefix="/warehouses")
 TABS = [
     ("suppliers", "الشركات الموردة", "🏢"),
     ("wh1", "١ مخازن — إذون الإضافة", "📥"),
-    ("wh2", "٢ مخازن — إذون الصرف", "📤"),
-    ("wh3", "٣ مخازن — دفتر الأصناف", "📒"),
-    ("tafreeda", "٢ مخازن تفاريد", "🧾"),
+    ("wh2", "٢ مخازن", "📤"),
+    ("wh3", "٣ مخازن", "📒"),
 ]
 SUB_KEYS = {t[0] for t in TABS}
 
@@ -93,6 +93,36 @@ def _day(year, month, raw, fallback):
 def _default_day(year, month):
     today = egtime.today()
     return today.day if today.year == year and today.month == month else 1
+
+
+def _opener_bits(raw_notes):
+    """البتات المحفوظة في ملاحظات الأول المدة «منتج: … — مورد: …» + ملاحظات
+    المستخدم الحرة — لفكها عند تعبئة فورم التعديل (توجيه ٠٨/١٠)."""
+    producer, supplier, user = "", "", ""
+    for seg in (raw_notes or "").split(" — "):
+        seg = seg.strip()
+        if seg.startswith("منتج: "):
+            producer = seg[len("منتج: "):].strip()
+        elif seg.startswith("مورد: "):
+            supplier = seg[len("مورد: "):].strip()
+        elif seg:
+            user = (user + " — " + seg).strip(" —")
+    return producer, supplier, user
+
+
+def _opener_pack_note(card, specs_map):
+    """شريحة «التغليف المتبقي» لكارت — للتقرير قبل/بعد تعديل أول المدة."""
+    if not card or card["balance"] <= 0:
+        return ""
+    specs = specs_map.get(card["item"]["name"], {})
+    if not specs:
+        return ""
+    pk = list(specs)[-1]
+    sp = specs[pk]
+    return dw.pack_breakdown(pk, sp.get("capacity"), sp.get("inner_count"),
+                             sp.get("inner_capacity"), card["balance"],
+                             card["item"]["handle_unit"],
+                             inner_kind=sp.get("inner_kind")) or ""
 
 
 def _wday(year, month, day):
@@ -173,6 +203,10 @@ def _tarfea_gate():
 @login_required
 def page():
     year, month = _ctx()
+    # التاب المنفصل «٢ مخازن تفاريد» اتلغى (توجيه ٠٨/١٠): الودات القديمة تفتح «التغليف»
+    if request.values.get("sub") == "tafreeda":
+        return redirect(url_for("warehouses.page", cycle=_cycle(), sub="wh2",
+                                wh2sub="tafared"))
     cycle, sub = _cycle(), _sub()
     if cycle == "tarfea":   # احتياط — البوابة before_request تغطي هذا مسبقًا
         # نحافظ على كل باراميترات الرابط (كارت الصنف ورسائل الحفظ) — توجيه ٢٨/٠٩ ليلًا
@@ -204,7 +238,7 @@ def page():
     catalog_missing = [c for c in dw.ration_catalog(year, month, cycle)
                        if c["name"].lower() not in item_name_set]
 
-    permits = dw.permits_book(year, month, cycle) if sub in ("wh2", "tafreeda") else []
+    permits = dw.permits_book(year, month, cycle) if sub == "wh2" else []
     tafreeda = dw.tafreeda_rows(year, month, cycle)
     _taf_entities = {p["number"]: (p.get("entity_label") or "—") for p in permits}
     for _t in tafreeda:
@@ -251,43 +285,120 @@ def page():
     stores_registry = db_stores.list_stores()
     pack_kinds = dw.collect_pack_kinds()
     packs_map = dw.pack_specs_map(year, month, cycle)
+    # «٢ مخازن — التغليف» (توجيه ٠٨/١٠): النافذة المتراصة — الأصناف فوق بعض،
+    # كل صنف ٣ سطور (الصنف/بالوحدة/بالتغليف) + سطر باتش صغير (تغليف الدفعة·مخزن·انتهاء)
+    _permits_by_no = {p["number"]: p for p in permits}
+
+    def _last_spec(specs):
+        if not specs:
+            return {}
+        kind = list(specs)[-1]
+        sp = specs[kind] or {}
+        return {"pack_kind": kind, "pack_capacity": sp.get("capacity"),
+                "pack_inner_count": sp.get("inner_count"),
+                "pack_inner_capacity": sp.get("inner_capacity"),
+                "pack_inner_kind": sp.get("inner_kind")}
+
+    taf_stack = {}
+    for no, pg in taf_popup.items():
+        pe = _permits_by_no.get(no)
+        items_out = []
+        for it in (pe["cycle_items"] if pe else []):
+            line = pg["lines"].get(it["name"])
+            total = line["total"] if line else 0.0
+            unit = (line or {}).get("unit") or it.get("unit") or "—"
+            spec = _last_spec(packs_map.get(it["name"], {}))
+            total_pack = (dw.pack_breakdown(spec.get("pack_kind"),
+                                            spec.get("pack_capacity"),
+                                            spec.get("pack_inner_count"),
+                                            spec.get("pack_inner_capacity"),
+                                            total, unit, "—",
+                                            inner_kind=spec.get("pack_inner_kind"))
+                          if total > 0 else "—") or "—"
+            batches = []
+            if line:
+                for b in sorted(line["stores"],
+                                key=lambda r: (r.get("seq") or 0, r.get("store_name") or "")):
+                    batches.append({
+                        "qty": b.get("qty"), "unit": b.get("unit") or unit,
+                        "issued_label": b.get("issued_label") or "—",
+                        "pack_label": b.get("pack_label") or "—",
+                        "store_name": b.get("store_name") or "—",
+                        "expiry": b.get("expiry") or "",
+                        "expiry_left": b.get("expiry_left") or "—",
+                        "notes": b.get("notes") or ""})
+            items_out.append({"name": it["name"], "unit": unit, "total": total,
+                              "total_pack": total_pack, "batches": batches})
+        # «lines» مش «items» — جينجا بياخد دالة dict.items من غير قصد
+        taf_stack[no] = {"lines": items_out, "main_entity": pg["main_entity"],
+                         "extras": pg["extras"], "total": pg["total"],
+                         "date_from": pg["date_from"], "date_to": pg["date_to"]}
+    taf_stack = dict(sorted(taf_stack.items()))
     editing = None
     if sub == "suppliers" and request.args.get("edit"):
         editing = dw.get_supplier(year, month, arnum.parse_int(request.args.get("edit")) or 0,
                                   cycle)
 
     card = None
-    if sub == "wh3" and request.args.get("item"):
-        card = dw.item_card(year, month, arnum.parse_int(request.args.get("item")) or 0)
-        if card and card["item"]["cycle"] != cycle:
-            card = None
-    taf3 = None
+    taf3_all = {}
+    if sub == "wh3":
+        # «٣ مخازن تفاريد» المقسم: دفتر بالتغليف لكل صنف (توجيه ٠٨/١٠)
+        taf3_all = wf.taf3_all(year, month, cycle, items)
+        if request.args.get("item"):
+            card = dw.item_card(year, month, arnum.parse_int(request.args.get("item")) or 0)
+            if card and card["item"]["cycle"] != cycle:
+                card = None
+    opener_edit = None
     if card:
         for row in card["rows"]:
             row["wday"] = _wday(year, month, row["day"])
         card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
         # الحالة الكلية للصنف: الرصيد والمضاف والمنصرف والتغليف المتبقي (توجيه ٢٧/٠٩)
-        _specs = dw.pack_specs_map(year, month, cycle).get(card["item"]["name"], {})
-        card["pack_note"] = ""
-        if _specs and card["balance"] > 0:
-            _pk = list(_specs)[-1]
-            _sp = _specs[_pk]
-            card["pack_note"] = dw.pack_breakdown(
-                _pk, _sp.get("capacity"), _sp.get("inner_count"),
-                _sp.get("inner_capacity"), card["balance"], card["item"]["handle_unit"],
-                inner_kind=_sp.get("inner_kind"))
-        # دفتر التفاريد الخاص بالصنف: مضاف/منصرف/الرصيد بالتغليف (توجيه ٢٧/٠٩)
-        taf3 = wf.taf3_pack_rows(year, month, cycle, card["item"]["id"])
-        if taf3:
-            for row in taf3["rows"]:
-                row["wday"] = _wday(year, month, row["day"])
+        _specs = packs_map.get(card["item"]["name"], {})
+        card["pack_note"] = _opener_pack_note(card, packs_map)
+        # تعديل رصيد أول المدة (توجيه ٠٨/١٠): فورم مُعبّى بكل بيانات السطر —
+        # الكمية والتغليف من pack_label + معاير الصنف محفوظة في wh_pack_specs
+        if card["has_opener"]:
+            _orow = card["opener_row"]
+            _producer, _supplier, _unotes = _opener_bits(_orow.get("raw_notes") or "")
+            _cnt, _pkind, _pcap, _loose = packaging.parse_pack_label(_orow.get("pack_label") or "")
+            _lsp = _specs.get(list(_specs)[-1], {}) if _specs else {}
+            if not _pkind:
+                _pkind = list(_specs)[-1] if _specs else ""
+            if _pcap <= 0:
+                _pcap = _lsp.get("capacity") or 0
+            if not _cnt and (_pcap or 0) > 0:
+                _cnt = round(float(_orow["added"]) / _pcap)
+            opener_edit = {
+                "item_id": card["item"]["id"],
+                "qty": float(_orow["added"]),
+                "day": int(_orow["day"] or 1),
+                "producer": _producer,
+                "supplier": _supplier,
+                "notes": _unotes,
+                "prod_date": _orow.get("prod_date") or "",
+                "exp_date": _orow.get("exp_date") or "",
+                "pack_kind": _pkind or "",
+                "pack_count": _cnt or 0,
+                "pack_capacity": _pcap or 0,
+                "pack_inner_count": _lsp.get("inner_count") or 0,
+                "pack_inner_capacity": _lsp.get("inner_capacity") or 0,
+                "pack_inner_kind": _lsp.get("inner_kind") or "",
+                "pack_loose": _loose or 0,
+                "pack_loose_unit": card["item"]["handle_unit"] if (_loose or 0) > 0 else "",
+                "split": [{"name": s["store_name"], "qty": s["qty"]}
+                          for s in dw.opener_stores(year, month, cycle).get(card["item"]["id"], [])],
+            }
+    # التاب النشط في «٣ مخازن تفاريد»: الصنف المفتوح أو أول صنف في الدورة
+    taf3_active_id = card["item"]["id"] if card else (
+        items[0]["id"] if (sub == "wh3" and items) else None)
 
     cycle_cfg = WAREHOUSE_MAP.get(cycle) or {
         "key": "tarfea", "name": "سجل الترفية", "icon": "🎖️", "section": "tarfea"}
-    tab_file = wf.TAB_XLSX[sub]
+    tab_file = wf.TAB_XLSX.get(sub, "")
+    tab_file2 = wf.TAB_XLSX_2.get(sub, "")
     counts = {"suppliers": len(suppliers), "wh1": len(receipts),
-              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items),
-              "tafreeda": len(tafreeda)}
+              "wh2": len(dw.permits_book(year, month, cycle)), "wh3": len(items)}
     items_data = {}
     for it in items:
         base, factor = unit_base(it["handle_unit"])
@@ -305,7 +416,7 @@ def page():
         cycles=WAREHOUSE_CYCLES, cycle_key=cycle, cycle_name=cycle_cfg["name"],
         cycle_icon=cycle_cfg["icon"], cycle_section=cycle_cfg["section"],
         subs=TABS, sub=sub, sub_name=dict((t[0], t[1]) for t in TABS)[sub],
-        tab_file=tab_file, tab_folder=wf.SUB_FOLDERS[sub],
+        tab_file=tab_file, tab_file2=tab_file2, tab_folder=wf.SUB_FOLDERS[sub],
         counts=counts,
         suppliers=suppliers, editing=editing, groups=groups, wh1_edit=wh1_edit,
         items=items, catalog_missing=catalog_missing,
@@ -317,8 +428,8 @@ def page():
         prefill=request.args.get("item_name") or "",
         items_data=items_data, unit_base_data=UNIT_BASE,
         stores_registry=stores_registry, pack_kinds=pack_kinds,
-        tafreeda_by_permit=tafreeda_by_permit, tafreeda_all=tafreeda,
-        taf_popup=taf_popup, taf3=taf3,
+        taf_popup=taf_popup, taf3_all=taf3_all, opener_edit=opener_edit,
+        taf3_active_id=taf3_active_id, taf_stack=taf_stack,
     )
 
 
@@ -576,26 +687,91 @@ def wh3_opener():
     except ValueError:
         return _rb(cycle, "wh3", err="تاريخ مستحيل — اكتب التاريخ يوم/شهر/سنة صحيحًا",
                    item=item_id)
+    date_iso = f"{year:04d}-{month:02d}-{day:02d}"
+    # تعديل (مش تسجيل أول مرة)؟ — لقطات قبل الحفظ للتقرير
+    is_edit = bool(item_id) and item.get("id") and dw.has_opener(year, month, item["id"])
+    old_card = dw.item_card(year, month, item["id"]) if is_edit else None
+    old_taf = wf.taf3_pack_rows(year, month, cycle, item["id"]) if is_edit else None
+    old_specs = dw.pack_specs_map(year, month, cycle) if is_edit else {}
+    old_note = _opener_pack_note(old_card, old_specs)
     try:
-        dw.add_opener(year, month, cycle, item["name"], qty, day,
-                      producer=request.form.get("producer"),
-                      supplier_id=supplier_id, supplier_name=supplier_name,
-                      notes=request.form.get("notes"),
-                      date_iso=f"{year:04d}-{month:02d}-{day:02d}",
-                      pack_kind=pack_kind, pack_count=pack_count,
-                      pack_capacity=pack_capacity, pack_loose=pack_loose,
-                      pack_inner_count=pack_inner_count,
-                      pack_inner_capacity=pack_inner_capacity,
-                      pack_inner_kind=pack_inner_kind,
-                      pack_loose_unit=pack_loose_unit,
-                      prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
+        if is_edit:
+            dw.update_opener(year, month, cycle, item["id"], qty, day,
+                             producer=request.form.get("producer"),
+                             supplier_id=supplier_id, supplier_name=supplier_name,
+                             notes=request.form.get("notes"),
+                             date_iso=date_iso,
+                             pack_kind=pack_kind, pack_count=pack_count,
+                             pack_capacity=pack_capacity, pack_loose=pack_loose,
+                             pack_inner_count=pack_inner_count,
+                             pack_inner_capacity=pack_inner_capacity,
+                             pack_inner_kind=pack_inner_kind,
+                             pack_loose_unit=pack_loose_unit,
+                             prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
+        else:
+            dw.add_opener(year, month, cycle, item["name"], qty, day,
+                          producer=request.form.get("producer"),
+                          supplier_id=supplier_id, supplier_name=supplier_name,
+                          notes=request.form.get("notes"),
+                          date_iso=date_iso,
+                          pack_kind=pack_kind, pack_count=pack_count,
+                          pack_capacity=pack_capacity, pack_loose=pack_loose,
+                          pack_inner_count=pack_inner_count,
+                          pack_inner_capacity=pack_inner_capacity,
+                          pack_inner_kind=pack_inner_kind,
+                          pack_loose_unit=pack_loose_unit,
+                          prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
     except ValueError as exc:
         return _rb(cycle, "wh3", err=str(exc), item=item_id)
-    ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته"
-               " — وتسجيلها في البيانات المحلية")
-    if not _snapshot(cycle):
-        ok_open += " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة"
+    snap_ok = _snapshot(cycle)
+    warn_tail = ("" if snap_ok else
+                 " — ⚠️ إكسل المرايا مفتوح: اقفله وسيُحدَّث تلقائيًا عند أول فتح للصفحة")
+    if is_edit:
+        new_card = dw.item_card(year, month, item["id"])
+        new_taf = wf.taf3_pack_rows(year, month, cycle, item["id"])
+        new_note = _opener_pack_note(
+            new_card, dw.pack_specs_map(year, month, cycle))
+        ok_open = _opener_report(item["name"], item["handle_unit"],
+                                 old_card, new_card, old_taf, new_taf,
+                                 old_note, new_note) + warn_tail
+    else:
+        ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته"
+                   " — وتسجيلها في البيانات المحلية") + warn_tail
     return _rb(cycle, "wh3", item=item_id, ok=ok_open)
+
+
+def _opener_report(name, unit, old_card, new_card, old_taf, new_taf, old_note, new_note):
+    """تقرير ما اتغير في جدول الصنف بعد تعديل رصيد أول المدة (توجيه ٠٨/١٠) —
+    «لو غيرتوا يدينى تقرير عن كل اللي هيتغير في الجدول»."""
+    o, n = old_card["opener_row"], new_card["opener_row"]
+    parts = []
+    if abs(float(o["added"]) - float(n["added"])) > 0.000001:
+        parts.append(f"الكمية: {arnum.fmt_qty(o['added'])} ← {arnum.fmt_qty(n['added'])} {unit}")
+    if (o.get("pack_label") or "—") != (n.get("pack_label") or "—"):
+        parts.append(f"تغليف الدفعة: {o.get('pack_label') or '—'} ← {n.get('pack_label') or '—'}")
+    if int(o["day"] or 0) != int(n["day"] or 0):
+        parts.append("اليوم: %s ← %s (وسطر أول المدة اتنقل في ترتيب الجدول)"
+                     % (arnum.to_arabic_indic(str(o["day"])), arnum.to_arabic_indic(str(n["day"]))))
+        parts.append("أُعيد احتساب كل سطور الجدول بعد النقل")
+    else:
+        changed = sum(1 for a, b in zip(old_card["rows"], new_card["rows"])
+                      if abs(float(a["balance"]) - float(b["balance"])) > 0.000001)
+        if changed:
+            parts.append(f"أُعيد احتساب الرصيد في {arnum.to_arabic_indic(str(changed))} سطر من الجدول")
+    if abs(float(old_card["balance"]) - float(new_card["balance"])) > 0.000001:
+        parts.append(f"الرصيد الختامى: {arnum.fmt_qty(old_card['balance'])} ← "
+                     f"{arnum.fmt_qty(new_card['balance'])} {unit}")
+    if abs(float(old_card["total_added"]) - float(new_card["total_added"])) > 0.000001:
+        parts.append(f"إجمالي المضاف: {arnum.fmt_qty(old_card['total_added'])} ← "
+                     f"{arnum.fmt_qty(new_card['total_added'])} {unit}")
+    if (old_note or "—") != (new_note or "—"):
+        parts.append(f"التغليف المتبقي: {old_note or '—'} ← {new_note or '—'}")
+    if old_taf and new_taf and (old_taf["balance_pack"] or "—") != (new_taf["balance_pack"] or "—"):
+        parts.append(f"رصيد تاب التفاريد بالتغليف: {old_taf['balance_pack'] or '—'} ← {new_taf['balance_pack'] or '—'}")
+    head = f"عُدّل رصيد أول المدة لصنف «{name}»"
+    if not parts:
+        return head + " — مفيش تغييرات على الأرصدة (اتحفظ بنفس القيم)"
+    return head + " — اللي اتغير في الجدول: " + " · ".join(parts)
 
 
 # ======================================================================
@@ -649,11 +825,52 @@ def open_folder(cycle, sub):
 def open_file(cycle, sub):
     _tab_or_404(cycle, sub)
     year, month = _ctx()
+    second = request.args.get("file") == "taf3"
+    if sub == "wh2":
+        # مفيش ملف واحد: كل إذن في إكسل منفصل جوا فولدر يومه (توجيه ٠٨/١٠)
+        path = wf.cycle_dir(year, month, cycle, "wh2")
+        if _open_path(path):
+            return _rb(cycle, sub,
+                       ok="تم فتح مجلد «٢ مخازن» — كل إذن له ملفه في فولدر يومه 📂")
+        return _rb(cycle, sub,
+                   err="لا يوجد ملف واحد لتبويب ٢ مخازن — كل إذن له ملفه في فولدر يومه")
     _snapshot(cycle)
-    path = wf.file_path(year, month, cycle, sub)
+    path = wf.file_path(year, month, cycle, sub, second=second)
     if path.exists() and _open_path(path):
-        return _rb(cycle, sub, ok=f"تم فتح ملف «{wf.TAB_XLSX[sub]}» 📗")
-    return redirect(url_for("warehouses.download", cycle=cycle, sub=sub))
+        return _rb(cycle, sub, ok=f"تم فتح ملف «{path.name}» 📗")
+    return redirect(url_for("warehouses.download", cycle=cycle, sub=sub,
+                            **({"file": "taf3"} if second else {})))
+
+
+@warehouses_bp.route("/permit-file/<cycle>/<int:permit_no>")
+@login_required
+def permit_file(cycle, permit_no):
+    """زر «فتح الاكسل» جنب عرض الإذن في ٢ مخازن (توجيه ٠٨/١٠): يفتح إكسل الإذن
+    المنفصل — من أذونات الصرف في تاب «أذونات الصرف»، ومن تفاريد في تاب «التغليف»."""
+    _tab_or_404(cycle, "wh2")
+    year, month = _ctx()
+    taf = request.args.get("taf") == "1"
+    _snapshot(cycle)   # لو الإذن اتحفظ والمرايا متأخرة — نضمن الملف موجود
+    from data_access import db_permits as dp
+    permit = next((p for p in dp.list_permits(year, month)
+                   if int(p["number"]) == int(permit_no)), None)
+    if not permit:
+        return _rb(cycle, "wh2", err="الإذن غير موجود في بيانات هذا الشهر")
+    try:
+        day = int(permit.get("date_from") or 0)
+    except (TypeError, ValueError):
+        day = 0
+    if day < 1:
+        return _rb(cycle, "wh2", err="الإذن بلا يوم محدد — ما فيش ملف إكسل ليه")
+    path = wf.wh2_permit_file_path(year, month, cycle, permit_no, day, taf=taf)
+    if path.exists() and _open_path(path):
+        return _rb(cycle, "wh2", ok=f"تم فتح «{path.name}» 📗")
+    if not path.exists():
+        return _rb(cycle, "wh2",
+                   err=f"ملف «{path.name}» لم يُنشأ بعد — أعد حفظ الإذن وسيُكتب")
+    return _rb(cycle, "wh2",
+               err="فتح الملف مباشرة متاح عند تشغيل البرنامج على جهازك — "
+                   "افتح مجلد «٢ مخازن» بالزرار فوق")
 
 
 @warehouses_bp.route("/download/<cycle>/<sub>")
@@ -662,8 +879,12 @@ def download(cycle, sub):
     from core.downloads import attachment
     _tab_or_404(cycle, sub)
     year, month = _ctx()
+    second = request.args.get("file") == "taf3"
+    if sub == "wh2":
+        return _rb(cycle, sub,
+                   err="مفيش ملف واحد لتنزيله — كل إذن في إكسل منفصل جوا فولدر يومه")
     _snapshot(cycle)
-    path = wf.file_path(year, month, cycle, sub)
-    if not path.exists():
+    path = wf.file_path(year, month, cycle, sub, second=second)
+    if not path or not path.exists():
         return _rb(cycle, sub, err="الملف لم يُنشأ بعد — أضف بيانات أولًا")
     return attachment(path, f"warehouses-{cycle}-{sub}-{year}-{month:02d}.xlsx")

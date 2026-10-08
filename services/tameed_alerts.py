@@ -26,8 +26,8 @@ def _ar(value):
     return arnum.to_arabic_indic(str(int(value or 0)))
 
 
-def _issue(level, text):
-    return {"level": level, "text": text}
+def _issue(level, text, key):
+    return {"level": level, "text": text, "key": key}
 
 
 def entity_cadres(year, month, entity_id):
@@ -45,19 +45,23 @@ def record_day_issues(tameeda, willing, cadres):
         issues.append(_issue(
             "danger",
             "الجهة غير مسجلة في «الجهات والكوادر المعتمدة» بالراغبين — "
-            "سجّل أسماء قوتها (ضباط/أفراد) أولًا"))
+            "سجّل أسماء قوتها (ضباط/أفراد) أولًا",
+            "no_cadres"))
     else:
         if not tameeda["officers"] and cadres["officers"]:
-            issues.append(_issue("info", "التأميدة بلا ضباط مع وجود قوة ضباط مسجلة"))
+            issues.append(_issue("info", "التأميدة بلا ضباط مع وجود قوة ضباط مسجلة",
+                                 "no_officers"))
         if not tameeda["individuals"] and cadres["individuals"]:
-            issues.append(_issue("info", "التأميدة بلا أفراد مع وجود قوة أفراد مسجلة"))
+            issues.append(_issue("info", "التأميدة بلا أفراد مع وجود قوة أفراد مسجلة",
+                                 "no_individuals"))
 
     total_willing = willing["officers"] + willing["individuals"]
     if not total_willing:
         issues.append(_issue(
             "danger",
             "مفيش راغب واحد مسجل بالأسماء في اليوم ده — "
-            f"التأميدة مسجلة ضباط {_ar(tameeda['officers'])} وأفراد {_ar(tameeda['individuals'])}"))
+            f"التأميدة مسجلة ضباط {_ar(tameeda['officers'])} وأفراد {_ar(tameeda['individuals'])}",
+            "no_willing"))
         return issues
 
     if willing["officers"] < tameeda["officers"]:
@@ -65,24 +69,28 @@ def record_day_issues(tameeda, willing, cadres):
             "warn",
             f"الراغبون المسجلون ضباط {_ar(willing['officers'])} "
             f"أقل من التأميدة ({_ar(tameeda['officers'])}) — الناقص "
-            f"{_ar(tameeda['officers'] - willing['officers'])}"))
+            f"{_ar(tameeda['officers'] - willing['officers'])}",
+            "officers_low"))
     elif willing["officers"] > tameeda["officers"]:
         issues.append(_issue(
             "warn",
             f"الراغبون المسجلون ضباط {_ar(willing['officers'])} "
-            f"أكثر من التأميدة ({_ar(tameeda['officers'])})"))
+            f"أكثر من التأميدة ({_ar(tameeda['officers'])})",
+            "officers_high"))
     if willing["individuals"] < tameeda["individuals"]:
         issues.append(_issue(
             "warn",
             f"الراغبون المسجلون أفراد {_ar(willing['individuals'])} "
             f"أقل من التأميدة ({_ar(tameeda['individuals'])}) — الناقص "
-            f"{_ar(tameeda['individuals'] - willing['individuals'])}"))
+            f"{_ar(tameeda['individuals'] - willing['individuals'])}",
+            "individuals_low"))
     elif willing["individuals"] > tameeda["individuals"]:
         issues.append(_issue(
             "warn",
             f"الراغبون المسجلون أفراد {_ar(willing['individuals'])} "
             "أكثر من التأميدة "
-            f"({_ar(tameeda['individuals'])})"))
+            f"({_ar(tameeda['individuals'])})",
+            "individuals_high"))
     issues.sort(key=lambda item: LEVEL_ORDER.get(item["level"], 9))
     return issues
 
@@ -94,6 +102,8 @@ def month_rows(year, month, only_issues=True):
     """
     records = dt.month_records(year, month)
     cadres_cache, willing_cache = {}, {}
+    ignored = {(i["entity_id"], i["day"], i["issue_key"])
+               for i in dt.alert_ignores(year, month)}
     rows = []
     for record in records:
         entity_id = record["entity_id"]
@@ -109,7 +119,11 @@ def month_rows(year, month, only_issues=True):
             willing = willing_by_day.get(day, {"officers": 0, "individuals": 0})
             tameeda = {"officers": record["officers"], "individuals": record["individuals"]}
             issues = record_day_issues(tameeda, willing, cadres)
-            if only_issues and not issues:
+            key = (entity_id, day)
+            visible = [i for i in issues
+                       if (key[0], key[1], i["key"]) not in ignored]
+            hidden = [i for i in issues if i not in visible]
+            if only_issues and not visible and not hidden:
                 continue
             rows.append({
                 "record_id": record["id"],
@@ -126,30 +140,38 @@ def month_rows(year, month, only_issues=True):
                 "willing": willing,
                 "cadres": {"officers": cadres["officers"], "individuals": cadres["individuals"]},
                 "attachments": len(record.get("attachments") or []),
-                "issues": issues,
-                "level": issues[0]["level"] if issues else "ok",
-                "level_label": LEVEL_LABEL.get(issues[0]["level"], "سليم") if issues else "سليم",
+                "issues": visible,
+                "ignored_issues": hidden,
+                "level": visible[0]["level"] if visible else "ok",
+                "level_label": LEVEL_LABEL.get(visible[0]["level"], "سليم") if visible else "سليم",
             })
     rows.sort(key=lambda row: (row["day"], row["entity_name"]))
     return rows
 
 
 def summary(year, month):
-    """ملخص الجدول: عدد الصفوف، وعدد كل مستوى، وعدد الجهات المتأثرة."""
+    """ملخص الجدول: عدد الصفوف، وعدد كل مستوى (المعروض فقط)، وعدد المُتجاهَل."""
     rows = month_rows(year, month, only_issues=False)
     problem_rows = [row for row in rows if row["issues"]]
     counts = {"danger": 0, "warn": 0, "info": 0}
     for row in problem_rows:
         counts[row["issues"][0]["level"]] += 1
+    ignored_total = sum(len(row["ignored_issues"]) for row in rows)
     return {
         "rows": len(rows),
         "problem_rows": len(problem_rows),
         "danger": counts["danger"],
         "warn": counts["warn"],
         "info": counts["info"],
+        "ignored": ignored_total,
         "entities": len({row["entity_id"] for row in problem_rows}),
         "days": len({row["day"] for row in problem_rows}),
     }
+
+
+def ignored_names(year, month):
+    """أسماء جهات اتتجاهل تنبيهها الحي («غير مسجلة» في الفورم) — للشهر كله."""
+    return dt.alert_ignored_names(year, month)
 
 
 def record_warning(year, month, entity, day, day_to, officers, individuals):
@@ -161,10 +183,14 @@ def record_warning(year, month, entity, day, day_to, officers, individuals):
     cadres = entity_cadres(year, month, entity_id)
     tameeda = {"officers": officers or 0, "individuals": individuals or 0}
     willing_by_day = rp.month_willing_split(year, month, entity_id)
+    ignored = {(i["entity_id"], i["day"], i["issue_key"])
+               for i in dt.alert_ignores(year, month)}
     problems = []
     for d in range(int(day), int(day_to or day) + 1):
         willing = willing_by_day.get(d, {"officers": 0, "individuals": 0})
         for issue in record_day_issues(tameeda, willing, cadres):
+            if (entity_id, d, issue["key"]) in ignored:
+                continue                      # اتجاهل — اتُمسح من كل العرصات
             problems.append(f"يوم {_ar(d)}: {issue['text']}")
     if not problems:
         return None

@@ -1,0 +1,74 @@
+{# ورق تقرير المناسبة — قطعة واحدة يستخدمها الموضعان:
+   ١) المعاينة الحية المدمجة داخل صفحة المناسبات (main.html) — تتحدث مع الكتابة على طول.
+   ٢) صفحة الورق المستقلة (paper_report.html) — للطباعة أو حفظ PDF.
+   الترتيب مطابق لملف Word بالحرف: دباجة يمين + لوجو شمال ← خط ذهبي ← العنوان ←
+   جدول البيانات ← الوصف ← الصور مدمجة ← المرفقات ← «يعتمد،،» والتوقيعان.
+   المتغيرات: item · letterhead · sid_token.
+   الوسوم data-ocval هي أهداف البث الحي من حقول النموذج (js/occasions.js). #}
+{% from "partials/dates.html" import date_text %}
+<div class="oc-paper" id="ocPaper" dir="rtl">
+  <div class="oc-paper-inner">
+    <div class="oc-paper-head">
+      <div class="oc-paper-lh">
+        {% for i in range(4) %}<div class="l{{ i + 1 }}">{{ letterhead.lh[i] }}</div>{% endfor %}
+      </div>
+      {% if letterhead.has_logo %}
+      <img class="oc-paper-logo" src="{{ url_for('letterhead.logo_view') }}" alt="اللوجو">
+      {% else %}
+      {# شعار المنظومة الافتراضي — نفس بديل Word/Excel (static/img/app.ico) فلا يخلو ورق ولا ملف #}
+      <img class="oc-paper-logo" src="{{ url_for('static', filename='img/mark.svg') }}" alt="شعار المنظومة">
+      {% endif %}
+    </div>
+    <div class="oc-paper-rule"></div>
+
+    <h1 class="oc-paper-title">تقرير مناسبة — <span data-ocval="title">{{ item.title }}</span></h1>
+
+    <table class="oc-paper-table">
+      <tr><th>المسمى</th><td data-ocval="title">{{ item.title }}</td></tr>
+      <tr><th>النوع</th><td data-ocval="kind">{{ item.kind }}</td></tr>
+      <tr><th>التاريخ</th><td data-ocval="date_iso">{{ date_text(item.date_iso) }}</td></tr>
+      <tr><th>المكان</th><td data-ocval="place">{{ item.place or '—' }}</td></tr>
+      <tr><th>القوة / الوفد</th><td data-ocval="force_text">{{ item.force_text or '—' }}</td></tr>
+      <tr><th>إطار</th><td data-ocval="frame">{{ item.frame or '—' }}</td></tr>
+    </table>
+
+    <h3 class="oc-paper-sub">الوصف / مجريات المناسبة</h3>
+    <p class="oc-paper-body" data-ocval="notes">{{ item.notes or '—' }}</p>
+
+    <h3 class="oc-paper-sub">صور المناسبة ({{ item.photos | length | aindic }})
+      <span class="oc-paper-note">مدمجة في صفحة الورق هذه وفي تقرير Word</span></h3>
+    {% if item.photos %}
+    <div class="oc-paper-gallery">
+      {% for photo in item.photos %}
+      <figure class="oc-paper-photo">
+        <img src="{{ url_for('occasions.media', kind='photo', name=photo.name) }}?sid={{ sid_token }}&folder={{ item.folder | urlencode }}"
+             alt="{{ photo.name }}" loading="lazy">
+        <figcaption>{{ photo.name }} — <span>{{ photo.size_text }}</span></figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="oc-paper-none">لا صور مرفقة بهذه المناسبة بعد — ارفعها من قسم «ارفع صور وفيديو».</p>
+    {% endif %}
+
+    {% if item.videos %}
+    <h3 class="oc-paper-sub">مقاطع الفيديو ({{ item.videos | length | aindic }})
+      <span class="oc-paper-note">محفوظة داخل فولدر المناسبة وتُشاهد من البرنامج</span></h3>
+    <ul class="oc-paper-videos">
+      {% for video in item.videos %}<li>{{ video.name }} <span>{{ video.size_text }}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <p class="oc-paper-attach">مرفقات المناسبة: {{ item.photos | length | aindic }} صورة ·
+      {{ item.videos | length | aindic }} فيديو — محفوظة داخل فولدر المناسبة.</p>
+
+    <div class="oc-paper-appr">يعتمد،،</div>
+    <table class="oc-paper-sigs"><tr>
+      <td>{{ letterhead.sig_right[0] or letterhead.def_right_rank or '........................' }}</td>
+      <td>{{ letterhead.sig_left[0] or letterhead.def_left_rank or '........................' }}</td>
+    </tr><tr>
+      <td>{{ letterhead.sig_right[1] or letterhead.def_right_name or '........................' }}</td>
+      <td>{{ letterhead.sig_left[1] or letterhead.def_left_name or '........................' }}</td>
+    </tr></table>
+  </div>
+</div>

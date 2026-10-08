@@ -132,3 +132,17 @@
   border-radius: 999px; background: var(--surface-gold); border: 1px solid var(--gold-border);
   font-size: .78rem; font-weight: 700; color: var(--gold-light); }
 .c2-preview-head { border: 2px solid var(--gold-border); }
+
+/* ===== تابات فرعية (الآلة الحاسبة / معدلات التوزيع) ===== */
+.c2-subtabs { margin-top: 4px; }
+.c2-sub { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+  border-radius: 999px; border: 1.5px solid var(--gold-border); background: var(--card);
+  color: var(--text); font-weight: 700; font-size: .85rem; text-decoration: none; }
+.c2-sub:hover { background: var(--surface-gold); }
+.c2-sub.on { background: var(--brand-gold); color: var(--on-gold); border-color: var(--brand-gold); }
+
+/* ===== شارات المخصص (أيام الأسبوع تُضاف فوق المعدل) ===== */
+.c2-custom-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.c2-custom-chip { font-size: .68rem; font-weight: 800; color: #fcd34d;
+  background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .45);
+  border-radius: 999px; padding: 1px 8px; }

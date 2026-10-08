@@ -16,6 +16,13 @@
 {% set cur_tab = 'free' %}
 {% include "calc2/tabs.html" %}
 
+{% if not preview %}
+<nav class="c2-tabs c2-subtabs">
+  <a class="c2-sub {{ 'on' if view != 'rates' }}" href="{{ url_for('calc2_free.free_page', **sub_args) }}">🧮 الآلة الحاسبة</a>
+  <a class="c2-sub {{ 'on' if view == 'rates' }}" href="{{ url_for('calc2_free.free_page', **sub_args_rates) }}">⚙️ معدلات التوزيع</a>
+</nav>
+{% endif %}
+
 {% if preview %}
   {# ============ معاينة إذن تجريبي محفوظ ============ #}
   <div class="panel c2-preview-head">
@@ -44,13 +51,13 @@
   {% macro free_table(title, rows, prefix, readonly) %}
   <div class="panel">
     <div class="panel-head"><h3>{{ title }}</h3>
-      <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × أيام الصرف</span></div>
+      <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × أيام الصرف + مخصصات الأيام × القوة</span></div>
     <div class="table-wrap">
       <table class="rt-table c2-table c2-table-free">
         <thead>
           <tr>
             <th title="مسلسل">م</th><th>اسم الصنف</th><th>معدل الفرد اليومى</th>
-            <th>أيام الصرف</th><th>الكمية (معدل × قوة × أيام)</th><th>الكمية الفعلية</th>
+            <th>أيام الصرف</th><th>الكمية</th><th>الكمية الفعلية</th>
           </tr>
         </thead>
         <tbody>
@@ -78,6 +85,50 @@
   <div class="c2-save">
     <a class="rt-btn big" href="{{ url_for('calc2_free.free_page') }}">← العودة لقائمة الإذون التجريبية</a>
   </div>
+{% elif view == 'rates' %}
+  {# ============ تاب معدلات التوزيع (كل أصناف الشهر) ============ #}
+  {% macro rates_table(title, hint, rows, prefix) %}
+  <div class="panel">
+    <div class="panel-head"><h3>{{ title }}</h3>
+      <span class="panel-hint">{{ hint }}</span></div>
+    <div class="table-wrap">
+      <table class="rt-table c2-table c2-table-free">
+        <thead>
+          <tr>
+            <th title="مسلسل">م</th><th>اسم الصنف</th><th>قاعدة المقرر (ف+غ+ع)</th>
+            <th>المخصص (يُضاف في يومه)</th><th>معدل الفرد اليومى (حر)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in rows %}
+          <tr>
+            <td class="num">{{ it.serial | aindic }}</td>
+            <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+            <td class="num">{{ it.base | qty3 }}</td>
+            <td>
+              {% if it.custom %}
+              <div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip" title="يُضاف فوق المعدل في {{ c.label }}">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>
+              {% else %}<span class="dim">—</span>{% endif %}
+            </td>
+            <td><input name="rate_{{ prefix }}_{{ it.name }}" class="c2-rate-input"
+                       inputmode="decimal" value="{{ it.rate | qty3 }}"
+                       title="أصله من قاعدة الشهر: {{ it.seed | qty3 }}"></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">لا أصناف في هذا القسم — أضف أصنافًا من شاشة المقررات.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endmacro %}
+  <form method="post" action="{{ url_for('calc2_free.free_rates_save') }}" class="c2-form" autocomplete="off">
+    {{ rates_table("معدلات التوزيع الحرة — المقررات التموينية", "نسخة مستقلة من معدلات الشهر — قابلة للتعديل وتُستخدم في الآلة الحاسبة الحرة بس", catalog.tamween, "tamween") }}
+    {{ rates_table("معدلات التوزيع الحرة — مقررات المتعهد", "نفس القاعدة — معدل يومى للفرد + مخصصات أيام الأسبوع تُضاف تلقائيًا", catalog.contractor, "contractor") }}
+    <div class="c2-save">
+      <button class="rt-btn gold big" type="submit">💾 حفظ معدلات التوزيع الحرة</button>
+    </div>
+  </form>
 {% else %}
   {# ============ شاشة الآلة الحاسبة الحرة ============ #}
   <form method="get" action="{{ url_for('calc2_free.free_page') }}" class="panel c2-bar" id="c2Filter">
@@ -196,20 +247,22 @@
     {% macro free_table(title, rows, prefix) %}
     <div class="panel">
       <div class="panel-head"><h3>{{ title }}</h3>
-        <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × أيام الصرف — المعدل من جدول التوزيع الحر (قابل للتعديل)</span></div>
+        <span class="panel-hint">الكمية = معدل الفرد اليومى × القوة × الأيام + المخصص (يُضاف في يومه)</span></div>
       <div class="table-wrap">
         <table class="rt-table c2-table c2-table-free">
           <thead>
             <tr>
               <th title="مسلسل">م</th><th>اسم الصنف</th><th>معدل الفرد اليومى</th>
-              <th>أيام الصرف</th><th>الكمية (معدل × قوة × أيام)</th><th>الكمية الفعلية</th>
+              <th>أيام الصرف</th><th>الكمية (معدل×قوة×أيام + مخصص)</th><th>الكمية الفعلية</th>
             </tr>
           </thead>
           <tbody id="c2Body-{{ prefix }}">
             {% for it in rows %}
-            <tr data-force-days="{{ it.force_days }}" data-name="{{ it.name }}">
+            <tr data-base-force-days="{{ it.base_force_days }}" data-auto-custom="{{ it.auto_custom }}">
               <td class="num" title="مسلسل">{{ it.serial | aindic }}</td>
-              <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}</td>
+              <td class="name c-item-soft" style="--c:{{ color('item', it.name) }}"><b>{{ it.name }}</b>{% if it.unit %} <small>{{ it.unit }}</small>{% endif %}
+                {% if it.custom %}<div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip" title="يُضاف فوق المعدل في {{ c.label }}">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>{% endif %}
+              </td>
               <td><input name="freerate_{{ prefix }}_{{ it.name }}" class="c2-rate-input"
                          inputmode="decimal" value="{{ it.rate | qty3 }}"></td>
               <td class="num c2-days">{{ it.days | aindic }}</td>
@@ -275,7 +328,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
-{% if not preview %}
+{% if not preview and view != 'rates' %}
 <script src="{{ url_for('static', filename='js/calc2_free.js') }}?v={{ static_ver }}"
         data-rows="{{ url_for('calc2_free.free_rows') }}"></script>
 {% endif %}

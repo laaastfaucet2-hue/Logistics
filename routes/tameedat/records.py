@@ -2,7 +2,7 @@
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """مسارات «تأميدات اليوم المحدد» — الصفحة الرئيسية + إضافة/تعديل/حذف/لصق التأميدة."""
 
-from flask import render_template, request
+from flask import jsonify, render_template, request
 from core.auth_core import login_required
 from core import arabic_numbers as arnum
 from core import dates
@@ -210,3 +210,44 @@ def record_delete(record_id):
                   "مع ملحقاتها من البيانات المحلية.")
 
 
+
+# ======================================================================
+# تجاهل / رجّع تنبيه — زرار «تجاهل التنبيه» جنب كل تنبيه (سجل JSON بلا إعادة تحميل)
+# ======================================================================
+def _alert_action_payload():
+    data = request.get_json(silent=True) or {}
+    entity_id = int(data.get("entity_id") or 0)
+    day = int(data.get("day") or 0)
+    key = str(data.get("key") or "").strip()
+    name = " ".join(str(data.get("name") or "").split())
+    if not key:
+        raise ValueError("مفيش نوع تنبيه محدد")
+    if entity_id and day:
+        return entity_id, day, key, ""
+    if name:                                   # تنبيه الفورم الحي (جهة غير مسجلة بعد)
+        return 0, 0, key, name
+    raise ValueError("بيانات التنبيه ناقصة")
+
+
+@tameedat_bp.route("/alerts/ignore", methods=["POST"])
+@login_required
+def alert_ignore():
+    year, month = _ctx()
+    try:
+        entity_id, day, key, name = _alert_action_payload()
+        dt.add_alert_ignore(year, month, entity_id, day, key, name=name)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"err": str(exc)})
+    return jsonify({"ok": True, "ignored": len(dt.alert_ignores(year, month))})
+
+
+@tameedat_bp.route("/alerts/restore", methods=["POST"])
+@login_required
+def alert_restore():
+    year, month = _ctx()
+    try:
+        entity_id, day, key, name = _alert_action_payload()
+        dt.remove_alert_ignore(year, month, entity_id, day, key, name=name)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"err": str(exc)})
+    return jsonify({"ok": True, "ignored": len(dt.alert_ignores(year, month))})
