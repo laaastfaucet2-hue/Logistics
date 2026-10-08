@@ -1,7 +1,7 @@
 /* المساعد المحلي — زر جانبي مثل الإشعارات: يُفتح ويُغلق، ومخفي تمامًا في الطباعة.
    يعتمد رموز theme.css فيتبع الوضع المختار (كحلي/أبيض/أزرق) تلقائيًا.
    الشعار: صورة ضابط محلية (static/img/assistant-officer.svg) بلا أي CDN. */
-.asst-wrap { position: fixed; bottom: 50px; left: 78px; z-index: 901; }
+.asst-wrap { position: fixed; bottom: 108px; left: 18px; z-index: 901; }
 .asst-inner { display: flex; align-items: center; gap: 6px; }
 .asst-btn { position: relative; width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
   padding: 0; overflow: visible; border: 2px solid var(--gold-border); background: var(--bg1);
@@ -111,7 +111,7 @@
 /* لا يظهر المساعد ولا مؤشراته في أي مستند مطبوع (قاعدة الطباعة الرسمية) */
 @media print { .asst-wrap, .asst-panel { display: none !important; } }
 @media (max-width: 620px) {
-  .asst-wrap { left: 74px; bottom: 44px; }
+  .asst-wrap { left: 18px; bottom: 104px; }
   .asst-btn { width: 38px; height: 38px; }
   .asst-panel { width: calc(100vw - 24px); left: -62px; max-height: 74vh; }
 }

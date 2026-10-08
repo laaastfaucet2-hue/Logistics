@@ -14,10 +14,11 @@ from flask import (Blueprint, redirect, render_template, request,
                    send_file, url_for)
 from core import arabic_numbers as arnum
 from core.auth_core import current_session, login_required
-from core.config import MONTH_NAMES
+from core.config import DAYS, MEALS, MONTH_NAMES
 from data_access import db_dowail as dw
 from data_access import db_rations as dr
 from data_access import months
+from documents import xlsx_rations
 from services import dowail_build as db
 from services import dowail_fs
 from services import free_build as fb
@@ -78,6 +79,8 @@ def _rates_view(year, month):
                 "enabled": int(s["enabled"]) if s else 0,
                 "rate_id": s["id"] if s else None,
                 "is_extra": bool(s and s.get("is_extra")),
+                "item_id": item.get("id"),
+                "custom_entries": custom.get(item.get("id"), []),
             })
         for s in dw.list_rates(year, month):
             if s["section"] == section and s.get("is_extra") \
@@ -86,7 +89,7 @@ def _rates_view(year, month):
                     "serial": len(items) + 1, "name": s["name"],
                     "unit": s.get("unit") or "", "base": 0.0, "custom": [],
                     "rate": float(s["rate"]), "enabled": int(s["enabled"]),
-                    "rate_id": s["id"], "is_extra": True})
+                    "rate_id": s["id"], "is_extra": True, "item_id": None})
         out[section] = items
     return out
 
@@ -105,12 +108,21 @@ def page():
     ctx = _base(year, month, last, f, t, days, tab)
     if tab == "papers":
         ctx["saves"] = dw.list_saves(year, month)
+        line_id = arnum.parse_int(request.args.get("line"))
+        ctx["lines"] = dw.list_lines(year, month)
+        ctx["sel_line_id"] = line_id
+        ctx["current_papers"] = [
+            lp for lp in db.line_papers(year, month, f, t, days)
+            if line_id is None or lp["line"]["id"] == line_id]
+        dist_id = arnum.parse_int(request.args.get("dist"))
+        ctx["dist_save"] = dw.get_save(year, month, dist_id) if dist_id else None
         found = db.search_point(year, month, request.args.get("q"))
         ctx["search_q"] = request.args.get("q") or ""
         ctx["search_hit"] = (
             {"line": found[0], "point": found[1],
              "rows": list(enumerate(
-                 [db._item_row(r, found[1]["force"], days)
+                 [db.item_row(r, found[1]["force"],
+                              db.issue_dates(year, month, f, t, days))
                   for r in db.active_rates(year, month)]))}
             if found else None)
     elif tab == "totals":
@@ -134,6 +146,7 @@ def page():
     elif tab == "rates":
         ctx["rates_view"] = _rates_view(year, month)
         ctx["rate_statements"] = dowail_fs.list_rates_statements(year, month)
+        ctx["days"], ctx["meals"] = DAYS, MEALS
     return render_template(f"dowail/tab_{tab}.html", **ctx)
 
 
@@ -206,7 +219,34 @@ def delete_point(point_id):
 # معدلات الدولى (بيان إكسل مع كل تغيير)
 # ======================================================================
 def _rates_statement(year, month):
-    dowail_fs.write_rates_statement(year, month, dw.list_rates(year, month))
+    dowail_fs.write_rates_statement(year, month, db.rates_with_custom(year, month))
+
+
+# ======================================================================
+# مخصص الأيام (يُعدّل من تاب المعدلات — نفس مقررات ٢ مخازن المشتركة)
+# ======================================================================
+@dowail_bp.route("/custom/<int:item_id>", methods=["POST"])
+@login_required
+def custom_save(item_id):
+    year, month = _ctx()
+    item = dr.get_item(year, month, item_id)
+    if not item:
+        return redirect(url_for("dowail.page", tab="rates",
+                                err="الصنف غير موجود — عدّل المخصص من صفّه في الجدول"))
+    entries = []
+    for d in range(7):
+        for meal, _label in MEALS:
+            qty = arnum.parse_float(request.form.get(f"c_{d}_{meal}", ""))
+            if qty is not None and qty > 0:   # الفاضي/صفر = لا يُضاف ذلك اليوم
+                entries.append((d, meal, qty))
+    dr.save_custom(year, month, item_id, entries)
+    xlsx_rations.rebuild(year, month, item["section"])
+    _rates_statement(year, month)
+    if entries:
+        ok = f"تخصص «{item['name']}» اتحفظ ({arnum.to_arabic_indic(len(entries))} خانة) — بيُضاف فوق المعدل في حصائل التوزيعات"
+    else:
+        ok = f"«{item['name']}» خلاص من غير مخصص — الحصيلة = المعدل × القوة × الأيام بس"
+    return redirect(url_for("dowail.page", tab="rates", ok=ok))
 
 
 @dowail_bp.route("/rates/add", methods=["POST"])

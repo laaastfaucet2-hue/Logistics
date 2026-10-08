@@ -83,6 +83,8 @@
 .dw-matrix-wrap { overflow-x: auto; }
 .dw-matrix th, .dw-matrix td { white-space: nowrap; }
 .dw-linenum td { background: var(--surface-gold); font-weight: 700; }
+.dw-linenum th { background: var(--surface-gold); }
+.dw-matrix th small, .dw-matrix td small { font-weight: 600; }
 .dw-grand td { background: var(--brand-gold); color: var(--on-gold); font-weight: 900; }
 
 /* ارشيف البيانات والمعدلات */

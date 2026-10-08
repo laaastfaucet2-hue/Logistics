@@ -52,8 +52,14 @@
           <td class="num">{{ it.base | qty3 }}</td>
           <td>
             {% if it.custom %}
-            <div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>
+            <div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip" title="يُضاف فوق المعدل في {{ c.label }}">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>
             {% else %}<span class="dim">—</span>{% endif %}
+            {% if it.item_id %}
+            <button type="button" class="dw-mini custom-btn"
+                    data-id="{{ it.item_id }}" data-name="{{ it.name }}"
+                    data-custom="{{ it.custom_entries | tojson }}"
+                    title="تعديل مخصص الأيام لهذا الصنف">🗓️ تخصيص</button>
+            {% endif %}
           </td>
           <td>
             {% if it.rate_id %}
@@ -115,4 +121,40 @@
   </div>
   {% endif %}
 </div>
+
+<!-- نافذة مخصص الأيام — نفس مقررات ٢ مخازن المشتركة (التموين/المتعهد) -->
+<div class="modal" id="customModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🗓️ مخصص أيام: <span id="customItemName"></span></h3>
+      <button class="modal-x" type="button" id="customClose">✕</button>
+    </div>
+    <p class="modal-hint">الكمية المكتوبة تُضاف <b>فوق معدل الفرد</b> في يومها ووجبتها (فطار/غداء/عشاء)
+      وتدخل في حصائل التوزيعات والمصفوفة. الخانة الفاضية = ما يُمضافش في اليوم ده.</p>
+    <form method="post" id="customForm" autocomplete="off"
+          data-template="{{ url_for('dowail.custom_save', item_id=0) }}">
+      <table class="grid-days">
+        <thead><tr><th>اليوم</th>{% for m, label in meals %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for d in range(7) %}
+          <tr>
+            <td class="dname">{{ days[d] }}</td>
+            {% for m, label in meals %}
+            <td><input name="c_{{ d }}_{{ m }}" inputmode="decimal" placeholder="٠"></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="modal-foot">
+        <button class="rt-btn gold" type="submit">💾 حفظ المخصص</button>
+        <button class="rt-btn dim" type="button" id="customCancel">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/rations.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

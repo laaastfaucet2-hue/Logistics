@@ -12,13 +12,16 @@
 """
 import json
 import re
+from datetime import date
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from core import arabic_numbers as arnum, egtime
+from core.config import DAYS, MEAL_MAP
 from data_access import months
+from services import dowail_build as dbuild
 
 SECTION_FOLDER = "14-تفاريد خط الحدود الدولى"
 FOLDER_PAPERS = "أوراق وإيصالات الصرف"
@@ -49,10 +52,15 @@ def _sheet(ws, title, header, rows):
         cell.font = Font(bold=True)
 
 
-def _agg_rows(line, rates, force, days):
-    return [[i + 1, r["name"], r["unit"], round(float(r.get("rate") or 0), 6),
-             int(days), round(float(r.get("rate") or 0) * int(force or 0) * int(days), 6), ""]
-            for i, r in enumerate(rates)]
+def _agg_rows(line, rates, force, dates, year, month):
+    """أسطر الأصناف: الحصيلة = المعدل×القوة×الأيام + المخصص×القوة (قاعدة ٢٧)."""
+    dd = [date(int(year), int(month), int(x)) for x in dates]
+    out = []
+    for i, r in enumerate(rates):
+        row = dbuild.item_row(r, force, dd)
+        out.append([i + 1, row["name"], row["unit"], row["rate"],
+                    row["days"], row["total"], ""])
+    return out
 
 
 def _agg_header():
@@ -60,28 +68,30 @@ def _agg_header():
             "أيام الصرف", "الحصيلة الإجمالية", "ملاحظات"]
 
 
-def _write_line_xlsx(path, line, rates, days, store_keeper, day_from, day_to):
+def _write_line_xlsx(path, line, rates, dates, year, month,
+                     store_keeper, day_from, day_to):
     """ملف «مجمع-خط»: شيت واحد بكل أصناف الخط."""
     wb = Workbook()
     ws = wb.active
     ws.title = "مجمع الخط"
-    rows = _agg_rows(line, rates, line["total_force"], days)
+    rows = _agg_rows(line, rates, line["total_force"], dates, year, month)
     _sheet(ws, f"إذن صرف «{line['name']}» — يومي {day_from} إلى {day_to} "
-               f"({days} يوم) — إجمالي القوة {line['total_force']} فرد/يوم"
+               f"({len(dates)} يوم) — إجمالي القوة {line['total_force']} فرد/يوم"
                + (f" — أمين المخازن: {store_keeper}" if store_keeper else ""),
            _agg_header(), rows)
     wb.save(path)
 
 
-def _write_points_xlsx(path, line, rates, days, store_keeper, day_from, day_to):
+def _write_points_xlsx(path, line, rates, dates, year, month,
+                       store_keeper, day_from, day_to):
     """ملف «نقاط-خط»: شيت لكل نقطة."""
     wb = Workbook()
     wb.remove(wb.active)
     for p in line["points"]:
         ws = wb.create_sheet(_safe(p["name"])[:31])
-        rows = _agg_rows(line, rates, p["force"], days)
+        rows = _agg_rows(line, rates, p["force"], dates, year, month)
         _sheet(ws, f"نقطة «{p['name']}» — خط «{line['name']}»"
-                   f" (القوة {p['force']}) — يومي {day_from} إلى {day_to} ({days} يوم)"
+                   f" (القوة {p['force']}) — يومي {day_from} إلى {day_to} ({len(dates)} يوم)"
                    + (f" — أمين المخازن: {store_keeper}" if store_keeper else ""),
                _agg_header(), rows)
     if not line["points"]:
@@ -100,6 +110,12 @@ def save_to_disk(year, month, data, n_saves_same_from=1):
     """يحفظ التوزيعة في (أوراق وإيصالات + إجمالي خطوط التوزيع) ويرجع الملفات النسبية."""
     sec = section_dir(year, month)
     day = _day_folder_name(data, n_saves_same_from)
+    dates = data.get("dates") or list(range(
+        int(data["date_from"]),
+        min(int(data["date_from"]) + int(data.get("issue_days") or 1),
+            int(data["date_to"]) + 1)))
+    y, m = int(data.get("year") or year), int(data.get("month") or month)
+    keeper = data.get("store_keeper") or ""
     files = []
     for lp in data.get("papers") or []:
         line = lp["line"]
@@ -108,12 +124,12 @@ def save_to_disk(year, month, data, n_saves_same_from=1):
         d1.mkdir(parents=True, exist_ok=True)
         agg = d1 / f"مجمع-{line['name']}.xlsx"
         pts = d1 / f"نقاط-{line['name']}.xlsx"
-        _write_line_xlsx(agg, line, data["rates"], data["issue_days"],
-                         data.get("store_keeper") or "", data["date_from"], data["date_to"])
-        _write_points_xlsx(pts, line, data["rates"], data["issue_days"],
-                           data.get("store_keeper") or "", data["date_from"], data["date_to"])
+        _write_line_xlsx(agg, line, data["rates"], dates, y, m,
+                         keeper, data["date_from"], data["date_to"])
+        _write_points_xlsx(pts, line, data["rates"], dates, y, m,
+                           keeper, data["date_from"], data["date_to"])
         (d1 / "data.json").write_text(
-            json.dumps({"store_keeper": data.get("store_keeper") or "",
+            json.dumps({"store_keeper": keeper,
                         "date_from": data["date_from"], "date_to": data["date_to"],
                         "issue_days": data["issue_days"], "line": lp},
                        ensure_ascii=False, indent=1), encoding="utf-8")
@@ -122,10 +138,10 @@ def save_to_disk(year, month, data, n_saves_same_from=1):
         # 2) إجمالي خطوط التوزيع/خط X/يوم F/
         d2 = sec / FOLDER_TOTALS / line["name"] / day
         d2.mkdir(parents=True, exist_ok=True)
-        _write_line_xlsx(d2 / agg.name, line, data["rates"], data["issue_days"],
-                         data.get("store_keeper") or "", data["date_from"], data["date_to"])
-        _write_points_xlsx(d2 / pts.name, line, data["rates"], data["issue_days"],
-                           data.get("store_keeper") or "", data["date_from"], data["date_to"])
+        _write_line_xlsx(d2 / agg.name, line, data["rates"], dates, y, m,
+                         keeper, data["date_from"], data["date_to"])
+        _write_points_xlsx(d2 / pts.name, line, data["rates"], dates, y, m,
+                           keeper, data["date_from"], data["date_to"])
         files += [f"{SECTION_FOLDER}/{FOLDER_TOTALS}/{line['name']}/{day}/{f.name}"
                   for f in (d2 / agg.name, d2 / pts.name)]
     return files
@@ -161,11 +177,16 @@ def write_rates_statement(year, month, rates):
     wb = Workbook()
     ws = wb.active
     ws.title = "المعدلات"
-    header = ["م", "القسم", "اسم الصنف", "الوحدة", "معدل الفرد اليومى", "الحالة"]
+    header = ["م", "القسم", "اسم الصنف", "الوحدة", "معدل الفرد اليومى",
+              "مخصص الأيام (يُضاف)", "الحالة"]
     sec_name = {"tamween": "المقررات التموينية", "contractor": "مقررات المتعهد"}
-    rows = [[i + 1, sec_name.get(r["section"], r["section"]), r["name"], r.get("unit") or "",
-             round(float(r.get("rate") or 0), 6), "مفعّل" if r.get("enabled") else "معطّل"]
-            for i, r in enumerate(rates)]
+    rows = []
+    for i, r in enumerate(rates):
+        labels = [f"{DAYS[int(e.get('weekday') or 0)]} {MEAL_MAP.get(e.get('meal') or '', '')} "
+                  f"{arnum.fmt_qty(e.get('qty'))}" for e in r.get("custom") or []]
+        rows.append([i + 1, sec_name.get(r["section"], r["section"]), r["name"],
+                     r.get("unit") or "", round(float(r.get("rate") or 0), 6),
+                     "، ".join(labels), "مفعّل" if r.get("enabled") else "معطّل"])
     _sheet(ws, f"بيان معدلات خط الحدود الدولى — يوم {today}", header, rows)
     wb.save(path)
     return f"{FOLDER_RATES}/يوم {today}/بيان-المعدلات.xlsx"
