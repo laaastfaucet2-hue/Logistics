@@ -84,6 +84,9 @@
 .dw-matrix th, .dw-matrix td { white-space: nowrap; }
 .dw-linenum td { background: var(--surface-gold); font-weight: 700; }
 .dw-linenum th { background: var(--surface-gold); }
+.dw-linehead td { background: var(--surface-soft); font-weight: 800;
+  border-top: 1.5px solid var(--gold-border); }
+.dw-linehead td:first-child { padding-top: 9px; }
 .dw-matrix th small, .dw-matrix td small { font-weight: 600; }
 .dw-grand td { background: var(--brand-gold); color: var(--on-gold); font-weight: 900; }
 

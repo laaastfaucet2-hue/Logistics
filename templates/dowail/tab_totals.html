@@ -63,6 +63,11 @@
       </thead>
       <tbody>
         {% for l in matrix.lines %}
+        <tr class="dw-linehead">
+          <td><b>{{ l.line.name }}</b><small class="dim"> — نقاط نشطة {{ l.line.active | aindic }} من {{ l.line.count | aindic }}</small></td>
+          <td class="num"><b>{{ l.force | aindic }}</b></td>
+          {% for r in matrix.rates %}<td></td>{% endfor %}
+        </tr>
         {% for pt in l.points %}
         <tr class="{{ 'dw-off' if (pt.point.force or 0) == 0 }}">
           <td>　{{ pt.point.name }}</td>
@@ -71,7 +76,7 @@
         </tr>
         {% endfor %}
         <tr class="dw-linenum">
-          <td><b>{{ l.line.name }} — إجمالي الخط</b></td>
+          <td><b>إجمالي {{ l.line.name }}</b></td>
           <td class="num"><b>{{ l.force | aindic }}</b></td>
           {% for r in matrix.rates %}<td class="num"><b>{{ l.line_total.get(r.name, 0) | qty3 }}</b></td>{% endfor %}
         </tr>
