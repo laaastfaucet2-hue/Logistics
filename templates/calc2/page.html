@@ -97,7 +97,10 @@
       <label>عدد الأفراد<input name="individuals" id="c2Ind" inputmode="numeric" value="{{ individuals | aindic }}"></label>
       <label>عدد الجنود (مجندين)<input name="recruits" id="c2Rec" inputmode="numeric" value="{{ recruits | aindic }}"></label>
       <label class="wide">اسم الجهة / القطاع الطالب
-        <input name="entity_label" id="c2Label" value="{{ entity_label }}"></label>
+        <input name="entity_label" id="c2Label" value="{{ entity_label }}"
+               data-combo="c2EntitiesList" autocomplete="off"
+               title="الاسم يتبع قاموس جهات البرنامج — اختاره من القائمة أو اكتبه ويُحفظ بالاسم الرسمي"></label>
+      <datalist id="c2EntitiesList">{% for n in entity_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
       <label>أيام الصرف (المدة)
         <input name="issue_days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
     </div>

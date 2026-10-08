@@ -41,7 +41,7 @@ def register(app):
     app.add_template_filter(dates.format_date, "datefmt")
     app.add_template_filter(dates.input_date, "dateinput")
     app.add_template_global(dates.period_date, "period_date")
-    # مفتاح الحروف ض/أ/م — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٦/١٠/٢٠٢٦)
+    # تسميات فئات القوة (ضابط/فرد/مجندين) — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٨/١٠/٢٠٢ — الحروف اتشالت)
     from core import labels
     app.add_template_global(labels.pair3, "pair3")
     app.add_template_global(labels.pair2, "pair2")

@@ -259,6 +259,8 @@
 
   /* التغليف والحساب التلقائي: عدد العبوات × سعة العبوة + سائب = الكمية */
   var STORES = json("whStoresData");
+  /* المخزن الثابت لدورة الترفية — يتحدد تلقائيًا في توزيع الكميات (توجيه ٠٨/١٠) */
+  var TARFEA_STORE = "مخزن الترفية";
   function storeIdByName(name) {
     for (var i = 0; i < STORES.length; i++) {
       if (STORES[i].name === name) return STORES[i].id;
@@ -752,7 +754,14 @@
     }
 
     add.addEventListener("click", addRow);
-    if (box.dataset.autoRow === "1" && !rows.children.length) addRow();
+    /* دورة الترفية: المخزن الوحيد «مخزن الترفية» — يتحدد علطول من أول سطر (توجيه ٠٨/١٠) */
+    var ctxCycle = "";
+    var ctxEl = document.getElementById("whContext");
+    try {
+      if (ctxEl) ctxCycle = (JSON.parse(ctxEl.textContent) || {}).cycle || "";
+    } catch (e) {}
+    var defStore = ctxCycle === "tarfea" ? TARFEA_STORE : "";
+    if (box.dataset.autoRow === "1" && !rows.children.length) addRow(defStore);
     var preRows = box.dataset.preRows;
     if (preRows) {
       try {

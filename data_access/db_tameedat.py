@@ -128,6 +128,20 @@ def entity_names(year, month):
     return [e["name"] for e in list_entities(year, month)]
 
 
+def normalize_entity_name(year, month, label):
+    """اسم الجهة يتبع قاموس الجهات (توجيه ٠٨/١٠/٢٠٢٦): لو جزء من الاسم
+    (في الإذون المدمجة بـ« + ») مطابق لاسم بالقاموس متجاهلًا الفراغات،
+    يُكتب بالاسم الرسمي من القاموس بالظبط — والباقي يبقى زي ما اتكتب."""
+    label = (label or "").strip()
+    if not label:
+        return label
+    names = {" ".join(n.split()): n for n in entity_names(year, month)}
+    if not names:
+        return label
+    return " + ".join(names.get(" ".join(part.split()), part)
+                      for part in label.split(" + "))
+
+
 def get_entity(year, month, entity_id):
     conn = _conn(year, month)
     row = conn.execute("SELECT * FROM tameed_entities WHERE id=?",

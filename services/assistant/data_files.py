@@ -52,7 +52,7 @@ def topic_day_files(year, month, question):
                   ["الحالة", "مُنشأ وجاهز على جهازك" if exists else "لسه فاضي — يُبنى أول تأميدة"],
                   ["تأميدات اليوم", _ar(len(records))]])]
     if records:
-        blocks.append(table(["الجهة", "ض", "أ", "م", "الإجمالي"],
+        blocks.append(table(["الجهة", "ضابط", "فرد", "مجندين", "الإجمالي"],
                             [[rec["entity_name"], _ar(rec["officers"]),
                               _ar(rec["individuals"]), _ar(rec["recruits"]),
                               _ar(rec["grand_total"])] for rec in records[:6]]))

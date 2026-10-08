@@ -85,6 +85,21 @@ def _wday(day, year, month):
     return wf._wday(day, year, month)
 
 
+def _tw_rate_map(year, month):
+    """معدلات المقررات التموينية النشطة — المصدر الذي تتبعه جداول معدلات
+    الأصناف في الترفية (توجيه ٠٨/١٠/٢٠٢)."""
+    from data_access import db_rations as dr
+    from services import free_build as fb
+    out = {}
+    kind = dr.get_activation(year, month, "tamween")
+    if kind:
+        for it in dr.get_items(year, month, "tamween", kind)[0]:
+            name = " ".join(str(it.get("name") or "").split())
+            if name:
+                out[name] = fb.seed_rate(it)
+    return out
+
+
 def snapshot(year, month):
     """يعيد كتابة مرايا الترفية الخمسة بعد أي حفظ — محليًا وذرّيًا."""
     ensure_folders(year, month)
@@ -92,12 +107,16 @@ def snapshot(year, month):
     receipts = dt.list_receipts(year, month)
     issues = dt.list_issues(year, month)
     names = {it["id"]: it["name"] for it in items}
+    rate_map = _tw_rate_map(year, month)
 
     # ---------- الأصناف ----------
     _save_xlsx(file_path(year, month, "items"), [(
         "كشف أصناف الترفية",
-        ["م", "اسم الصنف", "وحدة التعامل", "وحدة القاعدة", "عليه حركة"],
-        [(idx, it["name"], it["handle_unit"], it["base_unit"],
+        ["م", "اسم الصنف", "وحدة التعامل", "معدل التموينية", "وحدة القاعدة", "عليه حركة"],
+        [(idx, it["name"], it["handle_unit"],
+          arnum.fmt_qty(rate_map[" ".join(it["name"].split())])
+          if " ".join(it["name"].split()) in rate_map else "—",
+          it["base_unit"],
           "نعم" if dw.item_has_movement(year, month, dt.CYCLE, it["id"]) else "لا")
          for idx, it in enumerate(items, 1)])])
 

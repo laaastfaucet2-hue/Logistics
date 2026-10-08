@@ -11,6 +11,7 @@ from flask import (Blueprint, jsonify, redirect, render_template, request,
                    url_for)
 from data_access import db_calc2_free as c2f
 from data_access import db_permits as dp
+from data_access import db_tameedat as dt
 from core.auth_core import current_session, login_required
 from services import free_build as fb
 from services import permit_build as pb
@@ -114,7 +115,7 @@ def free_page():
         picks=picks, pick_groups=pb.pick_groups(year, month, picks),
         selected=selected, selected_groups=pb.pick_groups(year, month, selected),
         officers=officers, individuals=individuals, recruits=recruits,
-        force=force, entity_label=label,
+        force=force, entity_label=label, entity_names=dt.entity_names(year, month),
         tamween=tamween, contractor=contractor,
         meals=MEALS, meal_on={"breakfast": True, "lunch": True, "dinner": True},
         issuers=_issuers(year, month, day_from),
@@ -203,8 +204,9 @@ def free_save():
         "number": number,
         "fiscal_year": dp.peek_next_number(egtime.today())[1],
         "date_from": day_from, "date_to": day_to, "issue_days": issue_days,
-        "entity_label": (form.get("entity_label")
-                         or " + ".join(p["name"] for p in selected)).strip(),
+        "entity_label": dt.normalize_entity_name(   # الاسم يتبع قاموس الجهات (توجيه ٠٨/١٠)
+            year, month,
+            form.get("entity_label") or " + ".join(p["name"] for p in selected)),
         "officers": officers or 0, "individuals": individuals or 0,
         "recruits": recruits or 0,
         "meals": [k for k in MEAL_KEYS if form.get("meal_" + k) == "1"],

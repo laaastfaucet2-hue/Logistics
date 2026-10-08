@@ -3,7 +3,7 @@
 """ملفات «1. (يومي) الراغبين/يوم N/<الجهة>/» — ملفان لكل جهة في اليوم.
 
 قرار المستخدم ٠٦/١٠/٢٠٢٦: فولدر لكل يوم، وداخل فولدر اليوم **فولدر لكل جهة**،
-وداخل فولدر الجهة **ملفا إكسل**: «ض — الضباط.xlsx» و«أ — الأفراد والصف.xlsx».
+وداخل فولدر الجهة **ملفا إكسل**: «ضابط — الضباط.xlsx» و«فرد — الأفراد والصف.xlsx».
 كل ملف بدباجة + توقيعين رسميين + لوجو (القواعد الذهبية)، وصف إجمالي في الآخر،
 وبناء مستهدف عبر atomic_save (live-sync لو الملف مفتوح في Excel).
 """
@@ -27,10 +27,10 @@ def person_color(full_name):
 
 FILL_WILLING = "E8F5EE"
 CENTER = Alignment(horizontal="center", vertical="center", readingOrder=2)
-# الملفان بالحروف (توجيه ض/أ/م) — العنوان يحمل الحرف ثم الاسم الكامل
+# الملفان بكلمات عادية (توجيه ٠٨/١٠/٢٠٢) — العنوان يحمل الكلمة ثم الاسم الكامل
 CATEGORIES = (
-    ("officers", "ض — الضباط.xlsx", "ض — الضباط"),
-    ("individuals", "أ — الأفراد والصف.xlsx", "أ — الأفراد والصف"),
+    ("officers", "ضابط — الضباط.xlsx", "ضابط — الضباط"),
+    ("individuals", "فرد — الأفراد والصف.xlsx", "فرد — الأفراد والصف"),
 )
 HEADERS = ["م", "الرتبة", "الاسم الرتبعي الكامل", "حالة اليوم", "ملاحظات"]
 COLS = len(HEADERS)
@@ -44,7 +44,7 @@ def day_dir(year, month, day):
 
 
 def entity_dir(year, month, day, entity_name):
-    """فولدر الجهة داخل اليوم — داخله ملفا ض/أ (يُنشأ عند أول كتابة)."""
+    """فولدر الجهة داخل اليوم — داخله ملفا ضابط/فرد (يُنشأ عند أول كتابة)."""
     path = day_dir(year, month, day) / (entity_name or "").strip()
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -74,9 +74,6 @@ def _letterhead(ws, year, month, day, entity_name, cat_title):
     title.font = Font(name="Cairo", size=13, bold=True, color="132638")
     title.alignment = CENTER
     ws.row_dimensions[6].height = 22
-    legend = ws.cell(7, 1, labels.LEGEND_TWO)
-    legend.font = Font(name="Cairo", size=10, color="6B7280")
-    legend.alignment = CENTER
     for col, name in enumerate(HEADERS, start=1):
         cell = ws.cell(8, col, name)
         cell.font = Font(name="Cairo", size=11, bold=True, color="FFFFFF")
@@ -119,7 +116,7 @@ def _write_category(folder, year, month, day, entity_name, persons, state, cat,
     total = ws.cell(row, 1,
                     f"الإجمالي: {arnum.to_arabic_indic(str(willing))} راغبون من أصل "
                     f"{arnum.to_arabic_indic(str(len(persons)))} — "
-                    f"{labels.SHORT[cat]} ({cat_title.split(' — ')[-1]}) — {labels.LEGEND_TWO}")
+                    f"{labels.SHORT[cat]} ({cat_title.split(' — ')[-1]})")
     total.font = Font(size=12, name="Cairo", bold=True)
     total.alignment = CENTER
     _signatures(ws, row + 2, year, month)
@@ -129,7 +126,7 @@ def _write_category(folder, year, month, day, entity_name, persons, state, cat,
 
 
 def write_day_file(year, month, day, entity_id, entity_name):
-    """بناء/تحديث ملفي الجهة (ض/أ) داخل فولدرها في يومها — يُرجع فولدر الجهة."""
+    """بناء/تحديث ملفي الجهة (ضابط/فرد) داخل فولدرها في يومها — يُرجع فولدر الجهة."""
     folder = entity_dir(year, month, day, entity_name)
     persons = dr.list_persons(year, month, entity_id=entity_id)   # ضباط ثم أفراد
     state = dr.day_state(year, month, day, entity_id)

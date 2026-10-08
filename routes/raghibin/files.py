@@ -87,7 +87,7 @@ def open_entity_excel():
     if _open_path(folder):
         return _rb(tab="daily", d=day, ok=(
             f"تم فتح فولدر ملفات «{entity['name']}» ليوم {day_txt} — "
-            f"داخله «ض — الضباط.xlsx» و«أ — الأفراد والصف.xlsx» 📗"))
+            f"داخله «ضابط — الضباط.xlsx» و«فرد — الأفراد والصف.xlsx» 📗"))
     from flask import url_for
     return _rb(tab="daily", d=day, err=(
         f"ملفا إكسل «{entity['name']}» ليوم {day_txt} اتبنوا محليًا ويمكن تنزيلهما الآن "

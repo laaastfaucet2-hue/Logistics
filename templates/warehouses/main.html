@@ -87,7 +87,7 @@
 <script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
 <script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
 <script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>
-<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month} | tojson }}</script>
+<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month, "cycle": cycle_key} | tojson }}</script>
 {% endblock %}
 
 {% block scripts %}

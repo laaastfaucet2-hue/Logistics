@@ -237,7 +237,7 @@ def topic_tameedat_day(year, month, question):
             label += " + " + "، ".join(a["name"] for a in rec["attachments"]) + " (ملحقة)"
         rows.append([label, rec["entity_type"] or "—", _ar(rec["officers"]),
                      _ar(rec["individuals"]), _ar(rec["recruits"]), _ar(rec["grand_total"])])
-    blocks = [table(["الجهة", "النوع", "ض", "أ", "م", "الإجمالي"], rows),
+    blocks = [table(["الجهة", "النوع", "ضابط", "فرد", "مجندين", "الإجمالي"], rows),
               kv([["عدد التأميدات", _ar(len(records))],
                   ["إجمالي اليوم", _pair(tot[0], tot[1], tot[2])],
                   ["مدد زمنية", _ar(sum(1 for r in records if r["range_days"] > 1))]])]
@@ -271,7 +271,7 @@ def topic_tameedat_entity(year, month, question):
                                      round(own.get("avg_individuals", 0), 3))],
             ["شارة ملحقة", f"×{_ar(stats['att_count'])}" if stats.get("att_count") else "—"],
         ]))
-        blocks.append(table(["اليوم", "من – إلى", "ض", "أ", "م", "الإجمالي"],
+        blocks.append(table(["اليوم", "من – إلى", "ضابط", "فرد", "مجندين", "الإجمالي"],
                             [[_ar(rec["day"]),
                               f"{_fmt_date(year, month, rec['day'])} → {_fmt_date(year, month, rec['day_to'])}",
                               _ar(rec["officers"]), _ar(rec["individuals"]),
@@ -298,7 +298,7 @@ def topic_momoda(year, month, question):
         kv([["عدد الجهات المومدة", _ar(totals["entities"])],
             ["إجمالي القوة", _ar(totals["grand"])],
             ["أيام التميد الفعلية", _ar(totals["active_days"])]]),
-        table(["م", "الجهة", "النوع", "أيام", "تأميدات", "ض", "أ", "م", "الإجمالي"], rows)],
+        table(["م", "الجهة", "النوع", "أيام", "تأميدات", "ضابط", "فرد", "مجندين", "الإجمالي"], rows)],
         links=[L_MOMODA, L_TAMEEDAT], followups=["قاموس الجهات", "تنبيهات الشهر",
                                                  "ملخص الشهر"])
 
@@ -322,10 +322,10 @@ def topic_tameedat_month(year, month, question):
             ["الجهات المومدة", _ar(totals["entities"])],
             ["إجمالي القوة", _ar(totals["grand"])],
             ["الأيام المسجلة", _ar(totals["active_days"])],
-            ["إجمالي ض/أ/م", _pair(totals["officers"], totals["individuals"],
+            ["إجمالي ضابط/فرد/مجندين", _pair(totals["officers"], totals["individuals"],
                                    totals["recruits"])]]),
         p("أعلى الجهات بالإجمالي:"), table(["م", "الجهة", "النوع", "أيام", "تأميدات",
-                                             "ض", "أ", "م", "الإجمالي"], rows)],
+                                             "ضابط", "فرد", "مجندين", "الإجمالي"], rows)],
         links=[L_TAMEEDAT, L_MOMODA], followups=["الجهات المومدة", "تنبيهات الشهر",
                                                  "تأميدات اليوم"])
 
@@ -475,7 +475,7 @@ def topic_forces(year, month, question):
             ["إجمالي الضباط", _ar(total_o)],
             ["إجمالي الأفراد", _ar(total_i)],
             ["الإجمالي", _ar(total_o + total_i)]]),
-        table(["الجهة", "ض", "أ", "الإجمالي"], rows[:12])],
+        table(["الجهة", "ضابط", "فرد", "الإجمالي"], rows[:12])],
         links=[L_CADRES], followups=["راغبين اليوم", "الجهات المومدة", "ملخص الشهر"])
 
 
@@ -539,7 +539,7 @@ def topic_entity_card(year, month, question):
             ["أيام بـ تسجيل", _ar(info["willing_days"])],
             ["مستثنون", _ar(info["excluded"])],
             ["تأميدات مسجّلة", _ar(info["tameedat_count"])]]),
-        table(["اليوم", "التاريخ", "ض", "أ", "م", "الإجمالي"],
+        table(["اليوم", "التاريخ", "ضابط", "فرد", "مجندين", "الإجمالي"],
               [["—" if rec["day"] is None else _ar(rec["day"]),
                 _fmt_date(year, month, rec["day"]) if rec["day"] else "—",
                 _ar(rec.get("total_officers", 0)), _ar(rec.get("total_individuals", 0)),
@@ -565,7 +565,33 @@ def _entity_records(name, year, month):
 def topic_rations(year, month, question):
     from data_access import db_rations as dr
     blocks = []
-    for section, label, link in (("tamween", "المقررات التمونيية", L_RATIONS_T),
+    # سؤال عن معدل صنف بالاسم؟ — الإجابة من المقررات التموينية بالظبط،
+    # فهي المصدر الذي تتبعه كل جداول معدلات الأصناف (توجيه ٠٨/١٠/٢٠٦)
+    from services.assistant import text as T
+    def _words(text):
+        out = set()
+        for w in " ".join(str(text or "").split()):
+            out.add(w[2:] if w.startswith("ال") and len(w) > 2 else w)
+        return out
+
+    q_words = _words(question)
+    tw_kind = dr.get_activation(year, month, "tamween")
+    tw_items = dr.get_items(year, month, "tamween", tw_kind)[0] if tw_kind else []
+    # كل كلمة من اسم الصنف لازم تكون في السؤال (مع تجاهل «ال» تعريفًا)
+    found = [it for it in tw_items
+             if it.get("name") and _words(T.normalize(str(it["name"]))) <= q_words]
+    if found:
+        rows = [[it["name"], it["unit"] or "—",
+                 arnum.fmt_qty(it["breakfast"] or 0),
+                 arnum.fmt_qty(it["lunch"] or 0),
+                 arnum.fmt_qty(it["dinner"] or 0),
+                 arnum.fmt_qty((it["breakfast"] or 0) + (it["lunch"] or 0)
+                               + (it["dinner"] or 0))]
+                for it in found[:5]]
+        blocks.append(p("معدلات الصنف — من المقررات التموينية (المصدر الموحد):"))
+        blocks.append(table(["الصنف", "الوحدة", "فطار", "غداء", "عشاء", "إجمالي اليوم"],
+                            rows))
+    for section, label, link in (("tamween", "المقررات التموينية", L_RATIONS_T),
                                  ("contractor", "مقررات المتعهد", L_RATIONS_C)):
         kind = dr.get_activation(year, month, section)
         items = dr.get_items(year, month, section, kind)[0] if kind else []
@@ -632,7 +658,8 @@ def topic_tarfea(year, month, question):
     rows = [[row["name"], row.get("unit") or "—", arnum.fmt_qty(row["balance"])]
             for row in report]
     return result("أرصدة الترفية", [
-        kv([["عدد الأصناف", _ar(len(rows))], ["حركات الصرف", _ar(len(issues))]]),
+        kv([["عدد الأصناف", _ar(len(rows))], ["حركات الصرف", _ar(len(issues))],
+           ["المخزن", "مخزن الترفية (محدد تلقائيًا — من غير اختيار)"]]),
         table(["الصنف", "الوحدة", "الرصيد"], rows[:10])],
         links=[L_TARFEA], followups=["المخازن والثلاجات", "أرصدة المخازن"])
 

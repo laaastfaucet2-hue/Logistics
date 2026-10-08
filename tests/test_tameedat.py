@@ -372,7 +372,7 @@ def test_time_range_covers_every_day_and_scales_monthly_totals(client):
     momoda_page = _get(client, "/tameedat/?tab=momoda")
     assert "٨٠٠" in momoda_page.text and "متوسط ض" not in momoda_page.text   # المتوسطات انتقلت إلى القاموس
     dict_page = _get(client, "/tameedat/?tab=dict")
-    assert "متوسط ض" in dict_page.text and "متوسط أ" in dict_page.text
+    assert "متوسط ضابط" in dict_page.text and "متوسط فرد" in dict_page.text
     assert "متوسط م" in dict_page.text and "عدد التأميدات" in dict_page.text
     assert "ملحقة؟" in dict_page.text and "افتح التواريخ" in dict_page.text
 

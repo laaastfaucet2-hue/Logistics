@@ -133,6 +133,56 @@ def _wday(year, month, day):
         return ""
 
 
+def prepare_card(card, year, month, cycle, packs_map):
+    """يُعدّ كارت صنف للعرض في تاب ٣ مخازن (المستودعات **والترفية** — توجيه ٠٨/١٠:
+    دفتر الترفيهي = دفتر المستودعات بالظبط): أسماء الأيام + الحالة الكلية +
+    فورم تعديل رصيد أول المدة مُعبّيًا بكل بيانات السطر (لو سبق تسجيله).
+    يُرجع سياق `opener_edit` (أو None)."""
+    if not card:
+        return None
+    for row in card["rows"]:
+        row["wday"] = _wday(year, month, row["day"])
+    card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
+    # الحالة الكلية للصنف: الرصيد والمضاف والمنصرف والتغليف المتبقي (توجيه ٢٧/٠٩)
+    card["pack_note"] = _opener_pack_note(card, packs_map)
+    # تعديل رصيد أول المدة (توجيه ٠٨/١٠): فورم مُعبّى بكل بيانات السطر —
+    # الكمية والتغليف من pack_label + معاير الصنف محفوظة في wh_pack_specs
+    opener_edit = None
+    if card["has_opener"]:
+        _specs = packs_map.get(card["item"]["name"], {})
+        _orow = card["opener_row"]
+        _producer, _supplier, _unotes = _opener_bits(_orow.get("raw_notes") or "")
+        _cnt, _pkind, _pcap, _loose = packaging.parse_pack_label(_orow.get("pack_label") or "")
+        _lsp = _specs.get(list(_specs)[-1], {}) if _specs else {}
+        if not _pkind:
+            _pkind = list(_specs)[-1] if _specs else ""
+        if _pcap <= 0:
+            _pcap = _lsp.get("capacity") or 0
+        if not _cnt and (_pcap or 0) > 0:
+            _cnt = round(float(_orow["added"]) / _pcap)
+        opener_edit = {
+            "item_id": card["item"]["id"],
+            "qty": float(_orow["added"]),
+            "day": int(_orow["day"] or 1),
+            "producer": _producer,
+            "supplier": _supplier,
+            "notes": _unotes,
+            "prod_date": _orow.get("prod_date") or "",
+            "exp_date": _orow.get("exp_date") or "",
+            "pack_kind": _pkind or "",
+            "pack_count": _cnt or 0,
+            "pack_capacity": _pcap or 0,
+            "pack_inner_count": _lsp.get("inner_count") or 0,
+            "pack_inner_capacity": _lsp.get("inner_capacity") or 0,
+            "pack_inner_kind": _lsp.get("inner_kind") or "",
+            "pack_loose": _loose or 0,
+            "pack_loose_unit": card["item"]["handle_unit"] if (_loose or 0) > 0 else "",
+            "split": [{"name": s["store_name"], "qty": s["qty"]}
+                      for s in dw.opener_stores(year, month, cycle).get(card["item"]["id"], [])],
+        }
+    return opener_edit
+
+
 def _opt_date(raw):
     """تاريخ اختياري نصي dd/mm/yyyy → ISO، أو ('' ) فارغ؛ يرفع ValueError للتاريخ المستحيل."""
     raw = (raw or "").strip()
@@ -140,6 +190,32 @@ def _opt_date(raw):
         return ""
     parsed = dates.parse_date(raw)
     return parsed.isoformat() if parsed else ""
+
+
+def _stores_from_form(prefix):
+    """أسطر «توزيع الكمية على المخازن» من الفورم:
+
+    - مخزن معروف في سجل «المخازن والثلاجات» ⇒ يُحفظ بمعرّفه واسمه.
+    - اسم آخر مكتوب في الحقل (مثل «مخزن الترفية» الوحيد في دورة الترفية) ⇒
+      يُحفظ بالاسم مع معرّف 0 (مخزن افتراضي خارج السجل) — توجيه ٠٨/١٠:
+      في الترفية المخزن يتحدد علطول ومسموح يُحفظ من غير ما يكون في السجل.
+    """
+    ids = request.form.getlist(prefix + "store_id")
+    qtys = request.form.getlist(prefix + "store_qty")
+    names = request.form.getlist(prefix + "store_name")
+    parts = []
+    for i in range(max(len(ids), len(qtys), len(names))):
+        sid = arnum.parse_int(ids[i]) if i < len(ids) else None
+        sqty = arnum.parse_float(qtys[i]) if i < len(qtys) else None
+        sname = (names[i] or "").strip() if i < len(names) else ""
+        if not (sqty and sqty > 0):
+            continue
+        store = db_stores.get_store(sid) if sid else None
+        if store:
+            parts.append((store["id"], store["name"], sqty))
+        elif sname:
+            parts.append((0, sname, sqty))
+    return parts
 
 
 def _open_path(path):
@@ -348,47 +424,8 @@ def page():
             card = dw.item_card(year, month, arnum.parse_int(request.args.get("item")) or 0)
             if card and card["item"]["cycle"] != cycle:
                 card = None
-    opener_edit = None
-    if card:
-        for row in card["rows"]:
-            row["wday"] = _wday(year, month, row["day"])
-        card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
-        # الحالة الكلية للصنف: الرصيد والمضاف والمنصرف والتغليف المتبقي (توجيه ٢٧/٠٩)
-        _specs = packs_map.get(card["item"]["name"], {})
-        card["pack_note"] = _opener_pack_note(card, packs_map)
-        # تعديل رصيد أول المدة (توجيه ٠٨/١٠): فورم مُعبّى بكل بيانات السطر —
-        # الكمية والتغليف من pack_label + معاير الصنف محفوظة في wh_pack_specs
-        if card["has_opener"]:
-            _orow = card["opener_row"]
-            _producer, _supplier, _unotes = _opener_bits(_orow.get("raw_notes") or "")
-            _cnt, _pkind, _pcap, _loose = packaging.parse_pack_label(_orow.get("pack_label") or "")
-            _lsp = _specs.get(list(_specs)[-1], {}) if _specs else {}
-            if not _pkind:
-                _pkind = list(_specs)[-1] if _specs else ""
-            if _pcap <= 0:
-                _pcap = _lsp.get("capacity") or 0
-            if not _cnt and (_pcap or 0) > 0:
-                _cnt = round(float(_orow["added"]) / _pcap)
-            opener_edit = {
-                "item_id": card["item"]["id"],
-                "qty": float(_orow["added"]),
-                "day": int(_orow["day"] or 1),
-                "producer": _producer,
-                "supplier": _supplier,
-                "notes": _unotes,
-                "prod_date": _orow.get("prod_date") or "",
-                "exp_date": _orow.get("exp_date") or "",
-                "pack_kind": _pkind or "",
-                "pack_count": _cnt or 0,
-                "pack_capacity": _pcap or 0,
-                "pack_inner_count": _lsp.get("inner_count") or 0,
-                "pack_inner_capacity": _lsp.get("inner_capacity") or 0,
-                "pack_inner_kind": _lsp.get("inner_kind") or "",
-                "pack_loose": _loose or 0,
-                "pack_loose_unit": card["item"]["handle_unit"] if (_loose or 0) > 0 else "",
-                "split": [{"name": s["store_name"], "qty": s["qty"]}
-                          for s in dw.opener_stores(year, month, cycle).get(card["item"]["id"], [])],
-            }
+    # كارت + فورم تعديل أول المدة — دالة واحدة يشترك فيها المستودعات والترفية
+    opener_edit = prepare_card(card, year, month, cycle, packs_map)
     # التاب النشط في «٣ مخازن تفاريد»: الصنف المفتوح أو أول صنف في الدورة
     taf3_active_id = card["item"]["id"] if card else (
         items[0]["id"] if (sub == "wh3" and items) else None)
@@ -555,14 +592,7 @@ def _save_wh1(year, month, cycle, fixed_serial=None):
             raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه يوم/شهر/سنة صحيحًا")
         if prod_iso and exp_iso and exp_iso < prod_iso:
             raise ValueError(f"الصنف «{name}»: تاريخ الصلاحية قبل تاريخ الإنتاج")
-        stores_parts = []
-        for sid_raw, qty_raw in zip(request.form.getlist(f"l{i}_store_id"),
-                                    request.form.getlist(f"l{i}_store_qty")):
-            sid = arnum.parse_int(sid_raw)
-            sqty = arnum.parse_float(qty_raw)
-            store = db_stores.get_store(sid) if sid else None
-            if store and sqty and sqty > 0:
-                stores_parts.append((store["id"], store["name"], sqty))
+        stores_parts = _stores_from_form(f"l{i}_")
         staged.append(dict(
             day=day, name=name, qty=qty,
             handle_unit_hint=request.form.get(f"l{i}_handle_unit"),
@@ -673,14 +703,7 @@ def wh3_opener():
         if sup["name"] == supplier_name:
             supplier_id = sup["id"]
             break
-    stores_parts = []
-    for sid_raw, qty_raw in zip(request.form.getlist("store_id"),
-                                request.form.getlist("store_qty")):
-        sid = arnum.parse_int(sid_raw)
-        sqty = arnum.parse_float(qty_raw)
-        store = db_stores.get_store(sid) if sid else None
-        if store and sqty and sqty > 0:
-            stores_parts.append((store["id"], store["name"], sqty))
+    stores_parts = _stores_from_form("")
     try:
         prod_iso = _opt_date(request.form.get("prod_date"))
         exp_iso = _opt_date(request.form.get("exp_date"))
