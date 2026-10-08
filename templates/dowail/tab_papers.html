@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}تفاريد الدولى — أوراق وإيصالات الصرف{% endblock %}
+{% block title %}تفاريد خط الحدود الدولى — أوراق وإيصالات الصرف{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
@@ -7,7 +7,7 @@
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
-  <span>📦 تفاريد الدولى — النقط الحدودية</span>
+  <span>📦 تفاريد خط الحدود الدولى — النقط الحدودية</span>
   <span class="sep">•</span>
   <span class="dim">{{ month_name }} {{ year | aindic }}</span>
   {% include "partials/print_btn.html" %}
@@ -15,59 +15,43 @@
 {% set cur_tab = 'dowail' %}
 {% include "calc2/tabs.html" %}
 {% include "dowail/_subtabs.html" %}
-{% set sk = request.args.get('store_keeper') or '' %}
-{% set scr = request.args.get('scribe') or '' %}
-{% set people = {} %}
-{% if sk %}{% set _ = people.update({'store_keeper': sk}) %}{% endif %}
-{% if scr %}{% set _ = people.update({'scribe': scr}) %}{% endif %}
 
 <div class="panel dw-gate">
-  <div class="panel-head"><h3>بوابة تفاريد وأذونات صرف الدولى</h3>
-    <span class="panel-hint">النشطة = نقاط بقوة &gt; ٠ · الحصيلة = معدل الفرد × القوة × أيام الصرف</span></div>
+  <div class="panel-head"><h3>بوابة تفاريد وأذونات صرف خط الحدود الدولى</h3>
+    <span class="panel-hint">الحصيلة = معدل الفرد × القوة × أيام الصرف · الحفظ يدوي والقديم كله في الارشيف</span></div>
 
   <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar">
     <input type="hidden" name="tab" value="papers">
     <label>من يوم<input name="from" inputmode="numeric" value="{{ day_from | aindic }}"></label>
     <label>إلى يوم<input name="to" inputmode="numeric" value="{{ day_to | aindic }}"></label>
-    <label>عدد الأيام<input name="days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
-    <label>أمين المخزن (المُسهم)<input name="store_keeper" value="{{ request.args.get('store_keeper') or '' }}" placeholder="اسم أمين المخزن"></label>
-    <label>كاتب التمييزات<input name="scribe" value="{{ request.args.get('scribe') or '' }}" placeholder="اسم الكاتب"></label>
+    <label>أيام الصرف<input name="days" inputmode="numeric" value="{{ issue_days | aindic }}"></label>
+    <label>أمين المخازن<input name="store_keeper" value="{{ request.args.get('store_keeper') or '' }}" placeholder="اسم أمين المخازن"></label>
     <button class="rt-btn gold" type="submit">تطبيق</button>
   </form>
 
   <div class="dw-actions">
-    <form method="post" action="{{ url_for('dowail.reset') }}"
-          onsubmit="return confirm('تصفير: هيتمسح الحفظ الأخير للفترة الحالية — متأكد؟');">
-      <input type="hidden" name="date_from" value="{{ day_from }}">
-      <input type="hidden" name="date_to" value="{{ day_to }}">
-      <input type="hidden" name="issue_days" value="{{ issue_days }}">
-      <button class="rt-btn big dw-danger" type="submit">🔄 تصفير وإعادة تمييز القوات</button>
-    </form>
     <form method="post" action="{{ url_for('dowail.save_tafreeda') }}">
       <input type="hidden" name="date_from" value="{{ day_from }}">
       <input type="hidden" name="date_to" value="{{ day_to }}">
       <input type="hidden" name="issue_days" value="{{ issue_days }}">
       <input type="hidden" name="store_keeper" value="{{ request.args.get('store_keeper') or '' }}">
-      <input type="hidden" name="scribe" value="{{ request.args.get('scribe') or '' }}">
-      <button class="rt-btn green big" type="submit">💾 حفظ التفريدة على القرص</button>
+      <button class="rt-btn green big" type="submit">💾 حفظ التوزيعة على القرص</button>
     </form>
-    <a class="rt-btn big" href="{{ url_for('dowail.print_active', from=day_from, to=day_to, days=issue_days, **people) }}">
-      🖨️ طباعة كافة الأوراق النشطة للخطوط ({{ total_active | aindic }} ورقة)</a>
   </div>
 
-  <details class="dw-savesbox">
-    <summary>سجل تفاريد الدولى المحفوظة على القرص ({{ saves | length | aindic }})</summary>
+  <details class="dw-savesbox" {{ 'open' if saves else '' }}>
+    <summary>ارشيف التوزيعات المحفوظة على القرص ({{ saves | length | aindic }}) — الأحدث = الحالي</summary>
     {% if saves %}
     <div class="table-wrap">
       <table class="rt-table">
-        <thead><tr><th>#</th><th>الفترة</th><th>أمين المخزن</th><th>كاتب التمييزات</th><th>حُفظ</th><th>الملفات</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>الحالة</th><th>الفترة</th><th>أمين المخازن</th><th>حُفظ</th><th>الملفات</th><th></th></tr></thead>
         <tbody>
           {% for s in saves %}
-          <tr>
+          <tr class="{{ '' if loop.first else 'dw-archived' }}">
             <td class="num">{{ s.id | aindic }}</td>
+            <td>{{ '🟢 الحالي' if loop.first else '📦 ارشيف' }}</td>
             <td class="num">{{ s.date_from | aindic }} — {{ s.date_to | aindic }} ({{ s.issue_days | aindic }} يوم)</td>
             <td>{{ s.store_keeper or '—' }}</td>
-            <td>{{ s.scribe or '—' }}</td>
             <td class="dim">{{ (s.created_at or '')[:16] }}</td>
             <td>
               {% for f in s.files %}
@@ -76,7 +60,7 @@
             </td>
             <td>
               <form method="post" action="{{ url_for('dowail.save_delete', save_id=s.id) }}"
-                    onsubmit="return confirm('حذف الحفظ رقم {{ s.id | aindic }} وملفاته من القرص؟');">
+                    onsubmit="return confirm('حذف التوزيعة رقم {{ s.id | aindic }} وملفاتها من القرص؟');">
                 <button class="dw-mini danger" type="submit">🗑️ حذف</button>
               </form>
             </td>
@@ -86,7 +70,7 @@
       </table>
     </div>
     {% else %}
-    <p class="panel-hint">مفيش تفاريد محفوظة على القرص بعد.</p>
+    <p class="panel-hint">مفيش توزيعة محفوظة على القرص بعد — عدّل القوى والمعدلات ودوس حفظ.</p>
     {% endif %}
   </details>
 
@@ -95,52 +79,31 @@
     <input name="q" value="{{ search_q }}" placeholder="🔍 بحث سريع عن نقطة — اكتب اسمها">
     <button class="rt-btn navy small" type="submit">بحث</button>
   </form>
-  {% if search_q %}
-  {% if search_hit %}
-  {% set hit_line, hit_point = search_hit %}
-  <p class="dw-hit">«<b>{{ hit_point.name }}</b>» — «{{ hit_line.name }}» —
-    <a href="{{ url_for('dowail.point_paper', point_id=hit_point.id, from=day_from, to=day_to, days=issue_days, **people) }}">📄 ورقتها</a></p>
-  {% else %}
-  <p class="dw-hit dw-nohit">مفيش نقطة باسم «{{ search_q }}».</p>
-  {% endif %}
-  {% endif %}
-</div>
-
-{% if papers %}
-<div class="dw-lines-folders">
-  {% for lp in papers %}
-  <div class="panel dw-linefolder">
-    <div class="panel-head">
-      <h3>📁 «{{ lp.line.name }}»</h3>
-      <span class="panel-hint">{{ lp.line.count | aindic }} ورقة | {{ lp.active_count | aindic }} نشطة | إجمالي قوة الخط: <b>{{ lp.line.total_force | aindic }}</b> فرد/يوم</span>
-      <a class="rt-btn small navy" href="{{ url_for('dowail.line_paper', line_id=lp.line.id, from=day_from, to=day_to, days=issue_days, **people) }}">📄 ورقة الخط المجمعة</a>
-    </div>
-    {% if lp.points_papers %}
-    <table class="rt-table">
-      <thead><tr><th>النقطة</th><th>القوة</th><th>الحالة</th><th></th></tr></thead>
+  {% if search_q and search_hit %}
+  <div class="dw-hitbox">
+    <p class="dw-hit">«<b>{{ search_hit.point.name }}</b>» — خط «{{ search_hit.line.name }}»
+      · القوة: <b>{{ search_hit.point.force | aindic }}</b>
+      {% if search_hit.point.responsible %}· المسؤول: <b>{{ search_hit.point.responsible }}</b>{% endif %}</p>
+    <table class="rt-table dw-paper-table">
+      <thead><tr><th>م</th><th>المادة</th><th>الوحدة</th><th>المعدل اليومى</th><th>أيام الصرف</th><th>الحصيلة</th></tr></thead>
       <tbody>
-        {% for pp in lp.points_papers %}
-        <tr class="{{ '' if (pp.point.force or 0) > 0 else 'dw-off' }}">
-          <td><b>{{ pp.point.name }}</b>{% if pp.point.responsible %} <small>— {{ pp.point.responsible }}</small>{% endif %}</td>
-          <td class="num">{{ pp.point.force | aindic }}</td>
-          <td>{{ 'نشطة' if (pp.point.force or 0) > 0 else 'متوقفة (قوة ٠)' }}</td>
-          <td>
-            <a class="rt-btn small {{ 'gold' if (pp.point.force or 0) > 0 else 'dim' }}"
-               href="{{ url_for('dowail.point_paper', point_id=pp.point.id, from=day_from, to=day_to, days=issue_days, **people) }}">📄 ورقة النقطة</a>
-          </td>
+        {% for i, r in search_hit.rows %}
+        <tr>
+          <td class="num">{{ (i + 1) | aindic }}</td>
+          <td><b>{{ r.name }}</b></td>
+          <td>{{ r.unit }}</td>
+          <td class="num">{{ r.rate | qty3 }}</td>
+          <td class="num">{{ r.days | aindic }}</td>
+          <td class="num">{{ r.total | qty3 }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">مفيش أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    {% else %}
-    <p class="panel-hint">مفيش نقاط في هذا الخط — أضف من «إدارة الخطوط والنقاط».</p>
-    {% endif %}
   </div>
-  {% endfor %}
+  {% elif search_q %}
+  <p class="dw-hit dw-nohit">مفيش نقطة باسم «{{ search_q }}».</p>
+  {% endif %}
 </div>
-{% else %}
-<div class="panel" style="text-align:center;padding:32px">
-  <p class="panel-hint">مفيش خطوط لسه — ابدأ من «إدارة الخطوط والنقاط» بإضافة خط ونقاطه.</p>
-</div>
-{% endif %}
 {% endblock %}

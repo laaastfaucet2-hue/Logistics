@@ -82,12 +82,28 @@
 /* مصفوفة الإجماليات */
 .dw-matrix-wrap { overflow-x: auto; }
 .dw-matrix th, .dw-matrix td { white-space: nowrap; }
-.dw-linetotal td { background: var(--surface-gold); font-weight: 700; }
-.dw-grandtotal td { background: var(--brand-gold); color: var(--on-gold); font-weight: 900; }
+.dw-linenum td { background: var(--surface-gold); font-weight: 700; }
+.dw-grand td { background: var(--brand-gold); color: var(--on-gold); font-weight: 900; }
 
-/* الطباعة: كل ورقة في صفحة */
+/* ارشيف البيانات والمعدلات */
+.dw-archbox { margin-top: 18px; border-top: 1px dashed var(--gold-border); padding-top: 10px; }
+.dw-archbox details { margin: 4px 0; }
+.dw-archbox summary { cursor: pointer; font-weight: 800; color: var(--gold-light); }
+.dw-stmtlist { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dw-stmtlist li { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+
+/* بحث نقطة */
+.dw-hitbox { border: 1px solid var(--gold-border); border-radius: 12px;
+  padding: 12px 14px; margin-top: 10px; background: var(--card); }
+.dw-hitbox .dw-hit { margin: 0 0 10px; }
+
+/* صف ارشيف في سجل الحفظ + شريط الفلاتر */
+.dw-archived { opacity: .75; }
+.dw-filterbar { padding-top: 2px; }
+.dw-filterbar select { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--field-border);
+  background: var(--card); color: var(--text); font-weight: 600; min-width: 160px; }
+
+/* الطباعة */
 @media print {
-  .dw-print-page { page-break-after: always; }
-  .dw-subtabs, .dw-gatebar, .dw-actions, .dw-savesbox, .dw-search, .dw-print-intro { display: none !important; }
-  .dw-paper { border: none; }
+  .dw-subtabs, .dw-gatebar, .dw-actions, .dw-savesbox, .dw-search, .dw-archbox { display: none !important; }
 }

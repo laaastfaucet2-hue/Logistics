@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}تفاريد الدولى — إدارة الخطوط والنقاط{% endblock %}
+{% block title %}تفاريد خط الحدود الدولى — إدارة الخطوط والنقاط{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
@@ -7,7 +7,7 @@
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
-  <span>📦 تفاريد الدولى — النقط الحدودية</span>
+  <span>🚧 تفاريد خط الحدود الدولى — إدارة الخطوط والنقاط</span>
   <span class="sep">•</span>
   <span class="dim">{{ month_name }} {{ year | aindic }}</span>
   {% include "partials/print_btn.html" %}
@@ -17,17 +17,18 @@
 {% include "dowail/_subtabs.html" %}
 
 <div class="panel">
-  <div class="panel-head"><h3>الفرع الثاني: إدارة مركز الخطوط والنقاط — الدولى</h3></div>
+  <div class="panel-head"><h3>الفرع الثاني: إدارة مركز الخطوط والنقاط — الدولى</h3>
+    <span class="panel-hint">الحالي هو اللي البرنامج بيشتغل عليه — كل تغيير بيحفظ بيان إكسل باليوم في الارشيف</span></div>
 
   <div class="dw-cols">
     <div>
-      <h4 class="dw-h">الخطوط القائمة</h4>
+      <h4 class="dw-h">الخطوط القائمة (الحالي)</h4>
       {% if lines %}
       <ul class="dw-lines">
         {% for l in lines %}
         <li class="dw-line {{ 'on' if l.id == sel_line_id }}">
           <a href="{{ url_for('dowail.page', tab='lines', line=l.id, from=day_from, to=day_to) }}"><b>{{ l.name }}</b></a>
-          <small>{{ l.count | aindic }} ورقة | {{ l.active | aindic }} نشطة | قوة {{ l.total_force | aindic }}</small>
+          <small>{{ l.count | aindic }} نقطة | {{ l.active | aindic }} نشطة | قوة {{ l.total_force | aindic }}</small>
           <form method="post" action="{{ url_for('dowail.delete_line', line_id=l.id) }}"
                 onsubmit="return confirm('متأكد من حذف «{{ l.name }}» وكل نقاطه؟');">
             <button class="dw-mini danger" type="submit">🗑️ حذف</button>
@@ -51,11 +52,19 @@
       <p class="panel-hint">خط: <b>{{ sel.name }}</b> — قوة الخط {{ sel.total_force | aindic }}</p>
       {% if sel.points %}
       <table class="rt-table dw-points">
-        <thead><tr><th>النقطة</th><th>القوة (قابلة للتعديل)</th><th></th></tr></thead>
+        <thead><tr><th>النقطة</th><th>المسؤول</th><th>القوة (قابلة للتعديل)</th><th></th></tr></thead>
         <tbody>
           {% for p in sel.points %}
-          <tr>
+          <tr class="{{ '' if (p.force or 0) > 0 else 'dw-off' }}">
             <td><b>{{ p.name }}</b></td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.update_point', point_id=p.id) }}" class="dw-inline">
+                <input name="responsible" value="{{ p.responsible }}" placeholder="المسؤول">
+                <input type="hidden" name="responsible_only" value="1">
+                <input type="hidden" name="from_tab" value="lines">
+                <button class="dw-mini" type="submit">حفظ</button>
+              </form>
+            </td>
             <td>
               <form method="post" action="{{ url_for('dowail.update_point', point_id=p.id) }}" class="dw-inline">
                 <input name="force" inputmode="numeric" value="{{ p.force | aindic }}">
@@ -86,6 +95,25 @@
         <input name="force" inputmode="numeric" placeholder="القوة" class="dw-w-narrow">
         <button class="rt-btn gold small" type="submit">إضافة النقطة</button>
       </form>
+      {% endif %}
+
+      {% if line_statements %}
+      <div class="dw-archbox">
+        <h4 class="dw-h">📦 ارشيف البيانات (بيان إكسل مع كل تغيير)</h4>
+        {% for lname, stmts in line_statements.items() %}
+        <details class="{{ 'open' if (sel and sel.name == lname) else '' }}">
+          <summary>{{ lname }} ({{ stmts | length | aindic }} بيان)</summary>
+          <ul class="dw-stmtlist">
+            {% for day, path in stmts %}
+            <li>
+              <span class="dim">يوم {{ day | aindic }}</span>
+              <a class="dw-filelink" href="{{ url_for('dowail.statement_file', filename=path) }}">📎 فتح البيان</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endfor %}
+      </div>
       {% endif %}
     </div>
   </div>

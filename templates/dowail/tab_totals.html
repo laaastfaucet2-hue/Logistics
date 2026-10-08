@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-{% block title %}تفاريد الدولى — إجمالي خطوط التوزيع{% endblock %}
-{% block print_doc_title %}بيان توزيع وإجمالي خطوط حراسة الدولى — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block title %}تفاريد خط الحدود الدولى — إجمالي خطوط التوزيع{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
@@ -8,7 +7,7 @@
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
-  <span>📦 تفاريد الدولى — النقط الحدودية</span>
+  <span>📊 تفاريد خط الحدود الدولى — إجمالي خطوط التوزيع</span>
   <span class="sep">•</span>
   <span class="dim">{{ month_name }} {{ year | aindic }}</span>
   {% include "partials/print_btn.html" %}
@@ -17,75 +16,78 @@
 {% include "calc2/tabs.html" %}
 {% include "dowail/_subtabs.html" %}
 
-<div class="panel">
-  <div class="panel-head"><h3>📊 بيان توزيع وإجمالي خطوط حراسة الدولى</h3>
-    <span class="panel-hint">الخلية = معدل الفرد اليومى × قوة النقطة × أيام الصرف ({{ issue_days | aindic }} يوم) · الخط = مجموع نقاطه · النشطة = قوة &gt; ٠</span></div>
+<form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar dw-filterbar">
+  <input type="hidden" name="tab" value="totals">
+  {% for k in ('from', 'to', 'days') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
+  <label>الخط
+    <select name="line">
+      <option value="">كل الخطوط</option>
+      {% for l in lines %}
+      <option value="{{ l.id }}" {{ 'selected' if l.id == sel_line_id }}>{{ l.name }} (قوة {{ l.total_force | aindic }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>التوزيعة
+    <select name="dist">
+      <option value="">الحالية (من القوى الحالية)</option>
+      {% for s in saves %}
+      <option value="{{ s.id }}" {{ 'selected' if archive_save and archive_save.id == s.id }}>{{ '📦 ' if not loop.first else '🟢 ' }}يوم {{ s.date_from | aindic }} — {{ s.date_to | aindic }} (حفظ {{ s.id | aindic }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="rt-btn gold small" type="submit">تطبيق</button>
+</form>
 
-  {% if matrix.lines %}
-  <div class="table-wrap dw-matrix-wrap">
+<div class="panel">
+  <div class="panel-head">
+    <h3>بيان توزيع وإجمالي خطوط حراسة خط الحدود الدولى</h3>
+    <span class="panel-hint">
+      {% if archive_save %}
+      📦 <b>توزيعة من الارشيف</b>: يوم {{ archive_save.date_from | aindic }} إلى {{ archive_save.date_to | aindic }}
+      ({{ archive_save.issue_days | aindic }} يوم) — أمين المخازن: {{ archive_save.store_keeper or '—' }}
+      {% else %}
+      الحالية: يوم {{ day_from | aindic }} إلى {{ day_to | aindic }} ({{ issue_days | aindic }} يوم) ·
+      الحصيلة = معدل الفرد × القوة × أيام الصرف · النشطة = قوة &gt; ٠
+      {% endif %}
+    </span>
+  </div>
+
+  {% if matrix and matrix.lines %}
+  <div class="table-wrap">
     <table class="rt-table dw-matrix">
       <thead>
         <tr>
           <th>الخط / النقطة</th><th>القوة</th>
-          {% for r in matrix.rates %}
-          <th title="{{ r.name }}{{ ' — ' ~ r.unit if r.unit else '' }}">{{ r.name }}<br><small>{{ r.unit }}</small></th>
-          {% endfor %}
+          {% for r in matrix.rates %}<th>{{ r.name }}<br><small>{{ r.unit or '' }}</small></th>{% endfor %}
         </tr>
       </thead>
       <tbody>
         {% for l in matrix.lines %}
         {% for pt in l.points %}
-        <tr class="{{ '' if (pt.point.force or 0) > 0 else 'dw-off' }}">
+        <tr class="{{ 'dw-off' if (pt.point.force or 0) == 0 }}">
           <td>　{{ pt.point.name }}</td>
           <td class="num">{{ pt.point.force | aindic }}</td>
-          {% for r in matrix.rates %}
-          <td class="num">{{ pt.cells.get(r.name, 0) | qty3 }}</td>
-          {% endfor %}
+          {% for r in matrix.rates %}<td class="num">{{ pt.cells.get(r.name, 0) | qty3 }}</td>{% endfor %}
         </tr>
         {% endfor %}
-        <tr class="dw-linetotal">
+        <tr class="dw-linenum">
           <td><b>{{ l.line.name }} — إجمالي الخط</b></td>
-          <td class="num">{{ l.line.total_force | aindic }}</td>
-          {% for r in matrix.rates %}
-          <td class="num">{{ l.line_total.get(r.name, 0) | qty3 }}</td>
-          {% endfor %}
+          <td class="num"><b>{{ l.force | aindic }}</b></td>
+          {% for r in matrix.rates %}<td class="num"><b>{{ l.line_total.get(r.name, 0) | qty3 }}</b></td>{% endfor %}
         </tr>
         {% endfor %}
-        <tr class="dw-grandtotal">
+        <tr class="dw-grand">
           <td><b>الإجمالي العام</b></td>
-          <td class="num">{{ matrix.grand_force | aindic }}</td>
-          {% for r in matrix.rates %}
-          <td class="num">{{ matrix.items_total.get(r.name, 0) | qty3 }}</td>
-          {% endfor %}
+          <td class="num"><b>{{ matrix.grand_force | aindic }}</b></td>
+          {% for r in matrix.rates %}<td class="num"><b>{{ matrix.items_total.get(r.name, 0) | qty3 }}</b></td>{% endfor %}
         </tr>
       </tbody>
     </table>
   </div>
-
-  <h4 class="dw-h">نقاط التوزيع التفصيلية (التي تتواجد صرف)</h4>
-  {% set active_pts = [] %}
-  {% for l in matrix.lines %}{% for pt in l.points %}{% if (pt.point.force or 0) > 0 %}{% set _ = active_pts.append((l, pt)) %}{% endif %}{% endfor %}{% endfor %}
-  {% if active_pts %}
-  <table class="rt-table">
-    <thead><tr><th>النقطة</th><th>الخط</th><th>القوة</th></tr></thead>
-    <tbody>
-      {% for l, pt in active_pts %}
-      <tr>
-        <td><b>{{ pt.point.name }}</b></td>
-        <td>{{ l.line.name }}</td>
-        <td class="num">{{ pt.point.force | aindic }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
   {% else %}
-  <p class="panel-hint">مفيش نقاط نشطة (قوة &gt; ٠) — عدّل القوى من «إدارة الخطوط والنقاط».</p>
-  {% endif %}
-  <div class="c2-save">
-    <button class="rt-btn gold big" type="button" onclick="window.print()">🖨️ طباعة الكشف الإجمالي العام</button>
-  </div>
-  {% else %}
-  <p class="panel-hint" style="padding:16px 0;text-align:center">مفيش خطوط ونقاط لسه — ابدأ من «إدارة الخطوط والنقاط».</p>
+  <p class="panel-hint" style="padding:24px 0;text-align:center">
+    {% if sel_line_id %}الخط المحدد مفيش بيانات له.{% else %}مفيش خطوط لسه — ابدأ من «إدارة الخطوط والنقاط».{% endif %}
+  </p>
   {% endif %}
 </div>
 {% endblock %}

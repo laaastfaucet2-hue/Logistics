@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}تفاريد الدولى — تعديل معدلات الأصناف{% endblock %}
+{% block title %}تفاريد خط الحدود الدولى — تعديل معدلات الأصناف{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
@@ -7,7 +7,7 @@
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
-  <span>📦 تفاريد الدولى — النقط الحدودية</span>
+  <span>⚙️ تفاريد خط الحدود الدولى — تعديل معدلات الأصناف</span>
   <span class="sep">•</span>
   <span class="dim">{{ month_name }} {{ year | aindic }}</span>
   {% include "partials/print_btn.html" %}
@@ -18,16 +18,12 @@
 
 <div class="panel">
   <div class="panel-head"><h3>الفرع الثالث: تعديل معدلات تفريد الدولى</h3>
-    <span class="panel-hint">معدلات للدولى بس — منفصلة عن ٢ مخازن العادية والحرة · التفعيل = الصنف يدخل الأوراق والإجماليات</span></div>
+    <span class="panel-hint">معدلات للدولى بس — منفصلة عن ٢ مخازن العادية والحرة · التفعيل = الصنف يدخل التوزيعات والإجماليات</span></div>
 
   <form method="post" action="{{ url_for('dowail.rates_add') }}" class="dw-addrow dw-addrow-wide">
     <input name="name" placeholder="+ إضافة صنف جديد (اسم الصنف)" required>
     <input name="unit" placeholder="الوحدة (كجم / علبة...)" class="dw-w-narrow">
     <input name="rate" inputmode="decimal" placeholder="مقرر اليومى للفرد" class="dw-w-narrow">
-    <select name="production_year">
-      <option value="">سنة الإنتاج</option>
-      {% for y in (2023, 2024, 2025, 2026) %}<option value="{{ y }}">{{ y | aindic }}</option>{% endfor %}
-    </select>
     <select name="section">
       <option value="tamween">تمويني</option>
       <option value="contractor">متنوع (متعهد)</option>
@@ -43,7 +39,7 @@
       <thead>
         <tr>
           <th title="مسلسل">م</th><th>اسم الصنف</th><th>قاعدة المقرر</th>
-          <th>مخصص الأيام (يُضاف)</th><th>سنة الإنتاج</th><th>معدل اليومى (حر)</th>
+          <th>مخصص الأيام (يُضاف)</th><th>معدل اليومى (حر)</th>
           <th>التفعيل</th><th></th>
         </tr>
       </thead>
@@ -59,13 +55,11 @@
             <div class="c2-custom-chips">{% for c in it.custom %}<span class="c2-custom-chip">{{ c.label }} — {{ c.qty | qty3 }}</span>{% endfor %}</div>
             {% else %}<span class="dim">—</span>{% endif %}
           </td>
-          <td class="num">{{ it.production_year | aindic if it.production_year else '—' }}</td>
           <td>
             {% if it.rate_id %}
             <form method="post" action="{{ url_for('dowail.rates_update', rate_id=it.rate_id) }}" class="dw-inline">
               <input name="rate" inputmode="decimal" value="{{ it.rate | qty3 }}" class="dw-w-narrow" title="معدل الفرد اليومى">
               <input name="unit" value="{{ it.unit }}" class="dw-w-mini" placeholder="الوحدة">
-              <input name="production_year" value="{{ it.production_year }}" class="dw-w-mini" placeholder="سنة">
               <button class="dw-mini" type="submit">حفظ</button>
             </form>
             {% else %}
@@ -106,5 +100,19 @@
 
   {{ rates_section("أصناف التموينية (مقررات التموين)", rates_view.tamween, "tamween") }}
   {{ rates_section("أصناف المتعهد", rates_view.contractor, "contractor") }}
+
+  {% if rate_statements %}
+  <div class="dw-archbox">
+    <h4 class="dw-h">📦 ارشيف المعدلات (بيان إكسل مع كل تغيير)</h4>
+    <ul class="dw-stmtlist">
+      {% for day, path in rate_statements %}
+      <li>
+        <span class="dim">يوم {{ day | aindic }}</span>
+        <a class="dw-filelink" href="{{ url_for('dowail.statement_file', filename=path) }}">📎 فتح بيان المعدلات</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
