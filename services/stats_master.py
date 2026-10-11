@@ -306,7 +306,6 @@ SECTION_DEFS = {
         ("raghibin", "🙋", "الراغبين"),
         ("tameedat", "🚚", "التاميدات"),
         ("rations_tamween", "🥣", "مقررات التموين"),
-        ("dowail", "🧾", "فواتير الدولى"),
         ("wh_supply", "📦", "مستودعات الإمداد"),
     ),
     "contractor": (
@@ -460,25 +459,6 @@ def section_detail(cycle, year, month, key):
                 cell(arnum.to_arabic_indic(r["items_count"]), "num"),
                 cell(arnum.to_arabic_indic(r["qty"]), "num b"),
             ] for r in ra["dist_rows"]],
-        })
-    elif key == "dowail":
-        dl = ssec.dowail_stats(year, month)
-        base.update({
-            "hint": "بالخط — القوة والحصيلة من معدلات التموين (١٤-تفاريد)",
-            "cards": [
-                C("خطوط", arnum.to_arabic_indic(len(dl["line_rows"]))),
-                C("إجمالي القوة", arnum.to_arabic_indic(dl["grand_force"]),
-                  "على {} نقطة".format(arnum.to_arabic_indic(sum(r["points"] for r in dl["line_rows"])))),
-                C("حصيلة الشهر", arnum.to_arabic_indic(dl["grand_qty"]), "وحدة"),
-                C("توزيعات محفوظة", arnum.to_arabic_indic(dl["saves_count"])),
-            ],
-            "head": ["الخط", "نقاط", "قوة", "الكمية"],
-            "rows": [[
-                cell(r["name"], "", "entity"),
-                cell(arnum.to_arabic_indic(r["points"]), "num"),
-                cell(arnum.to_arabic_indic(r["force"]), "num"),
-                cell(arnum.to_arabic_indic(r["total_qty"]), "num b"),
-            ] for r in dl["line_rows"]],
         })
     elif key in ("wh_supply", "wh_contractor"):
         cycle_w = "supply" if key == "wh_supply" else "contractor"
