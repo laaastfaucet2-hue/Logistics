@@ -81,13 +81,13 @@ def open_entity_excel():
     day = _day_number(year, month)
     entity = _selected_entity(year, month)
     if not entity:
-        return _rb(tab="daily", d=day, err="مفيش جهات في قاموس الشهر لسه — سجّل تأميدة أولًا")
+        return _rb(tab="daily", d=day, err="لا توجد جهات في قاموس الشهر بعد — سجّل تأميدة أولًا")
     folder = day_files.write_day_file(year, month, day, entity["id"], entity["name"])
     day_txt = arnum.to_arabic_indic(str(day))
     if _open_path(folder):
         return _rb(tab="daily", d=day, ok=(
             f"تم فتح فولدر ملفات «{entity['name']}» ليوم {day_txt} — "
-            f"داخله «ض — الضباط.xlsx» و«أ — الأفراد والصف.xlsx» 📗"))
+            f"داخله «ضابط — الضباط.xlsx» و«فرد — الأفراد والصف.xlsx» 📗"))
     from flask import url_for
     return _rb(tab="daily", d=day, err=(
         f"ملفا إكسل «{entity['name']}» ليوم {day_txt} اتبنوا محليًا ويمكن تنزيلهما الآن "

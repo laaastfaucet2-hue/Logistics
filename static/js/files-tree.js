@@ -71,7 +71,7 @@
     lastSignature = signature;
     tree.innerHTML = data.children.length
       ? '<ul class="ft-list">' + data.children.map(nodeHtml).join('') + '</ul>'
-      : '<div class="ft-empty">📂 الفولدر لسه فاضي — أول حفظ في القسم هينشئ ملفاته هنا فورًا.</div>';
+      : '<div class="ft-empty">📂 المجلد فارغ بعد — أول حفظ في القسم سيُنشئ ملفاته هنا فورًا.</div>';
     if (where) where.innerHTML = '📂 <bdi dir="ltr">' + esc(data.root) + '</bdi>';
     if (live) live.innerHTML = '<i class="ft-dot"></i>مزامنة لحظية — آخر حصر ' + esc(data.checked_at);
     if (open) chips.innerHTML =

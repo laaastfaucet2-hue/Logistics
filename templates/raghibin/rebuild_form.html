@@ -1,0 +1,6 @@
+{# إعادة بناء كل الملفات المحلية للشهر — بالدباجة والتوقيعين الرسميين واللوجو #}
+<form method="post" action="{{ url_for('raghibin.files_rebuild') }}"
+      onsubmit="return confirm('إعادة بناء كل الملفات المحلية للشهر بالدباجة والتوقيعين الرسميين واللوجو؟ ستُعاد كتابة الملفات الحالية من نفس البيانات.');">
+  {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+  <button class="rt-btn gold small" type="submit">إعادة بناء كل الملفات المحلية (دباجة · توقيعان · لوجو)</button>
+</form>

@@ -7,7 +7,7 @@
 from core import dates, egtime, arabic_numbers as arnum
 from urllib.parse import quote
 
-from flask import Blueprint, render_template, request, redirect, url_for, abort, send_file
+from flask import Blueprint, request, redirect, url_for, abort, send_file
 
 from data_access import dataguard
 from core.auth_core import login_required, current_session
@@ -24,7 +24,10 @@ def _rb(ok=None, err=None):
         params.append("ok=" + quote(ok))
     if err:
         params.append("err=" + quote(err))
-    return redirect(url_for("backups.page") + ("?" + "&".join(params) if params else ""))
+    base = url_for("backups.page")
+    if params:
+        base += ("&" if "?" in base else "?") + "&".join(params)
+    return redirect(base)
 
 
 def _size_h(num):
@@ -44,21 +47,12 @@ def _time_h(epoch):
 @backups_bp.route("/")
 @login_required
 def page():
-    results = dataguard.verify_all()
-    broken = [(rel, err) for rel, (ok, err) in results.items() if not ok]
-    files = dataguard.data_files()
-    total = sum(p.stat().st_size for p in files)
-    rows = []
-    for b in dataguard.list_backups():
-        rows.append({**b, "size_h": _size_h(b["size"]), "time_h": _time_h(b["mtime"])})
-    return render_template(
-        "backups.html",
-        files_count=len(files), total_h=_size_h(total),
-        broken=broken, verified_count=len(results),
-        backups=rows, backups_count=len(rows),
-        keep_n=dataguard.KEEP_N,
-        newest=rows[0] if rows else None,
-    )
+    # «النسخ الاحتياطي» اتحول لتاب جوه «الإعدادات» (توجيه ١٠/١٠) — الروابط القديمة توجّه له
+    token = request.args.get("sid")
+    params = {"sub": "backups"}
+    if token:
+        params["sid"] = token
+    return redirect(url_for("settings.page", **params))
 
 
 # ======================================================================

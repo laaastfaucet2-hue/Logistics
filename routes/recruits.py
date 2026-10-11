@@ -17,6 +17,7 @@ from data_access import database as db
 from services import recruits_fs
 from data_access import dataguard
 from data_access import db_attendance as da
+from data_access import db_punishments as dpk
 from data_access import db_recruits as dr
 from data_access import db_health
 from documents import docx_recruits
@@ -24,6 +25,7 @@ from core import egtime, dates
 from services import notifications
 from data_access import storage, db_letterhead as lh
 from services import legacy_months, recruit_dates
+from services import recruit_file
 from core.auth_core import current_context, current_session, login_required
 
 recruits_bp = Blueprint("recruits", __name__, url_prefix="/recruits")
@@ -32,6 +34,7 @@ from core.config import MONTH_NAMES
 TABS = [("registry", "أصل القوة", "👥"), ("journal", "اليومية العامة", "📝"),
         ("present", "الحضور", "✅"), ("leaves", "الإجازات", "🏖️"),
         ("absent", "الغياب", "🚫"), ("other", "أخرى", "🧭"),
+        ("prison", "السجن", "⛓️"),
         ("stats", "الإحصائيات والإشعارات", "📊")]
 ALLOWED_IMG = {"png", "jpg", "jpeg", "webp"}
 
@@ -107,7 +110,71 @@ def page():
         return _lists(v)
     if tab == "stats":
         return _stats(v)
+    if tab == "file":
+        return _file(v)
+    if tab == "prison":
+        return _prison(v)
     return _registry(v)
+
+
+# ==================== تاب السجن والمحكمات والجزاءات (المراحل ٥ + ١٠) ====================
+def _prison(v):
+    """٣ تابات فرعية (سجن/المحكمات/الجزاءات) — المدد مشتقة من اليومية العامة.
+
+    التسجيل من «اليومية العامة» بحالة المجند (سجن/محكمة/جزاء) — مش من التاب.
+    المدة = الأيام المتتالية للحالة · لو الحالة اتغيرت بتقفل · لو فاضية تبقى مفتوحة.
+    """
+    year, month = _ctx()
+    pkind = request.args.get("pkind") or "prison"
+    if pkind not in dpk.VALID_KINDS:
+        pkind = "prison"
+    meta = dpk.KIND_META[pkind]
+    info = _today_info(year, month, 1)
+    rd = info["real_day"]
+    by_id = {r["id"]: r for r in v["recruits"]}
+    rows = []
+    for rid, f, t in dpk.month_spans(year, month, pkind):
+        r = by_id.get(rid)
+        if not r:
+            continue
+        rows.append((r, f, t, dpk.span_state(f, t, rd)))
+    rows.sort(key=lambda x: (x[1], x[0]["name"]))
+    v["prison_rows"] = rows
+    v["pkind"] = pkind
+    v["pkind_meta"] = meta
+    v["pkinds"] = dpk.PUNISH_KINDS
+    v["real_day"] = rd
+    v["is_real_month"] = info["is_real_month"]
+    v["prison_status"] = meta["status"]
+    # تذكير النهارده وبكرة — نفس نص الجرس حرفيًا (المصدر المشترك)
+    alerts = []
+    if rd:
+        _leaves, events = notifications._event_entries(
+            year, month, da.month_matrix(year, month), by_id, rd, v["eom"], "")
+        alerts = [e["text"] for e in events if "tab=prison" in e.get("href", "")]
+    v["prison_alerts"] = alerts
+    return render_template("recruits_prison.html", **v)
+
+
+def _file(v):
+    """ملف المجند الشامل — كل الشهور (المرحلة ٤)."""
+    rid = arnum.parse_int(request.args.get("rid"))
+    data = recruit_file.build(*_ctx(), rid) if rid else None
+    if not data:
+        abort(404)
+    r = data["recruit"]
+    today = egtime.today()
+    info = _today_info(*_ctx(), 1)
+    matrix = da.month_matrix(*_ctx())
+    v["recruit"] = r
+    v["file_data"] = data
+    v["cert_badge"] = _cert_badge(r, today)
+    v["discharge_days"] = dr.days_to_discharge(r, today)
+    v["latest"] = da.latest_statuses(*_ctx(), matrix,
+                                     info["real_day"] or v["eom"]).get(r["id"])
+    v["print_title"] = "ملف المجند / {} — {} — كل الشهور".format(
+        r["name"], r["mil_no"])
+    return render_template("recruits_file.html", **v)
 
 
 # ==================== تبويب أصل القوة ====================
@@ -118,6 +185,10 @@ def _registry(v, form_values=None, form_error=None):
     v["form_error"] = form_error
     v["badges"] = {r["id"]: _cert_badge(r, today) for r in v["recruits"]}
     v["discharge"] = {r["id"]: dr.days_to_discharge(r, today) for r in v["recruits"]}
+    # عمود «الحالة»: آخر حالة مسجلة في اليومية حتى اليوم الحقيقي (آخر شهر كامل لو السياق شهر تاني)
+    info = _today_info(*_ctx(), 1)
+    v["latest"] = da.latest_statuses(*_ctx(), da.month_matrix(*_ctx()),
+                                     info["real_day"] or v["eom"])
     return render_template("recruits_registry.html", **v)
 
 
@@ -221,12 +292,18 @@ def _journal(v):
     day = max(1, min(v["eom"], day))
     carried, src = da.carry_over_if_needed(year, month, day)
     meta = da.get_meta(year, month, day)
+    matrix = da.month_matrix(year, month)
+    by_id = {r["id"]: r for r in v["recruits"]}
     v.update({
         "day": day, "info": _today_info(year, month, day),
         "day_map": da.get_day_map(year, month, day), "meta": meta,
         "carried": carried, "carried_from": src,
         "missing": set(da.days_without_journal(year, month, min(day, v["eom"]))),
         "locked_days": _locked_days(year, month),
+        # بنرات التذكير: أحداث اليوم + معاينة غدًا (نفس مصدر الجرس)
+        "day_events": notifications.day_events(year, month, matrix, day, by_id),
+        "next_events": (notifications.day_events(year, month, matrix, day + 1, by_id)
+                        if day < v["eom"] else []),
     })
     return render_template("recruits_journal.html", **v)
 
@@ -262,7 +339,8 @@ def journal_save():
     da.save_day(year, month, day, entries, lock=True,
                 source_day=arnum.parse_int(request.form.get("source_day")) or 0)
     _after_attendance_change(year, month)
-    return _rb(ok="ثُبِّتت يومية يوم {} وقُفلت ✔ (مسجَّل {} مجندًا)".format(day, len(entries)),
+    return _rb(ok="ثُبِّتت يومية يوم {} وقُفلت ✔ (مسجَّل {} مجندًا)".format(
+                   arnum.to_arabic_indic(day), arnum.to_arabic_indic(str(len(entries)))),
                tab="journal", day=day)
 
 
@@ -325,6 +403,36 @@ def journal_delete_entry():
     return _rb(ok="حُذف التسجيل من يوم {}".format(arnum.to_arabic_indic(day)), tab="journal", day=day)
 
 
+@recruits_bp.route("/journal/confirm-leaves", methods=["POST"])
+@login_required
+def journal_confirm_leaves():
+    """«أكّد ويتحطوا في اليومية» — تصاريح الإجازات الصادرة عن إجازة بتبدأ في اليوم
+    ده ⇒ الحالة «إجازة» تنطبع عليهم في اليومية كامل مدتهم (قرار الجولة ٣٥)."""
+    year, month = _ctx()
+    day = arnum.parse_int(request.form.get("day"))
+    eom = egtime.days_in_month(year, month)
+    if not day or not (1 <= day <= eom):
+        return _rb(err="يوم غير صالح", tab="journal")
+    permits = da.month_leave_permits(year, month)
+    targets = [(rid, f, t) for rid, rs in permits.items() for f, t in rs if f == day]
+    if not targets:
+        return _rb(err="لا يوجد تصريح إجازة صادر عن إجازة تبدأ في يوم {} — أنشئ التصريح أولًا".format(
+            arnum.to_arabic_indic(day)), tab="journal", day=day)
+    by_id = {r["id"]: r for r in dr.list_recruits(year, month)}
+    names = [by_id[rid]["name"] for rid, _f, _t in targets if rid in by_id]
+    locked = _locked_days(year, month)
+    for rid, f, t in targets:
+        hit = [d for d in range(f, t + 1) if d in locked]
+        if hit:
+            return _rb(err="يومية يوم {} (ضمن مدة الإجازة) مثبتة ومقفولة — افتحها الأول".format(
+                arnum.to_arabic_indic(min(hit))), tab="journal", day=min(hit))
+    for rid, f, t in targets:
+        da.set_range(year, month, rid, "إجازة", f, t)
+    _after_attendance_change(year, month)
+    return _rb(ok="اتأكّد: {} — اتحطوا «إجازة» في اليومية من يوم {} لآخر مدة التصريح ✔".format(
+        "، ".join(names), arnum.to_arabic_indic(day)), tab="journal", day=day)
+
+
 def _after_attendance_change(year, month):
     """مرايا Excel السبعة + كشوف الوورد اللحظية + نسخة احتياطية مخنوقة."""
     try:
@@ -345,8 +453,10 @@ def _after_attendance_change(year, month):
 def _lists(v):
     tab, year, month = v["tab"], v["year"], v["month"]
     today = egtime.today()
-    v["matrix"] = da.month_matrix(year, month)
-    v["by_id"] = {r["id"]: r for r in v["recruits"]}
+    by_id = {r["id"]: r for r in v["recruits"]}
+    # صفوف يومية/تصاريح «عاوية» (مجندها اتحذف) — بتنسى من الشوفات عشان ما تقصعش الصفحة
+    v["matrix"] = {rid: days for rid, days in da.month_matrix(year, month).items() if rid in by_id}
+    v["by_id"] = by_id
     v["info"] = _today_info(year, month, 1)
     v["badges"] = {r["id"]: _cert_badge(r, today) for r in v["recruits"]}
     if tab == "present":
@@ -355,18 +465,54 @@ def _lists(v):
         v["day"] = day
         v["rows"] = [(v["by_id"][rid], st) for rid, st in dmap.items()
                      if rid in v["by_id"] and st["status"] == "حضور"]
-        v["counts"] = {st: sum(1 for x in dmap.values() if x["status"] == st) for st in da.STATUSES}
+        # «حضور من يوم كام + المدة + آخر إجازة»
+        v["runs"] = da.attendance_runs(year, month, v["matrix"], day)
+        past_leaves = da.leave_ranges(year, month, v["matrix"], 1, max(1, day - 1))
+        v["last_leave"] = {
+            rid: max(t for _f, t in rs)
+            for rid, rs in past_leaves.items()
+            if rid in v["runs"] and max(t for _f, t in rs) < v["runs"][rid][0]
+        }
     elif tab == "leaves":
         v["ranges"] = da.leave_ranges(year, month, v["matrix"], 1, v["eom"])
+        # تصاريح الشهر الصادرة — علامة «✓ تصريح» جنب كل صف اتعملت له تصريح
+        v["permits"] = da.month_leave_permits(year, month)
         rd = v["info"]["real_day"] or 1
-        v["upcoming"] = da.leave_ranges(year, month, v["matrix"], rd, min(rd + 2, v["eom"])) \
-            if v["info"]["is_real_month"] else {}
+        # مرتقب مجمّع: {يوم البداية: «محمد وأحمد»} — «نازلين إجازة يوم ٥»
+        # (فترات الشهر الكاملة — التقطيع على نافذة قصيرة كان بيعمل بدايات مزيفة)
+        upcoming = {}
+        if v["info"]["is_real_month"]:
+            for rid, rs in da.leave_ranges(year, month, v["matrix"], 1, v["eom"]).items():
+                if rid not in v["by_id"]:
+                    continue
+                for f, _t in rs:
+                    if rd <= f <= rd + 2:
+                        upcoming.setdefault(f, []).append(v["by_id"][rid]["name"])
+        v["upcoming"] = {f: {"names": notifications.and_join(names), "n": len(names)}
+                        for f, names in upcoming.items()}
+        # «قادم الإجازات»: فترات بتخلص خلال ٧ أيام (اللي هيرجعوا قريب)
+        v["leaving_soon"] = []
+        if v["info"]["is_real_month"] and v["info"]["real_day"]:
+            rd2 = v["info"]["real_day"]
+            for rid, rs in v["ranges"].items():
+                if rid not in v["by_id"]:
+                    continue
+                for f, t in rs:
+                    if rd2 <= t <= rd2 + 7:
+                        v["leaving_soon"].append((v["by_id"][rid], f, t))
+            v["leaving_soon"].sort(key=lambda x: (x[2], x[0]["name"]))
     elif tab == "absent":
         rd = v["info"]["real_day"] or 1
         v["streaks"] = da.absence_streak(year, month, v["matrix"],
                                          max(1, rd - 1)) if v["info"]["is_real_month"] else {}
-        v["rows"] = [(v["by_id"][rid], d) for rid, days in v["matrix"].items()
-                     for d, st in sorted(days.items()) if st == "غياب" and rid in v["by_id"]]
+        # سجل الغياب = فترات (من → إلى + المدة) مش أيام متفرقة
+        eps = []
+        for rid, rs in da.absence_episodes(year, month, v["matrix"], 1, v["eom"]).items():
+            if rid in v["by_id"]:
+                for f, t in rs:
+                    eps.append((v["by_id"][rid], f, t))
+        eps.sort(key=lambda x: (x[1], x[0]["name"]))
+        v["episodes"] = eps
     else:
         v["groups"] = [
             ("مأمورية", [(v["by_id"][rid], d) for rid, days in v["matrix"].items()
@@ -391,7 +537,17 @@ def _stats(v):
     matrix = da.month_matrix(year, month)
     rd = info["real_day"] or 0
     dmap = da.get_day_map(year, month, rd) if rd else {}
-    v["notif_groups"] = notifications.build_groups(__import__("flask").g.user["id"], token or "")
+    # الإشعارات: فلترة مقروء/غير مقروء (المقروء بيتعلم بالضغط على الإشعار)
+    uid = __import__("flask").g.user["id"]
+    all_groups = notifications.build_groups(uid, token or "")
+    v["total_n"] = sum(len(g["entries"]) for g in all_groups)
+    v["unread_n"] = sum(1 for g in all_groups for it in g["entries"] if not it["read"])
+    v["nf"] = "unread" if request.args.get("nf") == "unread" else "all"
+    if v["nf"] == "unread":
+        all_groups = [{**g, "entries": [it for it in g["entries"] if not it["read"]]}
+                      for g in all_groups]
+        all_groups = [g for g in all_groups if g["entries"]]
+    v["notif_groups"] = all_groups
     v["counts_today"] = {st: sum(1 for x in dmap.values() if x["status"] == st) for st in da.STATUSES}
     v["certs"] = {"expired": [], "soon": []}
     for r in v["recruits"]:
@@ -400,6 +556,18 @@ def _stats(v):
             v["certs"][st].append(r)
     v["discharging"] = [(r, dr.days_to_discharge(r, today)) for r in v["recruits"]
                         if (dr.days_to_discharge(r, today) or 999) <= 60]
+    # الأقرب للخروج من الخدمة — ترتيب بالأيام المتبقية (أول ٥ من عندهم تاريخ)
+    ranked = [(r, dr.days_to_discharge(r, today)) for r in v["recruits"]
+              if (r.get("service_end") or "").strip()]
+    v["discharge_rank"] = sorted(
+        ranked, key=lambda x: ((x[1] if x[1] is not None else 99999), x[0]["name"]))[:5]
+    # إحصائيات المحافظات — تجميع أصل القوة بالمحافظة (الأكثر عددًا أولًا)
+    gov_map = {}
+    for r in v["recruits"]:
+        g = (r.get("governorate") or "").strip() or "غير محدد"
+        gov_map.setdefault(g, []).append(r)
+    v["by_gov"] = [(g, sorted(rs, key=lambda x: x["name"]))
+                   for g, rs in sorted(gov_map.items(), key=lambda kv: (-len(kv[1]), kv[0]))]
     v["ranges"] = da.leave_ranges(year, month, matrix, 1, v["eom"])
     v["by_id"] = {r["id"]: r for r in v["recruits"]}
     v["sheet_matrix"], v["sheet_leaves"] = docx_recruits.month_sheets(year, month)
@@ -409,6 +577,61 @@ def _stats(v):
     done = db_health.month_checkup_ids(year, month)
     v["no_checkup"] = [r for r in v["recruits"] if r["id"] not in done]
     return render_template("recruits_stats.html", **v)
+
+
+@recruits_bp.route("/stats/read")
+@login_required
+def stats_read():
+    """تعليم إشعار كمقروء ثم فتحه — next لازم يكون رابط داخلي يبدأ بـ /."""
+    k = (request.args.get("k") or "").strip()
+    next_url = request.args.get("next") or "/recruits?tab=stats"
+    if not (next_url.startswith("/") and "://" not in next_url):
+        next_url = "/recruits?tab=stats"          # next خارجي = مرفوض
+    if k and len(k) == 16:
+        notifications.mark_read(__import__("flask").g.user["id"], [k])
+    return redirect(next_url)
+
+
+@recruits_bp.route("/stats/read-all", methods=["POST"])
+@login_required
+def stats_read_all():
+    uid = __import__("flask").g.user["id"]
+    _, token = current_session()
+    groups = notifications.build_groups(uid, token or "")
+    notifications.mark_read(uid, [it["key"] for g in groups for it in g["entries"]])
+    return _rb(ok="تم تعليم كل الإشعارات الحالية كمقروءة", tab="stats")
+
+
+# ======================================================================
+# تصريح الإجازة المجمّع (أكثر من مجند بنفس المدة — قرار الجولة ٣٥)
+# ======================================================================
+@recruits_bp.route("/joint-permit", methods=["POST"])
+@login_required
+def joint_permit():
+    year, month = _ctx()
+    rids = [x for x in (arnum.parse_int(v) for v in request.form.getlist("rid")) if x]
+    f = arnum.parse_int(request.form.get("from"))
+    t = arnum.parse_int(request.form.get("to"))
+    eom = egtime.days_in_month(year, month)
+    if not rids or not (1 <= f <= t <= eom):
+        return _rb(err="اختر صفوف الإجازة أولًا", tab="leaves")
+    by_id = {r["id"]: r for r in dr.list_recruits(year, month)}
+    chosen = [by_id[i] for i in rids if i in by_id]
+    if len(chosen) < 2:
+        return _rb(err="التصريح المجمّع لـ ٢ مجند على الأقل — المجند الواحد تصريحه من صفه مباشرة",
+                   tab="leaves")
+    matrix = da.month_matrix(year, month)
+    bad = [c["name"] for c in chosen
+           if not all(matrix.get(c["id"], {}).get(d) == "إجازة" for d in range(f, t + 1))]
+    if bad:
+        return _rb(err="هؤلاء ليسوا في إجازة طوال المدة المختارة: {}".format("، ".join(bad)),
+                   tab="leaves")
+    docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)
+    da.record_leave_permits(year, month, [c["id"] for c in chosen], f, t)
+    _, token = current_session()
+    return redirect(url_for("recruits.print_doc", what="permit",
+                            rids=",".join(str(c["id"]) for c in chosen),
+                            **{"from": f, "to": t, "year": year, "month": month, "sid": token}))
 
 
 # ======================================================================
@@ -426,17 +649,32 @@ def print_doc(what):
     v["print_kind"] = what
 
     if what == "permit":
-        rid = arnum.parse_int(request.args.get("rid"))
         f = arnum.parse_int(request.args.get("from"))
         t = arnum.parse_int(request.args.get("to"))
-        r = dr.get_recruit(*_ctx(), rid)
-        if not r or not f or not t or not 1 <= f <= t <= egtime.days_in_month(year, month):
-            abort(404)
-        v["recruit"] = r
-        v["from_day"], v["to_day"] = f, t
-        v["title"] = "تصريح إجازة"
-        path = docx_recruits.build_leave_permit(r, f, t, year, month)
-        v["docx_name"] = path.name
+        joint_ids = [x for x in (arnum.parse_int(x) for x in
+                                 (request.args.get("rids") or "").split(",")) if x]
+        if len(joint_ids) >= 2 and f and t and 1 <= f <= t <= egtime.days_in_month(year, month):
+            # تصريح إجازة مجمّع — أكثر من مجند بنفس المدة
+            chosen = [r for r in (dr.get_recruit(year, month, i) for i in joint_ids) if r]
+            if len(chosen) < 2:
+                abort(404)
+            path = docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)
+            da.record_leave_permits(year, month, [c["id"] for c in chosen], f, t)
+            v["permit_recruits"] = chosen
+            v["from_day"], v["to_day"] = f, t
+            v["title"] = "تصريح إجازة مجمّع"
+            v["docx_name"] = path.name
+        else:
+            rid = arnum.parse_int(request.args.get("rid"))
+            r = dr.get_recruit(*_ctx(), rid)
+            if not r or not f or not t or not 1 <= f <= t <= egtime.days_in_month(year, month):
+                abort(404)
+            v["recruit"] = r
+            v["from_day"], v["to_day"] = f, t
+            v["title"] = "تصريح إجازة"
+            path = docx_recruits.build_leave_permit(r, f, t, year, month)
+            da.record_leave_permits(year, month, [rid], f, t)
+            v["docx_name"] = path.name
     elif what == "day":
         day = arnum.parse_int(request.args.get("day")) or info["real_day"] or 1
         dmap = da.get_day_map(year, month, day)

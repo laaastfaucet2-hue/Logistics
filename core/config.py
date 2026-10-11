@@ -40,7 +40,7 @@ EXTRA_PAGES = [
     {"key": "letterhead", "name": "الدباجة والتوقيعات الرسمية", "icon": "📜"},
     {"key": "calc2",      "name": "آلة حاسبة 2 مخازن",          "icon": "🧮"},
     {"key": "occasions",  "name": "التوثيق والمناسبات",          "icon": "📸"},
-    {"key": "backups",    "name": "النسخ الاحتياطي والحماية",    "icon": "💾"},
+    {"key": "settings",   "name": "الإعدادات",                  "icon": "⚙️"},
 ]
 EXTRA_MAP = {p["key"]: p for p in EXTRA_PAGES}
 
@@ -142,6 +142,45 @@ def is_measure_unit(unit):
     return (unit or "").strip() in MEASURE_UNITS
 
 
+def calc_fine_unit(unit):
+    """وحدة الحاسبة/المقرر: الدقيقة — الأوزان بالجرام والحجوم بالمل.
+    يرجع (الوحدة، معامل التحويل من الوحدة المعطاة) — الكيلو ٠٫٦ → ٦٠٠ جم."""
+    key = (unit or "").strip()
+    base, factor = unit_base(key)
+    if base == "كجم":
+        return "جم", factor * 1000.0
+    if base == "لتر":
+        return "مل", factor * 1000.0
+    return key or "وحدة", 1.0
+
+
+def fine_unit(ration_unit, handle_unit, specific_weight=None):
+    """وحدة تشغيل الصنف (الدقيقة): وحدة الحاسبة والإذن ودفتر ٣ مخازن —
+    والطرف المادي (إذن ١ مخازن/المخازن/الثلاجات/التغليف) بوحدة التعامل.
+    (توجيه المستخدم ٠٩/١٠: الزيت بيُستخدم بكجم فيتم الحساب بالجرام،
+    وبيُدخل المخزن والثلاجات باللتر، والجسر بين التانيين = الوزن النوعي)
+    - صنف وزن (وحدة المقرر من أسرة كجم) → جم
+    - صنف حجم (من أسرة لتر) → مل
+    - صنف عدد → وحدة التعامل زي ما هي
+    specific_weight (جرام/لتر): الصنف اللي بيتصرف بالوزن ويبقى مخزونه بالحجم.
+    يرجع (وحدة الدفتر، معامل من وحدة التعامل → وحدة الدفتر)."""
+    rat = (ration_unit or "").strip()
+    han = (handle_unit or "").strip()
+    rat_base, _ = unit_base(rat) if rat else ("", 1.0)
+    han_base, han_factor = unit_base(han)
+    try:
+        sw = float(specific_weight) if specific_weight not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        sw = 0.0
+    if sw > 0:
+        return "جم", sw
+    if rat_base == "كجم" or (not rat_base and han_base == "كجم"):
+        return "جم", han_factor * 1000.0 if han_base == "كجم" else 1.0
+    if rat_base == "لتر" or (not rat_base and han_base == "لتر"):
+        return "مل", 1000.0 * han_factor if han_base == "لتر" else 1.0
+    return han or "وحدة", 1.0
+
+
 def month_folder(number):
     """اسم مجلد الشهر: 01-يناير ... 12-ديسمبر"""
     return f"{number:02d}-{MONTH_NAMES[number - 1]}"
@@ -153,4 +192,4 @@ def section_folder(number, section_name):
 
 
 # إصدار الملفات الثابتة (CSS/JS) — غيّره مع أي تعديل تصميم ليتحدّث فورًا عند كل مستخدم
-STATIC_VER = 126
+STATIC_VER = 196

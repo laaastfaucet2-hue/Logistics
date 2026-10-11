@@ -53,6 +53,8 @@ def test_all_dropdowns_are_themed_combos(client):
         page = client.get(path).text
         assert '<select' not in page, path              # لا قائمة أصلية على الواجهة
         assert re.search(r'\slist="', page) is None, path  # ممنوع list= الخام
+    from data_access import db_recruits as dr
+    dr.add_recruit(2031, 9, {"name": "مجند كومبو", "mil_no": "9990001"})
     journal = client.get('/recruits/?tab=journal').text
     assert 'data-combo="rcStList"' in journal            # حالات اليومية كومبو
     copy_page = client.get('/rations/tamween').text

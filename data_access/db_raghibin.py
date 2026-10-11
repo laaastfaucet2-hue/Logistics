@@ -40,9 +40,25 @@ CREATE TABLE IF NOT EXISTS ragh_daily (
     UNIQUE(person_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_ragh_daily_day ON ragh_daily(day);
+CREATE TABLE IF NOT EXISTS ragh_approvals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_id INTEGER NOT NULL REFERENCES tameed_entities(id) ON DELETE CASCADE,
+    day INTEGER NOT NULL,
+    approver_rank TEXT NOT NULL DEFAULT '',
+    approver_name TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'موثقة',
+    submit_rank TEXT NOT NULL DEFAULT '',
+    submit_name TEXT NOT NULL DEFAULT '',
+    submit_grade TEXT NOT NULL DEFAULT '',
+    doc_rank TEXT NOT NULL DEFAULT '',
+    doc_name TEXT NOT NULL DEFAULT '',
+    doc_roster_name TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    UNIQUE(entity_id, day)
+);
 """
 
-CATEGORIES = (("officers", "الضباط"), ("individuals", "الأفراد والصف"))
+CATEGORIES = (("officers", "الضباط"), ("individuals", "فرد"))
 CATEGORY_KEYS = {k for k, _ in CATEGORIES}
 
 # الرتب المعتمدة — من الأقدمية الأعلى للأدنى (توجيه المستخدم ٣٠/٠٩/٢٠٢٦:
@@ -50,8 +66,20 @@ CATEGORY_KEYS = {k for k, _ in CATEGORIES}
 RANKS = {
     "officers": ["فريق أول", "فريق", "لواء", "عميد", "عقيد", "مقدم",
                  "رائد", "نقيب", "ملازم أول", "ملازم"],
-    "individuals": ["مساعد أول", "مساعد", "رئيس رقباء", "رقيب أول", "رقيب",
-                    "عريف", "جندي أول", "جندي", "مجند"],
+    # رتب الأفراد — كل الرتب بكل الدرجات حسب قانون هيئة الشرطة (١٠ لسنة ١٩٧١
+    # وتعديلاته حتى ٢٠٢٤): أمناء → مساعدون → مراقبون ومناديب → ضباط صف وجنود
+    # → معاونو الأمن (الدرجة الجديدة ٢٠٢١) — بالأسماء المختصرة زي قائمة الضباط
+    "individuals": [
+        "أمين ممتاز أول", "أمين ممتاز ثان", "أمين ممتاز",
+        "أمين أول", "أمين ثان", "أمين ثالث",
+        "مساعد ممتاز", "مساعد أول", "مساعد ثان", "مساعد ثالث",
+        "مراقب ممتاز", "مراقب أول", "مراقب ثان", "مراقب ثالث",
+        "مندوب ممتاز", "مندوب أول", "مندوب ثان", "مندوب ثالث",
+        "رئيس رقباء", "رقيب أول", "رقيب", "عريف", "جندي أول", "جندي",
+        "معاون ممتاز أول", "معاون ممتاز ثان", "معاون ممتاز",
+        "معاون أول", "معاون ثان", "معاون ثالث",
+        "مجند",
+    ],
 }
 ALL_RANKS = RANKS["officers"] + RANKS["individuals"]
 
@@ -74,7 +102,18 @@ def _conn(year, month):
     # قاموس التأميدات أساس الربط (FK) — يُضمن وجوده قبل جداول الراغبين
     conn.executescript(db_tameedat.SCHEMA)
     conn.executescript(SCHEMA)
+    _migrate_approvals(conn)
     return conn
+
+
+def _migrate_approvals(conn):
+    """إضافة أعمدة توقيتات الاعتماد الجديدة للملفات القديمة (١٠/١٠/٢٠٦)."""
+    have = {r[1] for r in conn.execute("PRAGMA table_info(ragh_approvals)")}
+    for col in ("submit_rank", "submit_name", "submit_grade",
+                "doc_rank", "doc_name", "doc_roster_name"):
+        if col not in have:
+            conn.execute(f"ALTER TABLE ragh_approvals ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+    conn.commit()
 
 
 def _stamp():
@@ -275,6 +314,18 @@ def day_state(year, month, day, entity_id=None):
     conn.close()
     return out
 
+
+def active_day_entities(year, month):
+    """{entity_id: [أيام فيها سجل رغبة]} — لإعادة بناء الملفات المحلية."""
+    conn = _conn(year, month)
+    out = {}
+    for row in conn.execute(
+            "SELECT p.entity_id, d.day FROM ragh_daily d "
+            "JOIN ragh_persons p ON p.id = d.person_id"):
+        out.setdefault(row["entity_id"], set()).add(int(row["day"]))
+    conn.close()
+    return {k: sorted(v) for k, v in out.items()}
+
 def set_day_category(year, month, entity_id, day, category, person_ids, source="manual"):
     """تسجيل فئة كاملة في يوم: المرسل هم الراغبون بالأسماء (المربعات المملوءة).
 
@@ -307,6 +358,93 @@ def set_day_category(year, month, entity_id, day, category, person_ids, source="
     conn.commit()
     conn.close()
     return len(wanted), removed
+
+
+def copy_day(year, month, entity_id, from_day, to_day, source="copy"):
+    """نسخ كشف راغب يوم كامل ليوم تانى لنفس الجهة (قرار المستخدم ١٠/١٠/٢٠٢٦).
+
+    ينقل حالة كل عضو (راغب ✓ / غير راغب) من يوم المصدر ويكتبها في يوم الهدف
+    بوضع clear-and-set (يحوّل كشف الهدف لما هو كشف المصدر تمامًا).
+    يرجع عدد الأعضاء المنقولين.
+    """
+    from_day = max(1, min(31, int(from_day)))
+    to_day = max(1, min(31, int(to_day)))
+    conn = _conn(year, month)
+    persons = [dict(r) for r in conn.execute(
+        "SELECT id, category FROM ragh_persons WHERE entity_id = ? ORDER BY category, serial",
+        (entity_id,))]
+    src_state = {}
+    for row in conn.execute(
+            "SELECT person_id, willing FROM ragh_daily WHERE day = ? AND person_id IN "
+            "(SELECT id FROM ragh_persons WHERE entity_id = ?)", (from_day, entity_id)):
+        src_state[row["person_id"]] = bool(row["willing"])
+    for p in persons:
+        conn.execute(
+            "INSERT INTO ragh_daily (person_id, day, willing, source, updated_at) "
+            "VALUES (?,?,?,?,?) ON CONFLICT(person_id, day) "
+            "DO UPDATE SET willing = excluded.willing, source = excluded.source, "
+            "updated_at = excluded.updated_at",
+            (p["id"], to_day, 1 if src_state.get(p["id"]) else 0, source, _stamp()))
+    # إلغاء رغبة أي عضو في يوم الهدف لم يكن في كشف المصدر (clear-and-set كامل)
+    src_ids = ",".join(str(p["id"]) for p in persons) or "0"
+    conn.execute(
+        "DELETE FROM ragh_daily WHERE day = ? AND willing = 1 AND person_id NOT IN "
+        f"({src_ids}) AND person_id IN (SELECT id FROM ragh_persons WHERE entity_id = ?)",
+        (to_day, entity_id))
+    conn.commit()
+    conn.close()
+    return len(persons)
+
+
+def save_approval(year, month, entity_id, day,
+                  submit_rank="", submit_name="", submit_grade="",
+                  doc_rank="", doc_name="", doc_roster_name="",
+                  status="موثقة"):
+    """حفظ توقيتات اعتماد كشف اليوم (تصميم الاسكرين شوت ١٠/١٠):
+    فورم «مقدم قسم الراغبين» (رتبة + اسم عروني + رتبة) + فورم «وثيقة القطاع»
+    (رتبة + اسم عروني + اسم بالكشف) — واحد لجهة/يوم ويظهر أسفل التسلسل."""
+    day = max(1, min(31, int(day)))
+    s_rank = (submit_rank or "").strip()
+    s_name = " ".join((submit_name or "").split())
+    s_grade = (submit_grade or "").strip()
+    d_rank = (doc_rank or "").strip()
+    d_name = " ".join((doc_name or "").split())
+    d_roster = (doc_roster_name or "").strip()
+    conn = _conn(year, month)
+    conn.execute(
+        "INSERT INTO ragh_approvals (entity_id, day, approver_rank, approver_name, "
+        "status, submit_rank, submit_name, submit_grade, doc_rank, doc_name, "
+        "doc_roster_name, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(entity_id, day) DO UPDATE SET "
+        "approver_rank = excluded.approver_rank, "
+        "approver_name = excluded.approver_name, status = excluded.status, "
+        "submit_rank = excluded.submit_rank, submit_name = excluded.submit_name, "
+        "submit_grade = excluded.submit_grade, doc_rank = excluded.doc_rank, "
+        "doc_name = excluded.doc_name, doc_roster_name = excluded.doc_roster_name, "
+        "updated_at = excluded.updated_at",
+        (entity_id, day, s_grade or s_rank, s_name or d_name,
+         (status or "موثقة").strip(),
+         s_rank, s_name, s_grade, d_rank, d_name, d_roster, _stamp()))
+    conn.commit()
+    conn.close()
+
+
+def get_approval(year, month, entity_id, day):
+    """آخر اعتماد محفوظ ليوم الجهة — كل الحقول أو None."""
+    conn = _conn(year, month)
+    row = conn.execute(
+        "SELECT approver_rank, approver_name, status, submit_rank, submit_name, "
+        "submit_grade, doc_rank, doc_name, doc_roster_name, updated_at "
+        "FROM ragh_approvals WHERE entity_id = ? AND day = ?",
+        (entity_id, int(day))).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"rank": row["approver_rank"], "name": row["approver_name"],
+            "status": row["status"], "updated_at": row["updated_at"],
+            "submit_rank": row["submit_rank"], "submit_name": row["submit_name"],
+            "submit_grade": row["submit_grade"], "doc_rank": row["doc_rank"],
+            "doc_name": row["doc_name"], "doc_roster_name": row["doc_roster_name"]}
 
 
 def range_mismatch_text(year, month, entity_id, day, day_to, officers, individuals):

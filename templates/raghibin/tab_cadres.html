@@ -15,25 +15,26 @@
     <form method="post" action="/raghibin/cadres/entity_add" class="rg-addform">
       <input type="hidden" name="sid" value="{{ sid }}">
       <div class="fld rg-grow"><label>➕ إضافة جهة جديدة</label>
-        <input name="new_name" required placeholder="اسم الجهة كما هو معتمد"></div>
+        <input name="new_name" data-combo="rgEntityNames" required placeholder="اسم الجهة كما هو معتمد" autocomplete="off"></div>
       <div class="fld"><label>النوع</label>
         <select name="new_type">
           <option value="شرطية">شرطية</option>
           <option value="حربية">حربية</option>
+          <option value="ملحقة">ملحقة</option>
           <option value="أخرى">أخرى</option>
         </select>
       </div>
       <button class="rt-btn gold" type="submit">➕ إضافة جهة</button>
     </form>
     {% if not entities %}
-      <p class="rg-dim">مفيش جهات في قاموس التأميدات لسه — سجّل تأميدة أو أضف جهة من الفورم فوق.</p>
+      <p class="rg-dim">لا توجد جهات في قاموس التأميدات بعد — سجّل تأميدة أو أضف جهة من الفورم بالأعلى.</p>
     {% else %}
     <div class="rg-entity-list">
       {% for ent in entities %}
       {% set c = counts.get(ent.id, {'officers': 0, 'individuals': 0, 'officers_excluded': 0, 'individuals_excluded': 0}) %}
       <div class="rg-entity-row">
         <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
-           href="{{ base }}&e={{ ent.id }}&c={{ fcat }}{{ '&q=' + q if q }}">
+           href="{{ base }}&e={{ ent.id }}&c={{ fcat }}{{ '&q=' + q if q }}{{ '&d=' + (sel_day | string) }}">
           <b>{{ ent.name }}</b>
           <span class="rg-dim">{{ ent.entity_type }} · {{ pair2(c.officers, c.individuals) }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
         </a>
@@ -49,17 +50,24 @@
   </div>
 
   {% if entity %}
+  <!-- ═══ السجل المعتمد + كشف القطع (عمودان) ═══ -->
+  <div class="rg-twocol">
+    {% include "raghibin/registry_panel.html" %}
+    {% include "raghibin/piece_panel.html" %}
+  </div>
+
+  <!-- قوة الجهة: الجدول الكامل (غير راغب / ملاحظات / حذف) -->
   {% set c = counts.get(entity.id, {'officers': 0, 'individuals': 0, 'officers_excluded': 0, 'individuals_excluded': 0}) %}
   <div class="rg-card">
     <div class="rg-card-head">
       <b>قوة: {{ entity.name }}</b>
-      <span class="rg-dim">ض: {{ c.officers | aindic }} (غير راغبين {{ c.officers_excluded | aindic }}) — أ: {{ c.individuals | aindic }} (غير راغبين {{ c.individuals_excluded | aindic }})</span>
+      <span class="rg-dim">ضابط: {{ c.officers | aindic }} (غير راغبين {{ c.officers_excluded | aindic }}) — فرد: {{ c.individuals | aindic }} (غير راغبين {{ c.individuals_excluded | aindic }})</span>
     </div>
 
-    <!-- فئتا القوة: ضباط / أفراد وصف -->
+    <!-- فئتا القوة: ضابط / فرد -->
     <div class="tm-tabs rg-subtabs">
       {% for key, label in categories %}
-      <a class="tm-tab {{ 'on' if fcat == key }}" href="{{ base }}&e={{ entity.id }}&c={{ key }}{{ '&q=' + q if q }}">📋 <span>{{ label }}</span> <b class="tm-count">{{ c[key] | aindic }}</b></a>
+      <a class="tm-tab {{ 'on' if fcat == key }}" href="{{ base }}&e={{ entity.id }}&c={{ key }}{{ '&q=' + q if q }}&d={{ sel_day }}">📋 <span>{{ label }}</span> <b class="tm-count">{{ c[key] | aindic }}</b></a>
       {% endfor %}
     </div>
 
@@ -70,7 +78,7 @@
       <input type="hidden" name="sid" value="{{ sid }}">
       <div class="fld"><label>الرتبة</label><input name="rank" data-combo="rgRankList"
              placeholder="اختر الرتبة أو اكتبها" autocomplete="off"></div>
-      <div class="fld rg-grow"><label>الاسم رباعي</label><input name="name" required placeholder="الاسم رباعي كما هو معتمد"></div>
+      <div class="fld rg-grow"><label>الاسم رباعي</label><input name="name" data-combo="rgCadreNames" required placeholder="الاسم رباعي كما هو معتمد" autocomplete="off"></div>
       <button class="rt-btn gold" type="submit">➕ إضافة إلى {{ dict(categories)[fcat] }}</button>
     </form>
     <datalist id="rgRankList">
@@ -83,10 +91,11 @@
       <input type="hidden" name="tab" value="cadres">
       <input type="hidden" name="e" value="{{ entity.id }}">
       <input type="hidden" name="c" value="{{ fcat }}">
+      <input type="hidden" name="d" value="{{ sel_day }}">
       {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
       <input name="q" value="{{ q }}" placeholder="🔍 بحث بالاسم أو الرتبة داخل {{ dict(categories)[fcat] }}">
       <button class="rt-btn" type="submit">بحث</button>
-      {% if q %}<a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}">إلغاء البحث</a>{% endif %}
+      {% if q %}<a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}&d={{ sel_day }}">إلغاء البحث</a>{% endif %}
     </form>
 
     <!-- جدول القوة -->
@@ -108,7 +117,7 @@
               <input name="note" value="{{ p.exclude_note or '' }}" class="rg-note-input"
                      placeholder="اكتب الملاحظة (هلاكات / مأمورية / مريض / ...)">
               <button class="rt-btn gold" type="submit">حفظ الملاحظة</button>
-              <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}">إلغاء</a>
+              <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}&d={{ sel_day }}">إلغاء</a>
             </form>
           </td>
         </tr>
@@ -128,7 +137,7 @@
               </select>
               <input name="note" placeholder="سبب الاستثناء (هلاكات / مأمورية / ...)" class="rg-note-input">
               <button class="rt-btn gold" type="submit">تأكيد</button>
-              <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}">إلغاء</a>
+              <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}&d={{ sel_day }}">إلغاء</a>
             </form>
           </td>
         </tr>
@@ -140,10 +149,10 @@
           <td>{% if p.excluded %}<span class="rg-state off">⊘ غير راغب</span>{% else %}<span class="rg-state on">✓ راغب</span>{% endif %}</td>
           <td>
             {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝 {{ p.exclude_note }}</span>{% else %}<span class="rg-dim">—</span>{% endif %}
-            <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}{{ '&n=' + (p.id | string) }}">✏️</a>
+            <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}&d={{ sel_day }}{{ '&n=' + (p.id | string) }}">✏️</a>
           </td>
           <td class="rg-actions">
-            <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}{{ '&x=' + (p.id | string) }}"> {% if p.excluded %}↩ إرجاع / تعديل{% else %}⊘ غير راغب{% endif %}</a>
+            <a class="tm-link" href="{{ base }}&e={{ entity.id }}&c={{ fcat }}{{ '&q=' + q if q }}&d={{ sel_day }}{{ '&x=' + (p.id | string) }}"> {% if p.excluded %}↩ إرجاع / تعديل{% else %}⊘ غير راغب{% endif %}</a>
             <form method="post" action="/raghibin/cadres/delete/{{ p.id }}" class="rg-inline" onsubmit="return confirm('حذف {{ p.full_name }} من القوة نهائيًا؟')">
               <input type="hidden" name="e" value="{{ entity.id }}">
               <input type="hidden" name="c" value="{{ fcat }}">
@@ -157,28 +166,8 @@
       </tbody>
     </table>
     {% else %}
-    <p class="rg-dim">مفيش أسماء {{ 'مطابقة للبحث' if q else 'في هذه الفئة' }} لسه — أضف أول اسم من الفورم فوق.</p>
+    <p class="rg-dim">لا توجد أسماء {{ 'مطابقة للبحث' if q else 'في هذه الفئة' }} بعد — أضف أول اسم من فورم «السجل المعتمد» بالأعلى.</p>
     {% endif %}
-  </div>
-
-  <!-- نسخ القوة لشهر/سنة آخر -->
-  <div class="rg-card">
-    <div class="rg-card-head"><b>نسخ القوة إلى شهر أو سنة آخر</b>
-      <span class="rg-dim">ينسخ الأسماء والرتب وحالات الاستثناء (بلا تسجيلات يومية) ويبني ملفات الشهر الهدف</span>
-    </div>
-    <form method="post" action="/raghibin/cadres/copy" class="rg-addform">
-      <input type="hidden" name="sid" value="{{ sid }}">
-      <div class="fld"><label>السنة الهدف</label><input name="ty" value="{{ year }}" inputmode="numeric"></div>
-      <div class="fld"><label>الشهر الهدف (١-١٢)</label><input name="tm" value="{{ month if month < 12 else 1 }}" inputmode="numeric"></div>
-      <div class="fld"><label>النطاق</label>
-        <select name="scope">
-          <option value="one" selected>الجهة الحالية فقط ({{ entity.name }})</option>
-          <option value="all">كل جهات القوة</option>
-        </select>
-      </div>
-      <button class="rt-btn gold" type="submit">📑 نسخ القوة</button>
-    </form>
-    <p class="rg-dim">الجهة غير الموجودة في قاموس الشهر الهدف تُنشأ بنفس الاسم والنوع، والأسماء المكررة تُتجاهل.</p>
   </div>
   {% endif %}
 
@@ -189,3 +178,6 @@
     وبيتبنوا لحظيًا مع كل تعديل.</span>
   </div>
 </div>
+
+<datalist id="rgEntityNames">{% for e in entities %}<option value="{{ e.name }}">{% endfor %}</datalist>
+<datalist id="rgCadreNames">{% for p in registry_officers %}<option value="{{ p.name }}">{% endfor %}{% for p in registry_individuals %}<option value="{{ p.name }}">{% endfor %}</datalist>

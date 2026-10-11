@@ -7,10 +7,7 @@
   min-width: 0; gap: 10px; font-size: 12px; }
 .window-brand img { width: 23px; height: 23px; }
 .window-brand small { font-size: 10px; letter-spacing: 1.5px; }
-/* سطر التصميم والتنفيذ (بدل اسم المنتج الإنجليزي) — بلا تباعد حروف عربي */
-.window-brand .window-credit { letter-spacing: 0; font-size: 11px; color: var(--gold-light);
-  border-inline-start: 1px solid var(--card-border); padding-inline-start: 10px; }
-.window-brand i { width: 1px; height: 14px; background: #ffffff22; }
+/* سطر «تصميم وتنفيذ» مكانه في الفوتر بس (توجيه ٠٨/١٠) — الشريط العلوي بلا تكرار */
 .window-edition { font-size: 12px; }
 .window-edition b { font-weight: 400; margin-right: 8px; }
 .window-controls { display: flex; height: 100%; margin-left: -16px; }
@@ -192,6 +189,9 @@
 
 /* Explicit month copy / legacy import */
 .month-copy { margin-bottom: 18px; overflow: visible; padding: 0; }
+/* نسخة أصل القوة: لوحة ظاهرة دايمًا (مش details منطوية) */
+.month-copy-open { margin-bottom: 18px; }
+.month-copy-open .copy-controls { padding: 6px 0 0; }
 .month-copy summary { list-style: none; cursor: pointer; display: flex; align-items: center;
   gap: 12px; padding: 16px 20px; font-size: 15px; color: var(--text); }
 .month-copy summary::after { content: "+"; margin-right: auto; font-size: 21px; }

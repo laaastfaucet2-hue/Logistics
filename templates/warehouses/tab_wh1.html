@@ -22,8 +22,8 @@
   <fieldset class="wh-fs">
     <legend>📋 بيانات الإذن</legend>
     <div class="wh-grid">
-      <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
-        <input name="receipt_no" inputmode="numeric" autocomplete="off" placeholder="مثال: ١" value="{{ wh1_edit.serial | aindic if wh1_edit else '' }}" {% if wh1_edit %}readonly title="رقم الإذن ثابت في وضع التعديل"{% endif %}></label>
+      <label class="wh-f">رقم الإذن <small>(الرقم الخارجي المكتوب على ورقة الإذن — مطلوب)</small>
+        <input name="receipt_no" inputmode="numeric" autocomplete="off" required placeholder="مثال: ١" value="{{ wh1_edit.serial | aindic if wh1_edit else '' }}" {% if wh1_edit %}readonly title="رقم الإذن ثابت في وضع التعديل"{% endif %}></label>
       <label class="wh-f">يوم الإذن (داخل الشهر النشط)
         <input name="day" inputmode="numeric" value="{{ (wh1_edit.day if wh1_edit else default_day) | aindic }}" min="١" max="{{ days_in_month | aindic }}">
         <span class="wh-hintline wh-day-hint"></span></label>
@@ -66,7 +66,8 @@
       <div class="wh-grid">
         <label class="wh-f">الكمية الإجمالية <small>(تتحسب تلقائيًا من التغليف — أو اكتبها بنفسك)</small>
           <input name="l__IDX___qty" class="js-line-qty" inputmode="decimal" autocomplete="off"></label>
-        <div class="wh-f wh-f-hint"></div>
+        <label class="wh-f">الشركة المنتجة للصنف <small>(فارغ = شركة منتج الإذن)</small>
+          <input class="js-line-producer" name="l__IDX___producer" data-combo="whProducersList" autocomplete="off" placeholder="اسم الشركة المنتجة"></label>
         <div class="wh-f wh-f-hint"></div>
       </div>
       <fieldset class="wh-pack wh-f-wide">
@@ -100,8 +101,9 @@
 
         <!-- الوزن الاختياري: وزن المعيار (يحوّل العدّ لكجم) أو وزن العبوة نفسها -->
         <div class="wh-pack-row wh-pack-weights">
-          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
-            <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
+          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وحدة المعيار الواحد</span> <small>(وحته هي وحدة الإجمالي)</small>
+            <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢">
+            <input name="l__IDX___pack_inner_unit" class="js-pack-inner-unit" data-combo="whInnerUnitsList" autocomplete="off" placeholder="لتر، كجم..."></label>
           <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
             <input name="l__IDX___pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
         </div>

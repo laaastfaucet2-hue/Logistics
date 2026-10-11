@@ -1,5 +1,12 @@
 {% set dbase = '/raghibin?tab=daily' %}
 {% set dbase = dbase + ('&sid=' + sid) if sid else dbase %}
+{% set modal_url = '/raghibin/modal?c=' + fcat + '&d=' + (sel_day | string) + '&back=raghibin' + ('&en=' + (entity.name | urlencode) if entity else '') + ('&sid=' + (sid | urlencode) if sid else '') %}
+
+<!-- ترويسة القسم (تصميم الاسكرين شوت ١٠/١٠) -->
+<div class="rg-section-title">
+  <h2>كشف الراغبين في وجبات الطعام (الضباط والأفراد)</h2>
+  <p>قسم إداري مركزي متخصص لتسجيل ومعالجة كشوف الرغبة اليومية للضباط والأفراد، والمزامنة والتنسيق مع التأميدات.</p>
+</div>
 
 <!-- أزرار ملفات التبويب (قاعدة 21): المجلد = اليوم المفتوح نفسه، والإكسل بجهة المختارة -->
 <div class="tm-openbar">
@@ -21,10 +28,10 @@
 <div class="rg-note warn">
   <b>⚠️ عدم تطابق يوم {{ sel_day | aindic }} — {{ entity.name if entity }}:</b>
   <span class="rg-dim">
-    التأميدة مسجّلة: {{ pair2(day_counts.officers_total, day_counts.individuals_total) }} —
+    التأميدة مسجّلة: {{ pair2(tameed_totals.officers if tameed_totals else 0, tameed_totals.individuals if tameed_totals else 0) }} —
     الراغبون المسجلون بالأسماء: {{ pair2(day_counts.officers, day_counts.individuals) }} —
     الكوادر المعتمدة: {{ pair2(day_cadres.officers or 0, day_cadres.individuals or 0) }}
-    <i class="sh-legend">({{ pair_legend }})</i>.
+    .
   </span>
   <ul class="rg-alert-list">
     {% for issue in day_alert_issues %}
@@ -36,29 +43,130 @@
 {% endif %}
 
 <div class="tm-dict-stack">
-  <!-- التقويم اليومي -->
+  <!-- اختيار اليوم من الشبكة — شبكة ١..٣١ بترتيب (تصميم الاسكرين شوت) -->
   <div class="rg-card">
     <div class="rg-card-head">
-      <b>🗓️ تقويم {{ month_name }} {{ year | aindic }}</b>
+      <b>اختر يوم التأميدة والوجبة المستهدفة: {{ month_name }} {{ year | aindic }}</b>
       <span class="rg-dim">العلامة = عدد الراغبين المسجلين بالأسماء في اليوم</span>
     </div>
-    <div class="tm-cal" role="grid" aria-label="تقويم الراغبين اليومي">
-      {% for wd in weekdays %}<span class="tm-wd">{{ wd }}</span>{% endfor %}
-      {% for week in weeks %}
-        {% for cell in week %}
-          {% if cell.empty %}<span class="tm-cell empty"></span>
-          {% else %}
-          <a class="tm-cell {{ 'sel' if cell.selected }} {{ 'today' if cell.is_today }} {{ 'has' if cell.count }}"
-             href="{{ dbase }}{{ '&e=' + (entity.id | string) if entity }}&d={{ cell.day }}&c={{ fcat }}"
-             aria-label="يوم {{ cell.day }} {{ cell.count ~ ' راغبين' if cell.count else '' }}">
-            <b>{{ cell.day | aindic }}</b>
-            {% if cell.count %}<i class="tm-dot">{{ cell.count | aindic }}</i>{% endif %}
-          </a>
-          {% endif %}
-        {% endfor %}
+    <div class="tm-cal rg-dayseq" role="grid" aria-label="أيام الشهر">
+      {% for d in range(1, 32) %}
+      <a class="tm-cell {{ 'sel' if d == sel_day }} {{ 'has' if day_counts_map.get(d) }}"
+         href="{{ dbase }}{{ '&e=' + (entity.id | string) if entity }}&d={{ d }}&c={{ fcat }}"
+         aria-label="يوم {{ d }} {{ (day_counts_map.get(d) or 0) ~ ' راغبين' if day_counts_map.get(d) else '' }}">
+        <i class="rg-daylbl">{{ day_names.get(d, '') }}</i>
+        <b>{{ d | aindic }}</b>
+        {% if day_counts_map.get(d) %}<span class="tm-dot">{{ day_counts_map[d] | aindic }}</span>{% endif %}
+      </a>
       {% endfor %}
     </div>
   </div>
+
+  <!-- بانر اليوم المفتوح + زر نسخ كشف راغب يوم كامل (تصميم الاسكرين شوت) -->
+  {% if entity %}
+  <div class="rg-daybanner">
+    <span class="rg-banner-title">📋 كشف {{ entity.name }} — {{ month_name }} {{ year | aindic }} — يوم {{ sel_day | aindic }}</span>
+    <div class="rg-banner-actions">
+      <button class="rt-btn gold" type="button" id="rgCopyDayBtn"
+              title="ينقل كشف راغب اليوم المفتوح كاملًا (الضباط والأفراد) إلى يوم تانى">
+        📋 نسخ الكشف</button>
+    </div>
+  </div>
+
+  <!-- دايالوج نسخ الكشف: أولًا الجهة، ثم اليوم الهدف (اليوم المفتوح هو المصدر) -->
+  <div class="rg-dialog-backdrop" id="rgCopyDayBg" hidden>
+    <div class="rg-dialog">
+      <b>📋 نسخ كشف راغب يوم كامل</b>
+      <span class="rg-dialog-q">أي جهة تريد نسخ كشفها؟</span>
+      <form method="post" action="/raghibin/daily/copy">
+        <input type="hidden" name="from_d" value="{{ sel_day }}">
+        {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+        <label for="rgCopyDayEnt">الجهة:</label>
+        <select name="e" id="rgCopyDayEnt" required>
+          {% for ent in entities %}
+          <option value="{{ ent.id }}" {{ 'selected' if entity and ent.id == entity.id }}>{{ ent.name }}</option>
+          {% endfor %}
+        </select>
+        <label for="rgCopyDaySel">أي يوم تريد النسخ إليه؟</label>
+        <select name="to_d" id="rgCopyDaySel" required>
+          {% for d in range(1, 32) %}
+          <option value="{{ d }}" {{ 'selected' if (d == sel_day + 1 and sel_day + 1 <= 31) or (sel_day == 31 and d == 1) }}>{{ d | aindic }}</option>
+          {% endfor %}
+        </select>
+        <div class="rg-dialog-actions">
+          <button class="rt-btn gold" type="submit">نسخ الكشف</button>
+          <button class="rt-btn" type="button" id="rgCopyDayCancel">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var bg = document.getElementById('rgCopyDayBg');
+    var btn = document.getElementById('rgCopyDayBtn');
+    if (!bg || !btn) return;
+    var sel = bg.querySelector('select');
+    btn.addEventListener('click', function () {
+      bg.hidden = false;
+      if (sel) sel.focus();
+    });
+    document.getElementById('rgCopyDayCancel').addEventListener('click', function () {
+      bg.hidden = true;
+    });
+    bg.addEventListener('click', function (e) {
+      if (e.target === bg) bg.hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') bg.hidden = true;
+    });
+  })();
+  </script>
+
+  <!-- شريط ملخص الجهة + كوبي كشف الراغبين + فتح وتعديل كشف اليومى -->
+  <div class="rg-summarybar">
+    <span class="rg-ent-dot" style="background:{{ color('entity', entity.name) }}"></span>
+    <span class="rg-ent-name">{{ entity.name }}</span>
+    <span class="rg-count-chip">الضباط {{ day_counts.officers | aindic }} من أصل {{ day_counts.officers_total | aindic }}</span>
+    <span class="rg-count-chip">ضباط وسياء {{ day_counts.wastaya_officers | aindic }} من أصل {{ day_counts.wastaya_officers_total | aindic }}</span>
+    <span class="rg-count-chip">الأفراد {{ day_counts.individuals | aindic }} من أصل {{ day_counts.individuals_total | aindic }}</span>
+    <div class="rg-banner-actions">
+      <button class="rt-btn" type="button" id="rgCopyDayBtn2"
+              title="اختار الجهة ثم اليوم الذي تريد نقل كشف الراغبين له">
+        📋 كوبي كشف الراغبين</button>
+      <a class="rt-btn gold" href="{{ modal_url }}"
+         title="الصفحة الكاملة: السجل المعتمد + مربعات التأميدة + الاعتماد والممسح">
+        ⚙️ فتح وتعديل كشف اليومى</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- قوة اليوم: كل أعضاء الجهة بحالة يوم اليوم المفتوح (١٠/١٠/٢٠٦) -->
+  {% if entity and force_today %}
+  <div class="rg-card">
+    <div class="rg-card-head">
+      <b>قوة اليوم — {{ entity.name }} — يوم {{ sel_day | aindic }}</b>
+      <span class="rg-dim">الحالة = تسجيل يوم اليوم المفتوح نفسه (علامة ✓ في «الجهات والكوادر» حالة دائمة وليست يومية)</span>
+    </div>
+    <table class="rg-table">
+      <thead><tr><th>م</th><th>الفئة</th><th>الرتبة</th><th>الاسم</th><th>حالة اليوم</th></tr></thead>
+      <tbody>
+      {% for p in force_today %}
+      <tr>
+        <td>{{ loop.index | aindic }}</td>
+        <td>{{ p.cat }}</td>
+        <td>{{ p.rank }}</td>
+        <td class="rg-name">{{ p.name }}</td>
+        <td>
+          {% if p.willing %}<span class="rg-state on">✓ راغب اليوم</span>
+          {% elif p.excluded %}<span class="rg-state off">⊘ غير راغب (مستثنى)</span>
+          {% else %}<span class="rg-dim">— غير مسجل اليوم</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
   <!-- جهات القاموس: كل جهة مسجلة وبجوارها زر فتح إكسل راغبين الخاص بها -->
   {% if entities %}
@@ -73,7 +181,7 @@
         <a class="rg-entity {{ 'on' if entity and entity.id == ent.id }}"
            href="{{ dbase }}&e={{ ent.id }}&d={{ sel_day }}&c={{ fcat }}">
           <b class="c-ent" style="--c:{{ color('entity', ent.name) }}">{{ ent.name }}</b>
-          <span class="rg-dim">{{ ent.entity_type }} · ض {{ (counts.get(ent.id, {}).officers or 0) | aindic }} · أ {{ (counts.get(ent.id, {}).individuals or 0) | aindic }}</span>
+          <span class="rg-dim">{{ ent.entity_type }} · ضابط {{ (counts.get(ent.id, {}).officers or 0) | aindic }} · فرد {{ (counts.get(ent.id, {}).individuals or 0) | aindic }}</span>
         </a>
         <a class="rg-xls" href="{{ url_for('raghibin.open_entity_excel') }}&d={{ sel_day }}&e={{ ent.id }}"
            title="فتح ملف إكسل راغبين «{{ ent.name }}» ليوم {{ sel_day | aindic }} على جهازك">
@@ -84,19 +192,19 @@
   </div>
   {% endif %}
 
-  <!-- مربعات اليوم: زرار تبديل ض/أ + المربعات الذكية -->
+  <!-- مربعات اليوم: تويب ضابط/فرد + المربعات الذكية -->
   {% if entity %}
   <div class="rg-card">
     <div class="rg-card-head">
       <b>راغبو يوم {{ sel_day | aindic }}: {{ entity.name }}</b>
-      <span class="rg-dim">المربعات بعدد التأميدة — ض {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · أ {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }} <i class="sh-legend">({{ pair_legend }})</i></span>
+      <span class="rg-dim">المربعات بعدد التأميدة — ضابط {{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }} · فرد {{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</span>
     </div>
     <div class="tm-tabs rg-cat-tabs" aria-label="فئات الراغبين">
       <a class="tm-tab {{ 'on' if fcat == 'officers' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=officers">
-        👮 ض <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
+        👮 ضابط <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.officers | aindic }}/{{ day_counts.officers_total | aindic }}</b>
       </a>
       <a class="tm-tab {{ 'on' if fcat == 'individuals' }}" href="{{ dbase }}&e={{ entity.id }}&d={{ sel_day }}&c=individuals">
-        👥 أ <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
+        👥 فرد <b class="tm-count" title="راغبين من أصل مربعات التأميدة">{{ day_counts.individuals | aindic }}/{{ day_counts.individuals_total | aindic }}</b>
       </a>
     </div>
     {% with back='raghibin', source='manual' %}
@@ -104,7 +212,7 @@
     {% endwith %}
   </div>
   {% else %}
-  <div class="rg-card"><p class="rg-dim">مفيش جهات لسه — سجّل تأميدة أولًا وهتنزل الجهات هنا.</p></div>
+  <div class="rg-card"><p class="rg-dim">لا توجد جهات بعد — سجّل تأميدة أولًا وستظهر الجهات هنا.</p></div>
   {% endif %}
 
   <div class="rg-card rg-files">
@@ -112,5 +220,17 @@
     <span class="rg-dim">{{ section_folder }}/1. (يومي) الراغبين/يوم {{ sel_day | aindic }}/&lt;الجهة&gt;.xlsx —
     القوة كلها بعلامات اليوم (✓ راغب / ✗ لا / ⊘ مستثنى مميز) بالدباجة والتوقيعات الرسمية،
     وبيتبنى لحظيًا مع كل حفظ للمربعات.</span>
+    {% include "raghibin/rebuild_form.html" %}
   </div>
 </div>
+
+<script>
+/* كوبي كشف الراهبين (١٠/١٠/٢٠٦): يفتح دايالوج «نسخ الكشف» نفسه —
+   اختار الجهة أولًا، ثم اليوم الذي تريد نقل كشف الراغبين له (التصفح عادي) */
+document.querySelectorAll('[id^=rgCopyDayBtn]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var bg = document.getElementById('rgCopyDayBg');
+    if (bg) { bg.hidden = false; var sel = bg.querySelector('select'); if (sel) sel.focus(); }
+  });
+});
+</script>

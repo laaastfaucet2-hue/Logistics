@@ -66,7 +66,8 @@ def test_availability_reflects_permits_deduction(app):
     dp.save_permit(YEAR, MONTH, {
         "number": 7, "fiscal_year": 2026, "date_from": 1, "date_to": 1, "issue_days": 1,
         "mode": "box", "entity_label": "جهة", "officers": 0, "individuals": 0, "recruits": 0,
-        "actuals": {"tamween_" + name: 40},
+        # الكمية الفعلية بوحدة الحاسبة (الباقي: جم) — ٤٠ كجم = ٤٠٠٠٠ جم
+        "actuals": {"tamween_" + name: 40000},
     })
     info = sl.availability(YEAR, MONTH, "supply", name, needed=10)
     assert info["avail"] == 60                              # ١٠٠ − ٤٠ (خصم الإذن)
@@ -80,9 +81,10 @@ def test_saving_same_permit_number_replaces_actuals_without_double_deduction(app
     base = {"number": 9, "fiscal_year": 2026, "date_from": 1, "date_to": 1,
             "issue_days": 1, "mode": "box", "entity_label": "جهة",
             "officers": 0, "individuals": 0, "recruits": 0}
-    dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 30}})
+    # الكمية بالحاسبة (جم): ٣٠ كجم = ٣٠٠٠٠ جم · ثم ٥٠ كجم = ٥٠٠٠٠ جم
+    dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 30000}})
     assert sl.availability(YEAR, MONTH, "supply", name)["avail"] == 70
-    dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 50}})   # «تحديث الإذن»
+    dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 50000}})   # «تحديث الإذن»
     assert sl.availability(YEAR, MONTH, "supply", name)["avail"] == 50         # ٥٠ لا ٢٠
 
 
@@ -91,7 +93,8 @@ def test_for_rows_maps_every_row_by_name(app):
     a, b = _catalog_item("فول"), _catalog_item("مكرونة", unit="كيس")
     dw.add_opener(YEAR, MONTH, "supply", a, 30, 1, handle_unit_hint="كجم", exp_iso="2027-06-30")
     data = sl.for_rows(YEAR, MONTH, "tamween", [
-        {"name": a, "auto": 100}, {"name": b, "auto": 5}, {"name": "صنف غير موجود", "auto": 1}])
+        {"name": a, "auto": 100000},  # ١٠٠ كجم بوحدة الحاسبة (جم)
+        {"name": b, "auto": 5}, {"name": "صنف غير موجود", "auto": 1}])
     assert data[a]["status"] == sl.STATUS_LOW               # ٣٠ والمطلوب ١٠٠
     assert data[b]["status"] == sl.STATUS_NONE              # لا رصيد
     assert data["صنف غير موجود"]["avail"] == 0

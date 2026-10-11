@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 from core import arabic_numbers as arnum
 from core import egtime
+from core import dates
 from core.auth_core import current_context, current_session, login_required
 from core.config import DAYS, MONTH_NAMES
 from data_access import db_raghibin as dr
@@ -150,7 +151,7 @@ def _slots_vars(year, month, entity, selected):
     tameed_totals = _tameed_day_totals(year, month, eid, selected) if eid else None
     slots, force = {}, {}
     for cat, key, label in (("officers", "officers", "الضباط"),
-                            ("individuals", "individuals", "الأفراد والصف")):
+                            ("individuals", "individuals", "فرد")):
         persons = dr.list_persons(year, month, entity_id=eid, category=cat,
                                   excluded=False) if eid else []
         willing = [p["full_name"] for p in persons if state.get(p["id"])]
@@ -169,16 +170,38 @@ def _daily_vars(year, month, entity, selected):
     counts_map = dr.day_willing_counts(year, month, eid) if eid else {}
     base = _slots_vars(year, month, entity, selected)
     slots = base["slots"]
+    # «من أصل» = حجم القوة المعتمدة للجهة (ضباط/أفراد) — مش عدد مربعات التأميدة
     day_counts = {"officers": slots["officers"]["count"],
                   "individuals": slots["individuals"]["count"],
-                  "officers_total": slots["officers"]["tameeda"],
-                  "individuals_total": slots["individuals"]["tameeda"]}
+                  "officers_total": len(base["force"]["officers"]),
+                  "individuals_total": len(base["force"]["individuals"])}
+    # اسم اليوم (السبت/الأحد/...) + يوم الشهر لكل خلية في الشبكة (توجيه ١٠/١٠)
+    day_names = {d: DAYS[(date(year, month, d).weekday() + 2) % 7]
+                 for d in range(1, egtime.days_in_month(year, month) + 1)}
+    # عداد «الضباط وسياء» (تصميم الاسكرين شوت): ضباط الجهة السيائية نفسها
+    is_wastaya = bool(entity) and "وسياء" in entity["name"]
+    day_counts["wastaya_officers"] = day_counts["officers"] if is_wastaya else 0
+    day_counts["wastaya_officers_total"] = day_counts["officers_total"] if is_wastaya else 0
+    # قوة اليوم: كل أعضاء الجهة بحالة يوم اليوم المفتوح (✓ راغب اليوم / ⊘ غير راغب / — غير مسجل)
+    force_today = []
+    if eid:
+        state = dr.day_state(year, month, selected, eid)
+        for cat, label in dr.CATEGORIES:
+            for p in dr.list_persons(year, month, entity_id=eid, category=cat):
+                force_today.append({
+                    "rank": p.get("rank") or "—", "name": p["full_name"],
+                    "cat": label, "excluded": bool(p["excluded"]),
+                    "willing": bool(state.get(p["id"])),
+                })
     return {
         "sel_day": selected,
         "weeks": _day_grid(year, month, selected, counts_map),
+        "day_counts_map": counts_map,
+        "day_names": day_names,
         "weekdays": DAYS,
         "slots": slots,
         "force": base["force"],
+        "force_today": force_today,
         "tameed_totals": base["tameed_totals"],
         "day_counts": day_counts,
         # تنبيهات اليوم المفتوح بنفس محرك جدول الشهر: عدد الراغبين + غياب الكوادر
@@ -197,10 +220,18 @@ def _cadres_of(year, month, entity):
 
 
 def _day_alert_issues(year, month, entity, tameed_totals, day_counts):
-    """تنبيهات اليوم المفتوح: التأميدة مقابل الراغبين المسجلين مقابل الكوادر المعتمدة."""
-    if not entity or not tameed_totals:
+    """تنبيهات اليوم المفتوح: التأميدة مقابل الراغبين المسجلين مقابل الكوادر المعتمدة.
+
+    من غير تأميدة لليوم: ساكت غير ما في راغبين مسجلين — ساعتها ينبه
+    «سجلت راغبين من غير تأميدة» (توجيه ١٠/١٠/٢٠٦)."""
+    if not entity:
         return []
     from services import tameed_alerts
+    if not tameed_totals:
+        total_willing = day_counts["officers"] + day_counts["individuals"]
+        if total_willing:
+            return [tameed_alerts.no_tameeda_issue(total_willing)]
+        return []
     return tameed_alerts.record_day_issues(
         {"officers": tameed_totals["officers"], "individuals": tameed_totals["individuals"]},
         {"officers": day_counts["officers"], "individuals": day_counts["individuals"]},
@@ -237,6 +268,7 @@ def _page_vars(tab):
     return {
         "tabs": TABS, "tab": tab,
         "year": year, "month": month, "month_name": MONTH_NAMES[month - 1],
+        "month_names": MONTH_NAMES,
         "q": query, "fcat": category,
         "categories": dr.CATEGORIES,
         "entities": entities,
@@ -269,6 +301,34 @@ def _alerts_vars(year, month):
         return {}
 
 
+def _cadres_vars(year, month, entity, selected):
+    """متغيرات تاب «الجهات والكوادر المعتمدة» (تصميم الاسكرين شوت ١٠/١٠):
+    توقيتات الاعتماد + المسح الضوئي + السجل المعتمد + كشف القطع."""
+    sid = request.args.get("sid", "")
+    variables = {"sel_day": selected,
+                 "pieces_count": len(dt.list_entities(year, month)),
+                 "ranks_map": {"officers": dr.RANKS["officers"],
+                               "individuals": dr.RANKS["individuals"]}}
+    if entity:
+        variables["registry_officers"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="officers")
+        variables["registry_individuals"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="individuals")
+        variables["approval"] = dr.get_approval(year, month, entity["id"], selected)
+        variables["scan_img_url"] = (
+            f"/raghibin/scan/img?e={entity['id']}&d={selected}"
+            + (f"&sid={quote(sid)}" if sid else ""))
+        variables["entity_count"] = len(variables["registry_officers"]) \
+            + len(variables["registry_individuals"])
+    else:
+        variables["registry_officers"] = []
+        variables["registry_individuals"] = []
+        variables["approval"] = None
+        variables["scan_img_url"] = ""
+        variables["entity_count"] = 0
+    return variables
+
+
 @raghibin_bp.route("")
 @raghibin_bp.route("/")
 @login_required
@@ -286,4 +346,19 @@ def page():
         variables.update(_excluded_vars(year, month, entity, variables["q"]))
     elif tab == "monthly":
         variables.update(_monthly_vars(year, month, entity, variables["fcat"]))
+    elif tab == "cadres":
+        variables.update(_cadres_vars(year, month, entity, _selected_day(year, month)))
     return render_template("raghibin/main.html", **variables)
+
+
+@raghibin_bp.route("/files/rebuild", methods=["POST"])
+@login_required
+def files_rebuild():
+    """إعادة بناء كل الملفات المحلية للشهر بالدباجة والتوقيعين الرسميين واللوجو
+    (يعيد كتابة كل الملفات الحالية — لتجديد الملفات القديمة التي قبل القواعد)."""
+    year, month = _ctx()
+    ents, days = rfs.rebuild_all(year, month)
+    ok = (f"اتعدلت كل الملفات المحلية عن {MONTH_NAMES[month - 1]} {arnum.to_arabic_indic(year)} "
+          f"بالدباجة والتوقيعين الرسميين واللوجو — {arnum.to_arabic_indic(ents)} جهة "
+          f"وعلي {arnum.to_arabic_indic(days)} يوم يومية.")
+    return _rb("files", ok=ok)

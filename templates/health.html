@@ -3,6 +3,7 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
@@ -51,13 +52,13 @@
         {% endfor %}
         <div class="hl-actions">
           <button class="rt-btn green" type="submit">💾 حفظ الدباجة</button>
-          <span class="hl-hint">التوقيعات الافتراضية دي بتملأ أي توقيع فاضي في التقارير الأربعة</span>
+          <span class="hl-hint">التوقيعات الافتراضية تملأ أي توقيع فارغ في التقارير الأربعة</span>
         </div>
       </form>
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة الورق — بتتحدث مع الكتابة على طول</div>
+    <div class="hl-pv-head">👁️ معاينة الورق — تتحدّث مع الكتابة مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>
@@ -78,16 +79,16 @@
     {% for d in days %}
     <a class="hl-day-tab {{ 'on' if d == day }}"
        href="{{ url_for('health.page', tab='checkups', day=d) }}">
-      يوم {{ d | aindic }} {% if d == day %}· {{ checked_count | aindic }} مكتوش{% endif %}
+      يوم {{ d | aindic }} {% if d == day %}· تم توقيع الكشف: {{ checked_count | aindic }}{% endif %}
     </a>
     {% endfor %}
   </nav>
   <form method="post" action="{{ url_for('health.select_checkup') }}">
     <input type="hidden" name="day" value="{{ day }}">
     <div class="hl-hint row">
-      <span>اكتب أسماء المكتوشين ليوم <b>{{ day | aindic }} {{ month_name }}</b> في المربعات —
+      <span>اكتب أسماء من تم توقيع الكشف الطبى ليوم <b>{{ day | aindic }} {{ month_name }}</b> في المربعات —
         <b>بحث ذكي</b> بيفتّش مع الكتابة ويقترح المجندين، <b>✅ الحاضرين اليوم بيظهروا الأول</b>.
-        وتقدر تكتب اسم مش مسجل خالص (يتسجل في الكشف من غير ربط):</span>
+        ويمكنك كتابة اسم غير مسجّل أصلًا (يُسجَّل في الكشف دون ربط):</span>
       <button class="rt-btn small dim" type="button" id="hl-addbox">➕ إضافة مربع اسم</button>
     </div>
     <div id="hl-nameboxes">
@@ -101,11 +102,34 @@
       {% endfor %}
     </div>
     <div class="hl-actions">
-      <button class="rt-btn green" type="submit">💾 حفظ المكتوشين وتحديث الكشف</button>
+      <button class="rt-btn green" type="submit">💾 حفظ توقيع الكشف وتحديث الورقة</button>
       <a class="rt-btn navy" href="{{ url_for('health.docx_download', report='checkup', day=day) }}">
         ⬇️ تنزيل كشف يوم {{ day | aindic }} (وورد)</a>
     </div>
   </form>
+</div>
+
+<!-- المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر (١٠/١٠/٢٠) —
+     أول ما تحفظ توقيع كشف لمجند يختفي اسمه من الجدول فورًا -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>⚕️ عدم توقيع الكشف الطبى — أسماء المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر
+      <span class="panel-hint">({{ not_checked | length | aindic }} مجند)</span></h3>
+  </div>
+  {% if not recruits_total %}
+  <span class="panel-hint">لا يوجد مجندين مسجلين لهذا الشهر بعد — سجّلهم من قسم المجندين أولًا</span>
+  {% elif not_checked %}
+  <table class="hl-nc-table">
+    <thead><tr><th>م</th><th>اسم المجند</th></tr></thead>
+    <tbody>
+      {% for r in not_checked %}
+      <tr><td>{{ loop.index | aindic }}</td><td>{{ r.name }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <span class="panel-hint">✅ لا يوجد — تم توقيع الكشف الطبى على كل المجندين هذا الشهر</span>
+  {% endif %}
 </div>
 
 <div class="hl-split">
@@ -116,7 +140,7 @@
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة كشف يوم {{ day | aindic }} — بتتحدث مع الكتابة والاختيار على طول</div>
+    <div class="hl-pv-head">👁️ معاينة كشف يوم {{ day | aindic }} — تتحدّث مع الكتابة والاختيار مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>
@@ -176,7 +200,7 @@
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة الورق — بتتحدث مع الكتابة على طول</div>
+    <div class="hl-pv-head">👁️ معاينة الورق — تتحدّث مع الكتابة مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>

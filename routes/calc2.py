@@ -92,6 +92,18 @@ def _impact_report(before, after):
     return " 📦 تقرير الأثر الكامل: " + "؛ ".join(shown) + extra + "."
 
 
+def _scoped_picks(selected, scope):
+    """فلتر عرض المقررات: المجموع (افتراضي) / الجهة الرئيسية / الجهات الملحقة.
+
+    للمعاينة والتحقق فقط — الإذن المحفوظ دايمًا على كل الجهات المحددة (المجموع).
+    """
+    if scope == "main":
+        return [p for p in selected if not p["is_attachment"]]
+    if scope == "att":
+        return [p for p in selected if p["is_attachment"]]
+    return selected
+
+
 def _selected_picks(picks, raw):
     keys = []
     if raw:
@@ -140,24 +152,33 @@ def page():
     recruits = sum(p["recruits"] for p in selected)
     force = officers + individuals + recruits
     label = " + ".join(p["name"] for p in selected)
-    tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
-    contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
+    scope = request.args.get("scope") or "all"
+    scoped = _scoped_picks(selected, scope)   # عرض المقررات — الإذن المحفوظ دايم المجموع
+    tamween = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "tamween") if scoped else []
+    contractor = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "contractor") if scoped else []
     nxt, fiscal = dp.peek_next_number(egtime.today())
     stock = {"tamween": stock_link.for_rows(year, month, "tamween", tamween),
              "contractor": stock_link.for_rows(year, month, "contractor", contractor)}
+    entity_names = dt.entity_names(year, month)   # قاموس الجهات — الاسم يتبعه
+    # الأرقام المستخدمة في الشهر — تنبيه فوري على الكتابة لو الرقم مكرر (توجيه ٠٨/١٠)
+    used_numbers = [{"n": p["number"], "day": p["date_from"],
+                     "label": p.get("entity_label") or ""}
+                    for p in dp.list_permits(year, month)]
     return render_template(
         "calc2/page.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
         day_from=day_from, day_to=day_to, issue_days=issue_days,
         picks=picks, pick_groups=pb.pick_groups(year, month, picks),
         selected=selected, selected_groups=pb.pick_groups(year, month, selected),
+        scope=scope, scoped_count=len(scoped),
         officers=officers, individuals=individuals, recruits=recruits,
-        force=force, entity_label=label,
+        force=force, entity_label=label, entity_names=entity_names,
         tamween=tamween, contractor=contractor,
         meals=MEALS, issuers=_issuers(year, month, day_from),
         stock=stock, stock_low_ratio=STOCK_LOW_RATIO,
         stock_totals={k: stock_link.totals(v) for k, v in stock.items()},
         next_number=nxt, fiscal_year=fiscal, days_in_month=last,
+        used_numbers=used_numbers,
         meal_on={"breakfast": True, "lunch": True, "dinner": True},
     )
 
@@ -179,9 +200,12 @@ def rows():
     records = pb.overlapping_records(year, month, day_from, day_to)
     picks = pb.entity_picks(records)
     selected = _selected_picks(picks, request.args.get("selected"))
-    tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
-    contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
-    return jsonify({"tamween": tamween, "contractor": contractor, "days_in_month": last})
+    scope = request.args.get("scope") or "all"
+    scoped = _scoped_picks(selected, scope)
+    tamween = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "tamween") if scoped else []
+    contractor = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "contractor") if scoped else []
+    return jsonify({"tamween": tamween, "contractor": contractor, "days_in_month": last,
+                    "scope": scope})
 
 
 @calc2_bp.route("/stock")
@@ -232,7 +256,9 @@ def save():
         if field.startswith("actual_"):
             actuals[field[7:]] = arnum.parse_float(value)
     record_ids = sorted({int(p["record_id"]) for p in selected})
-    label = (request.form.get("entity_label") or " + ".join(p["name"] for p in selected)).strip()
+    label = dt.normalize_entity_name(   # الاسم يتبع قاموس الجهات (توجيه ٠٨/١٠)
+        year, month,
+        request.form.get("entity_label") or " + ".join(p["name"] for p in selected))
     dp.save_permit(year, month, {
         "number": number, "fiscal_year": fiscal,
         "date_from": day_from, "date_to": day_to, "issue_days": issue_days,

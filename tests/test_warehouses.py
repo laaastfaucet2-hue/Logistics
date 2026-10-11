@@ -100,6 +100,7 @@ def test_wh1_add_converts_ton_to_kg_and_opens_card(client):
     _init()
     _seed_ration_item()
     response = _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١",
         "day": "٢", "producer": "مطاحن الدلتا",
         "prod_date": "٠١/٠٩/٢٠٢٦", "exp_date": "٠١/٠٩/٢٠٢٧",
@@ -120,12 +121,13 @@ def test_wh1_add_converts_ton_to_kg_and_opens_card(client):
     assert receipt["pack_kind"] == "شكارة"
 
 
-def test_wh1_serial_sequence_and_ledger_growth(client):
+def test_wh1_explicit_serials_and_ledger_growth(client):
     _init()
     _seed_ration_item()
-    for qty in ("٥٠٠", "٢٥٠"):
+    for serial, qty in ((1, "٥٠٠"), (2, "٢٥٠")):
         _post(client, "/warehouses/wh1/add?cycle=supply", {
-            "cycle": "supply", "item_name": "أرز بلدي", "qty": qty, "day": "٣"})
+            "cycle": "supply", "item_name": "أرز بلدي", "qty": qty, "day": "٣",
+            "receipt_no": str(serial)})
     receipts = sorted(dw.list_receipts(YEAR, MONTH, "supply"), key=lambda r: r["serial"])
     assert [r["serial"] for r in receipts] == [1, 2]
     item = dw.list_items(YEAR, MONTH, "supply")[0]
@@ -136,6 +138,7 @@ def test_wh1_serial_sequence_and_ledger_growth(client):
 def test_wh1_new_item_with_chosen_handle_unit(client):
     _init()
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "صلصة", "qty": "١٢", "handle_unit": "كرتونة",
         "day": "٤"})
     item = dw.list_items(YEAR, MONTH, "supply")[0]
@@ -150,6 +153,7 @@ def test_cycles_are_fully_isolated(client):
     _init()
     _seed_ration_item()
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٧", "day": "٥"})
     _post(client, "/warehouses/suppliers/add?cycle=supply",
           {"cycle": "supply", "name": "مورد الإمداد"})
@@ -165,6 +169,7 @@ def test_cycles_are_fully_isolated(client):
     assert dw.list_suppliers(YEAR, MONTH, "contractor") == []
     # نفس الاسم في الدورتين = صنفان مستقلان
     _post(client, "/warehouses/wh1/add?cycle=contractor", {
+                "receipt_no": "2",
         "cycle": "contractor", "item_name": "أرز بلدي", "qty": "٩", "day": "٥"})
     supply_items = dw.list_items(YEAR, MONTH, "supply")
     contractor_items = dw.list_items(YEAR, MONTH, "contractor")
@@ -205,37 +210,40 @@ def test_wh2_book_filters_items_per_cycle(client):
 # توجيهات المستخدم ٢٥/٠٩/٢٠٢٦: رقم إذن يدوي + رصيد أول المدة بكل بياناته
 # + المنصرف من إذون ٢ مخازن داخل الكارت + عمود اليوم باسم اليوم
 # ======================================================================
-def test_receipt_number_is_manual_with_sequence_rules(client):
+def test_receipt_number_is_manual_and_required(client):
+    """رقم إذن ١ مخازن خارجي (جاي من ورقة الإذن) — **مطلوب** في الإضافة
+    ولا تسلسل تلقائي (توجيه ١٠/١٠)."""
     _init()
     _seed_ration_item()
-    # رقم يدوي يقفز بالتسلسل
+    # رقم فاضي → رفض ومفيش حفظ
+    response = _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠", "day": "٧"},
+        follow=True)
+    assert "اكتب رقم الإذن" in response.data.decode("utf-8")
+    assert dw.list_receipts(YEAR, MONTH, "supply") == []
+    # رقم يدوي بيتحفظ زي ما اتكتب
     _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠", "day": "٧",
         "receipt_no": "٥"})
-    receipts = dw.list_receipts(YEAR, MONTH, "supply")
-    assert receipts[0]["serial"] == 5
+    assert dw.list_receipts(YEAR, MONTH, "supply")[0]["serial"] == 5
     # رقم مكرر يُرفض برسالة واضحة
     response = _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٥", "day": "٧",
         "receipt_no": "٥"}, follow=True)
     assert "مستخدم من قبل" in response.data.decode("utf-8")
-    # فارغ يكمّل بعد الأكبر (٦) — ويدوي أكبر يصبح أصل التسلسل
-    _post(client, "/warehouses/wh1/add?cycle=supply", {
-        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "day": "٧"})
-    assert dw.list_receipts(YEAR, MONTH, "supply")[-1]["serial"] == 6
+    # رقم تاني — مفيش تسلسل تلقائي
     _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "day": "٧",
         "receipt_no": "٩"})
-    _post(client, "/warehouses/wh1/add?cycle=supply", {
-        "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "day": "٧"})
     serials = sorted(r["serial"] for r in dw.list_receipts(YEAR, MONTH, "supply"))
-    assert serials == [5, 6, 9, 10]
+    assert serials == [5, 9]
 
 
 def test_opener_balance_entered_with_full_details_once(client):
     _init()
     _seed_ration_item()
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٢٠", "day": "٨"})
     item = dw.list_items(YEAR, MONTH, "supply")[0]
     _post(client, "/warehouses/wh3/opener?cycle=supply", {
@@ -255,13 +263,20 @@ def test_opener_balance_entered_with_full_details_once(client):
     # التغليف له عموده المستقل — لا يُخلط في الملاحظات (قاعدة ٢٦/٠٩)
     assert "شكارة" in (card["opener_row"]["pack_label"] or "")
     assert "تغليف" not in card["opener_row"]["notes"]
-    # مرة واحدة فقط لكل صنف
+    # مرة واحدة لكل صنف — والثانية بقى «تعديل» (توجيه ٠٨/١٠): السطر يتحدّث
+    # والأرصدة كلها تتحسب من جديد مع تقرير بكل اللي اتغير
     response = _post(client, "/warehouses/wh3/opener?cycle=supply", {
         "cycle": "supply", "item_id": item["id"], "qty": "٩", "day": "٢",
         "exp_date": "٠١/٠٦/٢٠٢٧"}, follow=True)
-    assert "لا يُسجل مرتين" in response.data.decode("utf-8")
+    body = response.data.decode("utf-8")
+    assert "عُدّل رصيد أول المدة" in body
+    assert "الكمية: ٥٠٫٠٠٠ ← ٩٫٠٠٠ طن" in body          # تقرير التغيرات
+    assert "الرصيد الختامى" in body
+    card = dw.item_card(YEAR, MONTH, item["id"])
+    assert card["opener_row"]["added"] == 9.0 and int(card["opener_row"]["day"]) == 2
+    assert card["balance"] == 29.0                       # ٩ بعد التعديل + ٢٠ إذن
     page = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={item['id']}")
-    assert "رصيد أول المدة" in page and "رصيد السنة الماضية" in page
+    assert "تعديل رصيد أول المدة" in page and "whOpenerEditForm" in page
     assert "لم يُسجَّل بعد" not in page
 
 
@@ -269,12 +284,13 @@ def test_issued_from_calc2_permits_appears_in_card(client):
     _init()
     _seed_ration_item()
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٩"})
     dp.save_permit(YEAR, MONTH, {
         "number": 1, "fiscal_year": 2026, "date_from": 10, "date_to": 10,
         "issue_days": 1, "mode": "box", "entity_label": "جهة الصرف التجريبية",
         "officers": 2, "individuals": 30, "recruits": 0, "meals": ["lunch"],
-        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 2.4},
+        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 2400000},
     })
     item = dw.list_items(YEAR, MONTH, "supply")[0]
     card = dw.item_card(YEAR, MONTH, item["id"])
@@ -293,13 +309,15 @@ def test_issued_converts_to_handle_unit(client):
     _init()
     dr.add_item(YEAR, MONTH, "tamween", "summer", "أرز بلدي", "كجم", 0, 0, 0)
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١", "handle_unit": "طن",
         "day": "١١"})
     dp.save_permit(YEAR, MONTH, {
         "number": 1, "fiscal_year": 2026, "date_from": 12, "date_to": 12,
         "issue_days": 1, "mode": "box", "entity_label": "", "officers": 0,
         "individuals": 10, "recruits": 0, "meals": ["lunch"],
-        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 100},
+        # الكمية الفعلية بوحدة الحاسبة (الباقي: جم) — ١٠٠ كجم = ١٠٠٠٠٠ جم
+        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 100000},
     })
     item = dw.list_items(YEAR, MONTH, "supply")[0]
     card = dw.item_card(YEAR, MONTH, item["id"])
@@ -312,6 +330,7 @@ def test_weekday_name_column_and_live_hint(client):
     _init()
     _seed_ration_item()
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٣", "day": "٢٥"})
     from datetime import date
     from core import egtime
@@ -326,7 +345,8 @@ def test_weekday_name_column_and_live_hint(client):
     assert _serials == sorted(_serials), _serials
     item = dw.list_items(YEAR, MONTH, "supply")[0]
     page = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={item['id']}")
-    assert expected in page
+    # دفتر الكارت بيتاريخ اليوم (التسمية باسم اليوم في تاب ١ مخازن)
+    assert "٢٥/٠٩/٢٠٣" in page
 
 
 # ======================================================================
@@ -350,9 +370,11 @@ def test_excel_mirrors_for_all_subtabs_and_download(client):
     _post(client, "/warehouses/suppliers/add?cycle=supply",
           {"cycle": "supply", "name": "شركة المرايا"})
     _page(client, "/warehouses?cycle=supply")                   # فتح القسم يكتب المرايا
-    for sub in ("suppliers", "wh1", "wh2", "wh3"):
+    for sub in ("suppliers", "wh1", "wh3"):
         path = wf.file_path(YEAR, MONTH, "supply", sub)
-        assert path.exists(), sub
+        assert path is not None and path.exists(), sub
+    # ٢ مخازن: مفيش ملف واحد — كل إذن في إكسله جوا فولدر يومه (توجيه ٠٨/١٠)
+    assert wf.file_path(YEAR, MONTH, "supply", "wh2") is None
     response = client.get("/warehouses/download/supply/suppliers")
     assert response.status_code == 200
     assert b"PK" in response.data[:4]                            # ملف إكسل حقيقي
@@ -366,6 +388,7 @@ def test_packaging_auto_total_and_capacity_memory(client):
     _seed_ration_item()
     # شكارة ٥٠ + ٣٠ سائب = ٨٠ كجم — الكمية تُحسب من التغليف لا من الحقل
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٩٩٩",
         "day": "١", "pack_kind": "شكارة", "pack_count": "١",
         "pack_capacity": "٥٠", "pack_loose": "٣٠"})
@@ -392,12 +415,14 @@ def test_store_split_in_receipt_and_validation(client):
     a, b = stores[0], stores[1]
     # التوزيع لا يطابق الكمية → يُرفض
     response = _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٣",
         "store_id": [str(a["id"]), str(b["id"])],
         "store_qty": ["٦٠", "٣٠"]}, follow=True)
     assert "لا يساوي كمية الإذن" in response.data.decode("utf-8")
     # توزيع صحيح ٦٠ + ٤٠
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+        "receipt_no": "2",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠٠", "day": "٣",
         "store_id": [str(a["id"]), str(b["id"])],
         "store_qty": ["٦٠", "٤٠"]})
@@ -428,7 +453,7 @@ def test_tafreeda_fefo_nearest_expiry_first_then_older(client):
         "number": 1, "fiscal_year": 2026, "date_from": 5, "date_to": 5,
         "issue_days": 1, "mode": "box", "entity_label": "جهة", "officers": 0,
         "individuals": 11, "recruits": 0, "meals": ["lunch"],
-        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 55}})
+        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 55000}})
     # دفعتان بنفس الصلاحية كلتاهما متاحة ⇒ الأقدم إضافةً (الأبعد في الإضافة) أولًا
     _post(client, "/warehouses/wh1/add?cycle=supply", {
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "١٠", "day": "٣",
@@ -442,7 +467,7 @@ def test_tafreeda_fefo_nearest_expiry_first_then_older(client):
         "number": 2, "fiscal_year": 2026, "date_from": 6, "date_to": 6,
         "issue_days": 1, "mode": "box", "entity_label": "", "officers": 0,
         "individuals": 5, "recruits": 0, "meals": ["lunch"],
-        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 15}})
+        "record_ids": [1], "actuals": {"tamween_أرز بلدي": 15000}})
     rows = dw.tafreeda_rows(YEAR, MONTH, "supply")
     rows1 = [r for r in rows if r["permit_no"] == 1]
     assert len(rows1) == 2
@@ -452,9 +477,10 @@ def test_tafreeda_fefo_nearest_expiry_first_then_older(client):
     rows2 = [r for r in rows if r["permit_no"] == 2]
     assert rows2[0]["receipt_serial"] == 3 and rows2[0]["qty"] == 5.0   # بقايا الأقدم إضافةً أولًا
     assert rows2[1]["receipt_serial"] == 4 and rows2[1]["qty"] == 10.0
-    # التفاريد في دفتر ٢ مخازن: سطر بالإذن + نافذة فيها المخازن
+    # التغليف في دفتر ٢ مخازن: سطر بالإذن + النافذة المتراصة فيها المخازن (توجيه ٠٨/١٠)
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    assert "🧾 التفاريد" in page and "المخزن الرئيسي" in page
+    assert "التغليف" in page and "المخزن الرئيسي" in page
+    assert 'data-taf-open="packDialog-1"' in page
 
 
 def test_stores_page_tabs_and_unified_cycles(client):
@@ -465,29 +491,36 @@ def test_stores_page_tabs_and_unified_cycles(client):
     store = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]
     # إضافة من دورة الإمداد + صنف من دورة المتعهد في نفس المخزن
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٤٠", "day": "٤",
         "store_id": [str(store["id"])], "store_qty": ["٤٠"]})
     dr.add_item(YEAR, MONTH, "contractor", "summer", "سكر", "كجم", 0, 0, 0)
     _post(client, "/warehouses/wh1/add?cycle=contractor", {
+                "receipt_no": "2",
         "cycle": "contractor", "item_name": "سكر", "qty": "٢٥", "day": "٤",
         "store_id": [str(store["id"])], "store_qty": ["٢٥"]})
-    page = _page(client, "/stores?tab=movement")
+    page = _page(client, "/stores?tab=mains")
     assert "مخزن موحد" in page and "أرز بلدي" in page and "سكر" in page
     assert "جرد أرصدة المخزن" in page
+    assert "سجل حركة المخزن" in page and 'data-st-mainpanel="moves"' in page
     assert "٤٠٫٠٠٠" in page and "٢٥٫٠٠٠" in page
     # تابات لكل مخزن: المخزن المختار لوحده — مش المخازن على بعض (توجيه ٢٧/٠٩)
     assert "wh-subtabs" in page and "غير موزع" in page
-    assert page.count("wh-store-card") == 1
+    assert page.count('<section class="panel wh-store-card">'
+) == 1  # كارت واحد للمخزن المختار — مش المخازن على بعض
     assert "whStoreToggle" in page and "dataset.wired" in page
     # تحويل القسم من الشريط
     response = client.get("/sections/cold_stores", follow_redirects=True)
     assert "المخازن والثلاجات" in response.data.decode("utf-8")
     # زر الطباعة وممنوع select
     assert "js-print-page" in page and "<select" not in page
-    # مرايا الإكسل
+    # مرايا الإكسل — فولدر لكل مخزن فيه 3 فولدرات (توجيه ٠٨/١٠)
     from services import stores_fs as sf
     assert sf.file_path(YEAR, MONTH, "mains").exists()
-    assert sf.file_path(YEAR, MONTH, "movement").exists()
+    assert sf.store_file_path(YEAR, MONTH, "مخزن موحد", "movement").exists()
+    assert sf.store_file_path(YEAR, MONTH, "مخزن موحد", "balance").exists()
+    assert sf.store_file_path(YEAR, MONTH, "مخزن موحد", "items", "أرز بلدي").exists()
+    assert sf.store_file_path(YEAR, MONTH, "مخزن موحد", "items", "سكر").exists()
 
 
 def test_store_registry_crud_rules(client):
@@ -568,7 +601,7 @@ def test_opener_full_fields_splits_and_expiry_drive_fefo(client):
         "number": 1, "fiscal_year": 2026, "date_from": 5, "date_to": 5,
         "issue_days": 1, "mode": "box", "entity_label": "جهة", "officers": 0,
         "individuals": 10, "recruits": 0, "meals": ["lunch"],
-        "record_ids": [1], "actuals": {"tamween_سكر أبيض": 55}})
+        "record_ids": [1], "actuals": {"tamween_سكر أبيض": 55000}})
     rows = dw.tafreeda_rows(YEAR, MONTH, "supply")
     assert rows[0]["receipt_serial"] == 0 and rows[0]["qty"] == 30.0   # الرصيد أولًا: أقرب صلاحية
     assert rows[0]["store_name"] == "مخزن أ"
@@ -713,12 +746,13 @@ def test_permit_same_number_updates_once_and_reports_impact(client):
     from data_access import db_tameedat as dt
     ent_id = dt.add_entity(YEAR, MONTH, "جهة", "شرطية")
     dt.add_record(YEAR, MONTH, 5, dt.get_entity(YEAR, MONTH, ent_id), 1, 5, 0, "")
+    # الكمية الفعلية بوحدة الحاسبة (الباقي: جم) — ٥ كجم = ٥٠٠٠ جم
     data = {"date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
             "selected_json": "[\"main:1\"]", "entity_label": "جهة",
-            "meal_lunch": "1", "actual_tamween_أرز بلدي": "5"}
+            "meal_lunch": "1", "actual_tamween_أرز بلدي": "5000"}
     _post(client, "/calc2/save", data=dict(data))
-    # تحديث نفس الرقم: الكمية ٢٠ بدل ٥
-    data["actual_tamween_أرز بلدي"] = "20"
+    # تحديث نفس الرقم: الكمية ٢٠ كجم بدل ٥
+    data["actual_tamween_أرز بلدي"] = "20000"
     response = _post(client, "/calc2/save", data=dict(data), follow=True)
     page = response.data.decode("utf-8")
     assert "تقرير الأثر الكامل" in page
@@ -756,6 +790,7 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     db_stores_add.add_store("مخزن التفريدة")
     store = __import__("data_access.db_stores", fromlist=["list_stores"]).list_stores()[0]
     _post(client, "/warehouses/wh1/add?cycle=supply", {
+                "receipt_no": "1",
         "cycle": "supply", "item_name": "أرز بلدي", "qty": "٥٠٠", "day": "٣",
         "pack_kind": "شكارة", "pack_count": "١٠", "pack_capacity": "٥٠",
         "producer": "مطاحن الاختبار",
@@ -770,30 +805,32 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     _post(client, "/calc2/save", {
         "date_from": "5", "date_to": "5", "issue_days": "1", "number": "1",
         "selected_json": "[\"main:%d\"]" % rec_id, "entity_label": "جهة التفاريد",
-        "meal_lunch": "1", "actual_tamween_أرز بلدي": "60"})
+        "meal_lunch": "1", "actual_tamween_أرز بلدي": "60000000"})
     page = _page(client, "/warehouses?cycle=supply&sub=wh2")
-    # تابان فرعيان جنب بعض: «التفاريد» الافتراضي فوق + «سجلات ٢ مخازن»
+    # تابان فرعيان جنب بعض: «أذونات الصرف» (الافتراضي) + «التغليف» (توجيه ٠٨/١٠)
     assert 'data-wh2sub="tafared"' in page and 'data-wh2sub="sijlat"' in page
-    assert "سجلات ٢ مخازن" in page
-    # قائمة التفاريد: سطر برقم الإذن + زرار عرض الإذن يفتح النافذة
-    assert "🧾 التفاريد" in page and 'data-taf-open="tafDialog-1"' in page
+    assert "أذونات الصرف" in page
+    # قائمة التغليف: سطر برقم الإذن + إجمالي قابل للضغط يفتح النافذة المتراصة
+    assert "📦 التغليف" in page and 'data-taf-open="packDialog-1"' in page
     assert "عرض الإذن" in page
-    # أزرار إغلاق نافذة التفريدة تشاور على معرفها الصحيح (توجيه ٢٧/٠٩: كانت ميتة)
-    assert 'data-taf-close="tafDialog-1"' in page and 'data-taf-close="1"' not in page
+    # أزرار إغلاق النوافذ شايرة على معرفها الصحيح (توجيه ٢٧/٠٩: كانت ميتة)
+    assert 'data-taf-close="packDialog-1"' in page and 'data-taf-close="1"' not in page
+    assert 'data-taf-close="sijDialog-1"' in page
     # «الجهة المستلمة»: الرئيسية فقط + دائرة ملحقات تفتح الجهات الأخرى
     assert "الجهة المستلمة" in page and "جهة التفاريد" in page
     assert 'data-taf-open="extrasDialog-1"' in page
-    assert page.count("جهة ملحقة تجريبية") == 1        # الملحقة داخل نافذتها فقط
+    assert page.count("جهة ملحقة تجريبية") >= 1   # الملحقة جوه النوافذ (المتراصة + الملحقات)
     assert "١ شكارة + ١٠ طن" in page                      # تفكيك المصروف حرفيًا
-    # النافذة: الجدول ثمانية أعمدة بالظبط — بلا رصيد ولا شركة منتجة
-    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page and "ملاحظات" in page
-    # قائمة التفاريد بلا «من يوم/إلى يوم» — السجلات فقط فيهاها
+    # النافذة المتراصة: ٣ سطور للصنف (بالوحدة/بالتغليف) + سطر الباتش
+    assert "المنصرف بالوحدة" in page and "المنصرف بالتغليف" in page
+    assert "تغليف الدفعة" in page and "الانتهاء" in page
+    # قائمة التغليف بلا «من يوم/إلى يوم» — سجلات الأذونات هي اللي فيها
     assert page.count(">من يوم<") == 1 and page.count(">إلى يوم<") == 1
     assert "رصيد المخزن قبل" not in page and "الرصيد بعد الصرف" not in page
     assert "الشركة المنتجة" not in page
-    # نافذتا التفاريد والسجلات مختلفتان: التفاريد فيها «المنصرف بالتغليف» والسجلات لأ
+    # نافذتا التغليف والسجلات مختلفتان: المتراصة فيها «بالتغليف» والسجلات لأ
     import re as _re2
-    _taf = _re2.search(r'id="tafDialog-1".*?</dialog>', page, _re2.S).group(0)
+    _taf = _re2.search(r'id="packDialog-1".*?</dialog>', page, _re2.S).group(0)
     _sij = _re2.search(r'id="sijDialog-1".*?</dialog>', page, _re2.S).group(0)
     assert "المنصرف بالتغليف" in _taf and "المنصرف بالتغليف" not in _sij
     assert "المنصرف بالوحدة" in _sij
@@ -804,7 +841,7 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     assert "مطاحن الاختبار" in page1
     assert "مخازن: مخزن التفريدة" not in page1
     # مفيش تابات مستقلة للتفاريد في الشريط
-    assert "التفاريد المصروفة" not in page.split("🧾 التفاريد")[0]
+    assert "sub=tafreeda" not in page and "التفاريد المصروفة" not in page
     # ٣ مخازن: القائمة بلا صنف مفتوح → إرشاد فقط
     page3 = _page(client, "/warehouses?cycle=supply&sub=wh3")
     assert "دفتر ٣ مخازن" in page3
@@ -813,9 +850,10 @@ def test_tafreeda_inside_wh2_wh3_popups_breakdown_and_remaining(client):
     _m = _re.search(r"item=(\d+)", page3)
     assert _m, "لا يوجد صنف في الكتالوج"
     page3 = _page(client, f"/warehouses?cycle=supply&sub=wh3&item={_m.group(1)}")
-    # تابان بعد فتح الصنف: «دفتر ٣ مخازن» الافتراضي + «دفتر ٣ مخازن تفاريد»
-    assert 'data-wh3sub="daftar"' in page3 and 'data-wh3sub="tafared"' in page3
-    assert 'data-wh3panel="daftar"' in page3 and 'data-wh3panel="tafared"' in page3
+    # الكارت بلا تابات فرعية (توجيه ٠٨/١٠: «التغليف» و«التفاريد» جواه اتحشوا) —
+    # والتفريدي بالتغليف في تاب «٣ مخازن تفاريد» الرئيسي (تاب لكل صنف)
+    assert 'data-wh3sub="' not in page3
+    assert 'data-wh3top="taf3"' in page3 and 'data-wh3tabpanel="' in page3
     assert "١ شكارة + ١٠ طن" in page3                       # منصرف بالتغليف (صيغة المصروف)
     assert "٨ شكارة كاملة + شكارة مفتوحة (٤٠ طن)" in page3   # الرصيد بالتغليف
     # الكارت العادي: عمود «التغليف» اتشال — ٩ أعمدة بالظبط

@@ -11,7 +11,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
 {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pagehead.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dates.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}?v={{ static_ver }}">
 </head><body class="{% block body_class %}{% endblock %}" data-sid="{{ sid }}" data-year="{{ ctx_year }}" data-month="{{ ctx_month }}" data-desktop="{{ '1' if desktop_mode else '0' }}">
 {% include 'partials/windowbar.html' %}
@@ -61,6 +63,19 @@
     <button id="delYearBtn" class="ctx-del" title="حذف السنة المحددة نهائيًا" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6m4-6v6"/></svg></button>
   </div>
 </header>
+{% if current_user and (notes_unread.to_me or notes_unread.for_me) %}
+<!-- إشعار الملاحظات: يظهر أول ما يفتح البرنامج — ويكمل يظهر لحد ما يرد (توجيه ١٠/١٠) -->
+<div class="notes-banner no-print" id="notesBanner">
+  <span class="nb-ico">🗒️</span>
+  <span class="nb-text">
+    {% if notes_unread.to_me %}لديك <b>{{ notes_unread.to_me | aindic }} ملحوظة غير مقروءة</b>{% endif %}
+    {% if notes_unread.to_me and notes_unread.for_me %} · {% endif %}
+    {% if notes_unread.for_me %}<b>تم الرد عليك</b> في {{ notes_unread.for_me | aindic }} ملحوظة{% endif %}
+  </span>
+  <a class="nb-link" href="{{ url_for('settings.page', sub='notes') }}">افتح الملاحظات والرد ‹</a>
+  <button type="button" class="nb-x" title="إخفاء في الصفحة دي" onclick="document.getElementById('notesBanner').remove()">✕</button>
+</div>
+{% endif %}
 <main class="content">
   {% block official_print_head %}
     {% if current_user %}<div class="app-print-head" aria-hidden="true">{% include "partials/official_print_head.html" %}<div class="pd-title">{% block print_doc_title %}{% endblock %}</div></div>{% endif %}

@@ -1,0 +1,236 @@
+{# دفتر 4 مخازن — تابان فرعيان:
+   1) دفتر الشطب اليومى (مصروفة أيام الشهر): بند ‖ وحدة ‖ يوم 1..N (اسم اليوم + يوم الشهر) ‖ المجموع
+   2) دفتر الشطب الشهرى الحكومي (المسند الرسمي لكل صنف): توليد تلقائي من ١/٢/٣ مخازن
+   التصميم طبقًا لتوجيه ١٠/١٠ — بالمللى زي اسكرين شوت البرنامج #}
+<div class="panel wh-wh4">
+  <div class="wh-subtabs no-print" aria-label="تابا دفتر 4 مخازن">
+    <a class="wh-subtab {{ 'active' if wh4_tab == 'daily' }}"
+       href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh4', wh4tab='daily') }}">
+      📄 دفتر الشطب اليومى (مصروفة أيام الشهر)</a>
+    <a class="wh-subtab {{ 'active' if wh4_tab == 'monthly' }}"
+       href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh4', wh4tab='monthly') }}">
+      📄 دفتر الشطب الشهرى الحكومي (المسند الرسمي لكل صنف) ({{ wh4_items | length | aindic }})</a>
+  </div>
+
+  {# ================= تاب 1: دفتر الشطب اليومى ================= #}
+  {% if wh4_tab == 'daily' %}
+  <div class="wh4-dailybar no-print">
+    <form method="get" action="{{ url_for('warehouses.page') }}" class="wh4-toolbar">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="sub" value="wh4">
+      <input type="hidden" name="wh4tab" value="daily">
+      <span class="wh4-lab">📋 تحديد نوع الصرف بدفتر الشطب:</span>
+      <select name="wh4view" onchange="this.form.submit()">
+        <option value="all" {{ 'selected' if wh4_view == 'all' }}>كشف مجمع لكافة الاصناف (المصروفة الثابتة)</option>
+        <option value="one" {{ 'selected' if wh4_view == 'one' }}>لكل صنف</option>
+      </select>
+      <span class="wh4-lab dim">إجمالي الإضافة: {{ wh4_items | length | aindic }} صنف</span>
+      {% if wh4_item %}<input type="hidden" name="wh4item" value="{{ wh4_item }}">{% endif %}
+      {% if wh4_consec %}<input type="hidden" name="wh4consec" value="1">{% endif %}
+    </form>
+    {% set consec_args = {'cycle': cycle_key, 'sub': 'wh4', 'wh4tab': 'daily',
+                          'wh4view': wh4_view, 'wh4item': wh4_item or None,
+                          'wh4consec': '1' if not wh4_consec else None} %}
+    <a class="rt-btn gold small" href="{{ url_for('warehouses.page', **consec_args) }}">
+      👁 عرض بالأيام المتتالية</a>
+  </div>
+
+  <div class="wh-scroll">
+  <table class="rt-table wh4-table">
+    <thead>
+      <tr>
+        <th class="num">م</th><th>البند التمويني</th><th>الوحدة</th>
+        {% for d in wh4_day_cols %}
+        <th class="num wh4-day"><small>{{ wh4_daily.day_names[d - 1] }}</small><br>{{ d | aindic }}</th>
+        {% endfor %}
+        <th class="num wh4-tot">مجموع الشطب شهريًا</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set show_rows = wh4_daily.rows if wh4_view != 'one' or not wh4_item
+                         else wh4_daily.rows | selectattr('name', 'equalto', wh4_item) | list %}
+      {% for r in show_rows %}
+      <tr>
+        <td class="num dim">{{ r.serial | aindic }}</td>
+        <td><b>{{ r.name }}</b></td>
+        <td>{{ r.unit or '—' }}</td>
+        {% for d in wh4_day_cols %}
+        {% set v = r.days.get(d) %}
+        <td class="num wh4-cell">
+          <input type="text" inputmode="decimal" class="wh4-cellin"
+                 data-cycle="{{ cycle_key }}" data-item="{{ r.name }}" data-day="{{ d }}"
+                 placeholder="—" value="{{ (v | qty3) if v else '' }}"
+                 title="شطب «{{ r.name }}» يوم {{ d | aindic }}">
+        </td>
+        {% endfor %}
+        <td class="num wh4-tot"><b>{{ (r.total | qty3) if r.total else '—' }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ (wh4_day_cols | length) + 4 }}" class="empty">
+        لا توجد أصناف في مقررات التموينية المفعّلة — فعّل المقرر الأول.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="wh4-grand">
+        <td colspan="3"><b>إجمالي المستهلكات التموينية</b></td>
+        {% for d in wh4_day_cols %}
+        {% set dv = wh4_daily.days_total.get(d) %}
+        <td class="num">{{ (dv | qty3) if dv else '—' }}</td>
+        {% endfor %}
+        <td class="num"><b>{{ (wh4_daily.grand_total | qty3) if wh4_daily.grand_total else '—' }}</b></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+
+  <div class="wh4-sigs no-print">
+    <div><span>أمين المخزن والتعيينات</span><bdi>(..........................)</bdi></div>
+    <div><span>ضابط توضيح التعيينات</span><bdi>(..........................)</bdi></div>
+    <div><span>رئيس فرع التعينات بالقنا</span><bdi>(..........................)</bdi></div>
+  </div>
+  <p class="panel-hint no-print">كل خلية = شطب هذا اليوم لهذا الصنف (بوحدة الدفتر) — تكتب وتضغط في مكان آخر أو Tab
+    فتتحفظ فورًا، ودفتر الشهرى يجمعها تلقائيًا في عمود «فعلي».</p>
+
+  <script>
+  (function () {
+    document.querySelectorAll('.wh4-cellin').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var f = new FormData();
+        f.append('cycle', inp.dataset.cycle);
+        f.append('item', inp.dataset.item);
+        f.append('day', inp.dataset.day);
+        f.append('qty', inp.value.trim());
+        f.append('wh4tab', 'daily');
+        f.append('wh4item', '');
+        fetch('{{ url_for("wh4.strike_save") }}', { method: 'POST', body: f })
+          .then(function () { location.reload(); })
+          .catch(function () { location.reload(); });
+      });
+    });
+  })();
+  </script>
+  {% else %}
+
+  {# ================= تاب 2: دفتر الشطب الشهرى ================= #}
+  <div class="wh4-mbar no-print">
+    <form method="get" action="{{ url_for('warehouses.page') }}" class="wh4-toolbar">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="sub" value="wh4">
+      <input type="hidden" name="wh4tab" value="monthly">
+      <span class="wh4-lab">📋 اختيار الصنف التمويني:</span>
+      <select name="wh4item" onchange="this.form.submit()">
+        <option value="">— اختر صنفًا —</option>
+        {% for it in wh4_items %}
+        <option value="{{ it.name }}" {{ 'selected' if wh4_item == it.name }}>{{ it.name }} - ({{ it.unit or '—' }})</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if wh4_monthly %}
+    <div class="wh4-chips">
+      <span class="wh4-chip gold">الوحدة: {{ wh4_monthly.unit or '—' }}</span>
+      <span class="wh4-chip green">رصيد أول الشهر: {{ wh4_monthly.opener_balance | qty3 }}</span>
+      <span class="wh4-chip blue">استهلاك الشهر: {{ wh4_monthly.consumed | qty3 }}</span>
+      <span class="wh4-chip red">الرصيد الختامي: {{ wh4_monthly.final_balance | qty3 }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if wh4_monthly %}
+  <div class="wh4-actions no-print">
+    <button class="rt-btn navy small" type="button" id="wh4-print">🖨️ طباعة المسند الرسمي</button>
+    <form method="post" action="{{ url_for('wh4.price_save') }}" class="wh4-inline-form">
+      <input type="hidden" name="cycle" value="{{ cycle_key }}">
+      <input type="hidden" name="wh4tab" value="monthly">
+      <input type="hidden" name="wh4item" value="{{ wh4_item }}">
+      <input type="hidden" name="item" value="{{ wh4_item }}">
+      <label>سعر الوحدة (جنيه):
+        <input type="text" inputmode="decimal" name="price" class="wh4-pricein"
+               value="{{ (wh4_monthly.price | qty3) if wh4_monthly.price else '' }}" placeholder="0">
+      </label>
+      <button class="rt-btn gold small" type="submit">حفظ السعر</button>
+    </form>
+  </div>
+
+  <div class="wh4-paper">
+    <div class="wh4-lh">
+      <div class="wh4-lh-lines">
+        {% for l in wh4_lh %}<div>{{ l }}</div>{% endfor %}
+      </div>
+      {% if wh4_logo %}<img class="wh4-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <div class="wh4-ptitle">دفتر الشطب</div>
+    <div class="wh4-meta">
+      <span>الوحدة: <b>{{ wh4_monthly.unit or '—' }}</b></span>
+      <span>حالة الصنف: <b>{{ wh4_monthly.status }}</b></span>
+      <span>اسم الصنف: <b>{{ wh4_monthly.item_name }}</b></span>
+      <span>رقم الصنف: <b>{{ wh4_monthly.item_no or '—' }}</b></span>
+    </div>
+    <table class="wh4-mtable">
+      <thead>
+        <tr>
+          <th>التاريخ</th><th>رقم الإذن</th><th>وارد من / منصرف إلى</th>
+          <th>الكمية المضافة</th>
+          <th colspan="2">الكمية المنصرفة</th>
+          <th>الرصيد</th><th>سعر الوحدة</th><th>القيمة</th><th>ملاحظات</th>
+        </tr>
+        <tr class="wh4-subh">
+          <th></th><th></th><th></th><th></th>
+          <th>فعلي</th><th>صرفيات أخرى</th>
+          <th>رصيد أول المدة</th><th></th><th></th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in wh4_monthly.rows %}
+        <tr class="{{ 'wh4-opener' if r.kind == 'opener' else ('wh4-strike' if r.kind == 'strike' else ('wh4-closing' if r.kind == 'closing' else '')) }}">
+          <td class="num">{% if r.date_iso %}<bdi dir="ltr" class="date-display">{{ r.date_iso | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td class="num">{{ (r.permit_no | aindic) if r.permit_no else '—' }}</td>
+          <td class="{{ 'wh4-red' if r.kind == 'strike' else '' }}">{{ r.label }}</td>
+          <td class="num">{{ (r.added | qty3) if r.added else '—' }}</td>
+          <td class="num wh4-real">{{ (r.real | qty3) if (r.kind == 'strike' and r.real) else '—' }}</td>
+          <td class="num">{{ (r.other | qty3) if r.other else '—' }}</td>
+          <td class="num"><b>{{ r.balance | qty3 }}</b></td>
+          <td class="num">{{ (r.price | qty3) if r.price else '—' }}</td>
+          <td class="num">{{ (r.value | qty3) if r.value else '—' }}</td>
+          <td class="wh4-notes">{{ r.notes or '' }}</td>
+        </tr>
+        {% endfor %}
+        {% for _ in range(12) %}<tr class="wh4-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <div class="wh4-foot">
+      <div class="wh4-approval">
+        <span>موافق من (مستودع):</span>
+        <form method="post" action="{{ url_for('wh4.meta_save') }}" class="wh4-inline-form">
+          <input type="hidden" name="cycle" value="{{ cycle_key }}">
+          <input type="hidden" name="wh4tab" value="monthly">
+          <input type="hidden" name="wh4item" value="{{ wh4_item }}">
+          <input type="hidden" name="key" value="approval">
+          <input type="text" name="value" class="wh4-approvalin" value="{{ wh4_approval }}">
+          <button class="rt-btn gold small" type="submit">حفظ</button>
+        </form>
+      </div>
+      <div class="wh4-sign">تاريخ التوقيع: <bdi dir="ltr" class="date-display">{{ wh4_monthly.sign_date | datefmt }}</bdi></div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var btn = document.getElementById('wh4-print');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        document.body.classList.add('wh4-paper-only');
+        window.print();
+      });
+      window.addEventListener('afterprint', function () {
+        document.body.classList.remove('wh4-paper-only');
+      });
+    }
+  })();
+  </script>
+  {% else %}
+  <p class="panel-hint" style="padding:24px 0;text-align:center">
+    اختر صنفًا من القائمة فوق لفتح المسند الرسمي له — يتولد تلقائيًا من ١/٢/٣ مخازن
+    (رصيد أول المدة + كل واردات المورّد + استهلاك الشطب التراكمي + الرصيد الختامي).</p>
+  {% endif %}
+  {% endif %}
+</div>

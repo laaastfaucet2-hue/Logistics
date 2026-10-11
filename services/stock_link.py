@@ -14,8 +14,9 @@
 هذا الملف **قراءة فقط**: لا يكتب أي بيانات ولا يعدّل أرصدة.
 """
 from core import arabic_numbers as arnum
-from core.config import STOCK_LOW_RATIO
+from core.config import STOCK_LOW_RATIO, fine_unit
 from data_access import db_warehouses as dw
+from data_access import oil_units as ou
 from data_access import packaging
 
 # قسم الآلة الحاسبة ⇒ دورة المخازن (مصدر واحد للربط)
@@ -73,18 +74,25 @@ def status_of(avail, needed):
 def availability(year, month, cycle, name, needed=0.0, cache=None):
     """رصيد صنف واحد: الوحدة + الرصيد + التغليف + المتبقي بعده + الحالة.
 
-    cache: نتيجة `balances(...)` (ونظائرها) لتجنّب إعادة القراءة لكل صف.
+    الرصيد والمقارنة في وحدة الدقيقة (نفس وحدة الإذن) — التغليف المادي
+    يبقى بوحدة التعامل (توجيه ٠٩/١٠).
+    cache: نتيجة `cycle_cache(...)` لتجنّب إعادة القراءة لكل صف.
     """
     cache = cache or {}
     bal = cache.get("balances") or balances(year, month, cycle)
     entry = bal.get(name) or {"qty": 0.0, "unit": ""}
-    avail = float(entry.get("qty") or 0.0)
-    pack = pack_text(year, month, cycle, name, avail,
+    f_unit, f_factor = (cache.get("fine") or {}).get(name, ("", 1.0))
+    r2h = (cache.get("r2h") or {}).get(name, 1.0)
+    # الاحتياج بوحدة المقرر بيتحوّل لوحدة الدفتر عشان المقارنة تبقى بنفس الوحدة
+    # (الزيت: كجم ≈ كجم · الباقي: ×١٠٠ للجم أو ×١٠٠ للمل)
+    needed_f = float(needed or 0.0) * r2h * f_factor
+    avail = float(entry.get("qty") or 0.0) * f_factor
+    pack = pack_text(year, month, cycle, name, float(entry.get("qty") or 0.0),
                      specs=cache.get("specs"), units=cache.get("units"))
-    remaining = avail - float(needed or 0)
-    status = status_of(avail, needed)
+    remaining = avail - needed_f
+    status = status_of(avail, needed_f)
     return {
-        "name": name, "unit": entry.get("unit") or "",
+        "name": name, "unit": f_unit or entry.get("unit") or "",
         "avail": round(avail, 6), "pack": pack,
         "needed": round(float(needed or 0), 6), "remaining": round(remaining, 6),
         "remaining_text": arnum.fmt_qty_trim(remaining),
@@ -94,10 +102,18 @@ def availability(year, month, cycle, name, needed=0.0, cache=None):
 
 def cycle_cache(year, month, cycle):
     """لقطة واحدة لكل دورة تُمرَّر لكل الصفوف (قراءة واحدة بدل صف بصف)."""
+    items = dw.list_items(year, month, cycle)
     units = {i["name"]: i.get("handle_unit") or i.get("ration_unit") or ""
-             for i in dw.list_items(year, month, cycle)}
+             for i in items}
+    fine = {i["name"]: ou.ledger_unit(i["name"], i.get("ration_unit"),
+                                      i.get("handle_unit"),
+                                      i.get("specific_weight")) for i in items}
+    r2h = {i["name"]: ou.calc_to_handle_factor(
+        i["name"], i.get("ration_unit"), i.get("handle_unit"),
+        i.get("specific_weight")) for i in items}
     return {"balances": balances(year, month, cycle),
-            "specs": dw.pack_specs_map(year, month, cycle), "units": units}
+            "specs": dw.pack_specs_map(year, month, cycle),
+            "units": units, "fine": fine, "r2h": r2h}
 
 
 def for_rows(year, month, section, rows):

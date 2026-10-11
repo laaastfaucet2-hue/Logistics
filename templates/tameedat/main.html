@@ -4,6 +4,7 @@
 {% block print_doc_title %}{% if tab == 'day' %}تأميدات يوم {{ date_text(sel_date_iso) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'momoda' %}الجهات المومدة — {{ month_name }} {{ year | aindic }}{% elif tab == 'dict' %}قاموس ودليل الجهات — {{ month_name }} {{ year | aindic }}{% else %}التقرير الشامل للتأميدات — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 
 {% block content %}
@@ -16,13 +17,12 @@
   <div class="tm-hero-meta">
     <span class="tm-chip month">الشهر النشط: <b>{{ month_name }} {{ year | aindic }}</b></span>
     <span class="tm-chip dim">بيانات هذا الشهر منعزلة تمامًا — وتُحفظ محليًا فور أي تغيير</span>
-    <span class="tm-chip legend" title="مفتاح الحروف المختصرة">{{ tri_legend }}</span>
-  </div>
+      </div>
 </header>
 
 <!-- التويبات الأربعة -->
 <nav class="tm-tabs" aria-label="تويبات التاميدات">
-  {% for key, name, ic in tabs %}
+  {% for key, name, ic in visible_subtabs('tameedat', tabs) %}
   <a class="tm-tab {{ 'on' if tab == key }}" href="{{ url_for('tameedat.page') }}&tab={{ key }}{{ '&day=' + sel_date_iso if key == 'day' }}{{ '&f=' + f if f != 'all' }}{{ '&q=' + q if q and key == 'day' }}">
     {{ ic }} <span>{{ name }}</span>
     {% if key == 'day' %}<b class="tm-count" title="عدد تأميدات اليوم المحدد">{{ day_count | aindic }}</b>{% endif %}
@@ -65,6 +65,7 @@
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/raghibin_modal.js') }}?v={{ static_ver }}"></script>
 <script type="application/json" id="tmEntities">{{ entity_names | tojson }}</script>
+<script type="application/json" id="tmIgnoredNames">{{ alert_ignored_names | tojson if alert_ignored_names is defined else "[]" }}</script>
 <script src="{{ url_for('static', filename='js/tameedat.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/tameedat_rations.js') }}?v={{ static_ver }}"
         data-preview="{{ url_for('tameedat.rations_preview') }}"></script>

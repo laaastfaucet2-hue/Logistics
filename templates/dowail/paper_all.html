@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "dowail/_paper_doc.html" import paper_doc %}
+{% block title %}طباعة كل الخطوط — تفاريد الدولى{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>طباعة كل الخطوط — تفاريد خط الحدود الدولى — {{ month_name }} {{ year | aindic }}</span>
+  <span class="sep">•</span>
+  <span class="dim">يوم {{ f | aindic }} إلى {{ t | aindic }} ({{ days | aindic }} أيام صرف)</span>
+  {% if dist_id %}<span class="sep">•</span><span class="dim">من توزيعة محفوظة ({{ dist_id | aindic }})</span>{% endif %}
+</div>
+<div class="panel rt-toolbar no-print">
+  <div class="rt-actions">
+    <a class="rt-btn gold" href="{{ url_for('dowail.page', tab='papers', **({'dist': dist_id} if dist_id else {})) }}">
+      ↩ رجوع لصفحة الدولى</a>
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة (PDF)">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+  </div>
+</div>
+
+{% for lp in all_papers %}
+{{ paper_doc({'kind': 'line', 'rows': lp.line_paper.rows}, lp.line, lh, has_logo, today_iso, from_iso, to_iso, days, pmeta_rows, sigs) }}
+{% for pp in lp.points_papers %}
+{{ paper_doc({'kind': 'point', 'point': pp.point, 'rows': pp.rows}, lp.line, lh, has_logo, today_iso, from_iso, to_iso, days, pmeta_rows, sigs) }}
+{% endfor %}
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,73 @@
+{# ورقة إذن واحدة (مجمعة أو نقطة) — بتتشارك بين صفحة ورقة خط و صفحة طباعة الكل #}
+{% macro paper_doc(doc, line, lh, has_logo, today_iso, from_iso, to_iso, days, pmeta_rows=[], sigs={}) %}
+<div class="panel dw-paper">
+  <div class="dw-paper-lh">
+    <div class="dw-lh-lines">
+      {% for l in lh %}<div>{{ l }}</div>{% endfor %}
+    </div>
+    <div class="dw-lh-side">
+      {% if has_logo %}<img class="dw-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+      <bdi dir="ltr" class="date-display">{{ today_iso | datefmt }}</bdi>
+    </div>
+  </div>
+
+  <div class="dw-paper-title">
+    {% if doc.kind == 'line' %}
+      إذن صرف بون تأريضات مجمّع
+    {% else %}
+      إذن صرف بون تأريضات — نقطة «{{ doc.point.name }}» — خط «{{ line.name }}»
+    {% endif %}
+  </div>
+
+  <div class="dw-paper-meta">
+    <span>اسم القطاع الحرسى:
+      <b>{% if doc.kind == 'line' %}{{ line.name }} (مجمّع){% else %}{{ doc.point.name }}{% endif %}</b></span>
+    <span>القطاع بالمهلة بالضبط:
+      <b>عدد {{ (line.count if doc.kind == 'line' else 1) | aindic }} قطاع</b></span>
+    <span>إجمالي القوة العسكرية:
+      <b>{% if doc.kind == 'line' %}{{ line.total_force | aindic }}{% else %}{{ doc.point.force | aindic }}{% endif %} فرد / يوم</b></span>
+    <span>فترة بون الصرف والتحصيل:
+      <b>من <bdi dir="ltr">{{ from_iso | datefmt }}</bdi> إلى <bdi dir="ltr">{{ to_iso | datefmt }}</bdi> ({{ days | aindic }} أيام)</b></span>
+    {% for label, val in pmeta_rows %}
+    <span>{{ label }}: <b>{{ val }}</b></span>
+    {% endfor %}
+  </div>
+
+  <table class="dw-paper-table">
+    <thead>
+      <tr>
+        <th>م</th><th>اسم النصف والمادة الخانزية</th><th>الوحدة</th>
+        <th>المعدل اليومي</th><th>أيام الصرف</th><th>إجمالي الخطط المخصصة</th><th>ملاحظات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in doc.rows %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td><b>{{ r.name }}</b></td>
+        <td>{{ r.unit or '—' }}</td>
+        <td class="num">{{ r.rate | qty3 }}</td>
+        <td class="num">{{ r.days | aindic }}</td>
+        <td class="num"><b>{{ r.total | qty3 }}</b></td>
+        <td></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">لا توجد أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="dw-paper-note">
+    هذا الكشف يبين إجمالي أذونات الصرف بين تأريضات المصروفات ({{ line.count | aindic }} نقاط)
+    وورقة نقطة محددة للتحميل.
+  </p>
+
+  <div class="dw-paper-sigs">
+    <div><span>أمين العهدة المعتمد</span>
+      <bdi>{{ (sigs.sig_right_rank ~ ' ' ~ sigs.sig_right_name) if sigs else '(..........................)' }}</bdi></div>
+    <div><span>المندوب المستلم</span><bdi>(..........................)</bdi></div>
+    <div><span>أمين العهدة المعتمد</span>
+      <bdi>{{ (sigs.sig_left_rank ~ ' ' ~ sigs.sig_left_name) if sigs else '(..........................)' }}</bdi></div>
+  </div>
+</div>
+{% endmacro %}

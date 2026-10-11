@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_text, period_text %}
+{% block title %}ملف المجند — {{ recruit.name }} • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}{{ print_title }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+{% include "recruits_tabs.html" %}
+<p class="rc-back"><a href="{{ url_for('recruits.page') }}&tab=registry">رجوع لأصل القوة</a></p>
+
+<!-- ==================== البيانات الشخصية ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3> ملف المجند <span class="panel-hint">الشامل لكل الشهور</span></h3>
+    <div class="rt-actions">{% include "partials/print_btn.html" %}</div>
+  </div>
+  <div class="rc-file-head">
+    {% if recruit.photo %}<img class="rc-file-photo" src="{{ url_for('recruits.file_view', name=recruit.photo) }}" alt="">
+    {% else %}<span class="rc-file-photo ph">؟</span>{% endif %}
+    <div class="rc-file-id">
+      <b>{{ recruit.name }}</b>
+      <div class="rc-line-mini">
+        <span class="dim">رقمه: {{ recruit.mil_no | aindic }}</span>
+        <span class="rc-cert-badge sm s-{{ {'🟢':'ok','🟠':'soon','🔴':'exp','⚪':'none'}[cert_badge[0]] }}">{{ cert_badge[0] }} {{ cert_badge[1] }}</span>
+        {% if latest %}<span class="rc-chip st-{{ latest[0] }}">الحالة الحالية: {{ latest[0] }} <b>منذ يوم {{ latest[1] | aindic }}</b></span>{% endif %}
+        {% if discharge_days is not none and discharge_days <= 60 %}
+        <span class="rc-mini warn">⏳ {{ discharge_days | aindic }} يومًا للتسريح</span>{% endif %}
+      </div>
+      <div class="rc-file-grid">
+        <div><span class="dim">دخول الخدمة</span><br>{{ date_text(recruit.service_start) }}</div>
+        <div><span class="dim">انتهاء الخدمة</span><br>{{ date_text(recruit.service_end) }}</div>
+        <div><span class="dim">المحافظة / المدينة</span><br>{{ recruit.governorate or '—' }}{% if recruit.city %} / {{ recruit.city }}{% endif %}</div>
+        <div><span class="dim">العنوان</span><br>{{ recruit.address or '—' }}</div>
+        {% if recruit.has_cert %}<div><span class="dim">الشهادة الصحية</span><br>{{ date_text(recruit.cert_date) }} → {{ date_text(recruit.cert_expiry) }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="rc-file-kpis">
+      <div class="rc-file-kpi"><b>{{ file_data.n_months | aindic }}</b><span>شهر في أصل القوة</span></div>
+      <div class="rc-file-kpi"><b>{{ file_data.totals['حضور'] | aindic }}</b><span>يوم حضور</span></div>
+      <div class="rc-file-kpi"><b>{{ file_data.totals['إجازة'] | aindic }}</b><span>يوم إجازة</span></div>
+      <div class="rc-file-kpi"><b>{{ file_data.totals['غياب'] | aindic }}</b><span>يوم غياب</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== الملخص الشهري ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>📅 الملخص الشهري <span class="panel-hint">{{ file_data.n_months | aindic }} شهر — الأحدث أولًا</span></h3>
+  </div>
+  {% if file_data.months %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>الشهر</th><th>حضور</th><th>إجازة</th><th>غياب</th><th>مأمورية</th><th>مستشفى</th><th>أخرى</th><th>أيام مسجلة</th></tr></thead>
+    <tbody>
+      {% for row in file_data.months %}
+      <tr>
+        <td><b>{{ row.month_label }}</b></td>
+        {% for st in statuses %}<td class="num">{{ row.counts[st] | aindic if row.counts[st] else '—' }}</td>{% endfor %}
+        <td class="num">{{ row.recorded | aindic if row.recorded else '—' }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="rc-file-totals">
+        <td>الإجمالي</td>
+        {% for st in statuses %}<td class="num">{{ file_data.totals[st] | aindic if file_data.totals[st] else '—' }}</td>{% endfor %}
+        <td class="num">{{ file_data.n_recorded | aindic }}</td>
+      </tr>
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="panel-hint" style="text-align:center;padding:18px 0">لا توجد شهور أخرى — الملف يبدأ من شهر السياق.</p>
+  {% endif %}
+</div>
+
+<!-- ==================== الخط الزمني ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>🕐 الخط الزمني <span class="panel-hint">كل أحداث المجند عبر الشهور — الأحدث أولًا</span></h3>
+  </div>
+  {% if file_data.timeline %}
+  <ol class="rc-timeline">
+    {% for ev in file_data.timeline %}
+    <li class="rc-tl-item{% if ev.status %} tl-{{ ev.status }}{% endif %}">
+      <span class="rc-tl-icon">{{ ev.icon }}</span>
+      <div class="rc-tl-body">
+        <b>{{ ev.text }}</b>
+        {% if ev.month %}<div class="dim rc-mini">{{ ev.month }}</div>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="panel-hint" style="text-align:center;padding:18px 0">لا توجد أحداث بعد — سجّل اليومية والتصاريح وسيظهر الخط الزمني هنا.</p>
+  {% endif %}
+</div>
+{% endblock %}

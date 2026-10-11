@@ -126,7 +126,7 @@ def build_wh1(path, year, month, receipts, items,
     _save_xlsx(path, [
         (_sheet_unique(used, normal_sheet), WH1_COLS, normal),
         (_sheet_unique(used, pack_sheet), WH1_COLS[:9] + PACK_COLS + WH1_COLS[10:],
-         packed)])
+         packed)], year, month)
     return path
 
 
@@ -196,7 +196,8 @@ def build_wh2_days(wh2_dir, taf_dir, year, month, permits, specs, eom, tafreeda,
                              it["name"], _q(it["qty"]), it.get("unit") or "—",
                              _pack_spec_brk(specs, it["name"], it["qty"], it.get("unit"))))
     _save_xlsx(days_root / _file_name(agg_name),
-               [(_sheet_unique(set(), agg_sheet), PERMIT_AGG_COLS, agg_rows)])
+               [(_sheet_unique(set(), agg_sheet), PERMIT_AGG_COLS, agg_rows)],
+               year, month)
 
     # ---------- فولدرات الأيام ----------
     for d in range(1, int(eom) + 1):
@@ -221,7 +222,8 @@ def build_wh2_days(wh2_dir, taf_dir, year, month, permits, specs, eom, tafreeda,
                 arnum.to_arabic_indic(str(p["number"])))), PERMIT_COLS, rows))
         if sheets:
             _save_xlsx(days_root / _day_folder(day) / _file_name(
-                day_file.format(arnum.to_arabic_indic(str(day)))), sheets)
+                day_file.format(arnum.to_arabic_indic(str(day)))), sheets,
+                year, month)
 
     entity = {p["number"]: (p.get("entity_label") or "—") for p in permits}
     groups = {}
@@ -237,7 +239,8 @@ def build_wh2_days(wh2_dir, taf_dir, year, month, permits, specs, eom, tafreeda,
     taf_agg = [_taf_row(i, t, entity.get(t.get("permit_no"), "—"), year, month)
                for i, t in enumerate(tafreeda or [], 1)]
     _save_xlsx(taf_root / _file_name(taf_agg_name),
-               [(_sheet_unique(set(), "٢ مخازن تفاريد"), TAF_COLS, taf_agg)])
+               [(_sheet_unique(set(), "٢ مخازن تفاريد"), TAF_COLS, taf_agg)],
+               year, month)
     # ملف كل يوم
     by_taf_day = {}
     for (day, ent), rows in groups.items():
@@ -247,7 +250,8 @@ def build_wh2_days(wh2_dir, taf_dir, year, month, permits, specs, eom, tafreeda,
                  for i, (ent, t) in enumerate(pairs, 1)]
         _save_xlsx(taf_root / _day_folder(day) / _file_name(
             taf_day_file.format(arnum.to_arabic_indic(str(day)))),
-            [(_sheet_unique(set(), "٢ مخازن تفاريد"), TAF_COLS, sheet)])
+            [(_sheet_unique(set(), "٢ مخازن تفاريد"), TAF_COLS, sheet)],
+            year, month)
 
 
 def _pack_spec_brk(specs, name, qty, unit):
@@ -259,15 +263,148 @@ def _pack_spec_brk(specs, name, qty, unit):
 
 
 # ======================================================================
+# ٢ مخازن — البنية الجديدة (توجيه ٠٨/١٠):
+#   ٢ مخازن\أذونات الصرف\يوم N\إذن M.xlsx  +  ٢ مخازن\تفاريد\يوم N\إذن M.xlsx
+# فولدر لكل يوم من يوم ١ لآخر يوم، وكل إذن في إكسل منفصل وفيه كل حاجة:
+# هيدر (رقم الإذن/الجهة المستلمة/المستلم/المسؤول عن الصرف/الفترة) + جدول كل الأصناف،
+# ونسخة التفاريد: بالوحدة + بالتغليف + من أي مخزن + تاريخ الانتهاء + تغليف الدفعة + إجماليات.
+# الملفات الموحدة القديمة («٢ مخازن مجمع» و«٢ مخازن تفاريد مجمع») اتلغت بقرار المستخدم.
+# ======================================================================
+WH2_PERMIT_FILE = "إذن {}"
+
+
+def _permit_header_rows(p, year, month):
+    """بلوك KV تاني ملف الإذن — كل حاجة بتعريف الإذن (نفس بيانات الشاشة بالحرف)."""
+    from services import warehouses_fs as wf
+    from data_access import db_tameedat as dt
+
+    def dlabel(day):
+        try:
+            day = int(day)
+        except (TypeError, ValueError):
+            return "—"
+        return "يوم {} ({}) — {}".format(arnum.to_arabic_indic(str(day)),
+                                         wf._wday(day, year, month), wf._d(day, year, month))
+
+    receiver = " ".join(x for x in (p.get("receiver_kind"), p.get("receiver_rank"),
+                                    p.get("receiver_name")) if (x or "").strip()).strip()
+    extras = []
+    try:
+        for rid in (p.get("record_ids") or []):
+            rec = dt.get_record(year, month, rid)
+            if rec:
+                extras.extend((a.get("name") or "") for a in (rec.get("attachments") or []))
+    except Exception:
+        pass
+    return [
+        ("رقم الإذن", arnum.to_arabic_indic(str(p["number"]))),
+        ("السنة المالية", arnum.to_arabic_indic(str(p["fiscal_year"]))),
+        ("الجهة المستلمة", (p.get("entity_label") or "").strip() or "—"),
+        ("الملحقات (الجهات الأخرى)", "، ".join(e for e in extras if e) or "—"),
+        ("المستلم", receiver or "—"),
+        ("المسؤول عن الصرف", (p.get("issuer_name") or "").strip() or "—"),
+        ("من يوم", dlabel(p.get("date_from"))),
+        ("إلى يوم", dlabel(p.get("date_to"))),
+        ("أيام الصرف", arnum.to_arabic_indic(str(p.get("issue_days") or 1))),
+    ]
+
+
+def build_wh2_permit_files(wh2_dir, year, month, permits, specs, eom, tafreeda):
+    """فولدر لكل يوم من يوم ١ لآخر يوم، وإكسل منفصل لكل إذن في «أذونات الصرف» و«تفاريد»."""
+    from services import warehouses_fs as wf
+    issues_root = wh2_dir / wf.WH2_ISSUES
+    taf_root = wh2_dir / wf.WH2_TAFARID
+    eom = int(eom)
+    for d in range(1, eom + 1):
+        (issues_root / _day_folder(d)).mkdir(parents=True, exist_ok=True)
+        (taf_root / _day_folder(d)).mkdir(parents=True, exist_ok=True)
+    written = set()
+    taf_by_permit = {}
+    for t in tafreeda or []:
+        taf_by_permit.setdefault(t.get("permit_no"), []).append(t)
+    for p in permits:
+        try:
+            day = int(p["date_from"])
+        except (TypeError, ValueError):
+            continue
+        if not (1 <= day <= eom):
+            continue
+        no = p["number"]
+        ar_no = arnum.to_arabic_indic(str(no))
+        fname = _file_name(WH2_PERMIT_FILE.format(ar_no))
+        sheet_no = "إذن " + ar_no
+        header = _permit_header_rows(p, year, month)
+        # ---- ملف أذونات الصرف: الهيدر + جدول كل الأصناف (الكمية والتغليف) ----
+        item_rows, total = [], 0.0
+        for i, it in enumerate(p["cycle_items"], 1):
+            item_rows.append((i, it["name"], _q(it["qty"]), it.get("unit") or "—",
+                              _pack_spec_brk(specs, it["name"], it["qty"], it.get("unit"))))
+            total += float(it["qty"] or 0)
+        item_rows.append(("الإجمالي", "", _q(total), "", ""))
+        f_issues = issues_root / _day_folder(day) / fname
+        _save_xlsx(f_issues,
+                   [(_sheet_unique(set(), sheet_no), ["البند", "البيان"], header),
+                    ("الأصناف", ["م", "الصنف", "الكمية", "الوحدة", "التغليف"], item_rows)],
+                   year=year, month=month)
+        written.add(f_issues)
+        # ---- ملف التفاريد: الهيدر + الأصناف (بالوحدة + بالتغليف) + تفكيك الدفعات ----
+        p_rows = sorted(taf_by_permit.get(no, []), key=lambda r: (r.get("seq") or 0, r["item"]))
+        totals = {}
+        for t in p_rows:
+            prev = totals.get(t["item"])
+            totals[t["item"]] = (t.get("unit") or "—",
+                                 round((prev[1] if prev else 0.0) + float(t["qty"] or 0), 6))
+        taf_rows = []
+        for i, it in enumerate(p["cycle_items"], 1):
+            unit, qty = totals.get(it["name"], (it.get("unit") or "—", 0.0))
+            brk = _pack_spec_brk(specs, it["name"], qty, unit) if qty > 0 else "—"
+            taf_rows.append((i, it["name"], _q(qty) if qty > 0 else "٠", unit or "—", brk))
+        grand = round(sum(v[1] for v in totals.values()), 6)
+        taf_rows.append(("الإجمالي", "", _q(grand) if grand > 0 else "٠", "", ""))
+        batch_rows = []
+        for i, t in enumerate(p_rows, 1):
+            batch_rows.append((i, t["item"], _q(t["qty"]), t.get("issued_label") or "—",
+                               t.get("pack_label") or "—", t.get("store_name") or "—",
+                               dates.format_date(t.get("expiry")) if t.get("expiry") else "—",
+                               _expiry_left(t.get("expiry"), year, month, day),
+                               t.get("notes") or "—"))
+        f_taf = taf_root / _day_folder(day) / fname
+        _save_xlsx(f_taf,
+                   [(_sheet_unique(set(), sheet_no), ["البند", "البيان"], header),
+                    ("الأصناف", ["م", "الصنف", "المنصرف بالوحدة", "الوحدة", "المنصرف بالتغليف"],
+                     taf_rows),
+                    ("التفريدة", ["م", "الصنف", "الكمية بالوحدة", "المنصرف بالتغليف",
+                                  "تغليف الدفعة", "المخزن", "تاريخ الانتهاء",
+                                  "الصلاحية المتبقية", "ملاحظات"], batch_rows)],
+                   year=year, month=month)
+        written.add(f_taf)
+    # ملفات إذون اتحذفت من القاعدة — المرآة تتبع الداتا: تتشال من فولدرات الأيام
+    for rf in (issues_root, taf_root):
+        for day_folder in rf.glob("يوم *"):
+            for f in day_folder.glob("*.xlsx"):
+                if f not in written:
+                    try:
+                        f.unlink()
+                    except OSError:
+                        pass
+    return issues_root
+
+
+# ======================================================================
 # ٣ مخازن — ملفان: الحركة العادية + التغليف
 # ======================================================================
 def build_wh3(wh3_dir, year, month, items, moves, book1_name, book2_name,
               cycle, aggregated_sheet="٣ مخازن مجمعة",
-              tafared_sheet="٣ مخازن تفاريد"):
+              tafared_sheet="٣ مخازن تفاريد", nested=False):
     from services import warehouses_fs as wf
     specs = dw.pack_specs_map(year, month, cycle)
 
     units_map = {it["name"]: it["handle_unit"] for it in items}
+    from data_access import oil_units as _ou
+    disp_map = {it["name"]: _ou.ledger_unit(it["name"], it["ration_unit"],
+                                            it["handle_unit"],
+                                            it.get("specific_weight"))
+                for it in items}
 
     def _brk(q, name):
         sp = _pack_spec_of(specs, name)
@@ -278,82 +415,117 @@ def build_wh3(wh3_dir, year, month, items, moves, book1_name, book2_name,
                                  inner_kind=sp.get("pack_inner_kind")) or _q(q)
 
     balance_rows = [(i, it["name"], it["handle_unit"], it["ration_unit"] or "—",
-                     it["balance"]) for i, it in enumerate(items, 1)]
+                     arnum.round3(float(it["balance"] or 0) * disp_map[it["name"]][1]),
+                     disp_map[it["name"]][0]) for i, it in enumerate(items, 1)]
     agg_rows, per_item = [], {}
     for idx, (name, _unit, row) in enumerate(moves, 1):
+        u, f = disp_map.get(name, ("—", 1.0))
         line = (idx, name, wf._wday(row["day"], year, month), row["day"],
                 wf._d(row["day"], year, month), row["permit_no"] or "—",
-                row["label"], row["added"], row["issued"], row["balance"],
+                row["label"], arnum.round3(float(row.get("open") or 0) * f),
+                arnum.round3(float(row["added"] or 0) * f),
+                arnum.round3(float(row["issued"] or 0) * f),
+                arnum.round3(float(row["balance"] or 0) * f),
                 row["notes"] or "—")
         agg_rows.append(line)
         per_item.setdefault(name, []).append(
             (len(per_item.get(name, [])) + 1,) + line[1:])
     used = set()
+    _ledger_head = ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن",
+                    "البيان", "رصيد الافتتاح", "مضاف", "منصرف", "الرصيد", "ملاحظات"]
     book1 = [(_sheet_unique(used, "أرصدة الأصناف"),
-              ["م", "الصنف", "وحدة التعامل", "وحدة المقرر", "الرصيد"], balance_rows),
-             (_sheet_unique(used, aggregated_sheet),
-              ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن",
-               "البيان", "مضاف", "منصرف", "الرصيد", "ملاحظات"], agg_rows)]
+              ["م", "الصنف", "وحدة التعامل", "وحدة المقرر",
+               "الرصيد (وحدة الدفتر)", "وحدة الدفتر"], balance_rows),
+             (_sheet_unique(used, aggregated_sheet), _ledger_head, agg_rows)]
     for name, rows in sorted(per_item.items()):
-        book1.append((_sheet_unique(used, name),
-                      ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن",
-                       "البيان", "مضاف", "منصرف", "الرصيد", "ملاحظات"], rows))
-    _save_xlsx(wh3_dir / _file_name(book1_name), book1)
+        book1.append((_sheet_unique(used, name), _ledger_head, rows))
+    # nested (توجيه ٠٨/١٠): ٣ مخازن\٣ مخازن\دفتر ٣ مخازن.xlsx +
+    # ٣ مخازن\٣ مخازن تفاريد\٣ مخازن تفاريد.xlsx — وإلا فولدر التاب مباشرة (الترفية)
+    book1_dir = wh3_dir / wf.WH3_BOOK_DIR if nested else wh3_dir
+    book2_dir = wh3_dir / wf.WH3_TAF_DIR if nested else wh3_dir
+    book1_dir.mkdir(parents=True, exist_ok=True)
+    book2_dir.mkdir(parents=True, exist_ok=True)
+    _save_xlsx(book1_dir / _file_name(book1_name), book1, year, month)
 
-    agg_pack = [(idx, name, wf._wday(row["day"], year, month), row["day"],
-                 wf._d(row["day"], year, month), row["permit_no"] or "—",
-                 row["label"], row["added"], _brk(row["added"], name),
-                 row["issued"], _brk(row["issued"], name) if row["issued"] else "—",
-                 row["balance"], _brk(row["balance"], name),
-                 row["notes"] or "—")
-                for idx, (name, _unit, row) in enumerate(moves, 1)]
-    taf_rows = []
+    # دفاتر التفاريد بالتغليف لكل صنف (مدير العبوات) — مصدر شيتات الكتاب التاني
+    taf_per_item = {}
     for it in items:
         taf3 = wf.taf3_pack_rows(year, month, cycle, it["id"])
-        for r in (taf3 or {}).get("rows", []):
-            taf_rows.append((len(taf_rows) + 1, it["name"], r["day"],
+        if taf3 and taf3.get("rows"):
+            taf_per_item[it["name"]] = taf3["rows"]
+    taf_rows = []
+    for name in sorted(taf_per_item):
+        for r in taf_per_item[name]:
+            taf_rows.append((len(taf_rows) + 1, name, r["day"],
                              wf._d(r["day"], year, month), r["permit_no"] or "—",
                              r["label"] or "—", r["added_pack"] or "—",
                              r["issued_pack"] or "—", r["bal_pack"] or "—",
                              r["notes"] or "—"))
-    used2 = set()
-    book2 = [(_sheet_unique(used2, "٣ مخازن مجمعة تغليف"),
-              ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن",
-               "البيان", "مضاف", "مضاف بالتغليف", "منصرف",
-               "منصرف بالتغليف", "الرصيد", "الرصيد بالتغليف", "ملاحظات"],
-              agg_pack),
-             (_sheet_unique(used2, tafared_sheet),
-              ["م", "الصنف", "يوم الشهر", "التاريخ", "رقم الإذن", "البيان",
-               "مضاف بالتغليف", "منصرف بالتغليف", "الرصيد بالتغليف", "ملاحظات"],
-              taf_rows)]
-    for name in sorted(per_item):
-        rows = [(r[0], r[1], r[6], r[7], _brk(r[7], name), r[8],
-                 _brk(r[8], name) if r[8] else "—", r[9], _brk(r[9], name), r[10])
-                for r in per_item[name]]
-        book2.insert(1, (_sheet_unique(used2, name + " تغليف"),
-                         ["م", "الصنف", "البيان", "مضاف", "مضاف بالتغليف",
-                          "منصرف", "منصرف بالتغليف", "الرصيد",
-                          "الرصيد بالتغليف", "ملاحظات"], rows))
-    _save_xlsx(wh3_dir / _file_name(book2_name), book2)
-    return wh3_dir / _file_name(book2_name)
+    if nested:
+        # «٣ مخازن تفاريد.xlsx»: شيت مجمع + شيت لكل صنف — مضاف/منصرف/الرصيد بالتغليف
+        used2 = set()
+        book2 = [(_sheet_unique(used2, tafared_sheet),
+                  ["م", "الصنف", "يوم الشهر", "التاريخ", "رقم الإذن", "البيان",
+                   "مضاف بالتغليف", "منصرف بالتغليف", "الرصيد بالتغليف", "ملاحظات"],
+                  taf_rows)]
+        for name in sorted(taf_per_item):
+            rows = [(r["seq"], wf._wday(r["day"], year, month), r["day"],
+                     wf._d(r["day"], year, month), r["permit_no"] or "—",
+                     r["label"] or "—", r["added_pack"] or "—",
+                     r["issued_pack"] or "—", r["bal_pack"] or "—",
+                     r["notes"] or "—") for r in taf_per_item[name]]
+            book2.append((_sheet_unique(used2, name),
+                          ["م", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن", "البيان",
+                           "مضاف بالتغليف", "منصرف بالتغليف", "الرصيد بالتغليف", "ملاحظات"],
+                          rows))
+    else:
+        agg_pack = [(idx, name, wf._wday(row["day"], year, month), row["day"],
+                     wf._d(row["day"], year, month), row["permit_no"] or "—",
+                     row["label"], row["added"], _brk(row["added"], name),
+                     row["issued"], _brk(row["issued"], name) if row["issued"] else "—",
+                     row["balance"], _brk(row["balance"], name),
+                     row["notes"] or "—")
+                    for idx, (name, _unit, row) in enumerate(moves, 1)]
+        used2 = set()
+        book2 = [(_sheet_unique(used2, "٣ مخازن مجمعة تغليف"),
+                  ["م", "الصنف", "اليوم", "يوم الشهر", "التاريخ", "رقم الإذن",
+                   "البيان", "مضاف", "مضاف بالتغليف", "منصرف",
+                   "منصرف بالتغليف", "الرصيد", "الرصيد بالتغليف", "ملاحظات"],
+                  agg_pack),
+                 (_sheet_unique(used2, tafared_sheet),
+                  ["م", "الصنف", "يوم الشهر", "التاريخ", "رقم الإذن", "البيان",
+                   "مضاف بالتغليف", "منصرف بالتغليف", "الرصيد بالتغليف", "ملاحظات"],
+                  taf_rows)]
+        for name in sorted(per_item):
+            rows = [(r[0], r[1], r[6], r[7], _brk(r[7], name), r[8],
+                     _brk(r[8], name) if r[8] else "—", r[9], _brk(r[9], name), r[10])
+                    for r in per_item[name]]
+            book2.insert(1, (_sheet_unique(used2, name + " تغليف"),
+                             ["م", "الصنف", "البيان", "مضاف", "مضاف بالتغليف",
+                              "منصرف", "منصرف بالتغليف", "الرصيد",
+                              "الرصيد بالتغليف", "ملاحظات"], rows))
+    _save_xlsx(book2_dir / _file_name(book2_name), book2, year, month)
+    return book2_dir / _file_name(book2_name)
 
 
 # ======================================================================
 # نقاط الدخول — تُستدعى من مرايا الدورات
 # ======================================================================
 def build_cycle(year, month, cycle):
-    """الهيكل الجديد لدورة مستودعات (supply/contractor/tarfea) — بعد snapshot."""
+    """الهيكل الجديد لدورة مستودعات (supply/contractor) — بعد snapshot (توجيه ٠٨/١٠)."""
     from services import warehouses_fs as wf
+    _migrate(wf.base_dir(year, month, cycle), "٢ مخازن تفاريد",
+             "٣ مخازن دفتر الأصناف")              # فولدرات قديمة اتلغت (قرار المستخدم)
     wh2 = wf.cycle_dir(year, month, cycle, "wh2")
-    _migrate(wh2.parent, "٢ مخازن إذون الصرف")   # ترحيل من الاسم القديم
+    for old_day in wh2.glob("يوم *"):              # فولدرات الأيام القديمة جوا ٢ مخازن
+        shutil.rmtree(old_day, ignore_errors=True) if old_day.is_dir() else old_day.unlink()
     items = dw.list_items(year, month, cycle)
     receipts = dw.list_receipts(year, month, cycle, limit=10000)
     permits = dw.permits_book(year, month, cycle)
     specs = dw.pack_specs_map(year, month, cycle)
     eom = egtime.days_in_month(year, month)
-    suffix = " ترفية" if cycle == "tarfea" else ""
     build_wh1(wf.cycle_dir(year, month, cycle, "wh1") / _file_name(
-        "إذون إضافة ١ مخازن" + suffix), year, month, receipts, items,
+        "إذون إضافة ١ مخازن"), year, month, receipts, items,
         normal_sheet="إذون إضافة ١ مخازن", pack_sheet="١ مخازن تغليف")
     moves = []
     for it in items:
@@ -361,10 +533,9 @@ def build_cycle(year, month, cycle):
         for row in card["rows"]:
             moves.append((it["name"], it["handle_unit"], row))
     build_wh3(wf.cycle_dir(year, month, cycle, "wh3"), year, month, items, moves,
-              "دفتر ٣ مخازن" + suffix, "دفتر ٣ مخازن{} تغليف".format(suffix),
-              cycle)
-    build_wh2_days(wh2, wh2.parent / "٢ مخازن تفاريد", year, month,
-                   permits, specs, eom, dw.tafreeda_rows(year, month, cycle))
+              "دفتر ٣ مخازن", "٣ مخازن تفاريد", cycle, nested=True)
+    build_wh2_permit_files(wh2, year, month, permits, specs, eom,
+                           dw.tafreeda_rows(year, month, cycle))
 
 
 def build_tarfea(year, month):
@@ -392,9 +563,16 @@ def build_tarfea(year, month):
     conn = months.get_db(year, month)
     issues = [dict(r) for r in conn.execute(
         "SELECT * FROM tarfea_issues ORDER BY day, id").fetchall()]
-    last_exp = {r["item_id"]: r["exp_date"] for r in conn.execute(
-        "SELECT item_id, exp_date FROM wh_ledger WHERE cycle='tarfea' "
-        "AND COALESCE(exp_date,'')!='' ORDER BY day, id").fetchall()}
+    # الصلاحية المعروضة = أقرب دفعة تنتهي (التي يستهلكها FEFO أولًا — قاعدة
+    # «الأقرب صلاحية أولًا» نفسها). كان يقرأ آخر دفعة (day,id) فكل ما كان
+    # المعروض هو أحدث إضافة حتى لو انتهت لاحقًا.
+    last_exp = {}
+    for r in conn.execute(
+            "SELECT item_id, exp_date FROM wh_ledger WHERE cycle='tarfea' "
+            "AND COALESCE(exp_date,'')!=''").fetchall():
+        cur = last_exp.get(r["item_id"])
+        if not cur or r["exp_date"] < cur:
+            last_exp[r["item_id"]] = r["exp_date"]
     conn.close()
     names = {it["id"]: it for it in items}
     permits, taf_rows = [], []
@@ -427,27 +605,24 @@ def build_tarfea(year, month):
 
 
 # ======================================================================
-# المخازن والثلاجات — فولدر لكل مخزن (٤ ملفات) + مجمع في جذر القسم
+# المخازن والثلاجات — فولدر لكل مخزن فيه 3 فولدرات (توجيه ٠٨/١٠)
 # ======================================================================
 def build_store_folders(base, rep, units, year=2026, month=9):
-    """🆕 (توجيه المستخدم):
-    - الجذر: ملف واحد «حركة وكشف أرصدة المخازن.xlsx» فيه:
-      حركة المخازن كلها · حركة المخازن كلها بالتغليف ·
-      كشف أرصدة المخازن كلها · كشف أرصدة المخازن بالتغليف
-      + شيت لكل صنف بأرصدته في كل المخازن (غير المجمع).
-    - فولدر لكل مخزن فيه ملف واحد باسم المخزن فيه ٤ شيتات:
-      حركة المخزن · حركة المخزن بالتغليف ·
-      كشف جرد أرصدة المخزن · كشف أرصدة المخزن بالتغليف.
-    الملفات القديمة (حركة المخازن/حركة المخازن تغليف/ملفات المخزن الأربعة) تُمسح."""
+    """🆕 (توجيه المستخدم ٠٨/١٠) — فولدر لكل مخزن فيه 3 فولدرات = تابات الواجهة:
+    - <المخزن>/حركة المخزن/حركة المخزن.xlsx      (كل حركات المخزن بترتيب التواريخ)
+    - <المخزن>/الأصناف/<صنف>.xlsx                 (حركة كل صنف جوا المخزن)
+    - <المخزن>/كشف أرصدة المخازن/كشف جرد أرصدة المخزن.xlsx (الرصيد + بالتغليف)
+    كل الهياكل القديمة (الملف الجذري الموحد + ملفات المخزن القديمة + فولدرات
+    مخازن اتبسمت أو اتحذفت) تُمسح — الفولدر بيتبسم مع اسم المخزن."""
     specs_maps = {}
-    for cycle in ("supply", "contractor", "tarfea"):
+    for cycle in ("supply", "contractor"):
         try:
             specs_maps[cycle] = dw.pack_specs_map(year, month, cycle)
         except Exception:
             specs_maps[cycle] = {}
 
     def _pack_qty(cycle, name, qty):
-        """تفكيك الكمية بعبوات صنفها — للعمود «الكمية بالتغليف»."""
+        """تفتيت الرصيد بتغليف الصنف المسجل (١ شكارة + ١٠ كجم)."""
         if not qty:
             return "—"
         sp = specs_maps.get(cycle, {}).get(name) or {}
@@ -460,105 +635,139 @@ def build_store_folders(base, rep, units, year=2026, month=9):
                                  units.get(name, "—"), "",
                                  inner_kind=sp.get("pack_inner_kind")) or _q(qty)
 
-    all_move, all_move_pack = [], []
-    all_bal, all_bal_pack = [], []
-    per_item_bal = {}                     # الصنف → [(المخزن، الرصيد، الوحدة، التغليف)]
-    idx = 0
-    for target in rep["stores"] + [rep["unassigned"]]:
-        store_name = target["store"]["name"]
+    def _when(iso):
+        return dates.format_date(iso) or iso or "—"
+
+    def _expiry(iso):
+        return dates.format_date(iso) if iso else ""
+
+    def _doc(row, direction):
+        if direction == "in":
+            return ("إذن إضافة رقم " +
+                    arnum.to_arabic_indic(str(row.get("serial") or ""))) \
+                if row.get("serial") else "رصيد أول المدة"
+        return "إذن صرف ٢ مخازن رقم " + \
+            arnum.to_arabic_indic(str(row.get("permit_no") or ""))
+
+    def _move_lines(target):
+        """كل حركات المخزن (داخل أولًا في نفس اليوم) — نفس ترتيب تاب السجل."""
+        rows = []
+        for row in target["inn"]:
+            rows.append(("in", row))
+        for row in target["out"]:
+            rows.append(("out", row))
+        rows.sort(key=lambda p: (p[1]["date_iso"] or "",
+                                 0 if p[0] == "in" else 1))
+        out = []
+        for i, (direction, row) in enumerate(rows, 1):
+            out.append((i, "إضافة" if direction == "in" else "صرف",
+                        _when(row["date_iso"]), row["item"], _q(row["qty"]),
+                        row["unit"] or "—", row.get("pack_label") or "—",
+                        _expiry(row.get("expiry") or ""),
+                        _doc(row, direction), row.get("cycle") or "—",
+                        row.get("supplier") or "—", row.get("producer") or "—"))
+        return out
+
+    def _nearest_expiry(target, name):
+        best = ""
+        for row in target["inn"]:
+            if row["item"] == name and row.get("expiry"):
+                if not best or row["expiry"] < best:
+                    best = row["expiry"]
+        return best
+
+    def _store_book(target, store_name):
+        """3 ملفات المخزن: حركة + أصناف + كشف — تُعاد مساراتها ليتم إنشاؤها."""
         folder = base / _safe_file(store_name)
         folder.mkdir(parents=True, exist_ok=True)
-        _migrate(folder, "كشف جرد الارصدة.xlsx")
-        # 🧹 مسح ملفات المخزن الأربعة القديمة — حلت محلها ملف واحد بأربع شيتات
-        for old in ("حركة المخزن", "حركة المخزن تفاريد",
-                    "جرد المخزن كميات", "جرد المخزن تغليف"):
-            oldp = folder / _file_name(old)
+        # 🧹 ملفات الهيكل القديم جوا فولدر المخزن
+        for old in (_file_name(store_name), "حركة وكشف أرصدة المخازن.xlsx",
+                    "حركة المخزن تفاريد.xlsx", "جرد المخزن كميات.xlsx",
+                    "جرد المخزن تغليف.xlsx"):
+            oldp = folder / old
             if oldp.exists():
                 try:
                     oldp.unlink()
                 except OSError:
                     pass
-        move_rows, move_pack_rows = [], []
-        for row in target["inn"]:
-            idx += 1
-            doc = ("إذن إضافة رقم {}".format(arnum.to_arabic_indic(row["serial"]))
-                   if row.get("serial") else "رصيد أول المدة")
-            when = dates.format_date(row["date_iso"]) or row["date_iso"]
-            pack_qty = _pack_qty(row["cycle"], row["item"], row["qty"])
-            line = (idx, "إضافة", when, row["cycle"], row["item"], _q(row["qty"]),
-                    row["unit"], row.get("pack_label") or "—", doc)
-            move_rows.append(line)
-            move_pack_rows.append(line[:5] + (_q(row["qty"]), pack_qty) + line[7:])
-        for row in target["out"]:
-            idx += 1
-            doc = "إذن صرف ٢ مخازن رقم {}".format(
-                arnum.to_arabic_indic(row["permit_no"]))
-            when = dates.format_date(row["date_iso"]) or row["date_iso"]
-            pack_qty = _pack_qty(row["cycle"], row["item"], row["qty"])
-            line = (idx, "صرف", when, row["cycle"], row["item"], _q(row["qty"]),
-                    row["unit"], row.get("pack_label") or "—", doc)
-            move_rows.append(line)
-            move_pack_rows.append(line[:5] + (_q(row["qty"]), pack_qty) + line[7:])
-        bal_rows = [(name, qty) for name, qty in sorted(target["balances"].items())]
-        used = set()
-        _save_xlsx(folder / (_safe_file(store_name) + ".xlsx"), [
-            (_sheet_unique(used, "حركة المخزن"),
-             ["م", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية", "الوحدة",
-              "التغليف", "المستند"], move_rows),
-            (_sheet_unique(used, "حركة المخزن بالتغليف"),
-             ["م", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
-              "الكمية بالتغليف", "الوحدة", "التغليف", "المستند"], move_pack_rows),
-            (_sheet_unique(used, "كشف جرد أرصدة المخزن"),
-             ["م", "الصنف", "الرصيد", "الوحدة"],
-             [(i, name, _q(qty), units.get(name, "—"))
-              for i, (name, qty) in enumerate(bal_rows, 1)]),
-            (_sheet_unique(used, "كشف أرصدة المخزن بالتغليف"),
-             ["م", "الصنف", "الرصيد", "الوحدة", "الرصيد بالتغليف"],
-             [(i, name, _q(qty), units.get(name, "—"),
-               target.get("pack_notes", {}).get(name) or _q(qty))
-              for i, (name, qty) in enumerate(bal_rows, 1)])])
-        for row, prow in zip(move_rows, move_pack_rows):
-            all_move.append((row[0], store_name) + row[1:])
-            all_move_pack.append((prow[0], store_name) + prow[1:])
-        for name, qty in bal_rows:
+        # 1) حركة المخزن/
+        move_dir = folder / "حركة المخزن"
+        move_dir.mkdir(parents=True, exist_ok=True)
+        move_rows = _move_lines(target)
+        _save_xlsx(move_dir / "حركة المخزن.xlsx", [(
+            "حركة المخزن",
+            ["م", "النوع", "التاريخ", "الصنف", "الكمية", "الوحدة",
+             "التغليف", "الصلاحية", "المستند", "الدورة", "الشركة الموردة",
+             "الشركة المنتجة"], move_rows)], year, month)
+        # 2) الأصناف/ — ملف إكسل لكل صنف باسمه
+        items_dir = folder / "الأصناف"
+        items_dir.mkdir(parents=True, exist_ok=True)
+        # 🧹 ملفات أصناف اتشالت من المخزن
+        seen_items = set()
+        for l in move_rows:
+            seen_items.add(l[3])
+        if items_dir.is_dir():
+            for f in items_dir.iterdir():
+                if f.suffix == ".xlsx" and f.stem not in seen_items:
+                    try:
+                        f.unlink()
+                    except OSError:
+                        pass
+        per_item = {}
+        for l in move_rows:
+            per_item.setdefault(l[3], []).append(l[:3] + l[4:])
+        for name in sorted(per_item):
+            _save_xlsx(items_dir / _file_name(name), [(
+                "حركة الصنف",
+                ["م", "النوع", "التاريخ", "الكمية", "الوحدة", "التغليف",
+                 "الصلاحية", "المستند", "الدورة", "الشركة الموردة",
+                 "الشركة المنتجة"], per_item[name])], year, month)
+        # 3) كشف أرصدة المخازن/
+        bal_dir = folder / "كشف أرصدة المخازن"
+        bal_dir.mkdir(parents=True, exist_ok=True)
+        bal_rows = []
+        for i, (name, qty) in enumerate(sorted(target["balances"].items()), 1):
             unit = units.get(name, "—")
-            note = target.get("pack_notes", {}).get(name) or _q(qty)
-            all_bal.append((store_name, name, _q(qty), unit))
-            all_bal_pack.append((store_name, name, _q(qty), unit, note))
-            per_item_bal.setdefault(name, []).append((store_name, _q(qty), unit, note))
-    # 🧹 الملفات الجذرية القديمة
-    for old in ("حركة المخازن", "حركة المخازن تغليف"):
-        oldp = base / _file_name(old)
+            bal_rows.append((i, name, _q(qty), unit,
+                             target.get("pack_notes", {}).get(name) or _q(qty),
+                             _expiry(_nearest_expiry(target, name))))
+        _save_xlsx(bal_dir / "كشف جرد أرصدة المخزن.xlsx", [(
+            "كشف جرد أرصدة المخزن",
+            ["م", "الصنف", "الرصيد", "الوحدة", "الرصيد بالتغليف",
+             "أقرب انتهاء"], bal_rows)], year, month)
+        return folder
+
+    # 🧹 الملفات الجذرية القديمة (الهيكل الموحد)
+    for old in ("حركة وكشف أرصدة المخازن.xlsx", "حركة المخازن.xlsx",
+                "حركة المخازن تغليف.xlsx"):
+        oldp = base / old
         if oldp.exists():
             try:
                 oldp.unlink()
             except OSError:
                 pass
-    used = set()
-    book = [(_sheet_unique(used, "حركة المخازن كلها"),
-             ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
-              "الوحدة", "التغليف", "المستند"], all_move),
-            (_sheet_unique(used, "حركة المخازن كلها بالتغليف"),
-             ["م", "المخزن", "النوع", "التاريخ", "الدورة", "الصنف", "الكمية",
-              "الكمية بالتغليف", "الوحدة", "التغليف", "المستند"], all_move_pack),
-            (_sheet_unique(used, "كشف أرصدة المخازن كلها"),
-             ["المخزن", "الصنف", "الرصيد", "الوحدة"], all_bal),
-            (_sheet_unique(used, "كشف أرصدة المخازن بالتغليف"),
-             ["المخزن", "الصنف", "الرصيد", "الوحدة", "الرصيد بالتغليف"], all_bal_pack)]
-    for name in sorted(per_item_bal):
-        book.append((_sheet_unique(used, name),
-                     ["المخزن", "الرصيد", "الوحدة", "الرصيد بالتغليف"],
-                     per_item_bal[name]))
-    _save_xlsx(base / _file_name("حركة وكشف أرصدة المخازن"), book)
-    return base / _file_name("حركة وكشف أرصدة المخازن")
+
+    live = {"سجل المخازن"}
+    for target in rep["stores"] + [rep["unassigned"]]:
+        _store_book(target, target["store"]["name"])
+        live.add(_safe_file(target["store"]["name"]))
+    # 🧹 فولدرات مخازن اتبسمت أو اتحذفت — الفولدر بيتبسم مع اسم المخزن
+    if base.is_dir():
+        for d in base.iterdir():
+            if d.is_dir() and d.name not in live:
+                try:
+                    shutil.rmtree(d, ignore_errors=True)
+                except OSError:
+                    pass
+    return base
 
 
 # ======================================================================
 # مخزن الترفية — مجلد Excel منفصل تمامًا داخل 11-الترفية
 # ======================================================================
-def build_tarfea_store(base, rep):
+def build_tarfea_store(base, rep, year=None, month=None):
     """مخزن الترفية/: حركة المخزن.xlsx (مجمّع + شيت لكل صنف)
-    + كشف جرد الأرصدة.xlsx (الكميات + التغليف)."""
+    + كشف جرد الأرصدة.xlsx (الكميات + التغليف) — بالدباجة والتوقيعين (١٠/١٠)."""
     store_dir = base / _safe_file(rep["store_name"])
     store_dir.mkdir(parents=True, exist_ok=True)
     move_rows, per_item = [], {}
@@ -588,11 +797,11 @@ def build_tarfea_store(base, rep):
         book.append((_sheet_unique(used, name),
                      ["م", "النوع", "التاريخ", "الصنف", "الكمية", "الوحدة",
                       "التغليف", "المستند"], rows))
-    _save_xlsx(store_dir / _file_name("حركة المخزن"), book)
+    _save_xlsx(store_dir / _file_name("حركة المخزن"), book, year, month)
     bal_rows = [(i, name, _q(qty), rep["pack_notes"].get(name) or "—")
                 for i, (name, qty) in enumerate(sorted(rep["balances"].items()), 1)]
     used = set()
     _save_xlsx(store_dir / _file_name("كشف جرد الأرصدة"), [
         (_sheet_unique(used, "كشف جرد الأرصدة"),
-         ["م", "الصنف", "الرصيد", "التغليف"], bal_rows)])
+         ["م", "الصنف", "الرصيد", "التغليف"], bal_rows)], year, month)
     return store_dir

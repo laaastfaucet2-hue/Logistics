@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""متغيرات مودال «كشف وتسجيل أسماء ض/أ الراغبين».
+"""متغيرات مودال «كشف وتسجيل أسماء ضابط/فرد الراغبين».
 
 تُستخدم في: جزء /raghibin/panel (الجلب اللحظي) والعرض المدمج داخل صفحة
 التأميدات نفسها (جذري ضد رسم صفحة الدخول داخل المودال: المحتوى موجود
 في الصفحة من أول تحميل، والجلب مجرد تحديث اختياري فوقه).
 """
+from core.config import MONTH_NAMES
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 
@@ -22,6 +23,7 @@ def build(year, month, entity, day, cat, sid=""):
     variables = _slots_vars(year, month, entity, day)
     variables.update({
         "fcat": cat, "entity": entity, "sel_day": day,
+        "year": year, "month": month,
         "force_persons": persons,
         "entity_names": dt.entity_names(year, month),
         "categories": dr.CATEGORIES,
@@ -30,5 +32,6 @@ def build(year, month, entity, day, cat, sid=""):
         "ranks_map": {"officers": dr.RANKS["officers"],
                       "individuals": dr.RANKS["individuals"]},
         "sid": sid,
+        "month_names": MONTH_NAMES,
     })
     return variables

@@ -17,34 +17,41 @@ def image_bytes(fmt="PNG"):
     return stream
 
 
-PIN_RIGHT = lh.PINNED["sig_right_name"]   # مصطفى نصرالله — توقيع مثبّت يمين الصفحة
-PIN_LEFT = lh.PINNED["sig_left_name"]     # اسامة العجرودى — توقيع مثبّت شمال الصفحة
+RIGHT_NAME = "توقيع اليمين المختار"   # توقيع يُحفظ من الواجهة — قابل للتعديل على مستوى المنظومة
+LEFT_NAME = "توقيع الشمال المختار"
 
 
 def official_setup():
     name = save_logo(image_bytes(), storage.letterhead_dir(2031, 9))
-    # محاولة حفظ توقيعات مختلفة عمدًا: يجب أن تتجاهلها المنظومة (تثبيت نهائي)
+    # توقيعات معدّلة عمدًا: تُحفظ على مستوى المنظومة كلها (توجيه ٠٨/١٠/٢٠٢٦ — بلا تثبيت)
     lh.save(2031, 9, {"lh_1": "جهة اختبار معزولة", "lh_2": "السطر الثاني", "lh_3": "السطر الثالث",
                       "lh_4": "السطر الرابع", "logo_file": name,
-                      "sig_right_rank": "عميد", "sig_right_name": "توقيع اليمين مرفوض",
-                      "sig_left_rank": "عقيد", "sig_left_name": "توقيع الشمال مرفوض"})
+                      "sig_right_rank": "عميد", "sig_right_name": RIGHT_NAME,
+                      "sig_left_rank": "عقيد", "sig_left_name": LEFT_NAME})
 
 
-def test_pinned_signatures_ignore_any_saved_values(app):
+def test_signatures_editable_and_system_wide(app):
     official_setup()
     values = lh.get_all(2031, 9)
-    assert values["sig_right_rank"] == "رائد" and values["sig_right_name"] == PIN_RIGHT
-    assert values["sig_left_rank"] == "مقدم" and values["sig_left_name"] == PIN_LEFT
-    assert lh.get_all(2031, 10)["sig_right_name"] == PIN_RIGHT  # شهر بلا حفظ نهائيًا
-    assert lh.template_vars(2031, 9)["sig_right"] == ("رائد", PIN_RIGHT)
-    assert lh.template_vars(2031, 9)["sig_left"] == ("مقدم", PIN_LEFT)
+    assert values["sig_right_rank"] == "عميد" and values["sig_right_name"] == RIGHT_NAME
+    assert values["sig_left_rank"] == "عقيد" and values["sig_left_name"] == LEFT_NAME
+    assert lh.get_all(2031, 10)["sig_right_name"] == RIGHT_NAME  # التعديل يسري على الشهور كلها
+    assert lh.template_vars(2031, 9)["sig_right"] == ("عميد", RIGHT_NAME)
+    assert lh.template_vars(2031, 9)["sig_left"] == ("عقيد", LEFT_NAME)
     conn = lh.get_conn(2031, 9)
-    try:  # القيم المرفوضة لا تُخزَّن أصلًا في قاعدة الشهر
+    try:  # التوقيعان محفوظان على مستوى المنظومة لا في قاعدة الشهر
         stored = dict(conn.execute("SELECT key, value FROM month_settings"))
     finally:
         conn.close()
-    assert "توقيع اليمين مرفوض" not in stored.values()
+    assert "sig_right_name" not in stored and "sig_left_name" not in stored
     assert stored["lh_1"] == "جهة اختبار معزولة"  # بقية الدباجة تُحفظ طبيعيًا
+
+
+def test_signatures_default_before_any_edit(app):
+    # بلا تعديل من الواجهة: القيم الافتراضية تظهر ولا يكون أي توقيع فارغًا
+    values = lh.get_all(2031, 9)
+    for key, text in lh.DEFAULT_SIGNATURES.items():
+        assert values[key] == text
 
 
 @pytest.mark.parametrize("section", ["tamween", "contractor"])
@@ -66,7 +73,7 @@ def test_embedded_logo_and_letterhead_in_every_sheet(app, section):
             assert ws.print_title_rows == "$1:$7"
             assert ws.page_setup.fitToWidth == 1
             values = {c.value for row in ws for c in row if c.value}
-            assert {PIN_RIGHT, PIN_LEFT} <= values  # التوقيعات المثبّتة في كل شيت
+            assert {RIGHT_NAME, LEFT_NAME} <= values  # التوقيعان المحفوظان في كل شيت
         with zipfile.ZipFile(path) as archive:
             assert not archive.testzip()
             assert len([p for p in archive.namelist() if p.startswith("xl/media/")]) == len(wb.worksheets)
@@ -109,7 +116,7 @@ def test_docx_use_same_month_and_logo(app):
         assert "09-" in str(path)
         with zipfile.ZipFile(path) as archive:
             xml = archive.read("word/document.xml").decode()
-            assert "جهة اختبار معزولة" in xml and PIN_RIGHT in xml and PIN_LEFT in xml
+            assert "جهة اختبار معزولة" in xml and RIGHT_NAME in xml and LEFT_NAME in xml
             assert any(name.startswith("word/media/") for name in archive.namelist())
     path = letterhead_docx.rebuild(2031, 10)
     with zipfile.ZipFile(path) as archive:

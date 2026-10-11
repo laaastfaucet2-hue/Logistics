@@ -29,13 +29,13 @@
     <div><b>{{ missing | length | aindic }} يومية ناقصة</b><small>اضغط تبويب اليومية لاستكمالها</small></div></div>{% endif %}
   {% if no_checkup %}<a class="bk-chip bad hl-stat-link" href="{{ url_for('health.page', tab='checkups') }}">
     <span class="bk-ico">⚕️</span>
-    <div><b>{{ no_checkup | length | aindic }} لم يُكشفوا طبيًا</b><small>اضغط لقائمة الأسماء وقسم الصحة</small></div></a>{% endif %}
+    <div><b>{{ no_checkup | length | aindic }} — عدم توقيع الكشف الطبى</b><small>اضغط لقائمة الأسماء وقسم الصحة</small></div></a>{% endif %}
 </div>
 
 {% if no_checkup %}
 <!-- الصحة: قائمة من لم يُعمل له كشف طبي دوري هذا الشهر -->
 <div class="panel">
-  <div class="panel-head"><h3>⚕️ لم يُعمل لهم كشف طبي دوري هذا الشهر — {{ no_checkup | length | aindic }} مجند</h3></div>
+  <div class="panel-head"><h3>⚕️ عدم توقيع الكشف الطبى — أسماء المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر ({{ no_checkup | length | aindic }} مجند)</h3></div>
   <div class="hl-no-checkup">
     {% for r in no_checkup %}<span class="hl-nc-name">{{ r.name }}</span>{% endfor %}
   </div>
@@ -64,19 +64,38 @@
   <span class="panel-hint">تُحدَّث الكشوف تلقائيًا بعد كل تعديل — وتُحفظ في database/المجندون/كشوف</span>
 </div>
 
-<!-- مجموعات الإشعارات (نفس محرك الجرس) -->
+<!-- مجموعات الإشعارات (نفس محرك الجرس) — مقروء/غير مقروء + فلترة -->
 <div class="panel">
-  <div class="panel-head"><h3>🔔 الإشعارات — بتاريخ القاهرة الحقيقي</h3></div>
+  <div class="panel-head">
+    <h3>🔔 الإشعارات — بتاريخ القاهرة الحقيقي</h3>
+    <div class="rt-actions">
+      <a class="rc-nf {{ 'on' if nf == 'all' }}" href="{{ url_for('recruits.page') }}&tab=stats&nf=all">الكل ({{ total_n | aindic }})</a>
+      <a class="rc-nf {{ 'on' if nf == 'unread' }}" href="{{ url_for('recruits.page') }}&tab=stats&nf=unread">غير مقروء ({{ unread_n | aindic }})</a>
+      {% if unread_n %}
+      <form method="post" class="inline-f" action="{{ url_for('recruits.stats_read_all') }}">
+        <button class="rc-mini-btn" type="submit">✓ تعليم الكل كمقروء</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
   {% if notif_groups %}
   <div class="rc-notif-groups">
     {% for g in notif_groups %}
     <div class="rc-notif {{ g.level }}">
       <b>{{ g.icon }} {{ g.title }} <span class="rc-mini">{{ g.entries | length | aindic }}</span></b>
-      <ul>{% for it in g.entries %}<li><a href="{{ it.href }}">{{ it.text }}</a></li>{% endfor %}</ul>
+      <ul>{% for it in g.entries %}
+        <li class="{{ 'rc-read' if it.read else '' }}">
+          <a href="{% if it.read %}{{ it.href }}{% else %}{{ url_for('recruits.stats_read') }}&k={{ it.key }}&next={{ it.href | urlencode }}{% endif %}">{{ it.text }}</a>
+        </li>{% endfor %}
+      </ul>
     </div>
     {% endfor %}
   </div>
-  {% else %}<p class="panel-hint" style="text-align:center;padding:14px 0">✔ لا شيء يستحق انتباهك الآن — كل شيء منضبط.</p>{% endif %}
+  {% else %}
+  <p class="panel-hint" style="text-align:center;padding:14px 0">
+    {% if nf == 'unread' %}✔ كل الإشعارات مقروءة — لا جديد.{% else %}✔ لا شيء يستحق انتباهك الآن — كل شيء مستقر.{% endif %}
+  </p>
+  {% endif %}
 </div>
 
 <div class="rc-grid-2">
@@ -89,9 +108,40 @@
     </div>
     {% if certs.expired %}<div class="rc-banner danger slim">🔴 منتهية:
       {% for r in certs.expired %}<span class="rc-chip">{{ r.name }}</span>{% endfor %}</div>{% endif %}
-    {% if certs.soon %}<div class="rc-banner warn slim">🟠 تنتهي خلال ٣٠ يومًا:
+    {% if certs.soon %}<div class="rc-banner warn slim">🟠 تنتهي خلال أسبوعين (١٤ يومًا):
       {% for r in certs.soon %}<span class="rc-chip">{{ r.name }} ({{ date_text(r.cert_expiry) }})</span>{% endfor %}</div>{% endif %}
     {% if not certs.expired and not certs.soon %}<p class="panel-hint" style="text-align:center;padding:10px 0">كل الشهادات سارية ✔</p>{% endif %}
+  </div>
+
+  <!-- الأقرب للخروج من الخدمة -->
+  <div class="panel">
+    <div class="panel-head"><h3>🎖️ الأقرب للخروج من الخدمة</h3>
+      <span class="panel-hint">ترتيب أصل القوة بتاريخ انتهاء الخدمة (أول ٥)</span></div>
+    {% if discharge_rank %}
+    <div class="table-wrap"><table class="rt-table">
+      <thead><tr><th>المجند</th><th>المتبقي</th><th>تاريخ التسريح</th></tr></thead>
+      <tbody>{% for r, n in discharge_rank %}<tr>
+        <td><b>{{ r.name }}</b>{% if r.governorate %} <small class="dim">{{ r.governorate }}</small>{% endif %}</td>
+        <td class="num {% if n is not none and n <= 0 %}bad{% elif n is not none and n <= 60 %}warn{% else %}good{% endif %}">
+          {% if n is none %}—{% elif n <= 0 %}انتهت من {{ (-n) | aindic }} يوم{% else %}{{ n | aindic }} يومًا{% endif %}</td>
+        <td class="num">{{ date_text(r.service_end) }}</td>
+      </tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="panel-hint" style="text-align:center;padding:10px 0">ما فيش مجند مسجل له تاريخ خروج من الخدمة.</p>{% endif %}
+  </div>
+
+  <!-- إحصائيات المحافظات -->
+  <div class="panel">
+    <div class="panel-head"><h3>🗺️ إحصائيات المحافظات</h3>
+      <span class="panel-hint">توزيع أصل القوة على المحافظات</span></div>
+    {% if by_gov %}
+    <div class="table-wrap"><table class="rt-table">
+      <thead><tr><th>المحافظة</th><th class="num">عدد المجندين</th><th>الأسماء</th></tr></thead>
+      <tbody>{% for g, rs in by_gov %}<tr>
+        <td><b>{{ g }}</b></td>
+        <td class="num">{{ rs | length | aindic }}</td>
+        <td>{% for r in rs %}{{ r.name }}{% if not loop.last %} · {% endif %}{% endfor %}</td>
+      </tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="panel-hint" style="text-align:center;padding:10px 0">لا توجد بيانات محافظ.</p>{% endif %}
   </div>
 
   <!-- من تنتهي خدمته قريبًا -->

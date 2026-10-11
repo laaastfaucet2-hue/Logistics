@@ -22,7 +22,7 @@ from core.config import (SECTIONS, RATION_KINDS, RATION_KIND_MAP,
                     MONTH_NAMES, DAYS, MEAL_MAP)
 from core import arabic_numbers as arnum
 
-NAVY, GOLD, GOLD_L, GREEN, WHITE = "0A1230", "BDD7EE", "BDD7EE", "1E7F4F", "132638"
+NAVY, GOLD, GOLD_L, GREEN, WHITE = "0A1230", "E9F1F9", "E9F1F9", "1E7F4F", "000000"
 CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _BORDER = Border(*[Side(style="thin", color="9AA6C7")] * 4)
 
@@ -48,8 +48,8 @@ def _num(v):
 def _title(ws, text, ncols):
     ws.merge_cells(start_row=TITLE_ROW, start_column=1, end_row=TITLE_ROW, end_column=ncols)
     c = ws.cell(TITLE_ROW, 1, text)
-    c.font = Font(bold=True, size=15, color=GOLD_L, name="Cairo")
-    c.fill = PatternFill("solid", fgColor=NAVY)
+    c.font = Font(bold=True, size=15, color="000000", name="Cairo")
+    c.fill = PatternFill("solid", fgColor="E9F1F9")
     c.alignment = CENTER
     ws.row_dimensions[TITLE_ROW].height = 34
 

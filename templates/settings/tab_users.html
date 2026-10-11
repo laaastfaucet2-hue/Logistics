@@ -1,0 +1,193 @@
+{# تاب تسجيل المستخدمين: إنشاء حسابات + تحكم في صلاحيات التابات (لحد التاب الداخلي) #}
+{# لوحة العمل (تعديل/صلاحيات) تظهر أعلى الصفحة بارزة — التوجيه ١١/١٠ #}
+{% set edit_id = request.args.get('edit') | int %}
+{% set edit_u = (users | selectattr('id', 'equalto', edit_id) | list | first) if edit_id else none %}
+{% set work_user = edit_u or perm_user %}
+
+<div class="ctx-strip">
+  <span>👥 {{ users_count | aindic }} حساب</span><span class="sep">•</span>
+  <span class="dim">كل حساب له تبويبات محددة يفتحها — حساب المشرف يفتح كل شيء تلقائيًا</span>
+  {% if work_user %}
+  <a class="sg-activechip" href="{{ url_for('settings.page', sub='users') }}"
+     title="الرجوع إلى قائمة الحسابات">
+    {{ 'تعديل: ' if edit_u else 'صلاحيات: ' }}{{ work_user.full_name }} — رجوع للقائمة
+  </a>
+  {% endif %}
+</div>
+
+{% if work_user %}
+<!-- لوحة العمل النشطة: أعلى الصفحة وبارزة -->
+<div class="panel sg-workpanel">
+  <div class="panel-head">
+    <div class="sg-worktitle">
+      {{ '✏️ تعديل «' if edit_u else '🛡️ صلاحيات «' }}{{ work_user.full_name }}»
+      {{ '' if edit_u else ' — أي تابات يفتح؟' }}
+    </div>
+    <a class="rt-btn dim" href="{{ url_for('settings.page', sub='users') }}">رجوع لقائمة الحسابات</a>
+  </div>
+
+  {% if edit_u %}
+  <form method="post" action="{{ url_for('settings.users_update') }}" class="sg-newrow">
+    <input type="hidden" name="user_id" value="{{ edit_u.id }}">
+    <label>الاسم
+      <input type="text" name="full_name" value="{{ edit_u.full_name }}" required>
+    </label>
+    <label>اسم المستخدم
+      <input type="text" name="username" value="{{ edit_u.username }}" required style="direction:ltr">
+    </label>
+    <label>باسورد جديد <small class="dim">(اتركه فارغًا إن لم يتغير)</small>
+      <input type="password" name="password" placeholder="••••">
+    </label>
+    <button type="submit" class="rt-btn navy">حفظ التعديل</button>
+  </form>
+  {% endif %}
+
+  {% if perm_user %}
+  <p class="panel-hint sg-permhint">العلامات التي تضعها هي التي سيراها في القائمة الجانبية والصفحات — والباقي يبقى محجوبًا (صفحة «صلاحية غير متاحة»)</p>
+  <form method="post" action="{{ url_for('settings.users_tabs') }}" id="permForm">
+    <input type="hidden" name="user_id" value="{{ perm_user.id }}">
+    <div class="sg-tree">
+      {% for s in perm_tree %}
+      <div class="sg-branch">
+        <label class="sg-master">
+          <input type="checkbox" class="sg-all" name="tab" value="{{ s.key }}"
+                 data-section="{{ s.key }}" {{ 'checked' if s.key in perm_tabs }}>
+          <b>{{ s.icon }} {{ s.name }}</b>
+        </label>
+        {% if s.subs %}
+        <div class="sg-subs">
+          {% for sk, sname in s.subs %}
+          <label class="sg-sub">
+            <input type="checkbox" name="tab" value="{{ s.key }}:{{ sk }}"
+                   {{ 'checked' if (s.key ~ ':' ~ sk) in perm_tabs or s.key in perm_tabs }}>
+            <span>{{ sname }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="rt-actions" style="margin-top:14px">
+      <button type="submit" class="rt-btn navy">حفظ الصلاحيات</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- حساب جديد -->
+<div class="panel">
+  <div class="panel-head"><h3>➕ حساب جديد</h3></div>
+  <form method="post" action="{{ url_for('settings.users_add') }}" class="sg-newrow">
+    <label>الاسم
+      <input type="text" name="full_name" placeholder="مثال: أسامة العجرودى" required>
+    </label>
+    <label>اسم المستخدم (للدخول)
+      <input type="text" name="username" placeholder="osama" required style="direction:ltr">
+    </label>
+    <label>الباسورد
+      <input type="password" name="password" placeholder="••••" required>
+    </label>
+    <button type="submit" class="rt-btn navy">إنشاء الحساب</button>
+  </form>
+</div>
+
+<!-- قائمة الحسابات -->
+<div class="panel">
+  <div class="panel-head"><h3>👥 الحسابات</h3>
+    <span class="panel-hint">الصلاحيات من زرار «الصلاحيات» في صف الحساب</span></div>
+  <div class="table-wrap">
+    <table class="rt-table">
+      <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الحالة</th><th>آخر ظهور</th><th>إجراءات</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr class="{{ 'sg-off' if not u.is_active }} {{ 'sg-sel' if work_user and u.id == work_user.id }}">
+          <td><b>{{ u.full_name }}</b>{% if u.id == current_user.id %} <small class="dim">(أنت)</small>{% endif %}</td>
+          <td><bdi dir="ltr">{{ u.username }}</bdi></td>
+          <td><span class="sg-role {{ u.role }}">{{ 'مدير النظام' if u.role == 'admin' else 'مستخدم' }}</span></td>
+          <td><span class="sg-state {{ 'on' if u.is_active else 'off' }}">{{ 'نشط' if u.is_active else 'معطل' }}</span></td>
+          <td class="dim">{{ u.last_seen or '—' }}</td>
+          <td class="ops">
+            {% if u.role != 'admin' %}
+            <a class="rt-btn gold small sg-permbtn {{ 'on' if perm_user and perm_user.id == u.id }}"
+               title="تحديد التابات التي يفتحها هذا الحساب"
+               href="{{ url_for('settings.page', sub='users', permuser=u.id) }}">
+              <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path></svg>
+              الصلاحيات
+            </a>
+            {% endif %}
+            <a class="icon-btn view" title="سجل حركاته" href="{{ url_for('settings.page', sub='log', user=u.id) }}">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></svg>
+            </a>
+            <a class="icon-btn edit {{ 'on' if edit_u and edit_u.id == u.id }}" title="تعديل / باسورد"
+               href="{{ url_for('settings.page', sub='users', edit=u.id) }}">
+              <svg viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+            </a>
+            {% if u.id != current_user.id %}
+            <form method="post" class="inline-f" action="{{ url_for('settings.users_toggle') }}"
+                  onsubmit="return confirm('{{ 'تفعيل' if not u.is_active else 'تعطيل' }} حساب «{{ u.full_name }}»؟')">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button class="icon-btn {{ 'sync' if not u.is_active else 'dim' }}" type="submit"
+                      title="{{ 'تفعيل' if not u.is_active else 'تعطيل' }}">
+                <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+              </button>
+            </form>
+            {% endif %}
+            {% if u.id != current_user.id and not (u.role == 'admin' and u.is_active and users_count <= 2) %}
+            <form method="post" class="inline-f" action="{{ url_for('users_delete' if false else 'settings.users_delete') }}"
+                  onsubmit="return confirm('حذف حساب «{{ u.full_name }}» وكل سجلاته نهائيًا؟')">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button class="icon-btn del" type="submit" title="حذف الحساب">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* شجرة الصلاحيات: العلامة الأم تفتح/تقفل كل تابات القسم */
+(function () {
+  var form = document.getElementById("permForm");
+  if (!form) return;
+  form.querySelectorAll(".sg-all").forEach(function (all) {
+    var section = all.dataset.section;
+    var subs = form.querySelectorAll('input[name="tab"][value^="' + section + '":]');
+    function refresh() {
+      var n = 0;
+      subs.forEach(function (s) { if (s.checked) n++; });
+      all.checked = subs.length > 0 && n === subs.length;
+      all.indeterminate = n > 0 && n < subs.length;
+    }
+    all.addEventListener("change", function () {
+      subs.forEach(function (s) { s.checked = all.checked; });
+      refresh();
+    });
+    subs.forEach(function (s) { s.addEventListener("change", refresh); });
+    refresh();
+  });
+  /* عند الحفظ: لو كل تابات القسم محطّتين → نحفظ مفتاح القسم نفسه */
+  form.addEventListener("submit", function () {
+    var bySection = {};
+    form.querySelectorAll('input[name="tab"]:checked').forEach(function (s) {
+      var sec = s.value.split(":")[0];
+      (bySection[sec] = bySection[sec] || []).push(s);
+    });
+    Object.keys(bySection).forEach(function (sec) {
+      var all = form.querySelector('.sg-all[data-section="' + sec + '"]');
+      if (all && all.checked) {
+        bySection[sec].forEach(function (s) { s.checked = false; });
+        var hidden = document.createElement("input");
+        hidden.type = "hidden"; hidden.name = "tab"; hidden.value = sec;
+        form.appendChild(hidden);
+      }
+    });
+  });
+})();
+</script>

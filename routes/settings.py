@@ -1,0 +1,312 @@
+# -*- coding: utf-8 -*-
+# ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
+"""«الإعدادات» — أربعة تابات: تسجيل المستخدمين · سجلات المستخدمين ·
+المتابعة والملاحظات · النسخ الاحتياطي (توجيه ١٠/١٠).
+
+كل تاب له صلاحية مستقلة (settings:users / settings:log / settings:notes /
+settings:backups) يحددها الـ admin من تاب تسجيل المستخدمين.
+"""
+from flask import Blueprint, g, redirect, render_template, request, url_for
+
+from core.auth_core import login_required
+from core import arabic_numbers as arnum, dates, egtime
+from core import tabs_registry as tr
+from data_access import db_users
+from data_access import database as db
+
+settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
+
+SUBS = [("users", "تسجيل المستخدمين", "👥"),
+        ("log", "سجلات المستخدمين", "📈"),
+        ("notes", "المتابعة والملاحظات", "🗒️"),
+        ("backups", "النسخ الاحتياطي", "💾")]
+
+
+def _size_h(num):
+    if num < 1024 * 1024:
+        return "{:.3f} ك.ب.".format(num / 1024)
+    return "{:.3f} م.ب.".format(num / 1024)
+
+
+def _time_h(epoch):
+    return dates.format_datetime(egtime.from_timestamp(epoch), seconds=True)
+
+
+def _sync_quiet(fn, *args, **kwargs):
+    """مرايا الملفات المحلية لا تسقط الصفحة — الخطأ بيتسجل بس."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception:      # noqa: BLE001
+        import logging
+        logging.exception("settings fs sync failed")
+
+
+def _sub():
+    raw = request.values.get("sub") or "users"
+    return raw if raw in {t[0] for t in SUBS} else "users"
+
+
+def _rb(sub="users", ok=None, err=None):
+    token = request.args.get("sid") or request.form.get("sid")
+    params = {"sub": sub}
+    if token:
+        params["sid"] = token
+    if ok:
+        params["ok"] = ok
+    if err:
+        params["err"] = err
+    return redirect(url_for("settings.page", **params))
+
+
+@settings_bp.route("")
+@settings_bp.route("/")
+@login_required
+def page():
+    sub = _sub()
+    if not tr.has_permission(g.user, f"settings:{sub}"):
+        from flask import render_template as rt
+        return rt("forbidden.html", tab=f"settings:{sub}"), 403
+    # الأقسام المحمية (سجلات المستخدمين + المتابعة والملاحظات): الرمز الرئيسي 7799
+    # مطلوب كل مرة يُفتح فيها القسم (توجيه المستخدم ١١/١٠)
+    if sub in ("log", "notes") and request.args.get("open") != "1":
+        keep = {k: v[0] for k, v in request.args.items(multi=True) if k not in ("open", "err", "ok")}
+        return render_template("settings/lock.html", subs=SUBS, sub=sub,
+                               sub_name=dict((t[0], t[1]) for t in SUBS)[sub], keep=keep)
+    ctx = {
+        "subs": SUBS, "sub": sub,
+        "users": db_users.list_users(),
+        "perm_tree": tr.perm_tree(),
+        "notes_ctx": {"notes": [], "users_choices": []},
+        "log_ctx": {},
+        "log_users": [],
+        "perm_user": None,
+        "perm_tabs": set(),
+    }
+    if sub == "backups":
+        from data_access import dataguard
+        results = dataguard.verify_all()
+        files = dataguard.data_files()
+        rows = []
+        for b in dataguard.list_backups():
+            rows.append({**b, "size_h": _size_h(b["size"]), "time_h": _time_h(b["mtime"])})
+        ctx.update(
+            broken=[(rel, err) for rel, (ok, err) in results.items() if not ok],
+            files_count=len(files),
+            total_h=_size_h(sum(p.stat().st_size for p in files)),
+            verified_count=len(results),
+            backups=rows, backups_count=len(rows),
+            keep_n=dataguard.KEEP_N,
+            newest=rows[0] if rows else None,
+        )
+    if sub == "users":
+        sel = arnum.parse_int(request.args.get("permuser"))
+        sel_user = db_users.get_user_full(sel) if sel else None
+        ctx["perm_user"] = sel_user
+        ctx["perm_tabs"] = db_users.get_user_tabs(sel) if sel_user else set()
+    elif sub == "log":
+        users = ctx["users"]
+        sel = arnum.parse_int(request.args.get("user")) or (
+            users[0]["id"] if users else None)
+        sel_user = db_users.get_user_full(sel) if sel else None
+        today = egtime.today()
+        if sel_user:
+            from core import action_names
+            ctx["log_ctx"] = {
+                "user": dict(sel_user, events_count=db_users.count_activity(sel)),
+                "day": db_users.day_stats(sel, today.year, today.month, today.day),
+                "month": db_users.month_stats(sel, today.year, today.month),
+                "year": db_users.year_stats(sel, today.year),
+                "total": db_users.total_stats(sel),
+                "events": db_users.list_activity(sel, 300),
+                "fmt": db_users.fmt_dhm,            # شهر/سنة/إجمالي: يوم + ساعة + دقيقة
+                "fmt_hm": db_users.fmt_hm,          # اليوم: ساعة + دقيقة
+                "row": action_names.log_row,        # (اسم الإجراء, التفاصيل) بالعربي
+                "time": action_names.fmt_log_time,  # «٢٠٢٦/١٠/١٠ م ١١:١٠:١٤ م»
+                "role_ico": "👮" if sel_user["role"] == "admin" else "👤",
+            }
+        ctx["log_users"] = users
+        from services import settings_fs
+        try:
+            settings_fs.sync_all_logs()      # مرايا الإكسل بتتحدّث مع كل كشف للسجلات
+        except Exception:      # noqa: BLE001 — المرايا لا تسقط الصفحة
+            import logging
+            logging.exception("settings log mirror failed")
+    elif sub == "notes":
+        role = g.user["role"]
+        ctx["notes_ctx"] = {
+            "notes": db_users.list_notes(g.user["id"], role),
+            "users_choices": [u for u in ctx["users"] if u["id"] != g.user["id"]],
+            "unread": db_users.unread_counts(g.user["id"]),
+        }
+        nid = arnum.parse_int(request.args.get("thread"))
+        if nid:
+            t = db_users.note_thread(nid)
+            if t:
+                ctx["notes_ctx"]["thread"] = t
+                if t["note"]["from_user"] == g.user["id"]:
+                    db_users.mark_author_seen(nid, g.user["id"])
+    return render_template("settings/main.html", **ctx)
+
+
+# ======================================================================
+# ١) تسجيل المستخدمين
+# ======================================================================
+@settings_bp.route("/gate", methods=["POST"])
+@login_required
+def gate():
+    """بوابة الرمز الرئيسي للأقسام المحمية (log/notes) — 7799 كل مرة."""
+    import secrets
+    from services import settings_fs
+    sub = request.form.get("sub", "")
+    if sub not in ("log", "notes") or not tr.has_permission(g.user, f"settings:{sub}"):
+        return _rb("users")
+    pw = (request.form.get("password") or "").strip()
+    if pw and secrets.compare_digest(pw, settings_fs.MASTER_PASSWORD):
+        name = dict((t[0], t[1]) for t in SUBS)[sub]
+        db_users.log_activity(g.user["id"], "gate", f"settings:{sub}",
+                              "فتح القسم المحمي «" + name + "» بالرمز الرئيسي")
+        keep = {k: v for k, v in request.form.items() if k not in ("sub", "password")}
+        return redirect(url_for("settings.page", sub=sub, open="1", **keep))
+    return _rb(sub, err="الرمز غير صحيح — حاول مرة أخرى")
+
+
+@settings_bp.route("/users/add", methods=["POST"])
+@login_required
+def users_add():
+    uid, err = db_users.create_user(
+        request.form.get("full_name", ""), request.form.get("username", ""),
+        request.form.get("password", ""))
+    if err:
+        return _rb("users", err=err)
+    db_users.log_activity(uid, "login", None, "إنشاء الحساب بواسطة " + g.user["full_name"])
+    from services import settings_fs
+    _sync_quiet(settings_fs.sync_user_file, db_users.get_user_full(uid), set())
+    return _rb("users", ok=f"تم إنشاء حساب «{request.form.get('full_name').strip()}»")
+
+
+@settings_bp.route("/users/update", methods=["POST"])
+@login_required
+def users_update():
+    uid = arnum.parse_int(request.form.get("user_id"), 0)
+    u_old = db_users.get_user_full(uid)
+    if not u_old:
+        return _rb("users", err="الحساب غير موجود")
+    err = db_users.update_user(uid,
+                               full_name=request.form.get("full_name") or None,
+                               username=request.form.get("username") or None,
+                               password=request.form.get("password") or None)
+    if err:
+        return _rb("users", err=err)
+    from services import settings_fs
+    u_new = db_users.get_user_full(uid)
+    if u_old["full_name"] != u_new["full_name"] or u_old["username"] != u_new["username"]:
+        _sync_quiet(settings_fs.delete_user_file, u_old)   # اسم الملف اتغير → النسخ القديمة
+    _sync_quiet(settings_fs.sync_user_file, u_new, db_users.get_user_tabs(uid))
+    return _rb("users", ok="تم حفظ التعديل")
+
+
+@settings_bp.route("/users/toggle", methods=["POST"])
+@login_required
+def users_toggle():
+    uid = arnum.parse_int(request.form.get("user_id"), 0)
+    u = db_users.get_user_full(uid)
+    if not u:
+        return _rb("users", err="الحساب غير موجود")
+    if u["id"] == g.user["id"]:
+        return _rb("users", err="لا يمكنك تعطيل حسابك بنفسك")
+    if u["role"] == "admin" and not u["is_active"] and db_users.admin_count() <= 1:
+        return _rb("users", err="آخر مدير نشط — لا يمكنك تعطيله")
+    db_users.set_active(uid, not u["is_active"])
+    from services import settings_fs
+    _sync_quiet(settings_fs.sync_user_file, db_users.get_user_full(uid), db_users.get_user_tabs(uid))
+    return _rb("users", ok=("تم تفعيل الحساب" if u["is_active"] else "تم تعطيل الحساب"))
+
+
+@settings_bp.route("/users/delete", methods=["POST"])
+@login_required
+def users_delete():
+    uid = arnum.parse_int(request.form.get("user_id"), 0)
+    u = db_users.get_user_full(uid)
+    if not u:
+        return _rb("users", err="الحساب غير موجود")
+    if u["id"] == g.user["id"]:
+        return _rb("users", err="لا يمكنك حذف حسابك بنفسك")
+    if u["role"] == "admin" and db_users.admin_count() <= 1:
+        return _rb("users", err="آخر مدير — لا يمكنك حذفه")
+    db_users.delete_user(uid)
+    from services import settings_fs
+    _sync_quiet(settings_fs.delete_user_file, u)
+    return _rb("users", ok=f"تم حذف حساب «{u['full_name']}»")
+
+
+@settings_bp.route("/users/tabs", methods=["POST"])
+@login_required
+def users_tabs():
+    uid = arnum.parse_int(request.form.get("user_id"), 0)
+    u = db_users.get_user_full(uid)
+    if not u:
+        return _rb("users", err="الحساب غير موجود")
+    keys = {v for v in request.form.getlist("tab") if v}
+    db_users.set_user_tabs(uid, keys)
+    from services import settings_fs
+    _sync_quiet(settings_fs.sync_user_file, u, keys)
+    return _rb("users", ok=f"تم حفظ صلاحيات «{u['full_name']}»")
+
+
+# ======================================================================
+# ٢) سجلات المستخدمين
+# ======================================================================
+@settings_bp.route("/log/download")
+@login_required
+def log_download():
+    uid = arnum.parse_int(request.args.get("user"), 0)
+    u = db_users.get_user_full(uid)
+    if not u:
+        return _rb("log", err="اختار مستخدم أولًا")
+    from core.downloads import attachment
+    from services import settings_fs
+    path = settings_fs.sync_log_file(u)
+    from flask import send_file
+    if not path or not path.is_file():
+        return _rb("log", err="ملف السجل غير موجود")
+    return attachment(path, fallback=path.name)
+
+
+# ======================================================================
+# ٣) المتابعة والملاحظات
+# ======================================================================
+@settings_bp.route("/notes/add", methods=["POST"])
+@login_required
+def notes_add():
+    to = arnum.parse_int(request.form.get("to_user"), 0)
+    to_u = db_users.get_user_full(to)
+    nid = db_users.add_note(g.user["id"], to, request.form.get("text", ""))
+    if not nid:
+        return _rb("notes", err="اكتب نص الملحوظة واختار الشخص الموجهة إليه")
+    db_users.log_activity(g.user["id"], "note", "settings:notes",
+                          f"ملحوظة جديدة إلى: {to_u['full_name'] if to_u else 'مستخدم'}")
+    from services import settings_fs
+    settings_fs.sync_notes_file()
+    return _rb("notes", ok="تم إرسال الملحوظة")
+
+
+@settings_bp.route("/notes/reply", methods=["POST"])
+@login_required
+def notes_reply():
+    nid = arnum.parse_int(request.form.get("note_id"), 0)
+    if not db_users.reply_note(nid, g.user["id"], request.form.get("text", "")):
+        return _rb("notes", err="اكتب نص الرد")
+    from services import settings_fs
+    settings_fs.sync_notes_file()
+    return _rb("notes", ok="تم حفظ الرد")
+
+
+@settings_bp.route("/notes/close", methods=["POST"])
+@login_required
+def notes_close():
+    nid = arnum.parse_int(request.form.get("note_id"), 0)
+    db_users.close_note(nid, g.user["id"])
+    db_users.log_activity(g.user["id"], "note", "settings:notes", f"إغلاق الملحوظة #{nid}")
+    from services import settings_fs
+    settings_fs.sync_notes_file()
+    return _rb("notes", ok="تم قفل الملحوظة")

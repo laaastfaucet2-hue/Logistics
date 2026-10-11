@@ -1,0 +1,86 @@
+/* دفتر 6 مخازن (جرد الأصناف) — توجيه ١٠/١٠: الورقة بشكل الدفتر المعتمد */
+.inv6-wrap { max-width: 1180px; margin: 0 auto; }
+.inv6-panel { padding: 14px 16px 18px; }
+.inv6-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.inv6-head h3 { margin: 0 0 4px; }
+.inv6-head p { margin: 0; max-width: 720px; line-height: 1.7; }
+
+.inv6-daybar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 10px; background: rgba(255,255,255,.05); }
+.inv6-lab { font-weight: 800; white-space: nowrap; }
+.inv6-daybar select { min-width: 110px; font-weight: 800; }
+
+.inv6-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 12px 0; padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,.04); }
+.inv6-actions .dim.small { margin-inline-start: auto; direction: rtl; overflow-wrap: anywhere; }
+
+/* ===== الورقة (شكل الدفتر) ===== */
+.inv6-paper { background: #fff; color: #10141f; border-radius: 10px;
+  padding: 26px 26px 22px; direction: rtl; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+
+.inv6-headrow { display: grid; grid-template-columns: 1.1fr 1fr 1.1fr; gap: 10px;
+  align-items: start; margin-bottom: 18px; }
+.inv6-hr { text-align: right; display: flex; flex-direction: column; gap: 6px; }
+.inv6-hc { display: grid; place-items: center; padding-top: 26px; gap: 10px; }
+.inv6-date { font-size: .92rem; font-weight: 800; }
+.inv6-hl { text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.inv6-model { font-size: 1.25rem; font-weight: 900; }
+.inv6-title { font-size: 1.3rem; font-weight: 900; text-align: center; }
+.inv6-line { font-size: .92rem; font-weight: 700; }
+.inv6-owner { font-size: .88rem; font-weight: 700; text-align: left; }
+.inv6-inl { border: 0; border-bottom: 1px solid #9aa3b5; background: transparent;
+  font: inherit; font-weight: 700; padding: 1px 4px; min-width: 110px; }
+.inv6-inl:focus { outline: 2px solid #b8860b55; }
+
+/* ===== جدول الجرد — نِسب أعمدة ملف التصميم المعتمد (P..D) ===== */
+.inv6-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.inv6-table th, .inv6-table td { overflow-wrap: break-word; }
+.iv-c1 { width: 6%; }    /* رقم الصنف */
+.iv-c2 { width: 17%; }   /* اسم الصنف */
+.iv-c3 { width: 6%; }    /* الوحدة */
+.iv-c4 { width: 11%; }   /* الموجود من واقع الجرد */
+.iv-c5 { width: 8%; }    /* حالة الصنف (الموجود) */
+.iv-c6 { width: 10%; }   /* الرصيد الدفتري */
+.iv-c7 { width: 8%; }    /* حالة الصنف (الدفتري) */
+.iv-c8 { width: 8%; }    /* الزيادة */
+.iv-c9 { width: 8%; }    /* العجز */
+.iv-c10 { width: 9%; }   /* سعر الوحدة */
+.iv-c11 { width: 9%; }   /* القيمه */
+.inv6-table th, .inv6-table td { border: 1px solid #10141f; padding: 5px 4px;
+  font-size: .82rem; text-align: center; vertical-align: middle; }
+.inv6-table thead th { font-weight: 900; line-height: 1.4; background: #f4f5f8; }
+.inv6-table .iv-name { text-align: right; font-weight: 800; }
+.inv6-table .iv-num { white-space: nowrap; }
+.inv6-table .iv-wide { }
+.inv6-table .iv-book { font-weight: 900; }
+.inv6-table .empty { text-align: center; color: #666; padding: 16px; }
+
+.iv-in, .iv-sel { width: 100%; border: 0; background: transparent; text-align: center;
+  font: inherit; font-weight: 800; color: #10141f; padding: 2px; }
+.iv-in:focus, .iv-sel:focus { outline: 2px solid #b8860b66; background: #fffbe8; }
+.iv-sel { appearance: none; border-radius: 6px; }
+
+/* ===== التوقيعات الخمسة ===== */
+.inv6-sigs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+  margin-top: 26px; text-align: center; }
+.inv6-sig { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.iv-st { font-weight: 900; font-size: .85rem; }
+.iv-sin { border: 0; border-bottom: 1px solid #9aa3b5; background: transparent;
+  width: 100%; text-align: center; font: inherit; font-size: .8rem; font-weight: 700;
+  padding: 2px 4px; color: #10141f; }
+.iv-sin:focus { outline: 2px solid #b8860b55; }
+
+@media (max-width: 900px) {
+  .inv6-headrow { grid-template-columns: 1fr; }
+  .inv6-hl, .inv6-hr, .inv6-hc { text-align: center; }
+  .inv6-sigs { grid-template-columns: repeat(2, 1fr); }
+  .inv6-paper { overflow-x: auto; }
+}
+
+@media print {
+  .inv6-actions, .inv6-daybar { display: none !important; }
+  .inv6-panel { padding: 0; background: #fff; box-shadow: none; }
+  .inv6-paper { box-shadow: none; border-radius: 0; padding: 10px 0; }
+  .iv-in, .iv-sel, .iv-sin, .inv6-inl { outline: none !important; border-color: #9aa3b5; }
+}

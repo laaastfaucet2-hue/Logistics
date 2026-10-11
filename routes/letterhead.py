@@ -8,6 +8,7 @@
 from data_access import dataguard
 from flask import g
 from core.downloads import attachment
+import logging
 import os
 import sys
 import subprocess
@@ -18,9 +19,11 @@ from flask import (Blueprint, render_template, request, redirect,
 
 from core.auth_core import login_required, current_session, current_context
 from data_access import db_letterhead as db
+from data_access import months as months_mod
 from services import legacy_months
 from services.images import save_logo
 from services.document_refresh import refresh_month
+from core import arabic_numbers as arnum
 from core.config import MONTH_NAMES, month_folder
 from data_access import storage
 from documents import xlsx_rations
@@ -32,6 +35,7 @@ ALLOWED_LOGO = {"png", "jpg", "jpeg", "webp"}
 SETTING_KEYS = ["lh_1", "lh_2", "lh_3", "lh_4",
                 "sig_right_rank", "sig_right_name",
                 "sig_left_rank", "sig_left_name"]
+PREVIEW_EXTS = {".xlsx", ".docx"}
 
 
 def _rb(ok=None, err=None):
@@ -55,13 +59,150 @@ def _page_vars():
 
 
 # ======================================================================
-# الصفحة + المعاينة الحية
+# الصفحة + المعاينة الحية (شكل عام + معاينة أي ملف محلي — مولّدة، من غير قراءة الملف)
 # ======================================================================
+def _month_root(year, month):
+    return months_mod.month_db_path(year, month).parent
+
+
+def _local_files(year, month):
+    """كل الملفات المحلية للشهر (xlsx/docx) لقائمة المعاينة — أسماء فقط."""
+    root = _month_root(year, month)
+    files = []
+    if not root.is_dir():
+        return files
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p.suffix.lower() in PREVIEW_EXTS \
+                and not p.name.startswith("~$"):
+            rel = p.relative_to(root).as_posix()
+            section = rel.split("/", 1)[0] if "/" in rel else "ملفات عامة"
+            files.append({"path": rel, "name": p.name, "section": section})
+    return files
+
+
+def _group_files(files):
+    """{القسم: [ملفات...]} — الأقسام برقمها الطبيعي أولًا."""
+    groups = {}
+    for f in files:
+        groups.setdefault(f["section"], []).append(f)
+    def _key(sec):
+        import re
+        m = re.match(r"(\d+)", sec or "")
+        return (int(m.group(1)) if m else 99, sec)
+    return [(s, groups[s]) for s in sorted(groups, key=_key)]
+
+
+def _safe_local_path(year, month, rel):
+    """مسار آمن جوا فولدر الشهر وبامتداد مدعوم — وإلا None."""
+    if not rel:
+        return None
+    root = _month_root(year, month).resolve()
+    p = (root / rel).resolve()
+    if p.suffix.lower() not in PREVIEW_EXTS:
+        return None
+    if p.is_file() and str(p).startswith(str(root) + os.sep):
+        return p
+    return None
+
+
+def _sheet_names(path):
+    """أسماء شيتات ملف إكسل — قراءة أسماء فقط (بلا بيانات الخلايا)."""
+    from openpyxl import load_workbook
+    wb = load_workbook(str(path), read_only=True)
+    try:
+        return list(wb.sheetnames)
+    finally:
+        wb.close()
+
+
+def _gen_rows(seed, n=7):
+    """صفوف معاينة مولّدة بأرقام عشوائية ثابتة لنفس الملف (stable per file)."""
+    import random
+    rnd = random.Random(seed)
+    names = ["أرز بلدي", "سكر", "دقيق", "شاي", "زيت طعام", "ملح",
+             "لحمة مجمدة", "تونة", "سمنة", "فاصوليا"]
+    units = ["كجم", "جم", "لتر", "عبوة"]
+    rows = []
+    for i in range(n):
+        rate = round(rnd.uniform(0.1, 9.5), 3)
+        days = rnd.randint(1, 31)
+        rows.append([arnum.to_arabic_indic(str(i + 1)), rnd.choice(names),
+                     rnd.choice(units), arnum.fmt_qty(rate),
+                     arnum.fmt_qty(days), arnum.fmt_qty(round(rate * days, 3)), ""])
+    return rows
+
+
+def _preview_xlsx(path, year, month, sheet_i, sheets):
+    seed = abs(hash((path.name, sheets[sheet_i])))
+    stamp = f"{MONTH_NAMES[int(month) - 1]} {arnum.to_arabic_indic(str(year))}"
+    return {"kind": "xlsx", "rel": path.relative_to(_month_root(year, month)).as_posix(),
+            "title": path.name, "sheet": sheets[sheet_i],
+            "sheets": sheets, "sheet_i": sheet_i,
+            "stamp": stamp, "rows": _gen_rows(seed)}
+
+
+def _preview_docx(path, year, month):
+    stamp = f"{MONTH_NAMES[int(month) - 1]} {arnum.to_arabic_indic(str(year))}"
+    return {"kind": "docx", "rel": path.relative_to(_month_root(year, month)).as_posix(),
+            "title": path.name, "sheets": [], "sheet_i": 0,
+            "stamp": stamp, "rows": []}
+
+
+def _preview_vars(year, month, v):
+    """اختيار الملف/الشيت من باراميترات الصفحة + معاينة من التوليد التجريبي الحقيقي."""
+    v["local_files"] = _group_files(_local_files(year, month))
+    sel = (request.args.get("file") or "").strip()
+    v["preview_file"] = None
+    p = _safe_local_path(year, month, sel)
+    if not p:
+        return v
+    try:
+        if p.suffix.lower() == ".xlsx":
+            # أسماء الشيتات من ناتج التوليد التجريبي المقابل (مش من ملف المستخدم)
+            from services import letterhead_preview as lhp
+            src = lhp.find_source(p.relative_to(_month_root(year, month)).as_posix())
+            sheets = _sheet_names(src) if src else [p.stem]
+            if not sheets:
+                return v
+            try:
+                sheet_i = int(request.args.get("sheet") or 0)
+            except ValueError:
+                sheet_i = 0
+            sheet_i = max(0, min(sheet_i, len(sheets) - 1))
+            pv = lhp.build_preview(p.relative_to(_month_root(year, month)).as_posix(),
+                                   year, month, sheet_i)
+            if pv:
+                v["preview_file"] = pv
+            else:
+                v["preview_file"] = {"kind": "xlsx", "rel": p.relative_to(_month_root(year, month)).as_posix(),
+                                     "title": p.name, "sheet": sheets[sheet_i],
+                                     "sheets": sheets, "sheet_i": sheet_i,
+                                     "stamp": f"{MONTH_NAMES[int(month) - 1]} {arnum.to_arabic_indic(str(year))}",
+                                     "rows": _gen_rows(abs(hash((p.name, sheets[sheet_i]))))}
+        else:
+            from services import letterhead_preview as lhp
+            pv = lhp.build_preview(p.relative_to(_month_root(year, month)).as_posix(),
+                                   year, month)
+            if pv:
+                v["preview_file"] = pv
+            else:
+                stamp = f"{MONTH_NAMES[int(month) - 1]} {arnum.to_arabic_indic(str(year))}"
+                v["preview_file"] = {"kind": "docx", "rel": p.relative_to(_month_root(year, month)).as_posix(),
+                                     "title": p.name, "sheets": [], "sheet_i": 0,
+                                     "stamp": stamp, "rows": []}
+    except Exception:
+        logging.exception("letterhead preview render failed")
+        v["preview_file"] = None
+    return v
+
+
 @letterhead_bp.route("")
 @letterhead_bp.route("/")
 @login_required
 def page():
-    return render_template("letterhead.html", **_page_vars())
+    v = _page_vars()
+    year, month = _ctx()
+    return render_template("letterhead.html", **_preview_vars(year, month, v))
 
 
 # ======================================================================
@@ -83,7 +224,7 @@ def save():
         refresh_month(year, month)
     except (OSError, ValueError):
         return _rb(err="حُفظت الدباجة، لكن تعذّر تحديث مستند؛ أغلق Excel أو Word ثم أعد الحفظ")
-    return _rb(ok="حُفظت دباجة هذا الشهر مع اللوجو، وتحدّثت ملفات Excel وWord الخاصة به — التوقيعات مثبّتة نهائيًا على مستوى المنظومة 🔒")
+    return _rb(ok="حُفظت دباجة هذا الشهر مع اللوجو وتحدّثت ملفات Excel وWord الخاصة به — والتوقيعان حُفظا على مستوى المنظومة كلها فسريا على جميع الشهور والمستندات")
 
 
 # ======================================================================

@@ -51,7 +51,7 @@
           if (!name) return;
           if (known.indexOf(name) === -1 &&
               fresh.indexOf(name) === -1 &&
-              !window.confirm("«" + name + "» مش موجود في قوة الجهة.\n" +
+              !window.confirm("«" + name + "» غير موجود في قوة الجهة.\n" +
                               "هل تريد إضافته كقوة دائمة للجهة؟")) {
             input.value = "";            /* رفض → المربع يفضى ولا يُحفظ */
           } else if (known.indexOf(name) === -1) {

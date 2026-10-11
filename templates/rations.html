@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
 {% set MEAL_LABEL = {'breakfast':'فطار','lunch':'غداء','dinner':'عشاء'} %}
 
@@ -86,17 +86,17 @@
     <div class="fld">
       <label>فطار</label>
       <input name="breakfast" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.breakfast|oval if edit_item else '' }}">
+             value="{{ edit_item.breakfast|ovalx if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>غداء</label>
       <input name="lunch" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.lunch|oval if edit_item else '' }}">
+             value="{{ edit_item.lunch|ovalx if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>عشاء</label>
       <input name="dinner" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.dinner|oval if edit_item else '' }}">
+             value="{{ edit_item.dinner|ovalx if edit_item else '' }}">
     </div>
     <div class="fld btns">
       <button class="rt-btn gold" type="submit">{% if edit_item %}💾 حفظ التعديل{% else %}➕ إضافة{% endif %}</button>
@@ -176,7 +176,7 @@
       <h3>🗓️ مقرر مخصص: <span id="customItemName"></span></h3>
       <button class="modal-x" type="button" id="customClose">✕</button>
     </div>
-    <p class="modal-hint">الرقم في جدول الصنف (فطار/غداء/عشاء) من غير تخصيص = <b>يوميًا لكل أيام الأسبوع</b>.
+    <p class="modal-hint">الرقم في جدول الصنف (فطار/غداء/عشاء) بدون تخصيص = <b>يوميًا لكل أيام الأسبوع</b>.
       لو حطّيت هناك صفر وكتبت الكميات هنا = يُصرف <b>في الأيام المملوءة فقط</b> — وهذا ما ستستخدمه آلة 2 مخازن.
       الخانة الفاضية هنا = لا يُصرف ذلك اليوم.</p>
     <form method="post" id="customForm" autocomplete="off" action="{{ url_for('rations.custom_save', section=section, item_id=0) }}"

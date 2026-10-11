@@ -4,9 +4,11 @@
 (كتالوج ٣ مخازن)، wh_receipts (أذون ١ مخازن — الإدخال اليدوي الوحيد)،
 wh_ledger (دفتر ٣ مخازن). دفتر ٢ مخازن من أذون آلة الحاسبة (db_permits)."""
 import json
+import re
 
 from core import arabic_numbers as arnum, dates
-from core.config import unit_base, is_measure_unit
+from core.config import unit_base, is_measure_unit, fine_unit
+from data_access import oil_units as ou
 from data_access import months
 from data_access.packaging import (pack_summary, pack_split,
                                          pack_breakdown)  # صيغ التغليف اللفظية
@@ -102,6 +104,18 @@ CREATE TABLE IF NOT EXISTS wh_pack_specs (
     updated_at TEXT NOT NULL,
     UNIQUE (cycle, item_id, kind)
 );
+
+CREATE TABLE IF NOT EXISTS wh_row_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,            -- opener / add1 / issue2 — مفتاح سطر الدفتر
+    permit_no INTEGER NOT NULL DEFAULT 0,
+    day INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    UNIQUE (cycle, item_id, kind, permit_no, day)
+);
 """
 
 
@@ -114,6 +128,7 @@ NEW_RECEIPT_COLUMNS = (
     ("pack_inner_capacity", "REAL"),
     ("pack_inner_kind", "TEXT NOT NULL DEFAULT ''"),
     ("pack_loose_unit", "TEXT NOT NULL DEFAULT ''"),
+    ("pack_inner_unit", "TEXT NOT NULL DEFAULT ''"),
 )
 
 NEW_LEDGER_COLUMNS = (
@@ -122,10 +137,15 @@ NEW_LEDGER_COLUMNS = (
     ("pack_label", "TEXT DEFAULT ''"),
 )
 
+NEW_ITEM_COLUMNS = (
+    ("specific_weight", "REAL"),
+)
+
 NEW_SPEC_COLUMNS = (
     ("inner_count", "REAL DEFAULT 0"),
     ("inner_capacity", "REAL DEFAULT 0"),
     ("inner_kind", "TEXT DEFAULT ''"),
+    ("inner_unit", "TEXT DEFAULT ''"),
 )
 
 
@@ -142,6 +162,12 @@ def _migrate_tables(conn):
         for name, decl in NEW_LEDGER_COLUMNS:
             if name not in cols:
                 conn.execute(f"ALTER TABLE wh_ledger ADD COLUMN {name} {decl}")
+        conn.commit()
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(wh_items)")}
+    if cols:
+        for name, decl in NEW_ITEM_COLUMNS:
+            if name not in cols:
+                conn.execute(f"ALTER TABLE wh_items ADD COLUMN {name} {decl}")
         conn.commit()
     cols = {r[1] for r in conn.execute("PRAGMA table_info(wh_pack_specs)")}
     if cols:
@@ -255,6 +281,30 @@ def list_items(year, month, cycle):
     return rows
 
 
+def raw_items(year, month, cycle):
+    """أصناف الكتالوج بس (بلا أرصدة) — للمسارات اللي جوا حلقة الحساب:
+    حوض الدفعات يستدعيها بدل list_items عشان item_balances → سطور المنصرف
+    → تفريد FEFO → الحوض نفسه ما يعملش تكرار لانهائي."""
+    conn = _conn(year, month)
+    rows = [dict(r) for r in conn.execute("SELECT * FROM wh_items WHERE cycle=? ORDER BY name", (cycle,))]
+    conn.close()
+    return rows
+
+
+def running_balance(conn, cycle, item_id, exclude_id=None):
+    """الرصيد التراكمي من السطور الفعلية (مضاف − منصرف) — مش العمود المحفوظ:
+    سطور الصرف (issue2) كانت بتخزن رصيدًا قديم فيتضرب حساب السطر التالي منه."""
+    if exclude_id:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(added),0) a, COALESCE(SUM(issued),0) i FROM wh_ledger "
+            "WHERE cycle=? AND item_id=? AND id<>?", (cycle, item_id, exclude_id)).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(added),0) a, COALESCE(SUM(issued),0) i FROM wh_ledger "
+            "WHERE cycle=? AND item_id=?", (cycle, item_id)).fetchone()
+    return round(float(row["a"] or 0.0) - float(row["i"] or 0.0), 6)
+
+
 def item_balances(year, month, cycle):
     """{item_id: الرصيد النهائي} — رصيد أول المدة/الإضافات − منصرف إذون ٢ مخازن."""
     conn = _conn(year, month)
@@ -294,12 +344,32 @@ def set_handle_unit(year, month, item_id, handle_unit):
     conn.close()
 
 
+def _norm_item_name(t):
+    """تطبيع أسماء الأصناف للمطابقة الذكية (توجيه ١٠/١٠):
+    همزات الألف ← ا، «ال» المبدئية لأي كلمة، والمسافات الزائدة —
+    «الزيت  الطهي» و«زيت طهي» = نفس الاسم."""
+    t = (t or "").strip()
+    t = re.sub(r"\s+", " ", t)
+    t = t.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+    t = re.sub(r"(^|\s)ال", r"\1", t)
+    return t.strip()
+
+
 def resolve_item(year, month, cycle, name, handle_unit_hint=""):
-    """يجلب صنف الكتالوج بالاسم أو ينشئه — إنشاؤه يفتح كارته في ٣ مخازن تلقائيًا."""
+    """يجلب صنف الكتالوج بالاسم أو ينشئه — إنشاؤه يفتح كارته في ٣ مخازن تلقائيًا.
+    المطابقة (توجيه ١٠/١٠): الحرفية أولًا، ثم الاسم بعد التطبيع —
+    بلا افتراضات على أسماء مختلفة، والصنف الجديد بيتولد بوحدة المعيار الداخلي لو اتحددت."""
     name = (name or "").strip()
     conn = _conn(year, month)
     row = conn.execute("SELECT * FROM wh_items WHERE cycle=? AND name=?",
                        (cycle, name)).fetchone()
+    if not row:
+        n = _norm_item_name(name)
+        if n:
+            for r in conn.execute("SELECT * FROM wh_items WHERE cycle=?", (cycle,)):
+                if _norm_item_name(r["name"]) == n:
+                    row = r
+                    break
     conn.close()
     if row:
         return dict(row), False
@@ -325,8 +395,8 @@ def resolve_item(year, month, cycle, name, handle_unit_hint=""):
 
 # ========== ١ مخازن — إذون إضافة الأصناف (الإدخال اليدوي الوحيد في الدورة) ==========
 def _remember_spec(conn, cycle, item_id, kind, capacity,
-                   inner_count=0, inner_capacity=0, inner_kind=""):
-    """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها واسمها) للصنف تلقائيًا."""
+                   inner_count=0, inner_capacity=0, inner_kind="", inner_unit=""):
+    """يحفظ مواصفات العبوة (الوزن وعدد العلب بداخلها ووزنها ووحته واسمها) للصنف تلقائيًا."""
     if not kind or kind == "بدون تغليف":
         return
     # العبوة العدّية بمعيار فقط (جركن × ٢٠ لتر / شكارة × ٥٠ كجم بلا وزن) تُحفظ أيضًا —
@@ -336,13 +406,14 @@ def _remember_spec(conn, cycle, item_id, kind, capacity,
     from core import egtime
     conn.execute(
         "INSERT INTO wh_pack_specs (cycle,item_id,kind,capacity,inner_count,"
-        "inner_capacity,inner_kind,updated_at) VALUES (?,?,?,?,?,?,?,?)"
+        "inner_capacity,inner_kind,inner_unit,updated_at) VALUES (?,?,?,?,?,?,?,?,?)"
         " ON CONFLICT(cycle,item_id,kind)"
         " DO UPDATE SET capacity=excluded.capacity, inner_count=excluded.inner_count,"
         " inner_capacity=excluded.inner_capacity, inner_kind=excluded.inner_kind,"
-        " updated_at=excluded.updated_at",
+        " inner_unit=excluded.inner_unit, updated_at=excluded.updated_at",
         (cycle, item_id, kind, float(capacity or 0), float(inner_count or 0),
-         float(inner_capacity or 0), (inner_kind or "").strip(), egtime.now().isoformat(timespec="seconds")))
+         float(inner_capacity or 0), (inner_kind or "").strip(),
+         (inner_unit or "").strip(), egtime.now().isoformat(timespec="seconds")))
 
 
 def pack_specs_map(year, month, cycle):
@@ -350,13 +421,13 @@ def pack_specs_map(year, month, cycle):
     conn = _conn(year, month)
     rows = conn.execute(
         "SELECT wi.name n, ps.kind k, ps.capacity c, ps.inner_count ic,"
-        " ps.inner_capacity ica, ps.inner_kind ik FROM wh_pack_specs ps"
+        " ps.inner_capacity ica, ps.inner_kind ik, ps.inner_unit iu FROM wh_pack_specs ps"
         " JOIN wh_items wi ON wi.id=ps.item_id WHERE ps.cycle=? ORDER BY ps.updated_at",
         (cycle,)).fetchall()
     conn.close()
     out = {}
     for r in rows:
-        out.setdefault(r["n"], {})[r["k"]] = {"capacity": r["c"], "inner_count": r["ic"], "inner_capacity": r["ica"], "inner_kind": r["ik"] or ""}
+        out.setdefault(r["n"], {})[r["k"]] = {"capacity": r["c"], "inner_count": r["ic"], "inner_capacity": r["ica"], "inner_kind": r["ik"] or "", "inner_unit": r["iu"] or ""}
     return out
 
 
@@ -366,18 +437,26 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 date_iso="", receipt_no=None,
                 pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                 pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
-                pack_inner_kind="", stores=None, allow_same_serial=False):
+                pack_inner_kind="", pack_inner_unit="", stores=None,
+                allow_same_serial=False):
     """يحفظ إذن إضافة ١ مخازن — رقم يدوي والتغليف يحسب الكمية وstores للتوزيع."""
     from core import egtime
     pack_kind = (pack_kind or "").strip(); pack_inner_kind = (pack_inner_kind or "").strip()
+    inner_unit = (pack_inner_unit or "").strip()
     pack_total = 0.0; pack_label_text = ""; extras = []
-    if pack_kind and pack_kind != "بدون تغليف" and pack_inner_kind and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
-        handle_unit_hint = pack_inner_kind   # معيار بيُعدّ ⇒ وحدته هي المعيار
     if pack_kind and pack_kind != "بدون تغليف":
+        # وحدة المعيار الداخلي (توجيه ١٠/١٠): لو اتحددت فهي الحاكمة لوحدة الإجمالي
+        # ووحدة الصنف الجديد — «١٠ كرتونة × ١٢ زجاجة × ٢ لتر = ٢٤٠ لتر» مش كجم.
+        # معيار بيُعدّ بلا وحدة ⇒ وحدته هي المعيار نفسه (توجيه ٢٧/٠٩).
+        if inner_unit and is_measure_unit(inner_unit):
+            handle_unit_hint = inner_unit
+        elif pack_inner_kind and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
+            handle_unit_hint = pack_inner_kind
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
         if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item_probe["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
             raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
-        pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item_probe["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
+        calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item_probe["handle_unit"]
+        pack_label_probe, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, calc_unit, pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
         if pack_total <= 0:
             raise ValueError("اكتب عدد العبوات ووزن العبوة (أو العلب بداخلها) أو الكمية السائبة — "
                              "لا يمكن إذن إضافة بكمية صفر")
@@ -416,7 +495,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
             exists = conn.execute("SELECT 1 FROM wh_receipts WHERE cycle=? AND serial=?", (cycle, int(receipt_no))).fetchone()
             if exists:
                 conn.close()
-                raise ValueError(f"رقم الإذن {arnum.to_arabic_indic(receipt_no)} مستخدم من قبل — اكتب رقمًا آخر أو اتركه فاضيًا")
+                raise ValueError(f"رقم الإذن {arnum.to_arabic_indic(receipt_no)} مستخدم من قبل — اكتب رقمًا آخر")
         serial = int(receipt_no)
     else:
         serial = (conn.execute(
@@ -430,34 +509,32 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 "qty_base,base_unit,pack,pack_label,producer,supplier_id,supplier_name,"
                 "prod_date,exp_date,shelf_days,notes,created_at,"
                 "pack_kind,pack_count,pack_capacity,pack_loose,"
-                "pack_inner_count,pack_inner_capacity,pack_loose_unit,pack_inner_kind)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "pack_inner_count,pack_inner_capacity,pack_loose_unit,pack_inner_kind,pack_inner_unit)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (cycle, serial, item["id"], day, date_iso, qty_handle, item["handle_unit"],
                  qty_base, base_unit, "{}", pack_label_text, (producer or "").strip(), supplier_id,
                  supplier_name, prod_iso, exp_iso, shelf_days, notes_text, stamp,
                  pack_kind, float(pack_count or 0), float(pack_capacity or 0),
                  float(pack_loose or 0), float(pack_inner_count or 0),
                  float(pack_inner_capacity or 0), (pack_loose_unit or "").strip(),
-                 (pack_inner_kind or "").strip()))
+                 (pack_inner_kind or "").strip(), inner_unit))
             receipt_id = cur.lastrowid
             for sid, sname, q in parts:
                 conn.execute(
                     "INSERT INTO wh_receipt_stores (receipt_id,store_id,store_name,qty)"
                     " VALUES (?,?,?,?)", (receipt_id, sid, sname, q))
-            balance = conn.execute(
-                "SELECT COALESCE(balance,0) b FROM wh_ledger WHERE cycle=? AND item_id=?"
-                " ORDER BY id DESC LIMIT 1", (cycle, item["id"])).fetchone()
-            prev_balance = float(balance["b"]) if balance else 0.0
+            prev_balance = running_balance(conn, cycle, item["id"])
             conn.execute(
                 "INSERT INTO wh_ledger (cycle,item_id,day,date_iso,kind,permit_no,label,"
-                "added,issued,balance,notes,created_at,pack_label) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "added,issued,balance,notes,created_at,prod_date,exp_date,pack_label) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (cycle, item["id"], day, date_iso, "add1", serial,
                  f"إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(serial)}",
                  qty_handle, 0.0, prev_balance + qty_handle, notes_text, stamp,
-                 pack_label_text))
+                 (prod_iso or ""), (exp_iso or ""), pack_label_text))
             _remember_spec(conn, cycle, item["id"], pack_kind, pack_capacity,
-                           pack_inner_count, pack_inner_capacity, pack_inner_kind)
+                           pack_inner_count, pack_inner_capacity, pack_inner_kind,
+                           inner_unit)
     conn.close()
     return {
         "receipt_id": receipt_id, "serial": serial, "item": item, "created": created,
@@ -513,13 +590,20 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                notes="", date_iso="",
                pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
                pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
-               pack_inner_kind="", prod_iso="", exp_iso="", stores=None):
+               pack_inner_kind="", pack_inner_unit="", prod_iso="", exp_iso="",
+               stores=None):
     """رصيد أول المدة: إدخال حقيقي بكل بياناته بتاريخه وتغليفه (توجيه ٢٥/٢٦/٠٩) —
     كمية + شركة منتجة + مورد + تغليف + إنتاج/صلاحية + توزيع على المخازن،
     تمامًا كإذن إضافة ١ مخازن. مرة واحدة لكل صنف وأول سطور الكارت."""
     from core import egtime
-    if pack_kind and pack_kind != "بدون تغليف" and (pack_inner_kind or "").strip() and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
-        handle_unit_hint = pack_inner_kind.strip()   # معيار بيُعدّ ⇒ وحدته هي المعيار
+    inner_unit = (pack_inner_unit or "").strip()
+    # وحدة المعيار الداخلي (توجيه ١٠/١٠) — الحاكمة لوحدة الإجمالي ووحدة الصنف الجديد؛
+    # ومعيار بيُعدّ بلا وحدة ⇒ وحدته هي المعيار نفسه (توجيه ٢٧/٠٩)
+    if inner_unit and is_measure_unit(inner_unit):
+        handle_unit_hint = inner_unit
+    elif (pack_kind and pack_kind != "بدون تغليف" and (pack_inner_kind or "").strip()
+          and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip()):
+        handle_unit_hint = pack_inner_kind.strip()
     item, created = resolve_item(year, month, cycle, item_name, handle_unit_hint)
     if has_opener(year, month, item["id"]):
         raise ValueError(
@@ -527,7 +611,8 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     pack_kind = (pack_kind or "").strip()
     if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
         raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
-    label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, item["handle_unit"], pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
+    calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item["handle_unit"]
+    label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose, calc_unit, pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind)
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
@@ -565,16 +650,97 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
             "added,issued,balance,notes,created_at,prod_date,exp_date,pack_label) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (cycle, item["id"], day, date_iso, "opener", 0, "رصيد أول المدة",
-             qty, 0.0, qty, " — ".join(bits), stamp, prod_iso, exp_iso,
-             label_pack))
+             qty, 0.0, qty + running_balance(conn, cycle, item["id"]),
+             " — ".join(bits), stamp, prod_iso, exp_iso, label_pack))
         for sid, sname, q in parts:
             conn.execute(
                 "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
                 " VALUES (?,?,?,?,?)", (cycle, item["id"], sid, sname, q))
         _remember_spec(conn, cycle, item["id"], pack_kind, pack_capacity,
-                       pack_inner_count, pack_inner_capacity, pack_inner_kind)
+                       pack_inner_count, pack_inner_capacity, pack_inner_kind,
+                       inner_unit)
     conn.close()
     return {"item": item, "qty": qty, "created": created}
+
+
+def update_opener(year, month, cycle, item_id, qty, day,
+                  producer="", supplier_id=None, supplier_name="",
+                  notes="", date_iso="",
+                  pack_kind="", pack_count=0, pack_capacity=0, pack_loose=0,
+                  pack_inner_count=0, pack_inner_capacity=0, pack_loose_unit="",
+                  pack_inner_kind="", pack_inner_unit="", prod_iso="", exp_iso="",
+                  stores=None):
+    """تعديل رصيد أول المدة (توجيه ٠٨/١٠): نفس فورم التسجيل مُعبّيًا — يُحدَّث
+    سطر الأول المدة وتوزيعه على المخازن ومعاير التغليف، وكل الأرصدة اللي
+    اتحسبت منه (الجدول/التفاريد/الإكسل) تتحسب من جديد تلقائيًا. الرصيد
+    يشتغل بالسالب — المستخدم أجاز ذلك صراحةً."""
+    item = get_item(year, month, item_id)
+    if not item or not has_opener(year, month, item_id):
+        raise ValueError("رصيد أول المدة غير مسجّل لهذا الصنف")
+    if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0
+            and not (float(pack_inner_capacity or 0) > 0)
+            and (is_measure_unit(item["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
+        raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
+    pack_kind = (pack_kind or "").strip()
+    if pack_kind == "بدون تغليف":
+        pack_kind = ""
+    inner_unit = (pack_inner_unit or "").strip()
+    calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item["handle_unit"]
+    label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose,
+                                          calc_unit, pack_inner_count,
+                                          pack_inner_capacity, pack_loose_unit, pack_inner_kind)
+    qty = pack_total if pack_total > 0 else float(qty or 0)
+    if qty <= 0:
+        raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
+    prod_iso = (prod_iso or "").strip()
+    exp_iso = (exp_iso or "").strip()
+    if not exp_iso:
+        raise ValueError("تاريخ الصلاحية إلزامي لرصيد أول المدة — زي أي صنف بالظبط")
+    if prod_iso and exp_iso and exp_iso < prod_iso:
+        raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
+    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
+             if q and float(q) > 0]
+    if parts:
+        diff = round(qty - sum(q for _s, _n, q in parts), 6)
+        if abs(diff) > 0.000001:
+            raise ValueError("مجموع الكميات على المخازن لا يساوي كمية رصيد أول المدة — "
+                             "وزّع الكمية كاملة على المخازن")
+    supplier_id = int(supplier_id) if supplier_id else None
+    supplier_name = (supplier_name or "").strip()
+    if supplier_id and not supplier_name:
+        sup = get_supplier(year, month, supplier_id)
+        supplier_name = sup["name"] if sup else ""
+    bits = []
+    if (producer or "").strip():
+        bits.append("منتج: " + producer.strip())
+    if supplier_name:
+        bits.append("مورد: " + supplier_name)
+    if (notes or "").strip():
+        bits.append(notes.strip())
+    conn = _conn(year, month)
+    with conn:
+        _op_id = conn.execute(
+            "SELECT id FROM wh_ledger WHERE cycle=? AND item_id=? AND kind='opener'",
+            (cycle, item_id)).fetchone()
+        conn.execute(
+            "UPDATE wh_ledger SET day=?, date_iso=?, added=?, balance=?, notes=?, "
+            "prod_date=?, exp_date=?, pack_label=? "
+            "WHERE cycle=? AND item_id=? AND kind='opener'",
+            (day, date_iso, qty,
+             qty + running_balance(conn, cycle, item_id,
+                                   exclude_id=_op_id["id"] if _op_id else None),
+             " — ".join(bits), prod_iso, exp_iso, label_pack, cycle, item_id))
+        conn.execute("DELETE FROM wh_opener_stores WHERE cycle=? AND item_id=?",
+                     (cycle, item_id))
+        for sid, sname, q in parts:
+            conn.execute(
+                "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
+                " VALUES (?,?,?,?,?)", (cycle, item_id, sid, sname, q))
+        _remember_spec(conn, cycle, item_id, pack_kind, pack_capacity,
+                       pack_inner_count, pack_inner_capacity, pack_inner_kind,
+                       inner_unit)
+    conn.close()
+    return {"item": item, "qty": qty, "created": False}
 
 
 def opener_stores(year, month, cycle):
@@ -675,24 +841,88 @@ def move_store_splits(store_id, new_store_id, new_store_name):
     return moved
 
 
+def set_specific_weight(year, month, item_id, value):
+    """الوزن النوعي (جرام/لتر) — جسر الصنف اللي بيتصرف بالوزن ويخزن بالحجم."""
+    try:
+        sw = float(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        sw = None
+    if sw is not None and sw <= 0:
+        sw = None
+    conn = _conn(year, month)
+    with conn:
+        conn.execute("UPDATE wh_items SET specific_weight=? WHERE id=?", (sw, int(item_id)))
+    conn.close()
+
+
+def save_row_note(year, month, cycle, item_id, kind, permit_no, day, notes):
+    """ملاحظة يدوية على سطر دفتر ٣ مخازن — تعلو على أي ملاحظات محسوبة،
+    والفاص = سطر بلا ملاحظات (ماينزلش على المحسوبة)."""
+    conn = _conn(year, month)
+    with conn:
+        conn.execute(
+            "INSERT INTO wh_row_notes (cycle,item_id,kind,permit_no,day,notes,updated_at) "
+            "VALUES (?,?,?,?,?,?,datetime('now')) "
+            "ON CONFLICT(cycle,item_id,kind,permit_no,day) "
+            "DO UPDATE SET notes=excluded.notes, updated_at=excluded.updated_at",
+            (cycle, int(item_id), kind, int(permit_no or 0), int(day or 0), (notes or "").strip()))
+    conn.close()
+
+
+def row_notes_map(year, month, cycle, item_id):
+    """{(kind, permit_no, day): notes} — ملاحظات المستخدم على أسطر صنف."""
+    conn = _conn(year, month)
+    out = {}
+    for r in conn.execute(
+            "SELECT kind, permit_no, day, notes FROM wh_row_notes WHERE cycle=? AND item_id=?",
+            (cycle, int(item_id))):
+        out[(r["kind"], int(r["permit_no"]), int(r["day"]))] = r["notes"]
+    conn.close()
+    return out
+
+
 def issue_rows_for_item(year, month, cycle, item):
-    """منصرف الصنف من إذون ٢ مخازن — كمية الإذن تتحول لوحدة تعامل الصنف."""
+    """منصرف الصنف من إذون ٢ مخازن — كمية الإذن تتحول لوحدة تعامل الصنف.
+    المنصرف في الدفتر = الاستهلاك الفعلي FEFO (نفس المخزن الفيزيائي)، ولو
+    الفعلي أقل من الإذن بيتسجَّل عجز صريح في الملاحظات (قرار الجولة ٣٤):
+    ورق الإذن بتتفرم كامله في ٢ مخازن، والدفتر بيتطابق مع اللي خرج فعلًا."""
     from core import arabic_numbers as arnum
+    from data_access import db_warehouses_stores as dws
+    actuals = dws.fefo_actual_map(year, month, cycle)
     rows = []
     for permit in permits_book(year, month, cycle):
         for entry in permit["cycle_items"]:
             if entry["name"] != item["name"]:
                 continue
-            from_unit = item["ration_unit"] or item["handle_unit"]
-            qty = _convert(float(entry["qty"] or 0), from_unit, item["handle_unit"])
+            # كمية الإذن بوحدة المقرر (اللي الحاسبة سجلتها فيها) والعجز بيتعرض
+            # بوحدة الدفتر — الزيت: كجم (توجيه ١٠/١٠)
+            qty = float(entry["qty"] or 0)
+            _f_unit, _factor = ou.ledger_unit(
+                item["name"], item["ration_unit"], item["handle_unit"],
+                item.get("specific_weight"))
+            _r2h = ou.calc_to_handle_factor(
+                item["name"], item["ration_unit"], item["handle_unit"],
+                item.get("specific_weight"))
             day = int(permit["date_from"])
+            # المنصرف الفعلي (FEFO) بالوحدة المادية — العجز = (إذن بالمادي − المنصرف)
+            # × معامل الدفتر، فيطلع بنفس وحدة الدفتر دايما
+            issued = actuals.get((int(permit["number"]), item["name"]), 0.0)
+            shortfall = round((qty * _r2h - issued) * _factor, 6)
+            notes = permit.get("entity_label") or ""
+            # 0٫٠١ بالوحدة الدقيقة = ضجيج أرقام عائمة (١٠ مللي جم) — ما ينفعش عجز
+            # (الكجم: الضجيج ١ جم — حساسية أعلى زي اللي المستخدم بيتعامل بيها)
+            if shortfall > (0.001 if _f_unit == "كجم" else 0.01):
+                bits = "عجز: {} — اتصرف {} من {}".format(
+                    arnum.fmt_qty(shortfall), arnum.fmt_qty(round(issued * _factor, 6)),
+                    arnum.fmt_qty(round(qty * _r2h * _factor, 6)))
+                notes = (notes + " — " if notes else "") + bits
             rows.append({
                 "kind": "issue2", "day": day,
                 "date_iso": f"{year:04d}-{month:02d}-{day:02d}",
                 "permit_no": int(permit["number"]),
                 "label": f"إذن صرف ٢ مخازن رقم {arnum.to_arabic_indic(permit['number'])}",
-                "added": 0.0, "issued": qty,
-                "notes": permit.get("entity_label") or "",
+                "added": 0.0, "issued": issued,
+                "notes": notes,
             })
     return rows
 
@@ -708,8 +938,24 @@ def item_card(year, month, item_id):
     conn.close()
     for r in issue_rows_for_item(year, month, item["cycle"], item):
         rows.append(r)
-    for r in rows:                       # ملاحظات المستخدم فقط
+    ovr = row_notes_map(year, month, item["cycle"], item_id)
+    for r in rows:                       # ملاحظات المستخدم فقط (والبتات الخام للتعديل)
+        key = (r["kind"], int(r.get("permit_no") or 0), int(r.get("day") or 0))
+        if key in ovr:                   # ملاحظة يدوية → تعلو على المحسوبة
+            r["notes"] = ovr[key]
+        r["raw_notes"] = r.get("notes") or ""
         r["notes"] = user_notes(r.get("notes"))
+    from core import egtime
+    from datetime import date as _date
+    unit_disp, uf = ou.ledger_unit(item["name"], item["ration_unit"],
+                                   item["handle_unit"], item.get("specific_weight"))
+    for r in rows:                       # وحدة تشغيل الدفتر: الدقيقة (الزيت: كجم — ١٠/١٠)
+        try:
+            r["wday"] = egtime.weekday_ar(_date(year, month, int(r.get("day") or 0)))
+        except (TypeError, ValueError):
+            r["wday"] = "—"
+        r["added_d"] = arnum.round3(float(r["added"] or 0) * uf)
+        r["issued_d"] = arnum.round3(float(r["issued"] or 0) * uf)
 
     def sort_key(r):   # الإضافات قبل المنصرف في نفس اليوم — لا رصيد سالب بالخطأ
         return (r["date_iso"], {"opener": 0, "add1": 1}.get(r["kind"], 2), r.get("permit_no") or 0)
@@ -717,8 +963,11 @@ def item_card(year, month, item_id):
     running = 0.0
     out = []
     for r in rows:
+        r["open"] = running                                  # رصيد افتتاح اليوم
         running += float(r["added"] or 0) - float(r["issued"] or 0)
-        r["balance"] = running
+        r["balance"] = running                               # رصيد ختام اليوم
+        r["open_d"] = arnum.round3(r["open"] * uf)
+        r["balance_d"] = arnum.round3(running * uf)
         out.append(r)
     opener = next((r for r in out if r["kind"] == "opener"), None)
     return {
@@ -729,6 +978,11 @@ def item_card(year, month, item_id):
         "total_added": sum(float(r["added"] or 0) for r in out),
         "total_issued": sum(float(r["issued"] or 0) for r in out),
         "balance": running,
+        "unit_disp": unit_disp,
+        "unit_factor": uf,
+        "total_added_d": arnum.round3(sum(float(r["added"] or 0) for r in out) * uf),
+        "total_issued_d": arnum.round3(sum(float(r["issued"] or 0) for r in out) * uf),
+        "balance_d": arnum.round3(running * uf),
     }
 
 
@@ -743,15 +997,24 @@ def permits_book(year, month, cycle):
         (SECTION_BY_CYCLE[cycle],))}
     handle_units = {r["name"]: r["handle_unit"] for r in conn.execute(
         "SELECT name, handle_unit FROM wh_items WHERE cycle=?", (cycle,))}
+    dw_raw = [dict(r) for r in conn.execute(
+        "SELECT name, ration_unit, handle_unit, specific_weight FROM wh_items WHERE cycle=?",
+        (cycle,))]
     conn.close()
     out = []
+    fine_units = {}
+    for it in dw_raw:
+        fine_units[it["name"]] = ou.ledger_unit(
+            it["name"], it["ration_unit"], it["handle_unit"],
+            it.get("specific_weight"))[0]
     for permit in dp.list_permits(year, month):
         items = []
         for key, qty in (permit.get("actuals") or {}).items():
             if not str(key).startswith(prefix):
                 continue
             name = str(key)[len(prefix):]
-            unit = handle_units.get(name) or catalog_units.get(name) or ""
+            unit = fine_units.get(name) or handle_units.get(name) \
+                or catalog_units.get(name) or ""
             items.append({"name": name, "qty": qty, "unit": unit})
         if not items:
             continue   # عزل تام: إذن بلا أصناف لهذه الدورة لا يظهر في دفترها إطلاقًا
@@ -772,219 +1035,11 @@ def delete_receipt(year, month, cycle, serial):
     return bool(ids)
 
 
-# ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
-UNASSIGNED = "غير موزع على مخازن"
-NO_EXPIRY = "9999-12-31"
-
-
-def receipt_groups(year, month, cycle):
-    """إيذانات ١ مخازن مجمعة: إذن واحد قد يشمل كذا صنف — صفوف نفس serial تتجمع."""
-    from datetime import date as _date; from core import egtime as _eg
-    out = {}
-    names = {it["id"]: it["name"] for it in list_items(year, month, cycle)}
-    for r in list_receipts(year, month, cycle):
-        try: wday = _eg.weekday_ar(_date.fromisoformat(r["date_iso"] or ""))
-        except ValueError: wday = None
-        g = out.setdefault(r["serial"], {"serial": r["serial"], "day": r["day"], "date_iso": r["date_iso"], "wday": wday, "supplier_name": r["supplier_name"], "producer": r["producer"], "notes": user_notes(r["notes"]), "lines": []})
-        rr = dict(r); rr["notes"] = user_notes(r["notes"]); rr["item_name"] = names.get(r["item_id"], "—"); g["lines"].append(rr)
-    return [out[k] for k in sorted(out)]
-
-def user_notes(notes):
-    """ملاحظات المستخدم فقط — البتات التلقائية (مخازن:/منتج:/مورد:) لا تُعرض أبدًا (توجيه ٢٧/٠٩)."""
-    segs = [seg.strip() for seg in (notes or "").split(" — ")]
-    return " — ".join(seg for seg in segs if seg and not seg.startswith(("مخازن:", "منتج:", "مورد:")))
-
-
-def _batch_pool(year, month, cycle):
-    """دفعات الدورة مرتبة: الأقرب صلاحية أولًا وتساوي ⇒ الأقدم إضافةً (قرار المستخدم)."""
-    items = {it["id"]: it for it in list_items(year, month, cycle)}
-    conn = _conn(year, month)
-    openers = [dict(r) for r in conn.execute("SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
-    conn.close()
-    opener_parts = opener_stores(year, month, cycle)
-    pool = []
-    def _opener_producer(o):
-        _n = o.get("notes") or ""
-        return _n.split("منتج: ")[-1].split(" — ")[0] if "منتج: " in _n else ""
-    for r in sorted(list_receipts(year, month, cycle), key=lambda x: x["id"]):
-        item = items.get(r["item_id"])
-        if not item:
-            continue
-        parts = r["stores"] or [{"store_id": None, "store_name": UNASSIGNED,
-                                 "qty": r["qty_handle"]}]
-        for part in parts:
-            pool.append({
-                "item": item, "qty": float(part["qty"]),
-                "remaining": float(part["qty"]),
-                "expiry": r["exp_date"] or NO_EXPIRY,
-                "order": f"{r['date_iso']}-{r['id']:05d}",
-                "serial": r["serial"], "pack_label": r["pack_label"],
-                "pack_kind": r["pack_kind"], "pack_count": r["pack_count"],
-                "pack_capacity": r["pack_capacity"], "pack_loose": r["pack_loose"],
-                "pack_inner_count": r["pack_inner_count"],
-                "pack_inner_capacity": r["pack_inner_capacity"],
-                "pack_loose_unit": r["pack_loose_unit"],
-                "producer": r["producer"] or "", "notes": r["notes"] or "",
-                "store_id": part["store_id"],
-                "store_name": part["store_name"] or UNASSIGNED,
-            })
-    for o in openers:
-        item = items.get(o["item_id"])
-        if not item:
-            continue
-        parts = opener_parts.get(o["item_id"]) or [{"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
-        for part in parts:
-            pool.append({
-                "item": item, "qty": float(part["qty"]),
-                "remaining": float(part["qty"]),
-                "expiry": o["exp_date"] or NO_EXPIRY,
-                "order": f"{o['date_iso']}-00000",
-                "serial": 0, "pack_label": o["pack_label"] or "",
-                "pack_kind": "", "pack_count": 0,
-                "pack_capacity": 0, "pack_loose": 0,
-                "pack_inner_count": 0, "pack_inner_capacity": 0,
-                "pack_loose_unit": "", "producer": _opener_producer(o),
-                "store_id": part["store_id"],
-                "store_name": part["store_name"] or UNASSIGNED,
-            })
-    pool.sort(key=lambda b: (b["expiry"], b["order"]))
-    return pool
-
-
-def _rem_label(batch, q, rest_word="سائب"):
-    """تفكيك الكمية بعبوات الدفعة — الأرصدة بمفتوحة والمصروف بدونه."""
-    return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word, inner_kind=batch.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
-
-
-def tafreeda_rows(year, month, cycle):
-    """التفريدة التلقائية: الأقرب صلاحية أولًا — لكل سطر التفكيك ورصيد المخزن كله قبل/بعد."""
-    pool = _batch_pool(year, month, cycle)
-    _seqs = {}                           # مسلسل السطر داخل التفريدة الواحدة
-    store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
-    for b in pool:
-        _k = (b["item"]["name"], b["store_id"]); store_bal[_k] = round(store_bal.get(_k, 0.0) + b["qty"], 6)  # رصيد المخزن كله
-    rows = []
-    for permit in permits_book(year, month, cycle):
-        for entry in permit["cycle_items"]:
-            need = float(entry["qty"] or 0)
-            if need <= 0:
-                continue
-            for batch in pool:
-                if need <= 0:
-                    break
-                if batch["item"]["name"] != entry["name"] or batch["remaining"] <= 0:
-                    continue
-                take = min(need, batch["remaining"])
-                batch["remaining"] = round(batch["remaining"] - take, 6)
-                need = round(need - take, 6)
-                rows.append({
-                    "pack_inner_label": "", "pack_outer_label": "",
-                    "permit_no": permit["number"], "date_from": permit["date_from"], "date_to": permit["date_to"],
-                    "item": batch["item"]["name"], "unit": batch["item"]["handle_unit"], "store_id": batch["store_id"],
-                    "store_name": batch["store_name"], "receipt_serial": batch["serial"],
-                    "expiry": batch["expiry"] if batch["expiry"] != NO_EXPIRY else "",
-                    "qty": round(take, 6), "pack_label": batch["pack_label"],
-                })
-                _inner, _outer = pack_split(batch.get("pack_kind"), batch.get("pack_count"), batch.get("pack_capacity"), batch.get("pack_loose"), batch["item"]["handle_unit"], batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), batch.get("pack_loose_unit"))
-                rows[-1]["pack_inner_label"], rows[-1]["pack_outer_label"] = _inner, _outer
-                rows[-1]["producer"] = batch.get("producer") or ""
-                # «١ شكارة + ١٠ كجم» أو «٣٠ كجم» — المنصرف مُفكَّك بعبوات الدفعة
-                rows[-1]["issued_label"] = _rem_label(batch, take, "")
-                # رصيد المخزن كله قبل الصرف وبعده (اختيار المستخدم — مجموع الدفعات)
-                _k = (batch["item"]["name"], batch["store_id"])
-                store_bal[_k] = round(store_bal.get(_k, 0.0) - take, 6)
-                rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6)); rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
-                rows[-1]["seq"] = _seqs[permit["number"]] = _seqs.get(permit["number"], 0) + 1; rows[-1]["notes"] = user_notes(batch.get("notes"))
-    return rows
-
-
-def stores_report(year, month):
-    """حركة وكشف أرصدة كل مخزن — الدورتان معًا (المخازن والثلاجات موحدة لكل الأصناف)."""
-    from data_access import db_stores
-    stores = db_stores.list_stores()
-    report = {s["id"]: {"store": s, "inn": [], "out": [],
-                        "balances": {}, "pack_notes": {}, "total": 0.0} for s in stores}
-    unassigned = {"store": {"id": None, "name": UNASSIGNED}, "inn": [], "out": [],
-                  "balances": {}, "pack_notes": {}, "total": 0.0}
-    specs = {}
-    units = {}
-    for _c in ("supply", "contractor"):
-        specs.update(pack_specs_map(year, month, _c))
-        for _it in list_items(year, month, _c):
-            units[_it["name"]] = _it["handle_unit"]
-    for cycle, cycle_name in (("supply", "الإمداد"), ("contractor", "المتعهد")):
-        items = {it["id"]: it for it in list_items(year, month, cycle)}
-        # رصيد أول المدة: كمية داخل موزعة على مخازنه (أو «غير موزع» بلا توزيع)
-        conn = _conn(year, month)
-        openers = [dict(r) for r in conn.execute("SELECT * FROM wh_ledger WHERE cycle=? AND kind='opener'", (cycle,))]
-        conn.close()
-        opener_parts = opener_stores(year, month, cycle)
-        for o in openers:
-            item = items.get(o["item_id"])
-            if not item or not (o["added"] or 0): continue
-            for part in (opener_parts.get(o["item_id"]) or [
-                    {"store_id": None, "store_name": UNASSIGNED,
-                     "qty": float(o["added"])}]):
-                target = report.get(part["store_id"], unassigned)
-                qty = float(part["qty"] or 0)
-                target["inn"].append({
-                    "date_iso": o["date_iso"], "cycle": cycle_name,
-                    "item": item["name"], "unit": item["handle_unit"],
-                    "qty": qty, "pack_label": o["pack_label"] or "",
-                    "serial": 0, "expiry": o["exp_date"] or "",
-                })
-                target["balances"][item["name"]] = \
-                    target["balances"].get(item["name"], 0.0) + qty
-        for r in list_receipts(year, month, cycle):
-            item = items.get(r["item_id"])
-            if not item:
-                continue
-            for part in (r["stores"] or [{"store_id": None, "store_name": UNASSIGNED,
-                                          "qty": r["qty_handle"]}]):
-                target = report.get(part["store_id"], unassigned)
-                qty = float(part["qty"] or 0)
-                target["inn"].append({
-                    "date_iso": r["date_iso"], "cycle": cycle_name,
-                    "item": item["name"], "unit": item["handle_unit"],
-                    "qty": qty, "pack_label": r["pack_label"],
-                    "serial": r["serial"], "expiry": r["exp_date"] or "",
-                    "producer": (r.get("producer") or "").strip(), "supplier": (r.get("supplier_name") or "").strip(),
-                })
-                target["balances"][item["name"]] = \
-                    target["balances"].get(item["name"], 0.0) + qty
-        for row in tafreeda_rows(year, month, cycle):
-            target = report.get(row["store_id"], unassigned)
-            target["out"].append({
-                "date_iso": f"{year:04d}-{month:02d}-{int(row['date_from']):02d}",
-                "cycle": cycle_name, "item": row["item"], "unit": row["unit"],
-                "qty": row["qty"], "permit_no": row["permit_no"],
-                "expiry": row["expiry"],
-                "pack_label": row.get("issued_label") or row["pack_label"],
-            })
-            target["balances"][row["item"]] = \
-                target["balances"].get(row["item"], 0.0) - row["qty"]
-    all_targets = list(report.values()) + [unassigned]
-    for target in all_targets:
-        for item_name, qty in target["balances"].items():
-            spec_entry = specs.get(item_name) or {}
-            if not spec_entry or qty <= 0:
-                continue
-            # آخر مواصفات مسجلة للصنف (الأحدث تحديثًا) — بنوع تغليفها
-            pack_kind = list(spec_entry)[-1]
-            spec = spec_entry[pack_kind]
-            note = pack_breakdown(pack_kind, spec.get("capacity"),
-                                  spec.get("inner_count"), spec.get("inner_capacity"),
-                                  qty, units.get(item_name, ""), inner_kind=spec.get("inner_kind"))
-            if note:
-                target["pack_notes"][item_name] = note
-    for target in all_targets:
-        target["inn"].sort(key=lambda x: (x["date_iso"], x.get("serial") or 0))
-        target["out"].sort(key=lambda x: (x["date_iso"], x.get("permit_no") or 0))
-        target["balances"] = {k: round(v, 6) for k, v in target["balances"].items()
-                              if abs(v) > 1e-9}
-        target["total"] = round(sum(target["balances"].values()), 6)
-    return {"stores": list(report.values()), "unassigned": unassigned}
-
+# المخازن الفيزيائية: التفريدة وحركة المخازن — عاشت في db_warehouses_stores
+# (قاعدة الملف ≤1000 سطر — نفس نمط db_pack)
+from data_access.db_warehouses_stores import (  # noqa: E402,F401
+    UNASSIGNED, NO_EXPIRY, receipt_groups, user_notes, _batch_pool,
+    _rem_label, tafreeda_rows, stores_report)
 
 # إعادة تصدير — دوال التغليف عاشت في db_pack (قاعدة الملف ≤1000 سطر)
 from data_access.db_pack import card_pack_rows, collect_pack_kinds  # noqa: E402,F401

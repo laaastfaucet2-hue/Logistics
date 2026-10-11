@@ -21,6 +21,7 @@ from core.auth_core import login_required, current_session, current_context
 from core.config import MONTH_NAMES
 from core import egtime
 from core import arabic_numbers as arnum
+from core import dates
 from data_access import db_health
 from data_access import db_recruits
 from data_access import db_letterhead as lhdb
@@ -118,9 +119,24 @@ def page():
         if day not in days:
             day = days[0]
         entries = db_health.get_day_entries(year, month, day)
+        # ربط ذكي: لكل مجند أيام الكشف اللي اتكشف فيها هذا الشهر
+        # (البحث الذكي «مين اللي اتكشف» — ويزوّد إحصائية «لم يُكشفوا»)
+        checked_days = {}
+        for d in days:
+            for e in db_health.get_day_entries(year, month, d):
+                if e["recruit_id"]:
+                    checked_days.setdefault(e["recruit_id"], []).append(d)
+        who = [{"id": r["id"], "name": r["name"],
+                "days": sorted(checked_days.get(r["id"], []))}
+               for r in sorted(db_recruits.list_recruits(year, month),
+                               key=lambda x: x["name"])]
+        # عدم توقيع الكشف الطبى: كل مجند مفيش له كشف مربوط بالمعرف في الشهر
+        not_checked = [r for r in who if not r["days"]]
         v.update(days=days, day=day, day_entries=entries,
                  suggest_json=json.dumps(_suggest_data(year, month, day),
                                          ensure_ascii=False),
+                 not_checked=not_checked,
+                 recruits_total=len(who),
                  checked_count=len(entries),
                  field_rows=_field_rows(year, month, "checkup"))
         v["pv"].update(f=docx_health.field_values(year, month, "checkup", day),
@@ -147,6 +163,8 @@ def page():
         v.update(field_rows=_field_rows(year, month, tab))
         v["pv"].update(f=docx_health.field_values(year, month, tab))
     return render_template("health.html", **v)
+
+
 
 
 # ======================================================================
@@ -204,7 +222,7 @@ def save_fields(report):
     db_health.set_fields(year, month, report, mapping)
     if report == "tanks":
         stored_pairs = {}
-        for t in range(1, docx_health.TANK_COUNT + 1):
+        for t in range(1, docx_health.tank_count(year, month) + 1):
             for key, _label in docx_health.TANK_COLS:
                 stored_pairs[f"t{t}_{key}"] = request.form.get(f"t{t}_{key}", "").strip()
         db_health.set_fields(year, month, "tanks", stored_pairs)
@@ -249,7 +267,7 @@ def tanks_delete():
                          {f"t{last}_{k}": "" for k, _l in docx_health.TANK_COLS})
     n = docx_health.set_tank_count(year, month, cur - 1)
     docx_health.rebuild(year, month, "tanks")
-    return _rb("tanks", ok="اتحذف الخزان رقم {} — صار العدد {} خزانًا ✓".format(
+    return _rb("tanks", ok="تم حذف الخزان رقم {} — أصبح العدد {} خزانًا ✓".format(
         arnum.to_arabic_indic(last), arnum.to_arabic_indic(n)))
 
 
@@ -309,7 +327,7 @@ def select_checkup():
         entries.append((name, rid))
     db_health.set_day_entries(year, month, day, entries)
     docx_health.rebuild(year, month, "checkup", day)
-    msg = "تم حفظ {} مكتوش وتحديث كشف يوم {} ✓".format(
+    msg = "تم حفظ توقيع الكشف على {} مجند وتحديث الورقة ليوم {} ✓".format(
         arnum.to_arabic_indic(len(entries)), arnum.to_arabic_indic(day))
     return _rb("checkups", day, ok=msg)
 

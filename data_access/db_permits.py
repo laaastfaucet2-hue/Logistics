@@ -5,6 +5,20 @@ import json
 from data_access import months, database
 from core import egtime
 
+# فاصل الربط في وسم الجهات المجمعة (رئيسية + ملحقات) — نفسه المستخدم في routes/calc2.py
+ENTITY_SEP = " + "
+
+
+def split_entity_label(label):
+    """وسم الجهات المجمّع (رئيسية + ملحقات) ← قائمة أسماء جهات منفصلة.
+
+    وسم الجهة على الإذن يُحفظ « + ».join(الجهات المحددة). العرض والتلوين
+    يدي كل جهة كيان مستقل بلونها الثابت الخاص (توجيه ٠٦/١٠) — فالتقسيم
+    هنا هو مصدره الوحيد.
+    """
+    return [p.strip() for p in (label or "").split(ENTITY_SEP) if p.strip()]
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS calc2_permits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

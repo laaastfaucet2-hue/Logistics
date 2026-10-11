@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "partials/dates.html" import date_text, period_text %}
+{% block title %}المجندين — {{ pkind_meta.label }} • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}سجل {{ pkind_meta.label }} — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+{% include "recruits_tabs.html" %}
+
+<!-- ==================== التابات الفرعية ==================== -->
+<div class="rc-ptabs">
+  {% for k, label, icon, st, noun in pkinds %}
+  <a class="rc-ptab {{ 'on' if k == pkind }}"
+     href="{{ url_for('recruits.page') }}&tab=prison&pkind={{ k }}">{{ icon }} {{ label }}</a>
+  {% endfor %}
+</div>
+
+<!-- ==================== تذكير النهارده وبكرة ==================== -->
+{% if prison_alerts %}
+<div class="panel">
+  <div class="panel-head"><h3>🛎️ التذكير — اليوم وغدًا</h3></div>
+  {% for text in prison_alerts %}
+  <div class="rc-banner {{ 'danger' if 'آخر يوم' in text else 'warn' }}">{{ text }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ==================== سجل الشهر ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>{{ pkind_meta.icon }} سجل {{ pkind_meta.label }} — شهر {{ month_name }} <span class="panel-hint">{{ prison_rows | length | aindic }} مدة</span></h3>
+    <div class="rt-actions">{% include "partials/print_btn.html" %}</div>
+  </div>
+  <p class="panel-hint">التسجيل من <b>«اليومية العامة»</b>: ضع حالة المجند على «{{ pkind_meta.status }}» ليوم البداية — المدة = الأيام التي تكون عليها الحالة.
+    إذا تغيّرت الحالة إلى حالة أخرى تُغلق المدة، وإذا تُركت فارغة تبقى <b>مفتوحة</b> حتى تُسجّل حالة أخرى.</p>
+  {% if prison_rows %}
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th>م</th><th>المجند</th><th>من يوم</th><th>إلى يوم</th><th>الحالة</th><th>المتبقي</th><th>اليومية</th></tr></thead>
+    <tbody>
+      {% for r, f, t, state in prison_rows %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td><b>{{ r.name }}</b> <span class="dim rc-mini">{{ r.mil_no | aindic }}</span></td>
+        <td class="num">{{ period_text(year, month, f) }}</td>
+        <td class="num">{% if t %}{{ period_text(year, month, t) }}{% else %}<span class="rc-chip st-أخرى">مفتوح</span>{% endif %}</td>
+        <td>{% if state %}<span class="rc-chip {{ {'قيد التنفيذ':'st-مأمورية','انتهى':'st-حضور','لم يبدأ':'st-أخرى'}[state] }}">{{ state }}</span>{% endif %}</td>
+        <td class="num">{% if state == 'قيد التنفيذ' and real_day %}{% if t %}{{ (t - real_day + 1) | aindic }} يوم{% if t == real_day %} (اليوم){% endif %}{% else %}مفتوح{% endif %}{% else %}—{% endif %}</td>
+        <td class="ops">
+          <a class="rc-mini-btn" href="{{ url_for('recruits.page') }}&tab=journal&day={{ f }}"
+             title="فتح يومية يوم {{ f | aindic }} (منها سُجِّلت المدة)">يومية يوم {{ f | aindic }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="panel-hint" style="text-align:center;padding:18px 0">
+    لا توجد مدد «{{ pkind_meta.status }}» هذا الشهر — التسجيل من «اليومية العامة» بحالة «{{ pkind_meta.status }}».
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

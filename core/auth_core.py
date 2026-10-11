@@ -11,9 +11,15 @@ from data_access import storage
 
 
 def current_session():
-    """يرجع (المستخدم، التوكن) — من الكوكي أو من sid في الرابط/الفورم."""
+    """يرجع (المستخدم، التوكن) — من الكوكي أو من sid في الرابط/الفورم.
+    جلسة الكوكي بتتأكد كل طلب إن الحساب لسه موجود ونشط (حذف/تعطيل يقفلها فورًا)."""
     if "user" in session:
-        return session["user"], request.args.get("sid") or None
+        u = session["user"]
+        fresh = db.get_user(u.get("username", ""))
+        if not fresh or fresh["id"] != u.get("id"):
+            session.pop("user", None)
+            return None, None
+        return u, request.args.get("sid") or None
     token = request.args.get("sid") or request.form.get("sid")
     if token:
         user = db.get_session_user(token)

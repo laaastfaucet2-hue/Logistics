@@ -7,7 +7,7 @@
 """
 from data_access import months
 
-STATUSES = ["حضور", "إجازة", "غياب", "مأمورية", "مستشفى", "أخرى"]
+STATUSES = ["حضور", "إجازة", "غياب", "مأمورية", "مستشفى", "أخرى", "سجن", "محكمة", "جزاء"]
 
 _MIGRATE_SQL = """
 CREATE TABLE IF NOT EXISTS attendance (
@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS journal_meta (
     locked INTEGER DEFAULT 0,
     done_at TEXT DEFAULT '',
     source_day INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS leave_permits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recruit_id INTEGER NOT NULL,
+    from_day INTEGER NOT NULL,
+    to_day INTEGER NOT NULL,
+    issued_at TEXT DEFAULT '',
+    UNIQUE(recruit_id, from_day, to_day)
 );
 """
 
@@ -99,6 +107,39 @@ def delete_recruit_day(year, month, day, recruit_id):
     with conn:
         conn.execute("DELETE FROM attendance WHERE day=? AND recruit_id=?", (day, recruit_id))
     conn.close()
+
+
+# ==================== تصاريح الإجازات (صدرت فعلًا — جولة ٣٥) ====================
+def record_leave_permits(year, month, rids, from_day, to_day):
+    """تسجيل أن التصريح صدر لـ rids عن المدة (from..to) — يُسجَّل لحظة عمل التصريح
+    (فردي أو مجمّع) وبيشغّل تذكير اليومية «أكّد ويتحطوا في اليومية»."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    with conn:
+        for rid in rids:
+            conn.execute(
+                "INSERT INTO leave_permits (recruit_id, from_day, to_day, issued_at) "
+                "VALUES (?, ?, ?, datetime('now')) "
+                "ON CONFLICT(recruit_id, from_day, to_day) DO UPDATE SET issued_at=excluded.issued_at",
+                (int(rid), int(from_day), int(to_day)))
+    conn.close()
+
+
+def month_leave_permits(year, month):
+    """كل تصاريح الشهر: {recruit_id: [(from_day, to_day), ...]}."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute("SELECT recruit_id, from_day, to_day FROM leave_permits").fetchall()
+    conn.close()
+    out = {}
+    for r in rows:
+        out.setdefault(r["recruit_id"], []).append((r["from_day"], r["to_day"]))
+    return out
+
+
+def has_leave_permit(year, month, recruit_id, from_day, to_day):
+    """هل صدر تصريح لهذا المجند عن هذه المدة بالظبط؟"""
+    return (from_day, to_day) in month_leave_permits(year, month).get(recruit_id, [])
 
 
 # ==================== الترحيل لليوم التالي (مرة واحدة ومن يوم مُثبَّت) ====================
@@ -184,4 +225,46 @@ def absence_streak(year, month, matrix, upto_day):
             d -= 1
         if streak:
             out[rid] = streak
+    return out
+
+
+def latest_statuses(year, month, matrix, upto_day):
+    """آخر حالة مسجلة لكل مجند حتى يوم upto_day: {recruit_id: (status, day)}."""
+    out = {}
+    for rid, days in matrix.items():
+        d = min(upto_day, max(days))
+        while d >= 1 and d not in days:
+            d -= 1
+        if d >= 1:
+            out[rid] = (days[d], d)
+    return out
+
+
+def attendance_runs(year, month, matrix, day):
+    """لكل مجند حالته «حضور» في يوم day: (بداية الفترة المتواصلة, المدة)."""
+    out = {}
+    for rid, days in matrix.items():
+        if days.get(day) != "حضور":
+            continue
+        start = day
+        while days.get(start - 1) == "حضور":
+            start -= 1
+        out[rid] = (start, day - start + 1)
+    return out
+
+
+def absence_episodes(year, month, matrix, from_day=1, to_day=31):
+    """فترات غياب متصلة لكل مجند: {recruit_id: [(from, to)]}."""
+    out = {}
+    for rid, days in matrix.items():
+        seq = sorted(d for d, st in days.items()
+                     if st == "غياب" and from_day <= d <= to_day)
+        if not seq:
+            continue
+        start = prev = seq[0]
+        for d in seq[1:] + [to_day + 2]:
+            if d != prev + 1:
+                out.setdefault(rid, []).append((start, prev))
+                start = d
+            prev = d
     return out

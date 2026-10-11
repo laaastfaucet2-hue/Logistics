@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 if os.environ.get("LOGISTICS_SEED_DEMO") != "1":
     print("مرفوض: هذا السكربت لبذر بيانات تجريبية في معاينة معزولة فقط.")
-    print("شغّله هكذا لو أنت متأكد:  LOGISTICS_SEED_DEMO=1 python scripts/seed_preview_demo.py")
+    print("شغّله هكذا إذا كنت متأكدًا:  LOGISTICS_SEED_DEMO=1 python scripts/seed_preview_demo.py")
     raise SystemExit(1)
 
 from core.paths import DATA_DIR  # noqa: E402
@@ -59,6 +59,7 @@ RECORDS = [
      [("الحماية المدنية بوسط سيناء", "شرطية", 2, 6, 0)]),
     (5, "قطاع الشهيد أشرف جاد", 8, 22, 6, "مدة زمنية أسبوع", 9,
      [("مستشفى سيناء العام", "مدنية", 1, 4, 0)]),
+    (7, "إدارة مرور وسط سيناء", 4, 14, 3, "تأميدة يوم ٧ — يظهر بها ملف اليوم", None, []),
     (8, "كتيبة الأمن المركزي ٢١٤", 6, 30, 12, "", None, []),
     (12, "قسم شرطة الحسنة", 7, 20, 0, "أعداد أكبر من أرقام الراغبين — تنبيه", None, []),
     (15, "قسم شرطة نخل", 5, 20, 4, "", None, []),

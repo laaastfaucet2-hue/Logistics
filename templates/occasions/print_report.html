@@ -29,12 +29,24 @@
     <table class="oc-doc-table">
       <tr><th>النوع</th><td>{{ item.kind }}</td><th>التاريخ</th><td>{{ date_text(item.date_iso) }}</td></tr>
       <tr><th>المكان</th><td>{{ item.place or '—' }}</td><th>القوة / الوفد</th><td>{{ item.force_text or '—' }}</td></tr>
-      <tr><th>إطار</th><td>{{ item.frame or '—' }}</td><th>إخطار</th><td>{{ item.alert or '—' }}</td></tr>
+      <tr><th>إطار</th><td colspan="3">{{ item.frame or '—' }}</td></tr>
     </table>
     <h3 class="oc-doc-sub">الوصف / مجريات المناسبة</h3>
     <div class="oc-doc-body">{{ item.notes or '—' }}</div>
+    {% if item.photos %}
+    <h3 class="oc-doc-sub">صور المناسبة ({{ item.photos | length | aindic }}) — مدمجة في التقرير</h3>
+    <div class="oc-doc-grid">
+      {% for photo in item.photos %}
+      <figure class="oc-doc-photo">
+        <img src="{{ url_for('occasions.media', kind='photo', name=photo.name) }}?sid={{ sid_token }}&folder={{ item.folder | urlencode }}"
+             alt="{{ photo.name }}" loading="lazy">
+        <figcaption>{{ photo.name }} <span>{{ photo.size_text }}</span></figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
     <p class="oc-doc-meta">مرفقات المناسبة: {{ item.photos | length | aindic }} صورة ·
-      {{ item.videos | length | aindic }} فيديو — محفوظة داخل فولدر المناسبة.</p>
+      {{ item.videos | length | aindic }} فيديو — محفوظة داخل فولدر المناسبة ورسميًا في ملفي Word وExcel.</p>
     <div class="pd-foot">
       <div class="pd-sig">
         <b>{{ letterhead.sig_right[0] or '........................' }}</b>

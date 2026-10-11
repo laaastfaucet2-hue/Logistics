@@ -18,12 +18,13 @@ raghibin_bp = Blueprint("raghibin", __name__, url_prefix="/raghibin")
 TABS = [
     ("daily", "الراغبين (يومي)", "🙋"),
     ("excluded", "عدم الراغبين", "🚫"),
-    ("monthly", "تجميع الكشف العام", "📊"),
+    ("monthly", "تجميع الكشف الشهري العام", "📊"),
     ("cadres", "الجهات والكوادر المعتمدة", "📋"),
+    ("files", "فتح المجلد", "📂"),
 ]
 TAB_KEYS = {t[0] for t in TABS}
 
-CATEGORIES = [("officers", "الضباط"), ("individuals", "الأفراد والصف")]
+CATEGORIES = [("officers", "الضباط"), ("individuals", "فرد")]
 
 
 # تجميع المسارات — الاستيراد الأخير يسجّل الراوتات على البلوبرنت

@@ -1,0 +1,101 @@
+/* =====================================================================
+   نظام هيدر موحد لكل صفحات البرنامج (توجيه ١١/١٠ — محور ٤)
+   الهيدر = عنوان قسم واضح (يمين) + عناصر مساعدة أصغر + إجراءات (يسار)
+   شريط ذهبي بارز على البداية + فاصل سفلي — نفس الشكل في كل مكان
+   ===================================================================== */
+
+/* ── هيدر الصفحة (ctx-strip) ───────────────────────────────────────── */
+.ctx-strip {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+  padding: 15px 20px 15px 22px; margin-bottom: 20px;
+  background:
+    linear-gradient(120deg, rgba(var(--gold-rgb), .10), rgba(var(--gold-rgb), 0) 42%),
+    var(--card);
+  border: 1px solid var(--card-border); border-radius: 14px;
+  box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+  color: var(--text); font-size: 13px;
+}
+.ctx-strip::before {
+  content: ""; position: absolute; top: 0; bottom: 0; inset-inline-start: 0;
+  width: 4px; background: linear-gradient(180deg, var(--brand-gold), rgba(var(--gold-rgb), .3));
+}
+.ctx-strip::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, rgba(var(--gold-rgb), .45), rgba(var(--gold-rgb), 0) 55%);
+}
+/* العنوان = أول عنصر نصي في الشريط */
+.ctx-strip > span:first-child {
+  font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; color: var(--text);
+}
+/* باقي العناصر = مساعدة أصغر */
+.ctx-strip > span:not(:first-child) { font-size: .85rem; }
+.ctx-strip .val { font-size: .95rem; font-weight: 700; color: var(--gold-light); }
+.ctx-strip .dim, .ctx-strip .sep { color: var(--muted); }
+.ctx-strip .sep { opacity: .6; }
+/* الإجراءات على آخر الشريط */
+.ctx-strip > .rt-btn, .ctx-strip > button, .ctx-strip > a,
+.ctx-strip > label, .ctx-strip .js-print-page { margin-inline-start: auto; }
+.ctx-strip > span + .rt-btn, .ctx-strip > span + button, .ctx-strip > span + a {
+  margin-inline-start: auto;
+}
+/* أكثر من إجراء: مجموعتهم على اليسار معًا */
+.ctx-strip > .rt-btn + .rt-btn, .ctx-strip > .rt-btn + button,
+.ctx-strip > button + .rt-btn, .ctx-strip > button + button,
+.ctx-strip > .rt-btn + a, .ctx-strip > a + .rt-btn { margin-inline-start: 8px; }
+.ctx-strip .js-print-page {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 10px; font-size: .85rem; font-weight: 600;
+}
+
+/* ── هيدر اللوحات (panel-head) — نفس اللغة البصرية أصغر حجمًا ─────── */
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px 14px; margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--card-border); flex-wrap: wrap;
+}
+.panel-head h3 { font-size: 1.08rem; font-weight: 700; color: var(--text); margin: 0; }
+.panel-head .panel-hint { font-size: .8125rem; color: var(--muted); margin: 0; }
+.panel-head > .rt-btn, .panel-head > button, .panel-head > a { flex-shrink: 0; }
+
+/* ── شريط علوي: نفس لغة الحبّات (ctx-pill) للتاريخ والمستخدم ──────── */
+.top-date {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 13px; border: 1px solid var(--card-border); border-radius: 11px;
+  background: var(--card); color: var(--muted); font-size: 12.5px;
+}
+.top-date svg { width: 17px; height: 17px; color: var(--brand-gold); flex-shrink: 0; }
+.top-date bdi { font-weight: 600; color: var(--text); }
+.top-user {
+  display: flex; align-items: center; gap: 10px; margin-right: auto;
+  padding: 5px 13px 5px 5px; border: 1px solid var(--card-border);
+  border-radius: 11px; background: var(--card);
+}
+.u-name { font-size: 12.5px; font-weight: 700; }
+.u-role { font-size: 11px; color: var(--muted); }
+
+/* ── ورقة الدوایل: شبكة بيانات مرتبة تحت العنوان ───────────────────── */
+.dw-paper-meta {
+  display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 26px; justify-items: stretch; justify-content: stretch;
+  font-size: .84rem; margin-bottom: 12px; text-align: right;
+}
+.dw-paper-meta span {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 3px 0; border-bottom: 1px dotted #c3ccd6;
+}
+.dw-paper-meta b { font-weight: 800; text-align: left; }
+
+/* ── تجميع للهيدر على الموبايل ────────────────────────────────────── */
+@media (max-width: 760px) {
+  .ctx-strip { padding: 13px 14px 13px 16px; }
+  .ctx-strip > span:first-child { font-size: 1.08rem; width: 100%; }
+  .ctx-strip > .rt-btn, .ctx-strip > button, .ctx-strip > a,
+  .ctx-strip > label, .ctx-strip .js-print-page {
+    margin-inline-start: 0; width: 100%; justify-content: center;
+  }
+  .panel-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .panel-head > .rt-btn, .panel-head > button, .panel-head > a { width: 100%; }
+  .topbar { gap: 10px; }
+  .top-user { margin-right: 0; }
+}

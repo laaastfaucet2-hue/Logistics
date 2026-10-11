@@ -1,0 +1,120 @@
+{# تاب سجلات المستخدمين — شكل الدفتر زي الأسكرين شوت بالضبط (توجيه ١١/١٠) #}
+<div class="sg-stats">
+  <div class="sg-stat">
+    <small>اليوم</small>
+    <b>{% if log_ctx.user %}{{ log_ctx.fmt_hm(log_ctx.day.work_seconds) }}{% else %}—{% endif %}</b>
+    <span class="dim">{% if log_ctx.user %}شغل · {{ log_ctx.day.sessions | aindic }} جلسة · {{ log_ctx.day.actions | aindic }} إجراء{% endif %}</span>
+  </div>
+  <div class="sg-stat">
+    <small>هذا الشهر</small>
+    <b>{% if log_ctx.user %}{{ log_ctx.fmt(log_ctx.month.work_seconds) }}{% else %}—{% endif %}</b>
+    <span class="dim">{% if log_ctx.user %}{{ log_ctx.month.work_days | aindic }} يوم شغل · {{ log_ctx.month.sessions | aindic }} جلسة{% endif %}</span>
+  </div>
+  <div class="sg-stat">
+    <small>هذه السنة</small>
+    <b>{% if log_ctx.user %}{{ log_ctx.fmt(log_ctx.year.work_seconds) }}{% else %}—{% endif %}</b>
+    <span class="dim">{% if log_ctx.user %}{{ log_ctx.year.work_days | aindic }} يوم شغل · {{ log_ctx.year.sessions | aindic }} جلسة{% endif %}</span>
+  </div>
+  <div class="sg-stat">
+    <small>من أول استخدام</small>
+    <b>{% if log_ctx.user %}{{ log_ctx.fmt(log_ctx.total.work_seconds) }}{% else %}—{% endif %}</b>
+    <span class="dim">{% if log_ctx.user %}{{ log_ctx.total.work_days | aindic }} يوم · {{ log_ctx.total.events | aindic }} حركة
+      {% if log_ctx.total.first_ts %}· آخر ظهور <bdi dir="ltr">{{ log_ctx.time(log_ctx.total.last_ts) }}</bdi>{% endif %}{% endif %}</span>
+  </div>
+</div>
+
+{% if log_ctx.user %}
+<div class="panel sg-mon">
+  <div class="sg-mon-head">
+    <div class="sg-mon-title">
+      <svg viewBox="0 0 24 24" class="sg-lock-ico"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>
+        <h3>سجل المراقبة وإتمام النشاط الدفترى الموحد</h3>
+        <p>سجل تراكمي غير قابل للتعديل — يُسجَّل فيه كل من قام بأي إجراء في المنظومة: فتح صفحة، حفظ، حذف، تنزيل، دخول، خروج. تنقسم الجلسة بعد ١٥ دقيقة دون حركة.</p>
+      </div>
+    </div>
+    <div class="rt-actions">
+      <form method="get" action="{{ url_for('settings.page', sub='log') }}" class="sg-userpick">
+        <label>المستخدم:
+          <select name="user" onchange="this.form.submit()">
+            {% for u in log_users %}
+            <option value="{{ u.id }}" {{ 'selected' if log_ctx.user.id == u.id }}>{{ u.full_name }} <span class="dim" dir="ltr">({{ u.username }})</span></option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+      <a class="rt-btn dim" href="{{ url_for('settings.log_download', user=log_ctx.user.id) }}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        تصدير كل السجلات (إكسل مشفر 7799)
+      </a>
+      <a class="rt-btn dim" href="{{ url_for('settings.page', sub='log') }}" title="إغلاق القسم — سيُطلب الرمز الرئيسي لفتحه مرة أخرى">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        إغلاق وحماية
+      </a>
+      <button type="button" class="rt-btn dim" id="sgLogFilterBtn" title="إظهار/إخفاء فلاتر العرض (المستخدم والبحث)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+        تعديل السجل
+      </button>
+    </div>
+  </div>
+
+  <div class="sg-mon-bar">
+    <input type="search" id="sgLogSearch" class="sg-logsearch"
+           placeholder="ابحث بالاسم، التاريخ، النوع، أو بيانات الدفتر الخاصة...">
+    <span class="sg-count">إجمالي الحركات المسجلة: <b>{{ log_ctx.user.events_count | aindic }} حركة</b></span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="rt-table sg-ledger" id="sgLogTable">
+      <thead>
+        <tr>
+          <th>التاريخ والوقت</th>
+          <th>المشغل / الرتبة</th>
+          <th>اسم الإجراء</th>
+          <th>التفاصيل والملخص الفني لنشاط المستخدم</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for e in log_ctx.events %}
+        {% set act, det = log_ctx.row(e.event, e.page, e.details) %}
+        <tr>
+          <td class="sg-ts"><bdi dir="ltr">{{ log_ctx.time(e.ts) }}</bdi></td>
+          <td class="sg-op"><span class="sg-opname" dir="ltr">{{ log_ctx.user.username }}</span> {{ log_ctx.role_ico }}</td>
+          <td class="sg-act">{{ act }}{% if det %}<small class="sg-actdet">{{ det }}</small>{% endif %}</td>
+          <td class="sg-det">{{ det or '—' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="dim" style="text-align:center;padding:18px">لا توجد حركات مسجلة له حتى الآن</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="dim small sg-ledger-note">أحدث {{ log_ctx.events | length | aindic }} حركة — الملف الكامل (٢٠ ألف حركة) من زر «تصدير كل السجلات».</p>
+</div>
+<script>
+(function () {
+  var box = document.getElementById("sgLogSearch");
+  var table = document.getElementById("sgLogTable");
+  if (box && table) {
+    box.addEventListener("input", function () {
+      var q = box.value.trim().toLowerCase();
+      table.querySelectorAll("tbody tr").forEach(function (tr) {
+        tr.style.display = (!q || tr.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
+      });
+    });
+  }
+  /* «تعديل السجل» — إظهار/إخفاء فلاتر العرض (المستخدم + البحث) */
+  var btn = document.getElementById("sgLogFilterBtn");
+  var targets = [document.querySelector(".sg-userpick"), document.querySelector(".sg-mon-bar")];
+  if (btn) {
+    btn.addEventListener("click", function () {
+      var bar = document.querySelector(".sg-mon-bar");
+      var willShow = bar ? bar.style.display === "none" : true;
+      targets.forEach(function (t) { if (t) t.style.display = willShow ? "" : "none"; });
+    });
+  }
+})();
+</script>
+{% else %}
+<div class="panel"><p class="dim" style="text-align:center;padding:24px">لا توجد حسابات بعد — أنشئ حسابًا من تاب «تسجيل المستخدمين».</p></div>
+{% endif %}

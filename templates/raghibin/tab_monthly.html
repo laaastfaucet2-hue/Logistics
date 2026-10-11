@@ -7,7 +7,7 @@
   <div class="rg-card">
     <div class="rg-card-head">
       <b>📊 تجميع الكشف الشهري العام</b>
-      <span class="rg-dim">الراغب في اليوم = وجبة واحدة (قرار ٣٠/٠٩/٢٠٢٦) — الكشف بالإجمالي زي الصورة</span>
+      <span class="rg-dim">الراغب في اليوم = وجبة واحدة (قرار ٣٠/٠٩/٢٠٢٦) — الكشف بالإجمالي مثل الصورة</span>
     </div>
     {% if entities %}
     <form method="get" action="/raghibin" class="rg-addform">
@@ -25,7 +25,7 @@
       <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
     </form>
     {% else %}
-    <p class="rg-dim">مفيش جهات لسه.</p>
+    <p class="rg-dim">لا توجد جهات بعد.</p>
     {% endif %}
   </div>
 
@@ -54,7 +54,7 @@
       </tbody>
     </table>
     {% else %}
-    <p class="rg-dim">مفيش أسماء غير مستثناة في هذه الفئة.</p>
+    <p class="rg-dim">لا توجد أسماء غير مستثناة في هذه الفئة.</p>
     {% endif %}
   </div>
   {% endif %}
@@ -62,7 +62,7 @@
   <div class="rg-card rg-files">
     <b>📁 الملفات المحلية</b>
     <span class="rg-dim">{{ section_folder }}/{{ '3. تجميع الكشف الشهري العام' }}/<الجهة>.xlsx —
-    شيت «ض — الضباط» وشيت «أ — الأفراد والصف»: م | الرتبة والاسم الكامل | عدد الوجبات +
+    شيت «ضابط — الضباط» وشيت «فرد — الأفراد والصف»: م | الرتبة والاسم الكامل | عدد الوجبات +
     «إجمالي X فرد | إجمالي الوجبات: Y وجبة» + توقيعا رئيس قسم التوقيعات/قائد القطاع،
     وبيتبنى لحظيًا مع كل علامة يومية.</span>
   </div>

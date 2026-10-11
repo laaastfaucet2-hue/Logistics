@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}الإحصائيات والتتبع — {{ cycle_name }} • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}الإحصائيات والتتبع — {{ cycle_name }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<form method="get" action="{{ url_for('stats.page') }}" class="st-form">
+  <input type="hidden" name="sid" value="{{ g.sid or '' }}">
+  <input type="hidden" name="cycle" value="{{ cycle }}">
+  <input type="hidden" name="scope" value="{{ scope }}">
+
+  <!-- الترويسة: النطاق + الدورة + الطباعة -->
+  <div class="panel st-head">
+    <div class="st-head-row">
+      <div class="st-title">
+        <span class="st-title-ico">{{ cycle_icon }}</span>
+        <div>
+          <h3>الإحصائيات والتتبع — دورة {{ cycle_name }}</h3>
+          <small>
+            {% if scope == 'month' %}{{ month_name }} {{ year | aindic }}{% else %}سنة {{ year | aindic }} — شهورها {{ year_months | length | aindic }}{% endif %}
+            • كل الأرقام من month.db مباشرة (لا جداول منفصلة)
+          </small>
+        </div>
+      </div>
+      <div class="st-head-actions">
+        <div class="st-seg">
+          <a class="st-seg-btn {{ 'on' if scope == 'month' else '' }}"
+             href="{{ url_for('stats.page', cycle=cycle, scope='month') }}">📅 شهر</a>
+          <a class="st-seg-btn {{ 'on' if scope == 'year' else '' }}"
+             href="{{ url_for('stats.page', cycle=cycle, scope='year') }}">📆 سنة</a>
+        </div>
+        <a class="rt-btn navy" href="{{ url_for('stats.print_view', cycle=cycle, scope=scope, tab=st_tab,
+              f_item=filters.item, f_supplier=filters.supplier, f_producer=filters.producer, f_entity=filters.entity) }}">
+          🖨️ طباعة رسمية</a>
+      </div>
+    </div>
+
+    <!-- ٣ دورات متفصلة — كل واحدة في عالمها -->
+    <div class="st-cycles">
+      {% for key, name, icon in cycles %}
+      <a class="st-cycle {{ 'on' if key == cycle else '' }}"
+         href="{{ url_for('stats.page', cycle=key, scope=scope) }}">
+        <span class="st-cycle-ico">{{ icon }}</span>
+        <span class="st-cycle-name">{{ name }}</span>
+        <small>{% if key == 'supply' %}١ مخازن الإمداد{% elif key == 'contractor' %}١ مخازن المتعهد{% else %}الدورة المستقلة{% endif %}</small>
+      </a>
+      {% endfor %}
+    </div>
+    <!-- تابات الأقسام — فوق، المستخدم يختار إيه يشوف (دورة {{ cycle_name }}) -->
+    <nav class="st-subtabs" aria-label="تبويبات الإحصائيات">
+      {% for key, icon, name in stabs %}
+      <a class="st-subtab {{ 'on' if st_tab == key }}"
+         href="{{ url_for('stats.page', cycle=cycle, scope=scope, tab=key,
+              f_item=filters.item, f_supplier=filters.supplier, f_producer=filters.producer, f_entity=filters.entity) }}">
+        <span class="st-subtab-ico">{{ icon }}</span>{{ name }}
+      </a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <!-- الفلاتر الذكية الأربعة -->
+  <div class="panel st-filters">
+    <div class="st-filters-head">
+      <b>🎯 فلترة ذكية</b>
+      <span class="panel-hint">اختيار من الموجود فعليًا في الفترة — والجهة ترشي توريد وأصنافها معها</span>
+      {% if any_filter %}
+      <a class="st-reset" href="{{ url_for('stats.page', cycle=cycle, scope=scope) }}">✕ مسح الفلاتر</a>
+      {% endif %}
+    </div>
+    <div class="st-filters-grid">
+      <label>📦 الصنف
+        <input type="text" name="f_item" data-combo="stItems" list="stItems" value="{{ filters.item }}"
+               placeholder="كل الأصناف">
+        <datalist id="stItems">{% for x in options['items'] %}<option value="{{ x }}">{% endfor %}</datalist>
+      </label>
+      <label>🚛 شركة موردة
+        <input type="text" name="f_supplier" data-combo="stSuppliers" list="stSuppliers" value="{{ filters.supplier }}"
+               placeholder="كل الموردين">
+        <datalist id="stSuppliers">{% for x in options['suppliers'] %}<option value="{{ x }}">{% endfor %}</datalist>
+      </label>
+      <label>🏭 شركة منتجة
+        <input type="text" name="f_producer" data-combo="stProducers" list="stProducers" value="{{ filters.producer }}"
+               placeholder="كل المنتجين">
+        <datalist id="stProducers">{% for x in options['producers'] %}<option value="{{ x }}">{% endfor %}</datalist>
+      </label>
+      <label>🏛️ الجهة
+        <input type="text" name="f_entity" data-combo="stEntities" list="stEntities" value="{{ filters.entity }}"
+               placeholder="كل الجهات">
+        <datalist id="stEntities">{% for x in options['entities'] %}<option value="{{ x }}">{% endfor %}</datalist>
+      </label>
+    </div>
+    <div class="st-filters-actions">
+      <button type="submit" class="rt-btn navy">تطبيق الفلاتر</button>
+    </div>
+  </div>
+</form>
+
+{% if st_tab == 'track' %}
+{% if not has_data %}
+<!-- الحالة الفاضية -->
+<div class="panel st-empty">
+  <div class="st-empty-ico">📭</div>
+  <h3>لا توجد حركة لدورة {{ cycle_name }} في هذه الفترة</h3>
+  <p>أضف توريدات من قسم «مستودعات وسجلات» (١ مخازن) وأذون صرف من قسم «التموين/المتعهد» — وستظهر الإحصائيات والتتبع هنا تلقائيًا.</p>
+  {% if scope == 'year' %}<small>نطاق السنة يجمع الشهور الموجودة فقط ({{ year_months | length | aindic }} شهرًا): {{ year_months | map('aindic') | join('، ') }}</small>{% endif %}
+</div>
+{% else %}
+
+<!-- كروت الملخص الستة -->
+<div class="st-cards">
+  <div class="st-card">
+    <span class="st-card-ico">🚚</span>
+    <b class="st-card-num">{{ summary.sup_count | aindic }}</b>
+    <small>إذن توريد (١ مخازن)</small>
+    <span class="st-card-sub">{{ summary.sup_qty | qty }} وحدة متلقاة</span>
+  </div>
+  <div class="st-card">
+    <span class="st-card-ico">📄</span>
+    <b class="st-card-num">{{ summary.permit_count | aindic }}</b>
+    <small>إذن صرف (٢ مخازن)</small>
+    <span class="st-card-sub">بتتبع الدفعات فعلًا</span>
+  </div>
+  <div class="st-card">
+    <span class="st-card-ico">📤</span>
+    <b class="st-card-num">{{ summary.iss_qty | qty }}</b>
+    <small>وحدة صُرفت فعليًا (FEFO)</small>
+    <span class="st-card-sub">{{ summary.iss_count | aindic }} سطر تفريدة</span>
+  </div>
+  <div class="st-card">
+    <span class="st-card-ico">🏛️</span>
+    <b class="st-card-num">{{ summary.entity_count | aindic }}</b>
+    <small>جهة استلمت صرفًا</small>
+    <span class="st-card-sub">خلال الفترة</span>
+  </div>
+  <div class="st-card">
+    <span class="st-card-ico">⭐</span>
+    <b class="st-card-num">{{ summary.item_count | aindic }}</b>
+    <small>صنفًا متحركًا</small>
+    <span class="st-card-sub">توريد أو صرف</span>
+  </div>
+  <div class="st-card {{ 'warn' if prev_ratio and prev_ratio > 0 else 'good' if prev_ratio is not none else '' }}">
+    <span class="st-card-ico">📈</span>
+    <b class="st-card-num">
+      {% if prev_ratio is none %}—{% else %}{{ '%+.0f' % prev_ratio }}٪{% endif %}
+    </b>
+    <small>متوسط الاستهلاك اليومي</small>
+    <span class="st-card-sub">
+      {% if prev_ratio is none %}لا توجد فترة سابقة للمقارنة{% else %}{{ prev_label }}{% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- الجدول ١: التوريد (١ مخازن) — أكورديون -->
+<details class="panel st-fold" open>
+  <summary class="st-fold-head">
+    <h3>🚚 التوريد — ١ مخازن <span class="panel-count">{{ supply | length | aindic }} سطرًا</span></h3>
+    <span class="st-fold-ico">▾</span>
+  </summary>
+  <div class="st-fold-body">
+  <table class="rt-table rc-print-table st-table">
+    <thead>
+      <tr>
+        {% if scope == 'year' %}<th>الشهر</th>{% endif %}
+        <th>التاريخ</th><th>الرسالة</th><th>الصنف</th><th class="num">الكمية</th>
+        <th>الشركة الموردة</th><th>الشركة المنتجة</th><th>إنتاج</th><th>الصلاحية</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in supply %}
+      <tr>
+        {% if scope == 'year' %}<td class="num">{{ r.month | aindic }}</td>{% endif %}
+        <td class="num">{{ r.date_label or (r.day | aindic) }}</td>
+        <td class="num">{{ r.serial | aindic }}</td>
+        <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ r.item }}</b></td>
+        <td class="num"><b>{{ r.qty_handle | qty }}</b> {{ r.unit }}</td>
+        <td>{{ r.supplier_name or '—' }}</td>
+        <td>{{ r.producer or '—' }}</td>
+        <td class="dim">{{ r.prod_date or '—' }}</td>
+        <td>
+          {% if r.exp_date %}
+          <span class="st-exp {{ r.exp_badge }}">{{ r.exp_date }}{% if r.exp_days is not none %}<small> ({{ r.exp_days | aindic }} يوم)</small>{% endif %}</span>
+          {% else %}<span class="dim">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="{{ 4 if scope == 'month' else 3 }}">الإجمالي</td>
+        <td class="num"><b>{{ summary.sup_qty | qty }}</b></td>
+        <td colspan="{{ 4 if scope == 'month' else 5 }}"></td></tr>
+    </tfoot>
+  </table>
+  </div>
+</details>
+
+<!-- الجدول ٢: الصرف بالتتبع (٢ مخازن — الدفعة الفعلية FEFO) — أكورديون -->
+<details class="panel st-fold" open>
+  <summary class="st-fold-head">
+    <h3>📤 الصرف بالتتبع — ٢ مخازن <span class="panel-count">{{ issue | length | aindic }} سطرًا</span></h3>
+    <span class="panel-hint">كل سطر يجيب الجواب: «من أي شركة صرَفت هذه الجهة بالضبط؟» — من الدفعة الفعلية (FEFO) لا منسوبًا</span>
+    <span class="st-fold-ico">▾</span>
+  </summary>
+  <div class="st-fold-body">
+  <table class="rt-table rc-print-table st-table">
+    <thead>
+      <tr>
+        {% if scope == 'year' %}<th>الشهر</th>{% endif %}
+        <th>الإذن</th><th>الجهة</th><th>الصنف</th><th>المتصرف (تفكيك الدفعة)</th>
+        <th class="num">الكمية</th><th>الشركة الموردة (الدفعة)</th><th>المنتج</th><th>صلاحية الدفعة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in issue %}
+      <tr>
+        {% if scope == 'year' %}<td class="num">{{ r.month | aindic }}</td>{% endif %}
+        <td class="num">{{ r.permit_no | aindic }}</td>
+        <td>{% for n in r.entities or split_entities(r.entity) %}{% set ec = color('entity', n) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ n }}</span>{% else %}<b>{{ n }}</b>{% endif %}{% endfor %}</td>
+        <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
+        <td class="dim">{{ r.issued_label or '—' }}</td>
+        <td class="num"><b>{{ r.qty | qty }}</b> {{ r.unit }}</td>
+        <td>{{ r.supplier or '—' }}</td>
+        <td>{{ r.producer or '—' }}</td>
+        <td>
+          {% if r.expiry %}
+          <span class="st-exp {{ r.exp_badge }}">{{ r.expiry }}{% if r.exp_days is not none %}<small> ({{ r.exp_days | aindic }} يوم)</small>{% endif %}</span>
+          {% else %}<span class="dim">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="{{ 5 if scope == 'month' else 4 }}">الإجمالي</td>
+        <td class="num"><b>{{ summary.iss_qty | qty }}</b></td>
+        <td colspan="{{ 3 if scope == 'month' else 4 }}"></td></tr>
+    </tfoot>
+  </table>
+  </div>
+</details>
+
+<!-- الجدول ٣: متوسط الاستهلاك — أكورديون -->
+<details class="panel st-fold" open>
+  <summary class="st-fold-head">
+    <h3>⭐ متوسط الاستهلاك <span class="panel-count">{{ avg | length | aindic }} صنفًا</span></h3>
+    <span class="panel-hint">المتوسط اليومي = إجمالي صرف الفترة ÷ أيامها{% if scope == 'month' %} ({{ days | aindic }} يومًا){% else %} (سنة كاملة){% endif %}</span>
+    <span class="st-fold-ico">▾</span>
+  </summary>
+  <div class="st-fold-body">
+  <table class="rt-table rc-print-table st-table">
+    <thead>
+      <tr>
+        <th>الصنف</th><th class="num">التوريد</th><th class="num">الصرف</th>
+        <th class="num">⭐ المتوسط اليومي</th><th class="num">الرصيد الحالي</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in avg %}
+      <tr>
+        <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ r.item }}</b></td>
+        <td class="num">{{ r.supplied | qty }} {{ r.unit }}</td>
+        <td class="num">{{ r.issued | qty }} {{ r.unit }}</td>
+        <td class="num"><b class="st-avg">{{ r.avg | qty }}</b> {{ r.unit }}/يوم</td>
+        <td class="num">{{ r.balance | qty }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</details>
+
+{% endif %}
+{% else %}
+<!-- ============ تاب قسم: {{ section.icon }} {{ section.title }} ============ -->
+<div class="panel st-sec">
+  <div class="panel-head">
+    <h3>{{ section.icon }} {{ section.title }}{% if section.rows %} <span class="panel-count">{{ section.rows | length | aindic }} سطرًا</span>{% endif %}</h3>
+    <span class="panel-hint">{{ section.hint }}</span>
+  </div>
+  <div class="st-mini-cards">
+    {% for c in section.cards %}
+    <div class="st-mini-card {{ c.cls }}">
+      <b>{{ c.value }}</b>
+      <small>{{ c.label }}</small>
+      {% if c.sub %}<span class="st-mini-sub">{{ c.sub }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# أعلى الجهات استهلاكًا (التاميدات) #}
+  {% if section.key == 'tameedat' and section.top5 %}
+  <div class="top-chips">
+    <b>🏆 أعلى الجهات استهلاكًا:</b>
+    {% for t in section.top5 %}
+    <span class="ent-chip top-chip" style="--ec:{{ color('entity', t.name) }}">{{ loop.index | aindic }}. {{ t.name }} <span class="top-num">{{ t.grand | aindic }}</span></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if section.rows %}
+  <details class="st-fold">
+    <summary class="st-fold-head">
+      <b class="st-fold-title">📋 الجدول التفصيلي <span class="panel-count">{{ section.rows | length | aindic }} سطرًا</span></b>
+      <span class="st-fold-ico">▾</span>
+    </summary>
+    <div class="st-fold-body">
+    <table class="rt-table rc-print-table st-table">
+      <thead><tr>{% for h in section.head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in section.rows %}
+        <tr>
+          {% for c in row %}
+          <td class="{{ c.c }}">
+            {% if c.c in ('ok', 'warn', 'bad') %}<span class="st-exp {{ c.c }}">{{ c.t }}</span>
+            {% elif c.k == 'item' %}{% set ic = color('item', c.t) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ c.t }}</b>
+            {% elif c.k == 'entity' %}{% for n in split_entities(c.t) %}{% set ec = color('entity', n) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ n }}</span>{% else %}{{ n }}{% endif %}{% endfor %}
+            {% elif 'b' in c.c %}<b>{{ c.t }}</b>
+            {% else %}{{ c.t }}{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% else %}
+  <div class="hl-empty dim">لا توجد بيانات لهذا القسم في الفترة</div>
+  {% endif %}
+
+  {# جرد المخازن الحي — لكل مخزن #}
+  {% if section.key == 'stores' and section.inventory %}
+  <div class="st-inv">
+    {% for store in section.inventory %}
+    <details class="panel st-fold st-inv-store">
+      <summary class="st-fold-head">
+        <h3 class="st-fold-title">🏬 {{ store.name }} <span class="panel-count">{{ store.items | aindic }} صنف · إجمالى الرصيد {{ store.total | qty }}</span></h3>
+        <span class="st-fold-ico">▾</span>
+      </summary>
+      <div class="st-fold-body">
+      {% if store.rows %}
+      <table class="rt-table rc-print-table st-table">
+        <thead>
+          <tr><th>الصنف</th><th class="num">الرصيد</th><th>دخل (التاريخ + اليوم)</th>
+              <th>صرفها (الجهات)</th><th>أقرب صلاحية متبقية</th><th>متوقع ينتهي</th></tr>
+        </thead>
+        <tbody>
+          {% for r in store.rows %}
+          <tr>
+            <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ r.item }}</b> <span class="dim">{{ r.unit }}</span></td>
+            <td class="num"><b>{{ r.balance | qty }}</b></td>
+            <td>{{ r.in_label }}</td>
+            <td>
+              {% for e in r.issuers %}
+              <span class="ent-chip inv-chip" style="--ec:{{ color('entity', e) }}">{{ e }}</span>
+              {% endfor %}
+              {% if r.issuers_more %}<span class="dim">+ {{ r.issuers_more | aindic }}</span>{% endif %}
+              {% if not r.issuers %}<span class="dim">لا يوجد صرف بعد</span>{% endif %}
+            </td>
+            <td>
+              {% if r.exp %}
+              <span class="st-exp {{ r.badge }}">{{ r.exp }}{% if r.exp_days is not none %}<small> ({{ r.exp_days | aindic }} يوم)</small>{% endif %}</span>
+              {% else %}<span class="dim">—</span>{% endif %}
+            </td>
+            <td>{{ r.out_est or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="hl-empty dim">لا توجد أصناف في هذا المخزن</div>
+      {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+    {% if section.inventory_unassigned %}
+    <span class="panel-hint">⚠️ في {{ section.inventory_unassigned | aindic }} صنف برصيد غير موزع على مخازن (في «غير موزع» بقسم المخازن)</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

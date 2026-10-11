@@ -60,7 +60,7 @@
       var em = document.createElement("span");
       em.className = "c2-box-empty";
       em.id = "c2Empty";
-      em.textContent = "المربع فاضي — اختر جهة من قائمة التأميدات بالأعلى";
+      em.textContent = "المربع فارغ — اختر جهة من قائمة التأميدات بالأعلى";
       box.appendChild(em);
     } else {
       tms.forEach(function (tm) {
@@ -162,6 +162,7 @@
     });
   }
   var rowsUrl = (document.currentScript && document.currentScript.getAttribute("data-rows")) || "/calc2/rows";
+  var scopeEl = document.getElementById("c2Scope");
   function loadRows(keys) {
     var fromEl = document.querySelector("[name=date_from]");
     var toEl = document.querySelector("[name=date_to]");
@@ -170,6 +171,7 @@
       "from=" + encodeURIComponent(fromEl ? fromEl.value : "") +
       "&to=" + encodeURIComponent(toEl ? toEl.value : "") +
       "&days=" + encodeURIComponent(daysEl ? daysEl.value : "") +
+      "&scope=" + encodeURIComponent(scopeEl ? scopeEl.value : "all") +
       "&selected=" + encodeURIComponent(JSON.stringify(keys || []));
     fetch(url, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
@@ -261,4 +263,33 @@
     });
   }
   renderBox(chosen());
+
+  /* تنبيه فوري على رقم إذن مكرر — على الكتابة (توجيه ٠٨/١٠) */
+  var numInput = document.getElementById("c2NumberInput");
+  var dupWarn = document.getElementById("c2DupWarn");
+  if (numInput && dupWarn) {
+    var usedMap = {};
+    try {
+      JSON.parse(document.getElementById("c2UsedNumbers").textContent || "[]")
+        .forEach(function (u) { usedMap[String(u.n)] = u; });
+    } catch (e) { usedMap = {}; }
+    function dupCheck() {
+      var latin = numInput.value.replace(/[٠-٩]/g, function (d) {
+        return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));
+      });
+      var n = parseInt(latin, 10);
+      var u = (!numInput.value.trim() || isNaN(n)) ? null : usedMap[String(n)];
+      if (!u) { dupWarn.hidden = true; return; }
+      dupWarn.textContent = "⚠️ رقم الإذن هذا مستخدم بالفعل (يوم " + ar(u.day) +
+        (u.label ? " — " + u.label : "") + ") — الحفظ بهيستبدل الإذن القديم";
+      dupWarn.hidden = false;
+    }
+    numInput.addEventListener("input", dupCheck);
+    dupCheck();
+  }
+
+  /* عرض المقررات: مجمّع / الجهة الرئيسية / الجهات الملحقة — إعادة تحميل الجدول فورًا */
+  if (scopeEl) {
+    scopeEl.addEventListener("change", function () { loadRows(chosen()); });
+  }
 })();

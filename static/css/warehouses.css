@@ -40,6 +40,9 @@
 
 /* شريط أزرار الملفات */
 .wh-fsbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 14px; }
+/* شريط ملفات تاب جوا كارت المخزن (توجيه ٠٨/١٠): فتح المجلد + فتح الملف + تنزيل */
+.wh-filebar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 2px 0 12px;
+  padding: 9px 12px; border: 1px dashed var(--card-border, #ffffff22); border-radius: 10px; }
 
 /* زر الإضافة الأمبر — نفس نمط التأميدات */
 .wh-newbtn { display: flex; align-items: center; justify-content: center; gap: 11px;
@@ -355,3 +358,124 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 
 /* خلايا الشركات في كروت المخازن: نص هادئ محسوم (توجيه ٢٨/٠٩) */
 .wh-table td.wh-co { font-size: .8rem; color: var(--muted); white-space: normal; min-width: 110px; }
+
+/* ===== ٢ مخازن — التغليف: إجمالي قابل للضغط + النافذة المتراصة (توجيه ٠٨/١٠) ===== */
+.wh-total-btn { border: 1px dashed var(--gold-border); background: var(--surface-gold);
+  color: var(--gold-light); border-radius: 9px; padding: 3px 14px; cursor: pointer;
+  font-weight: 800; font-size: .98rem; font-family: inherit; }
+.wh-total-btn:hover { background: var(--gold); color: #020617; border-style: solid; }
+.pack-stack { display: flex; flex-direction: column; gap: 10px; }
+.pack-item { border: 1px solid var(--card-border); border-inline-start: 4px solid var(--gold);
+  border-radius: 12px; padding: 10px 14px; background: var(--surface-1); }
+.pack-item-name { font-size: 1.02rem; margin-bottom: 6px; color: var(--gold-light); }
+.pack-line { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; padding: 4px 0; border-top: 1px dashed var(--card-border); }
+.pack-line span { color: var(--muted); font-size: .85rem; }
+.pack-line b { font-size: .98rem; }
+.pack-line.pack b { color: var(--gold-light); }
+.pack-patch { margin-top: 6px; font-size: .78rem; color: var(--muted);
+  background: var(--surface-soft); border-radius: 8px; padding: 3px 10px;
+  display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.pack-extras { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pack-total { margin-top: 14px; padding-top: 10px; border-top: 2px solid var(--card-border);
+  text-align: start; color: var(--gold-light); font-size: 1rem; }
+
+/* ===== ٣ مخازن — التابان الرئيسيان + تفاريد بتاب لكل صنف (توجيه ٠٨/١٠) ===== */
+.wh-wh3top { padding: 14px 16px; }
+.wh-wh3taf { padding-top: 2px; }
+.wh-wh3taf .wh-subtabs { position: sticky; top: 0; z-index: 2; background: var(--card); }
+.wh-wh3taf .wh-subtab small { font-weight: 400; opacity: .75; }
+
+/* ===== دفتر 4 مخازن — الشطب اليومى + الشهرى (توجيه ١٠/١٠) ===== */
+.wh-wh4 { padding: 14px 16px; }
+.wh4-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.wh4-lab { font-size: .85rem; }
+.wh4-toolbar select { min-width: 260px; }
+.wh4-dailybar, .wh4-mbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; margin-bottom: 12px; }
+
+/* شبكة الشطب اليومى */
+.wh4-table { min-width: 1080px; }
+.wh4-table thead th { position: sticky; top: 0; z-index: 1; }
+.wh4-table .wh4-day { min-width: 46px; font-size: .72rem; line-height: 1.15; }
+.wh4-table .wh4-day small { opacity: .7; font-size: .66rem; }
+.wh4-cell { padding: 1px 2px !important; min-width: 46px; }
+.wh4-cellin { width: 58px; text-align: center; background: transparent;
+  border: 1px dashed transparent; border-radius: 6px; color: var(--text);
+  font-family: var(--font-ui); font-size: .82rem; padding: 3px 2px; }
+.wh4-cellin:hover { border-color: var(--gold); background: rgba(255, 196, 122, .07); }
+.wh4-cellin:focus { outline: none; border-color: var(--gold);
+  background: rgba(255, 196, 122, .1); }
+.wh4-cellin::placeholder { color: var(--text-dim); opacity: .55; }
+.wh4-tot { min-width: 74px; }
+.wh4-grand td { background: rgba(19, 38, 56, .55); }
+
+/* التوقيعات أسفل تابلو اليومى */
+.wh4-sigs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px; margin-top: 22px; }
+.wh4-sigs > div { text-align: center; }
+.wh4-sigs span { display: block; font-size: .85rem; font-weight: 700; }
+.wh4-sigs bdi { display: block; margin-top: 8px; color: var(--text-dim); }
+
+/* شيبات الشهرى */
+.wh4-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.wh4-chip { padding: 6px 14px; border-radius: 999px; font-size: .82rem;
+  border: 1px solid var(--card-border); }
+.wh4-chip.gold { color: var(--gold-light); border-color: var(--gold); }
+.wh4-chip.green { color: #7ee2a8; border-color: #2e7d5b; }
+.wh4-chip.blue { color: #8ec5ff; border-color: #2d5f8a; }
+.wh4-chip.red { color: #ff9d9d; border-color: #8a2d2d; }
+.wh4-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 10px; }
+.wh4-inline-form { display: flex; gap: 8px; align-items: center; }
+.wh4-inline-form input[type="text"] { width: 150px; }
+.wh4-pricein { width: 110px !important; text-align: center; }
+
+/* المسند الرسمي (ورقة بيضاء) */
+.wh4-paper { background: #fff; color: #16222e; border-radius: 6px;
+  padding: 26px 30px; max-width: 1050px; margin: 0 auto;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
+.wh4-lh { display: flex; justify-content: space-between; align-items: flex-start;
+  border-bottom: 3px double #16222e; padding-bottom: 10px; }
+.wh4-lh-lines { display: flex; flex-direction: column; gap: 2px; }
+.wh4-lh-lines div:first-child { font-size: 1.15rem; font-weight: 800; }
+.wh4-lh-lines div { font-size: .95rem; font-weight: 700; }
+.wh4-logo { width: 74px; height: 74px; object-fit: contain; }
+.wh4-ptitle { text-align: center; font-size: 1.35rem; font-weight: 800;
+  margin: 16px 0 12px; }
+.wh4-meta { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space-between;
+  font-size: .85rem; margin-bottom: 10px; }
+.wh4-mtable { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.wh4-mtable th { background: #E9F1F9; color: #000; font-weight: 700;
+  padding: 7px 6px; border: 1px solid #0d1b29; text-align: center; }
+.wh4-mtable td { border: 1px solid #9aa7b4; padding: 6px 5px; text-align: center; }
+.wh4-mtable td:nth-child(3) { text-align: right; }
+.wh4-mtable tr.wh4-opener td, .wh4-mtable tr.wh4-closing td { background: #fff2cc; }
+.wh4-mtable tr.wh4-strike td { background: #fff8f0; }
+.wh4-mtable .wh4-real { background: #fce4ec !important; font-weight: 700; }
+.wh4-mtable .wh4-red { color: #c62828; font-weight: 700; }
+.wh4-mtable tr.wh4-blank td { height: 22px; background: #fff; }
+.wh4-foot { margin-top: 16px; font-size: .85rem; }
+.wh4-approval { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wh4-approvalin { width: 340px; max-width: 60vw; }
+.wh4-sign { margin-top: 8px; font-weight: 700; }
+.wh4-approval .rt-btn, .wh4-actions .rt-btn { margin-inline-start: 4px; }
+
+/* الطباعة: المسند الرسمي لوحده */
+@media print {
+  body.wh4-paper-only .wh-hero, body.wh4-paper-only .wh-cycles,
+  body.wh4-paper-only .wh-tabs, body.wh4-paper-only .wh-fsbar,
+  body.wh4-paper-only .wh-subtabs, body.wh4-paper-only .wh4-mbar,
+  body.wh4-paper-only .wh4-actions, body.wh4-paper-only .wh4-dailybar,
+  body.wh4-paper-only .no-print, body.wh4-paper-only .toast { display: none !important; }
+  body.wh4-paper-only .wh-wh4 { padding: 0; }
+  body.wh4-paper-only .wh4-paper { box-shadow: none; max-width: none;
+    padding: 10px; border-radius: 0; }
+  .wh4-mtable { font-size: 10pt; }
+}
+
+/* ٥ مخازن (صادر المخزن التقصيلى) — سجل تلقائي (توجيه ١١/١٠) */
+.wh5-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.wh5-table th { white-space: nowrap; }
+.wh5-table .wh5-details { min-width: 260px; text-align: right; line-height: 1.5; }
+.wh5-grand td { background: #FFF2CC; font-weight: 700; }

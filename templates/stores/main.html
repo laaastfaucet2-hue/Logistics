@@ -33,7 +33,7 @@
       document.getElementById("storeDelTitle").textContent =
         "حذف مخزن «" + form.dataset.name + "»";
       document.getElementById("storeDelText").textContent = moved
-        ? "هذا المخزن عليه حركة — ممنوع حذفه إلا بنقل أصنافه إلى مخزن أو ثلاجة أخرى."
+        ? "هذا المخزن عليه حركة — لا يجوز حذفه إلا بعد نقل أصنافه إلى مخزن أو ثلاجة أخرى."
         : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
       document.getElementById("storeDelTransfer").hidden = !moved;
       var input = modal.querySelector("[name=transfer_name]");
@@ -59,6 +59,20 @@
     pending.submit();
   });
 })();
+/* الـ 3 تابات الرئيسية لكارت المخزن (توجيه ٠٨/١٠): حركة · أصناف · كشف جرد */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-main]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  var key = btn.getAttribute("data-st-main");
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-main]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-mainpanel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-mainpanel") !== key;
+  });
+});
 </script>
 
 {% endblock %}
@@ -66,6 +80,7 @@
 
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 
 {% block content %}
@@ -89,11 +104,12 @@
 </nav>
 
 <div class="wh-fsbar no-print">
-  <a class="rt-btn dim" href="{{ url_for('stores.open_folder', tab=tab) }}">📂 فتح مجلد «{{ tab_file }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('stores.open_folder', tab=tab) }}">📂 فتح مجلد «{{ tab_folder }}»</a>
   <a class="rt-btn dim" href="{{ url_for('stores.open_file', tab=tab) }}">📗 فتح ملف «{{ tab_file }}»</a>
   <a class="icon-btn down" title="تنزيل «{{ tab_file }}» إكسل" href="{{ url_for('stores.download', tab=tab) }}">
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
   </a>
+  <span class="wh-chip dim">فولدر كل مخزن داخل «10-المخازن والثلاجات»: حركة المخزن · الأصناف · كشف أرصدة المخازن</span>
 </div>
 
 <!-- تابات المخازن: تاب لكل مخزن — في تاب «المخازن» و«حركة وكشف الأرصدة» معًا:
@@ -123,7 +139,7 @@
       <input name="name" required autocomplete="off" value="{{ editing.name if editing else '' }}"
              placeholder="مخزن الأرز / مخزن الثلاجة..."></label>
     <label class="wh-f">الموقع
-      <input name="location" autocomplete="off" value="{{ editing.location if editing else '' }}"
+      <input name="location" data-combo="storeLocList" autocomplete="off" value="{{ editing.location if editing else '' }}"
              placeholder="مبنى / دور / جهة"></label>
     <label class="wh-f">سعة المخزن (متر)
       <input name="capacity_m2" inputmode="decimal" autocomplete="off"
@@ -197,6 +213,8 @@
 {% else %}
 {% include "stores/_store_card.html" %}
 {% endif %}
+
+<datalist id="storeLocList">{% for loc in (stores | map(attribute="location") | select | unique | list) %}<option value="{{ loc }}">{% endfor %}</datalist>
 {% endblock %}
 
 {% block scripts %}

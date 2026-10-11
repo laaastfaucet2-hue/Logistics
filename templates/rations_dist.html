@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
 
 {% macro gen(it) -%}

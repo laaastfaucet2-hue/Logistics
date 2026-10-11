@@ -15,8 +15,9 @@ fetch اتشال من المنظومة كلها لأنه مصدر العطل ا�
 إضافة سريعة وحذف يرجعون لصفحة الكشف بتحويل عادي · /daily/save: الحفظ الموحد.
 """
 import json
+import re
 
-from flask import redirect, render_template, request
+from flask import redirect, render_template, request, send_file
 from urllib.parse import quote
 
 from core import arabic_numbers as arnum
@@ -24,6 +25,7 @@ from core.auth_core import login_required
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 from services import raghibin as rfs
+from services import tameed_alerts
 from services.raghibin import modal as rg_modal
 
 from . import raghibin_bp
@@ -48,10 +50,34 @@ def modal_page():
     cat = _category()
     sid = request.values.get("sid", "")
     variables = rg_modal.build(year, month, entity, day, cat, sid=sid)
+    # الرجوع بعد الحفظ: من تاب الراغبين يرجع للراغبين (back=raghibin) —
+    # ومن التأميدات يفضل في التاميدات (الافتراضي tameedat)
+    variables["back"] = request.args.get("back", "tameedat")
     # url_for('tameedat.page') بيحمل ?year&month&sid تلقائيًا (url_defaults) — فالفاصل &
     back = url_for("tameedat.page")
     back += ("&" if "?" in back else "?") + "tab=day"
     variables["tameed_back"] = back + (f"&sid={quote(sid)}" if sid else "")
+    variables["ok"] = request.args.get("ok", "")
+    variables["err"] = request.args.get("err", "")
+    # تصميم الاسكرين شوت (١٠/١٠/٢٠): السجل المعتمد بكل الفئتين + قطع الجهة
+    variables["pieces_count"] = len(variables.get("entity_names", []))
+    if entity:
+        variables["registry_officers"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="officers")
+        variables["registry_individuals"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="individuals")
+        variables["approval"] = dr.get_approval(year, month, entity["id"], day)
+        variables["scan_img_url"] = (
+            f"/raghibin/scan/img?e={entity['id']}&d={day}"
+            + (f"&sid={quote(sid)}" if sid else ""))
+        variables["entity_count"] = len(variables["registry_officers"]) \
+            + len(variables["registry_individuals"])
+    else:
+        variables["registry_officers"] = []
+        variables["registry_individuals"] = []
+        variables["approval"] = None
+        variables["scan_img_url"] = ""
+        variables["entity_count"] = 0
     return render_template("raghibin/modal_page.html", **variables)
 
 
@@ -165,6 +191,36 @@ def daily_save():
     if removed:
         ok += f" — وأُلغيت رغبة {arnum.to_arabic_indic(str(removed))}" \
               f" محذوفين من المربعات"
+    # الربط بتاب التاميدات: مقارنة أعداد اليوم بتأميدة الجهة (أو تنبيه غيابها)
+    from routes.raghibin.context import _tameed_day_totals
+    tameed_totals = _tameed_day_totals(year, month, entity["id"], day)
+    state = dr.day_state(year, month, day, entity["id"])
+    w_off = w_ind = 0
+    for p in dr.list_persons(year, month, entity_id=entity["id"]):
+        if state.get(p["id"]):
+            if p["category"] == "officers":
+                w_off += 1
+            else:
+                w_ind += 1
+    if not tameed_totals:
+        if w_off + w_ind:
+            warnings.append(tameed_alerts.no_tameeda_issue(w_off + w_ind)["text"])
+    else:
+        cmp_msgs = []
+        for lbl, w, t in (("ضباط", w_off, tameed_totals["officers"]),
+                          ("أفراد", w_ind, tameed_totals["individuals"])):
+            if w < t:
+                cmp_msgs.append(f"الراغبين {lbl} ({arnum.to_arabic_indic(str(w))}) "
+                                f"أقل من التأميدة ({arnum.to_arabic_indic(str(t))}) — "
+                                f"الناقص {arnum.to_arabic_indic(str(t - w))}")
+            elif w > t:
+                cmp_msgs.append(f"الراغبين {lbl} ({arnum.to_arabic_indic(str(w))}) "
+                                f"أكتر من التأميدة ({arnum.to_arabic_indic(str(t))}) — "
+                                f"التجاوز {arnum.to_arabic_indic(str(w - t))}")
+        if not cmp_msgs and (w_off + w_ind) == (tameed_totals["officers"] +
+                                               tameed_totals["individuals"]):
+            ok += " — مطابق للتأميدة ✓"
+        warnings.extend(cmp_msgs)
     warn = " | ".join(warnings) if warnings else None
 
     if back_to == "tameedat":
@@ -183,3 +239,128 @@ def daily_save():
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
         return redirect(f"{base}{separator}{query}")
     return _rb("daily", e=entity["id"], d=day, c=cat, ok=ok, warn=warn)
+
+
+@raghibin_bp.route("/daily/copy", methods=["POST"])
+@login_required
+def daily_copy():
+    """نسخ كشف راغب يوم كامل ليوم تانى — الجهة من الفورم أولًا (دايالوج النسخ)."""
+    year, month = _ctx()
+    eid = arnum.parse_int(request.form.get("e"))
+    if eid:
+        entity = dt.get_entity(year, month, eid)
+        if not entity:
+            return _rb("daily", err="الجهة المحددة في نافذة النسخ غير موجودة")
+    else:
+        entity, back = _entity_or_back(year, month, "daily")
+        if back:
+            return back
+    try:
+        from_day = int(request.form.get("from_d") or _selected_day(year, month))
+        to_day = int(request.form.get("to_d") or 0)
+        if not (1 <= to_day <= 31):
+            raise ValueError
+    except ValueError:
+        return _rb("daily", e=entity["id"], d=_selected_day(year, month),
+                   err="حدد يوم الهدف صحيح (١ حتى ٣١) عشان نسخ الكشف له")
+    moved = dr.copy_day(year, month, entity["id"], from_day, to_day)
+    rfs.write_entity_files(year, month, entity["id"], entity["name"], day=to_day)
+    ok = (f"تم نسخ كشف راغب يوم {arnum.to_arabic_indic(str(from_day))} كاملًا "
+          f"({arnum.to_arabic_indic(str(moved))} عضو) إلى يوم "
+          f"{arnum.to_arabic_indic(str(to_day))} — {entity['name']}")
+    return _rb("daily", e=entity["id"], d=to_day, c=_category(), ok=ok)
+
+
+@raghibin_bp.route("/approval/save", methods=["POST"])
+@login_required
+def approval_save():
+    """حفظ توقيتات اعتماد كشف اليوم: المقدم + الاسم العروني + الرتبة + الحالة."""
+    year, month = _ctx()
+    entity, back = _entity_or_back(year, month, "daily")
+    if back:
+        return back
+    try:
+        day = int(request.form.get("d") or _selected_day(year, month))
+    except ValueError:
+        day = _selected_day(year, month)
+    submit_rank = (request.form.get("submit_rank") or "").strip()
+    submit_name = (request.form.get("submit_name") or "").strip()
+    submit_grade = (request.form.get("submit_grade") or "").strip()
+    doc_rank = (request.form.get("doc_rank") or "").strip()
+    doc_name = (request.form.get("doc_name") or "").strip()
+    doc_roster = (request.form.get("doc_roster_name") or "").strip()
+    # توافق مع الفورم القديم (صف اعتماد المودال السابق)
+    if not (submit_rank or submit_name or doc_rank or doc_name):
+        submit_grade = (request.form.get("approver_rank") or "").strip()
+        submit_name = (request.form.get("approver_name") or "").strip()
+    status = (request.form.get("status") or "موثقة").strip() or "موثقة"
+    dr.save_approval(year, month, entity["id"], day,
+                     submit_rank=submit_rank, submit_name=submit_name,
+                     submit_grade=submit_grade, doc_rank=doc_rank,
+                     doc_name=doc_name, doc_roster_name=doc_roster,
+                     status=status)
+    ok = (f"تم حفظ توقيتات اعتماد كشف يوم {arnum.to_arabic_indic(str(day))} "
+          f"({entity['name']}) — الحالة: {status}")
+    sid = request.form.get("sid", "")
+    if request.form.get("back") == "cadres":
+        return _rb("cadres", e=entity["id"], d=day, ok=ok)
+    return redirect(_modal_page_url(entity, day, _category(), sid) + f"&ok={quote(ok)}")
+
+
+@raghibin_bp.route("/scan/upload", methods=["POST"])
+@login_required
+def scan_upload():
+    """رفع صورة كشف/بطاقة اليوم للجهة — محفوظة في فولدر المسح الضوئي المحلي."""
+    year, month = _ctx()
+    entity, back = _entity_or_back(year, month, "daily")
+    if back:
+        return back
+    try:
+        day = int(request.form.get("d") or _selected_day(year, month))
+    except ValueError:
+        day = _selected_day(year, month)
+    back_tab = "cadres" if request.form.get("back") == "cadres" else "daily"
+    upload = request.files.get("scan_file")
+    if not upload or not upload.filename:
+        return _rb(back_tab, e=entity["id"], d=day, err="اختر صورة الكشف الأول قبل الحفظ")
+    match = re.search(r"\.([a-zA-Z0-9]{2,5})$", upload.filename)
+    ext = (match.group(1).lower() if match else "jpg")
+    if ext not in ("jpg", "jpeg", "png", "webp", "bmp"):
+        ext = "jpg"
+    safe_name = re.sub(r"[^\w\s\-]", "", entity["name"]).strip() or "جهة"
+    folder = rfs.tab_dir(year, month, "daily") / "المسح الضوئي" / f"يوم {day}"
+    folder.mkdir(parents=True, exist_ok=True)
+    dest = folder / f"{safe_name}.{ext}"
+    upload.save(dest)
+    ok = f"تم حفظ صورة كشف {entity['name']} ليوم {arnum.to_arabic_indic(str(day))} في فولدر المسح الضوئي المحلي"
+    sid = request.form.get("sid", "")
+    if back_tab == "cadres":
+        return _rb("cadres", e=entity["id"], d=day, ok=ok)
+    return redirect(_modal_page_url(entity, day, _category(), sid) + f"&ok={quote(ok)}")
+
+
+@raghibin_bp.route("/scan/img")
+@login_required
+def scan_img():
+    """عرض أحدث صورة مسح ضوئي محفوظة ليوم الجهة."""
+    year, month = _ctx()
+    entity = _selected_entity(year, month)
+    try:
+        day = int(request.values.get("d") or _selected_day(year, month))
+    except ValueError:
+        day = _selected_day(year, month)
+    if not entity:
+        from flask import abort
+        abort(404)
+    folder = (rfs.tab_dir(year, month, "daily") / "المسح الضوئي" / f"يوم {day}")
+    if not folder.is_dir():
+        from flask import abort
+        abort(404)
+    candidates = sorted(folder.iterdir(), key=lambda p: p.stat().st_mtime,
+                        reverse=True)
+    candidates = [p for p in candidates if p.is_file()
+                  and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".bmp")]
+    if not candidates:
+        from flask import abort
+        abort(404)
+    return send_file(candidates[0])

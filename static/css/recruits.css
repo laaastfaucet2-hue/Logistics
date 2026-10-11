@@ -16,16 +16,23 @@
 /* ======== التخطيط ======== */
 .rc-grid { display: grid; grid-template-columns: minmax(330px, 420px) 1fr; gap: 16px; align-items: start; }
 .rc-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
-.rc-journal { display: grid; grid-template-columns: 250px 1fr; gap: 16px; align-items: start; }
-@media (max-width: 1100px) { .rc-grid, .rc-journal { grid-template-columns: 1fr; } }
+.rc-journal { display: grid; grid-template-columns: 224px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) {
+  .rc-grid, .rc-journal { grid-template-columns: 1fr; }
+  /* في العمود الواحد التثبيت كان يجعل اليومية تنزلق فوق مربع الأيام — نرجّعه للتيار */
+  .rc-daysbox { position: static; }
+  /* شريط أيام مدموج: 11 أعمدة × ٣ صفوف بدل ٧ أعمدة × ٥ مربعات كبيرة */
+  .rc-days { grid-template-columns: repeat(11, 1fr); }
+  .rc-legend { flex-direction: row; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+}
 
-/* ======== مربع الأيام ======== */
+/* ======== مربع الأيام (مدموج — مش مربعات كبيرة) ======== */
 .rc-daysbox { position: sticky; top: calc(var(--window-h) + 96px); }
-.rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-.rc-daybox { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 9px;
+.rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.rc-daybox { position: relative; display: grid; place-items: center; min-height: 32px; padding: 3px 0; border-radius: 8px;
   border: 1px solid var(--card-border); background: var(--card); color: var(--text);
-  text-decoration: none; font-weight: 600; font-size: .8rem; transition: .15s; }
-.rc-daybox:hover { border-color: rgba(var(--gold-rgb),.55); transform: scale(1.06); }
+  text-decoration: none; font-weight: 600; font-size: .84rem; transition: .15s; }
+.rc-daybox:hover { border-color: rgba(var(--gold-rgb),.55); transform: scale(1.08); }
 .rc-daybox.on { background: var(--surface-gold);
   border-color: var(--brand-gold); color: var(--gold-light); }
 .rc-daybox.locked { border-color: rgba(var(--success-rgb),.5); color: var(--green); }
@@ -35,9 +42,24 @@
 .rc-daybox.today { outline: 2px solid rgba(var(--gold-rgb),.7); outline-offset: 1px; }
 .rc-lock { position: absolute; bottom: 2px; inset-inline-end: 3px; }
 .rc-lock svg { width: 9px; height: 9px; stroke: var(--green); fill: none; stroke-width: 2.4; }
-@keyframes rc-pulse { 50% { box-shadow: 0 0 0 4px rgba(var(--danger-rgb),.14); } }
-.rc-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; font-size: .8125rem; color: var(--muted); }
-.rc-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-inline-end: 6px; }
+@keyframes rc-pulse { 50% { box-shadow: 0 0 0 2.5px rgba(var(--danger-rgb),.16); } }
+.rc-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
+.rc-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 3px; margin-inline-end: 6px; }
+
+/* تابات فرعية جوا تاب السجن (سجن/المحكمات/الجزاءات) */
+.rc-ptabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.rc-ptab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 10px;
+  border: 1px solid var(--card-border); background: var(--card); color: var(--muted);
+  text-decoration: none; font-weight: 600; font-size: .84rem; transition: .15s; }
+.rc-ptab:hover { border-color: rgba(var(--gold-rgb),.5); color: var(--text); }
+.rc-ptab.on { background: var(--surface-gold); border-color: rgba(var(--gold-rgb),.65);
+  color: var(--gold-light); box-shadow: 0 3px 12px rgba(var(--gold-rgb),.14); }
+
+/* حالة «مفيش مجندين» في اليومية — توضيح الطريق للتسجيل */
+.rc-jempty { text-align: center; padding: 34px 20px; }
+.rc-jempty .rc-jempty-ico { font-size: 2.2rem; margin-bottom: 10px; }
+.rc-jempty h4 { margin: 0 0 8px; font-size: 1.05rem; }
+.rc-jempty p { margin: 0 auto 16px; max-width: 460px; color: var(--muted); font-size: .86rem; line-height: 1.7; }
 .dot.today { background: var(--brand-gold); } .dot.locked { background: var(--green); } .dot.missing { background: var(--red); }
 
 /* ======== اللافتات ======== */
@@ -62,6 +84,9 @@
 .st-مأمورية { border-color: rgba(var(--info-rgb),.5) !important; color: var(--blue) !important; }
 .st-مستشفى { border-color: rgba(var(--other-rgb),.55) !important; color: var(--status-other) !important; }
 .st-أخرى { border-color: rgba(95,95,87,.5) !important; color: var(--text) !important; }
+.st-سجن { border-color: rgba(253,186,116,.55) !important; color: var(--orange) !important; }
+.st-محكمة { border-color: rgba(94,234,212,.5) !important; color: #5eead4 !important; }
+.st-جزاء { border-color: rgba(244,114,182,.5) !important; color: #f472b6 !important; }
 
 .rc-status { min-width: 118px; }
 .rc-jtable select, .rc-jtable input.rc-status { padding: 6px 10px; background: var(--field-bg); }
@@ -135,7 +160,7 @@
 .rc-doc .pd-title { color: #b8860b; }
 .rc-permit p { font-size: 1.02rem; line-height: 2.1; font-weight: 700; }
 .rc-print-table { width: 100%; }
-.rc-print-table th { background: #0a1230 !important; color: #f6d47c !important; }
+.rc-print-table th { background: #E9F1F9 !important; color: #000 !important; }
 
 @media print {
   body { background: #fff !important; }
@@ -149,3 +174,69 @@
   .rc-tab { padding: 8px 12px; font-size: .875rem; }
   .rc-range .rc-ref { min-width: 0; flex-basis: 100%; }
 }
+
+/* ================== تصريح الإجازة المجمّع (جولة ٣٥) ================== */
+.rc-joint-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                padding: 12px 4px 2px; }
+.rc-joint-bar .panel-hint { margin: 0; }
+.rt-table input[type="checkbox"].rc-jchk { width: 18px; height: 18px; cursor: pointer; }
+.rc-permit-badge { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 10px;
+                   font-size: 11px; background: rgba(var(--success-rgb, 46, 125, 50), .12);
+                   border: 1px solid rgba(var(--success-rgb, 46, 125, 50), .45); color: var(--green, #2e7d32); }
+
+/* ================== ملف المجند الشامل (المرحلة ٤) ================== */
+.rc-back { margin: 0 0 10px; }
+.rc-back a { font-size: .875rem; color: var(--brand-gold, var(--text)); text-decoration: none; }
+.rc-back a:hover { text-decoration: underline; }
+.rc-file-head { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; padding: 14px 4px 4px; }
+.rc-file-photo { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; border: 1px solid var(--gold-border, rgba(var(--gold-rgb), .4)); }
+.rc-file-photo.ph { display: grid; place-items: center; background: rgba(var(--gold-rgb, 201, 162, 39), .08); font-size: 2rem; color: var(--dim, var(--text)); }
+.rc-file-id { flex: 1 1 320px; min-width: 0; }
+.rc-file-id > b { font-size: 1.25rem; }
+.rc-file-id .rc-line-mini { margin: 6px 0 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.rc-file-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 18px; }
+.rc-file-grid div { font-size: .9375rem; border-top: 1px dashed rgba(var(--gold-rgb, 201, 162, 39), .25); padding-top: 6px; }
+.rc-file-kpis { display: flex; gap: 10px; flex-wrap: wrap; }
+.rc-file-kpi { min-width: 88px; text-align: center; padding: 8px 14px; border-radius: 10px;
+               background: rgba(var(--gold-rgb, 201, 162, 39), .08); border: 1px solid rgba(var(--gold-rgb, 201, 162, 39), .3); }
+.rc-file-kpi b { display: block; font-size: 1.25rem; }
+.rc-file-kpi span { font-size: .8125rem; color: var(--dim, var(--text)); }
+.rc-file-totals td { border-top: 2px solid rgba(var(--gold-rgb, 201, 162, 39), .4); font-weight: 700; }
+.rc-timeline { list-style: none; margin: 6px 0 10px; padding: 0; position: relative; }
+.rc-timeline::before { content: ""; position: absolute; right: 19px; top: 8px; bottom: 8px; width: 2px;
+                       background: rgba(var(--gold-rgb, 201, 162, 39), .25); }
+.rc-tl-item { display: flex; gap: 14px; align-items: flex-start; padding: 8px 0; position: relative; }
+.rc-tl-icon { width: 40px; height: 40px; min-width: 40px; display: grid; place-items: center; font-size: 1.125rem;
+              background: var(--surface, #fff); border: 1px solid rgba(var(--gold-rgb, 201, 162, 39), .35);
+              border-radius: 50%; position: relative; z-index: 1; }
+.rc-tl-body { padding-top: 2px; }
+.rc-tl-item.tl-إجازة .rc-tl-icon { border-color: rgba(var(--gold-rgb, 201, 162, 39), .7); }
+.rc-tl-item.tl-غياب .rc-tl-icon { border-color: rgba(var(--danger-rgb, 198, 40, 40), .6); }
+.rc-tl-item.tl-مأمورية .rc-tl-icon { border-color: rgba(var(--info-rgb, 21, 101, 192), .5); }
+.rc-tl-item.tl-مستشفى .rc-tl-icon { border-color: rgba(var(--other-rgb, 123, 31, 162), .5); }
+.icon-btn.file { color: var(--brand-gold, var(--text)); }
+
+/* ================== تاب السجن (المرحلة ٥) ================== */
+.rc-prison-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; padding: 6px 4px 8px; }
+.rc-prison-form .rc-field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.rc-prison-form .rc-field.grow { flex: 1 1 220px; }
+.rc-prison-form label { font-size: .8125rem; color: var(--dim, var(--text)); }
+.rc-prison-form input { padding: 8px 10px; border-radius: 8px; font-size: .9375rem;
+                        border: 1px solid var(--gold-border, rgba(var(--gold-rgb), .4)); background: transparent; color: var(--text); }
+.rc-prison-form input:focus { outline: none; border-color: var(--brand-gold, var(--text)); }
+
+/* ================== إشعارات مقروء/فلترة + بحث أصل القوة (مقترحات الخطة) ================== */
+.rc-nf { display: inline-block; font-size: .8125rem; padding: 5px 12px; border-radius: 999px;
+         border: 1px solid rgba(var(--gold-rgb, 201, 162, 39), .35); color: var(--dim, var(--text));
+         text-decoration: none; }
+.rc-nf:hover { border-color: rgba(var(--gold-rgb, 201, 162, 39), .7); }
+.rc-nf.on { background: rgba(var(--gold-rgb, 201, 162, 39), .15); color: var(--text); font-weight: 600;
+            border-color: rgba(var(--gold-rgb, 201, 162, 39), .6); }
+.rc-notif li.rc-read { opacity: .55; }
+.rc-notif li.rc-read::before { content: "\2713  "; color: var(--green, #2e7d32); }
+.rc-notif li.rc-read a { text-decoration: line-through; text-decoration-thickness: 1px; }
+.rc-search-bar { display: flex; gap: 10px; align-items: center; padding: 4px 4px 10px; }
+.rc-search-bar input { flex: 1 1 260px; max-width: 420px; padding: 8px 12px; border-radius: 8px;
+                       border: 1px solid rgba(var(--gold-rgb, 201, 162, 39), .4);
+                       background: transparent; color: var(--text); font-size: .9375rem; }
+.rc-search-bar input:focus { outline: none; border-color: var(--brand-gold, var(--text)); }

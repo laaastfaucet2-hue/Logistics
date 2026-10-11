@@ -224,7 +224,7 @@ tr.custom-on .name { color: var(--status-other); }
   .panel-head h3 { color: #0a1230 !important; font-size: 1rem !important; }
   .table-wrap { overflow: visible !important; }
   .rt-table { min-width: 0 !important; width: 100%; }
-  .rt-table th { background: #b8860b !important; color: #fff !important;
+  .rt-table th { background: #E9F1F9 !important; color: #000 !important;
     border: 1px solid #8f6b0a !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .rt-table td { color: #1a2033 !important; border: 1px solid #aab0c0 !important;
