@@ -37,7 +37,7 @@
 <div class="panel">
   <div class="panel-head"><h3>⚕️ عدم توقيع الكشف الطبى — أسماء المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر ({{ no_checkup | length | aindic }} مجند)</h3></div>
   <div class="hl-no-checkup">
-    {% for r in no_checkup %}<span class="hl-nc-name">{{ r.name }}</span>{% endfor %}
+    {% for r in no_checkup %}<a class="hl-nc-name" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند">{{ r.name }}</a>{% endfor %}
   </div>
   <span class="panel-hint">يُعتمد الكشف الدوري من قسم «الصحة» 🏥 — العدد ينقص تلقائيًا بعد كل كشف حتى لو المجند في إجازة لحين يومه</span>
 </div>
@@ -107,9 +107,9 @@
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
     </div>
     {% if certs.expired %}<div class="rc-banner danger slim">🔴 منتهية:
-      {% for r in certs.expired %}<span class="rc-chip">{{ r.name }}</span>{% endfor %}</div>{% endif %}
+      {% for r in certs.expired %}<a class="rc-chip rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند">{{ r.name }}</a>{% endfor %}</div>{% endif %}
     {% if certs.soon %}<div class="rc-banner warn slim">🟠 تنتهي خلال أسبوعين (١٤ يومًا):
-      {% for r in certs.soon %}<span class="rc-chip">{{ r.name }} ({{ date_text(r.cert_expiry) }})</span>{% endfor %}</div>{% endif %}
+      {% for r in certs.soon %}<a class="rc-chip rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند">{{ r.name }} ({{ date_text(r.cert_expiry) }})</a>{% endfor %}</div>{% endif %}
     {% if not certs.expired and not certs.soon %}<p class="panel-hint" style="text-align:center;padding:10px 0">كل الشهادات سارية ✔</p>{% endif %}
   </div>
 
@@ -121,7 +121,7 @@
     <div class="table-wrap"><table class="rt-table">
       <thead><tr><th>المجند</th><th>المتبقي</th><th>تاريخ التسريح</th></tr></thead>
       <tbody>{% for r, n in discharge_rank %}<tr>
-        <td><b>{{ r.name }}</b>{% if r.governorate %} <small class="dim">{{ r.governorate }}</small>{% endif %}</td>
+        <td><a class="rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند"><b>{{ r.name }}</b></a>{% if r.governorate %} <small class="dim">{{ r.governorate }}</small>{% endif %}</td>
         <td class="num {% if n is not none and n <= 0 %}bad{% elif n is not none and n <= 60 %}warn{% else %}good{% endif %}">
           {% if n is none %}—{% elif n <= 0 %}انتهت من {{ (-n) | aindic }} يوم{% else %}{{ n | aindic }} يومًا{% endif %}</td>
         <td class="num">{{ date_text(r.service_end) }}</td>
@@ -139,7 +139,7 @@
       <tbody>{% for g, rs in by_gov %}<tr>
         <td><b>{{ g }}</b></td>
         <td class="num">{{ rs | length | aindic }}</td>
-        <td>{% for r in rs %}{{ r.name }}{% if not loop.last %} · {% endif %}{% endfor %}</td>
+        <td>{% for r in rs %}<a class="rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند">{{ r.name }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</td>
       </tr>{% endfor %}</tbody></table></div>
     {% else %}<p class="panel-hint" style="text-align:center;padding:10px 0">لا توجد بيانات محافظ.</p>{% endif %}
   </div>
@@ -151,7 +151,7 @@
     <div class="table-wrap"><table class="rt-table">
       <thead><tr><th>المجند</th><th>المتبقي</th><th>التسريح</th></tr></thead>
       <tbody>{% for r, n in discharging %}<tr>
-        <td><b>{{ r.name }}</b></td><td class="num">{{ n | aindic }} يومًا</td><td class="num">{{ date_text(r.service_end) }}</td>
+        <td><a class="rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند"><b>{{ r.name }}</b></a></td><td class="num">{{ n | aindic }} يومًا</td><td class="num">{{ date_text(r.service_end) }}</td>
       </tr>{% endfor %}</tbody></table></div>
     {% else %}<p class="panel-hint" style="text-align:center;padding:10px 0">لا أحد يقترب تسريحه.</p>{% endif %}
   </div>

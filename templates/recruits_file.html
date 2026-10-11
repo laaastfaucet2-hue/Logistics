@@ -73,10 +73,31 @@
   {% endif %}
 </div>
 
+<!-- ==================== محطات التتبع (الأوائل) ==================== -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>🎯 محطات التتبع <span class="panel-hint">كل خطوة في الخدمة العسكرية — أول كل حاجة بالتاريخ، من إضافة أصل القوة لحد انتهاء الخدمة</span></h3>
+  </div>
+  {% if file_data.milestones %}
+  <div class="rc-ms-grid">
+    {% for ms in file_data.milestones %}
+    <div class="rc-ms-card">
+      <span class="rc-ms-ico">{{ ms.icon }}</span>
+      <div><b>{{ ms.text.split(" — ")[0] }}</b>
+        <div class="dim rc-mini">{{ ms.text.split(" — ")[1] if " — " in ms.text else "" }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="panel-hint" style="text-align:center;padding:14px 0">ما فيش محطات مسجلة بعد — أول ما المجند يظهر في أصل القوة وتسجّل اليومية بتظهر أوائله هنا.</p>
+  {% endif %}
+</div>
+
 <!-- ==================== الخط الزمني ==================== -->
 <div class="panel">
   <div class="panel-head">
-    <h3>🕐 الخط الزمني <span class="panel-hint">كل أحداث المجند عبر الشهور — الأحدث أولًا</span></h3>
+    <h3>🕐 الخط الزمني <span class="panel-hint">كل أحداث المجند عبر الشهور — الأحدث أولًا (فترات الحالات + الملاحظات + الكشف الطبى)</span></h3>
   </div>
   {% if file_data.timeline %}
   <ol class="rc-timeline">

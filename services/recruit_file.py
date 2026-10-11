@@ -14,9 +14,16 @@ from core.config import MONTH_NAMES, month_folder
 from data_access import db_attendance as da, db_recruits as dr
 from data_access import storage
 
-FILE_STATUSES = ("إجازة", "مأمورية", "مستشفى", "غياب", "أخرى")
+FILE_STATUSES = ("إجازة", "مأمورية", "مستشفى", "غياب", "أخرى",
+                 "سجن", "محكمة", "جزاء")
 FILE_ICONS = {"إجازة": "🏖️", "مأمورية": "🧭", "مستشفى": "🏥",
-              "غياب": "🚫", "أخرى": "➕"}
+              "غياب": "🚫", "أخرى": "➕", "سجن": "⛓️", "محكمة": "⚖️",
+              "جزاء": "⚠️"}
+STATUS_ICONS = {"حضور": "✅", "إجازة": "🏖️", "غياب": "🚫", "مأمورية": "🧭",
+                "مستشفى": "🏥", "أخرى": "➕", "سجن": "⛓️", "محكمة": "⚖️",
+                "جزاء": "⚠️"}
+# كلمات ملاحظات بيتمس منها «أول أجلزة» في التتبع — قابلة للزيادة
+HAIRCUT_KEYWORDS = ("اجلزة", "اجلاس", "حلاق", "قص الشعر")
 
 
 def available_months():
@@ -53,16 +60,23 @@ def _month_row(year, month, mil_no):
     conn = sqlite3.connect(str(path), timeout=5)
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute("SELECT id FROM recruits WHERE mil_no=?", (mil_no,)).fetchone()
+        row = conn.execute("SELECT id, created_at FROM recruits WHERE mil_no=?", (mil_no,)).fetchone()
         if not row:
             return None
         rid = row["id"]
         att = conn.execute(
-            "SELECT day, status FROM attendance WHERE recruit_id=? ORDER BY day",
+            "SELECT day, status, note FROM attendance WHERE recruit_id=? ORDER BY day",
             (rid,)).fetchall()
         permit_rows = conn.execute(
             "SELECT from_day, to_day FROM leave_permits WHERE recruit_id=?",
             (rid,)).fetchall()
+        checkup_rows = []
+        try:
+            checkup_rows = conn.execute(
+                "SELECT day FROM health_checkups WHERE recruit_id=? ORDER BY day",
+                (rid,)).fetchall()
+        except sqlite3.OperationalError:
+            pass                          # شهر قديم بلا جدول كشوف
     except sqlite3.OperationalError:
         return None                      # شهر قديم بلا جدول recruits
     finally:
@@ -71,12 +85,23 @@ def _month_row(year, month, mil_no):
     counts = {st: 0 for st in da.STATUSES}
     for st in days.values():
         counts[st] += 1
+    first_days = {}
+    notes = []
+    for a in att:
+        if a["status"] not in first_days:
+            first_days[a["status"]] = a["day"]
+        note = (a["note"] or "").strip()
+        if note:
+            notes.append((a["day"], note))
     return {
         "year": year, "month": month, "month_name": MONTH_NAMES[month - 1],
         "year_ar": arnum.to_arabic_indic(year), "month_label": MONTH_NAMES[month - 1] + " " + arnum.to_arabic_indic(year),
         "counts": counts, "recorded": len(att),
         "ranges": {st: _runs(days, st) for st in FILE_STATUSES},
         "permits": {(p["from_day"], p["to_day"]) for p in permit_rows},
+        "first_days": first_days, "notes": notes,
+        "checkup_days": [r["day"] for r in checkup_rows],
+        "created_at": row["created_at"] or "",
     }
 
 
@@ -85,11 +110,12 @@ def build(year, month, rid):
     r = dr.get_recruit(year, month, rid)
     if not r:
         return None
-    months_data = [row for row in
-                   (_month_row(y, m, r["mil_no"]) for y, m in available_months())
-                   if row]
+    months_asc = sorted(
+        (row for row in
+         (_month_row(y, m, r["mil_no"]) for y, m in available_months()) if row),
+        key=lambda x: (x["year"], x["month"]))
     timeline = []
-    for row in months_data:
+    for row in months_asc:
         y, m = row["year"], row["month"]
         for st in FILE_STATUSES:
             for f, t in row["ranges"][st]:
@@ -101,6 +127,16 @@ def build(year, month, rid):
                 timeline.append({"ymd": (y, m, f), "icon": FILE_ICONS[st],
                                  "status": st, "text": text,
                                  "month": row["month_label"]})
+        # أحداث الملاحظات (أجلزة/تحويل/أي بيان كُتب في اليومية)
+        for day, note in row["notes"]:
+            timeline.append({"ymd": (y, m, day), "icon": "📝", "status": "note",
+                             "text": "ملاحظة: " + note,
+                             "month": row["month_label"]})
+        # الكشف الطبى الدوري
+        for day in row["checkup_days"]:
+            timeline.append({"ymd": (y, m, day), "icon": "🩺", "status": "",
+                             "text": "كشف طبى دورى " + dates.period_date(y, m, day),
+                             "month": row["month_label"]})
     for field, icon, label in (("service_start", "🎖️", "دخول الخدمة"),
                                ("service_end", "🏁", "انتهاء الخدمة")):
         parsed = dates.parse_date(r.get(field) or "")
@@ -110,15 +146,58 @@ def build(year, month, rid):
                              "text": label + " " + dates.format_date(parsed),
                              "month": MONTH_NAMES[parsed.month - 1] + " " + arnum.to_arabic_indic(parsed.year)})
     timeline.sort(key=lambda x: x["ymd"], reverse=True)
+
+    # ==================== محطات التتبع (الأوائل) — كل خطوة في الخدمة ====================
+    milestones = []
+
+    def _ms(ymd, icon, text, label=""):
+        milestones.append({"ymd": ymd, "icon": icon, "text": text,
+                           "label": label or text})
+
+    if months_asc:
+        first_row = months_asc[0]
+        _ms((first_row["year"], first_row["month"], 1), "📋",
+            "انضم لأصل القوة — " + first_row["month_label"],
+            "انضم لأصل القوة")
+    # أول يوم لكل حالة (حضور/إجازة/غياب/مأمورية/مستشفى/أخرى/سجن/محكمة/جزاء)
+    for st in da.STATUSES:
+        for row in months_asc:              # التصاعدي ⇒ أول ظهور = الأول فعلًا
+            day = row["first_days"].get(st)
+            if day:
+                _ms((row["year"], row["month"], day), STATUS_ICONS[st],
+                    "أول {} — {}".format(st,
+                                         dates.period_date(row["year"], row["month"], day)),
+                    "أول " + st)
+                break
+    # أول أجلزة — من ملاحظات اليومية (كلمة: اجلزة/اجلاس/حلاق/قص الشعر)
+    for row in months_asc:
+        for day, note in row["notes"]:
+            if any(k in note for k in HAIRCUT_KEYWORDS):
+                _ms((row["year"], row["month"], day), "✂️",
+                    "أول أجلزة — {}".format(
+                        dates.period_date(row["year"], row["month"], day)),
+                    "أول أجلزة")
+                break
+        if any(m["label"] == "أول أجلزة" for m in milestones):
+            break
+    # الشهادة الصحية
+    if r.get("has_cert") and (r.get("cert_date") or "").strip():
+        parsed = dates.parse_date(r.get("cert_date"))
+        if parsed:
+            _ms((parsed.year, parsed.month, parsed.day), "🩺",
+                "الشهادة الصحية — " + dates.format_date(parsed), "الشهادة الصحية")
+    milestones.sort(key=lambda x: x["ymd"])
+
     totals = {st: 0 for st in da.STATUSES}
-    for row in months_data:
+    for row in months_asc:
         for st in da.STATUSES:
             totals[st] += row["counts"][st]
     return {
         "recruit": r,
-        "months": sorted(months_data, key=lambda x: (x["year"], x["month"]), reverse=True),
+        "months": list(reversed(months_asc)),
         "timeline": timeline,
+        "milestones": milestones,
         "totals": totals,
-        "n_months": len(months_data),
-        "n_recorded": sum(row["recorded"] for row in months_data),
+        "n_months": len(months_asc),
+        "n_recorded": sum(row["recorded"] for row in months_asc),
     }
