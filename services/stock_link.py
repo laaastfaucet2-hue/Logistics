@@ -14,7 +14,7 @@
 هذا الملف **قراءة فقط**: لا يكتب أي بيانات ولا يعدّل أرصدة.
 """
 from core import arabic_numbers as arnum
-from core.config import STOCK_LOW_RATIO, fine_unit
+from core.config import STOCK_LOW_RATIO
 from data_access import db_warehouses as dw
 from data_access import oil_units as ou
 from data_access import packaging
@@ -74,7 +74,8 @@ def status_of(avail, needed):
 def availability(year, month, cycle, name, needed=0.0, cache=None):
     """رصيد صنف واحد: الوحدة + الرصيد + التغليف + المتبقي بعده + الحالة.
 
-    الرصيد والمقارنة في وحدة الدقيقة (نفس وحدة الإذن) — التغليف المادي
+    الرصيد والمقارنة بوحدة الدفتر = وحدة الإضافة (قاعدة ١٢/١٠:
+    الزيت كجم بالجسر · الباقي وحدة التعامل) — التغليف المادي
     يبقى بوحدة التعامل (توجيه ٠٩/١٠).
     cache: نتيجة `cycle_cache(...)` لتجنّب إعادة القراءة لكل صف.
     """

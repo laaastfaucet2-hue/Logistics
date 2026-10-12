@@ -309,12 +309,24 @@ def _permit_header_rows(p, year, month):
     ]
 
 
-def build_wh2_permit_files(wh2_dir, year, month, permits, specs, eom, tafreeda):
+def build_wh2_permit_files(wh2_dir, year, month, permits, specs, eom, tafreeda,
+                           cycle="supply"):
     """فولدر لكل يوم من يوم ١ لآخر يوم، وإكسل منفصل لكل إذن في «أذونات الصرف» و«تفاريد»."""
     from services import warehouses_fs as wf
     issues_root = wh2_dir / wf.WH2_ISSUES
     taf_root = wh2_dir / wf.WH2_TAFARID
     eom = int(eom)
+    # التغليف عمود مادي — بيحسب بالكمية المادية (وحدة التعامل) مش بوحدة الحاسبة
+    from data_access import oil_units as _ou
+    _cat = {it["name"]: it for it in dw.list_items(year, month, cycle)}
+
+    def _physical(it):
+        info = _cat.get(it["name"]) or {}
+        f = _ou.calc_to_handle_factor(it["name"], info.get("ration_unit"),
+                                      info.get("handle_unit"),
+                                      info.get("specific_weight"))
+        return float(it["qty"] or 0) * f, (info.get("handle_unit")
+                                           or it.get("unit") or "—")
     for d in range(1, eom + 1):
         (issues_root / _day_folder(d)).mkdir(parents=True, exist_ok=True)
         (taf_root / _day_folder(d)).mkdir(parents=True, exist_ok=True)
@@ -337,8 +349,9 @@ def build_wh2_permit_files(wh2_dir, year, month, permits, specs, eom, tafreeda):
         # ---- ملف أذونات الصرف: الهيدر + جدول كل الأصناف (الكمية والتغليف) ----
         item_rows, total = [], 0.0
         for i, it in enumerate(p["cycle_items"], 1):
+            phys_qty, phys_unit = _physical(it)
             item_rows.append((i, it["name"], _q(it["qty"]), it.get("unit") or "—",
-                              _pack_spec_brk(specs, it["name"], it["qty"], it.get("unit"))))
+                              _pack_spec_brk(specs, it["name"], phys_qty, phys_unit)))
             total += float(it["qty"] or 0)
         item_rows.append(("الإجمالي", "", _q(total), "", ""))
         f_issues = issues_root / _day_folder(day) / fname
@@ -535,7 +548,7 @@ def build_cycle(year, month, cycle):
     build_wh3(wf.cycle_dir(year, month, cycle, "wh3"), year, month, items, moves,
               "دفتر ٣ مخازن", "٣ مخازن تفاريد", cycle, nested=True)
     build_wh2_permit_files(wh2, year, month, permits, specs, eom,
-                           dw.tafreeda_rows(year, month, cycle))
+                           dw.tafreeda_rows(year, month, cycle), cycle)
 
 
 def build_tarfea(year, month):

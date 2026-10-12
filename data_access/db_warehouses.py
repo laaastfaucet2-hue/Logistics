@@ -7,7 +7,7 @@ import json
 import re
 
 from core import arabic_numbers as arnum, dates
-from core.config import unit_base, is_measure_unit, fine_unit
+from core.config import unit_base, is_measure_unit
 from data_access import oil_units as ou
 from data_access import months
 from data_access.packaging import (pack_summary, pack_split,
@@ -15,139 +15,9 @@ from data_access.packaging import (pack_summary, pack_split,
 
 SECTION_BY_CYCLE = {"supply": "tamween", "contractor": "contractor", "tarfea": "tarfea"}
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS wh_suppliers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    name TEXT NOT NULL,
-    contact TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    activity TEXT DEFAULT '',
-    notes TEXT DEFAULT '',
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wh_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    name TEXT NOT NULL,
-    ration_unit TEXT DEFAULT '',
-    handle_unit TEXT NOT NULL,
-    base_unit TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    UNIQUE (cycle, name)
-);
-
-CREATE TABLE IF NOT EXISTS wh_receipts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    serial INTEGER NOT NULL,
-    item_id INTEGER NOT NULL REFERENCES wh_items(id) ON DELETE CASCADE,
-    day INTEGER NOT NULL,
-    date_iso TEXT NOT NULL,
-    qty_handle REAL NOT NULL,
-    unit TEXT NOT NULL,
-    qty_base REAL NOT NULL,
-    base_unit TEXT NOT NULL,
-    pack TEXT NOT NULL DEFAULT '{}',
-    pack_label TEXT DEFAULT '',
-    producer TEXT DEFAULT '',
-    supplier_id INTEGER,
-    supplier_name TEXT DEFAULT '',
-    prod_date TEXT DEFAULT '',
-    exp_date TEXT DEFAULT '',
-    shelf_days INTEGER,
-    notes TEXT DEFAULT '',
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wh_ledger (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    item_id INTEGER NOT NULL REFERENCES wh_items(id) ON DELETE CASCADE,
-    day INTEGER NOT NULL,
-    date_iso TEXT NOT NULL,
-    kind TEXT NOT NULL,             -- opener / add1 / manual (لاحقًا issue2 مع ٤–٧ مخازن)
-    permit_no INTEGER NOT NULL DEFAULT 0,
-    label TEXT DEFAULT '',
-    added REAL NOT NULL DEFAULT 0,
-    issued REAL NOT NULL DEFAULT 0,
-    balance REAL NOT NULL DEFAULT 0,
-    notes TEXT DEFAULT '',
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wh_opener_stores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    item_id INTEGER NOT NULL,
-    store_id INTEGER,
-    store_name TEXT NOT NULL,
-    qty REAL NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wh_receipt_stores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    receipt_id INTEGER NOT NULL REFERENCES wh_receipts(id) ON DELETE CASCADE,
-    store_id INTEGER,
-    store_name TEXT NOT NULL DEFAULT '',
-    qty REAL NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wh_pack_specs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    item_id INTEGER NOT NULL REFERENCES wh_items(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL,
-    capacity REAL NOT NULL,
-    updated_at TEXT NOT NULL,
-    UNIQUE (cycle, item_id, kind)
-);
-
-CREATE TABLE IF NOT EXISTS wh_row_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cycle TEXT NOT NULL,
-    item_id INTEGER NOT NULL,
-    kind TEXT NOT NULL,            -- opener / add1 / issue2 — مفتاح سطر الدفتر
-    permit_no INTEGER NOT NULL DEFAULT 0,
-    day INTEGER NOT NULL DEFAULT 0,
-    notes TEXT NOT NULL DEFAULT '',
-    updated_at TEXT NOT NULL,
-    UNIQUE (cycle, item_id, kind, permit_no, day)
-);
-"""
-
-
-NEW_RECEIPT_COLUMNS = (
-    ("pack_kind", "TEXT NOT NULL DEFAULT ''"),
-    ("pack_count", "REAL"),
-    ("pack_capacity", "REAL"),
-    ("pack_loose", "REAL"),
-    ("pack_inner_count", "REAL"),
-    ("pack_inner_capacity", "REAL"),
-    ("pack_inner_kind", "TEXT NOT NULL DEFAULT ''"),
-    ("pack_loose_unit", "TEXT NOT NULL DEFAULT ''"),
-    ("pack_inner_unit", "TEXT NOT NULL DEFAULT ''"),
-)
-
-NEW_LEDGER_COLUMNS = (
-    ("prod_date", "TEXT DEFAULT ''"),
-    ("exp_date", "TEXT DEFAULT ''"),
-    ("pack_label", "TEXT DEFAULT ''"),
-)
-
-NEW_ITEM_COLUMNS = (
-    ("specific_weight", "REAL"),
-)
-
-NEW_SPEC_COLUMNS = (
-    ("inner_count", "REAL DEFAULT 0"),
-    ("inner_capacity", "REAL DEFAULT 0"),
-    ("inner_kind", "TEXT DEFAULT ''"),
-    ("inner_unit", "TEXT DEFAULT ''"),
-)
-
+from data_access.db_warehouses_schema import (SCHEMA,
+        NEW_RECEIPT_COLUMNS, NEW_LEDGER_COLUMNS,
+        NEW_ITEM_COLUMNS, NEW_SPEC_COLUMNS)
 
 def _migrate_tables(conn):
     """ترقية تدريجية: أعمدة التغليف لإذون الإضافة وأعمدة الإنتاج/الصلاحية للدفتر."""
@@ -949,7 +819,7 @@ def item_card(year, month, item_id):
     from datetime import date as _date
     unit_disp, uf = ou.ledger_unit(item["name"], item["ration_unit"],
                                    item["handle_unit"], item.get("specific_weight"))
-    for r in rows:                       # وحدة تشغيل الدفتر: الدقيقة (الزيت: كجم — ١٠/١٠)
+    for r in rows:                       # وحدة الدفتر: وحدة الإضافة (الزيت: كجم — قاعدة ١٢/١٠)
         try:
             r["wday"] = egtime.weekday_ar(_date(year, month, int(r.get("day") or 0)))
         except (TypeError, ValueError):
@@ -1002,10 +872,12 @@ def permits_book(year, month, cycle):
         (cycle,))]
     conn.close()
     out = []
+    # الكميات الفعلية محفوظة بوحدة الحاسبة (جم/مل — الزيت كجم) —
+    # التسمية بوحدة الحاسبة مش وحدة الدفتر (قاعدة ١٢/١٠)
     fine_units = {}
     for it in dw_raw:
-        fine_units[it["name"]] = ou.ledger_unit(
-            it["name"], it["ration_unit"], it["handle_unit"],
+        fine_units[it["name"]] = ou.calc_unit(
+            it["name"], it["ration_unit"],
             it.get("specific_weight"))[0]
     for permit in dp.list_permits(year, month):
         items = []
