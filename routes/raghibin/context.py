@@ -182,17 +182,6 @@ def _daily_vars(year, month, entity, selected):
     is_wastaya = bool(entity) and "وسياء" in entity["name"]
     day_counts["wastaya_officers"] = day_counts["officers"] if is_wastaya else 0
     day_counts["wastaya_officers_total"] = day_counts["officers_total"] if is_wastaya else 0
-    # قوة اليوم: كل أعضاء الجهة بحالة يوم اليوم المفتوح (✓ راغب اليوم / ⊘ غير راغب / — غير مسجل)
-    force_today = []
-    if eid:
-        state = dr.day_state(year, month, selected, eid)
-        for cat, label in dr.CATEGORIES:
-            for p in dr.list_persons(year, month, entity_id=eid, category=cat):
-                force_today.append({
-                    "rank": p.get("rank") or "—", "name": p["full_name"],
-                    "cat": label, "excluded": bool(p["excluded"]),
-                    "willing": bool(state.get(p["id"])),
-                })
     return {
         "sel_day": selected,
         "weeks": _day_grid(year, month, selected, counts_map),
@@ -201,7 +190,6 @@ def _daily_vars(year, month, entity, selected):
         "weekdays": DAYS,
         "slots": slots,
         "force": base["force"],
-        "force_today": force_today,
         "tameed_totals": base["tameed_totals"],
         "day_counts": day_counts,
         # تنبيهات اليوم المفتوح بنفس محرك جدول الشهر: عدد الراغبين + غياب الكوادر

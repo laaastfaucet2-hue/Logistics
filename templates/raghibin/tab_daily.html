@@ -140,34 +140,6 @@
   </div>
   {% endif %}
 
-  <!-- قوة اليوم: كل أعضاء الجهة بحالة يوم اليوم المفتوح (١٠/١٠/٢٠٦) -->
-  {% if entity and force_today %}
-  <div class="rg-card">
-    <div class="rg-card-head">
-      <b>قوة اليوم — {{ entity.name }} — يوم {{ sel_day | aindic }}</b>
-      <span class="rg-dim">الحالة = تسجيل يوم اليوم المفتوح نفسه (علامة ✓ في «الجهات والكوادر» حالة دائمة وليست يومية)</span>
-    </div>
-    <table class="rg-table">
-      <thead><tr><th>م</th><th>الفئة</th><th>الرتبة</th><th>الاسم</th><th>حالة اليوم</th></tr></thead>
-      <tbody>
-      {% for p in force_today %}
-      <tr>
-        <td>{{ loop.index | aindic }}</td>
-        <td>{{ p.cat }}</td>
-        <td>{{ p.rank }}</td>
-        <td class="rg-name">{{ p.name }}</td>
-        <td>
-          {% if p.willing %}<span class="rg-state on">✓ راغب اليوم</span>
-          {% elif p.excluded %}<span class="rg-state off">⊘ غير راغب (مستثنى)</span>
-          {% else %}<span class="rg-dim">— غير مسجل اليوم</span>{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-
   <!-- جهات القاموس: كل جهة مسجلة وبجوارها زر فتح إكسل راغبين الخاص بها -->
   {% if entities %}
   <div class="rg-card">
