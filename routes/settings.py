@@ -164,9 +164,12 @@ def page():
 # ======================================================================
 
 @settings_bp.route("/identity/logo")
-@login_required
 def identity_logo():
-    """ملف اللوجو المرفوع (PNG) — يظهر في الواجهة كاملة."""
+    """ملف اللوجو المرفوع (PNG) — يظهر في الواجهة كاملة.
+
+    بلا login_required عمدًا: صفحة تسجيل الدخول نفسها بتعرضه (مفيش
+    جلسة وقتها) — اللوجو بيانات عامة زي شعار الـ static الأصلي،
+    والحماية على الرفع/الحذف مش على العرض."""
     from data_access import db_identity
     name = db_identity.get_logo()
     if not name:
