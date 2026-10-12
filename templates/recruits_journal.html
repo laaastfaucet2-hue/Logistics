@@ -71,6 +71,17 @@
     <div class="rc-banner danger">⚠️ <b>{{ ev.names | andjoin }}</b> — تصريح يوم {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }} صادر في يومية اليوم فقط دون «إجازة» — أكمل التسجيل.</div>
     {% elif ev.kind == 'permit_end' %}
     <div class="rc-banner draft">↩️ <b>{{ ev.names | andjoin }}</b> — انتهى تصريح الإجازة أمس — أكّد حضورهم في يومية اليوم.</div>
+    {% elif ev.kind == 'leave_cut' %}
+    {% set c = ev.cut %}
+    <div class="rc-banner warn">🔪 <b>{{ ev.names | andjoin }} — إجازته اتقطعت، راجع النهارده</b> (الإجازة كانت {{ period_text(year, month, c.period_from) }}–{{ period_text(year, month, c.period_to) }}).
+      <form method="post" action="{{ url_for('recruits.leaves_cut_apply') }}" class="inline-f">
+        <input type="hidden" name="cut_id" value="{{ c.id }}">
+        <input name="ret_time" placeholder="ساعة الرجوع (مثال: ٥:٠٠)" style="width:130px" {% if meta.locked %}disabled{% endif %}>
+        <button class="rc-mini-btn" type="submit" name="action" value="present" {% if meta.locked %}disabled{% endif %}>✓ حاضر في اليومية</button>
+        <button class="rc-mini-btn" type="submit" name="action" value="hospital" {% if meta.locked %}disabled{% endif %}>🏥 حطه في المستشفى</button>
+      </form>
+      {% if meta.locked %}<div class="panel-hint">اليومية مثبتة — افتحها الأول («تعديل رغم التثبيت»).</div>{% else %}<div class="panel-hint">بعد ما تختار الحالة، ثبّت اليومية لو لسه ما كملتهاش.</div>{% endif %}
+    </div>
     {% elif ev.kind == 'status_end' %}
     <div class="rc-banner {{ 'danger' if ev.status == 'مستشفى' else 'warn' }}">{{ {'مأمورية':'🧭','مستشفى':'🏥'}[ev.status] }} <b>{{ ev.names | andjoin }} — {{ ev.status }} تنتهي اليوم</b> — ضع «حضور» في يومية يوم {{ period_text(year, month, day + 1) }}.</div>
     {% elif ev.kind in ('pun_start', 'pun_active', 'pun_end') %}
@@ -96,6 +107,8 @@
       ({% if r0[1] is none %}مفتوح{% else %}المدة {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }}{% endif %}).</div>
     {% elif ev.kind == 'leave_return' %}
     <div class="rc-banner draft">↩️ <b>بعد غد: {{ ev.names | andjoin }} {{ 'راجع' if ev.names | length == 1 else 'راجعين' }} من الإجازة</b>.</div>
+    {% elif ev.kind == 'leave_cut_soon' %}
+    <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }} — قطع إجازة، بيرجع بكرة</b> (هيبان زرارين في يومية الغد: حاضر / مستشفى).</div>
     {% else %}
     <div class="rc-banner warn">{{ {'مأمورية':'🧭','مستشفى':'🏥','أخرى':'➕'}[ev.status] }} <b>غدًا: {{ ev.names | andjoin }} — {{ ev.status }}</b>{% if ev.note %} ({{ ev.note }}){% endif %}.</div>
     {% endif %}
@@ -119,11 +132,12 @@
         <input type="hidden" name="source_day" value="{{ meta.source_day or carried_from | default(0) }}">
         <div class="table-wrap">
           <table class="rt-table rc-jtable">
-            <thead><tr><th>م</th><th>المجند</th><th>الحالة</th><th>ملاحظة (لحالة أخرى)</th></tr></thead>
+            <thead><tr><th title="حدد للنزول في الإجازة المجمّعة (اللوحة تحت الجدول)"></th><th>م</th><th>المجند</th><th>الحالة</th><th>ملاحظة (لحالة أخرى)</th></tr></thead>
             <tbody>
               {% for r in recruits %}
               {% set cur = day_map.get(r.id) %}
               <tr>
+                <td><input type="checkbox" class="rc-jchk" data-rid="{{ r.id }}" title="حدد للنزول في الإجازة المجمّعة"></td>
                 <td class="num">{{ loop.index | aindic }}</td>
                 <td>
                   <div class="rc-person">
@@ -162,6 +176,31 @@
       {% endif %}
     </div>
 
+    <!-- الإجازة المجمّعة من اليومية (قرار ١٢/١٠) -->
+    {% if recruits %}
+    <div class="panel">
+      <div class="panel-head"><h3>🏖️ إجازة مجمّعة + تصريح <span class="panel-hint">حدد مربعات المجندين في جدول اليومية فوق → التأكيد بيحط «إجازة» في اليومية كامل المدة + بيعمل التصريح وبيفتح شاشة الطباعة</span></h3></div>
+      <form method="post" action="{{ url_for('recruits.send_leaves') }}" id="rgSendLeaves" autocomplete="off" class="rc-range"
+            data-today="{{ info.real_day or 1 }}" data-eom="{{ eom }}">
+        <label class="rc-slr"><input type="radio" name="start" value="today" checked> نزول <b>حالا</b> (يوم {{ period_text(year, month, info.real_day or 1) }})</label>
+        <label class="rc-slr" {% if (info.real_day or 1) >= eom %}style="opacity:.45" title="آخر يوم في الشهر"{% endif %}>
+          <input type="radio" name="start" value="tomorrow" {% if (info.real_day or 1) >= eom %}disabled{% endif %}> نزول <b>بكرة</b> (يوم {{ period_text(year, month, (info.real_day or 1) + 1) }})
+        </label>
+        <span class="dim">حتى يوم</span>
+        <input name="to" inputmode="numeric" required placeholder="{{ info.real_day or 1 }}" class="rc-num" title="آخر يوم الإجازة">
+        <span class="sl-times">
+          <span class="dim">حضروا لحد الساعة</span><input name="t_present" placeholder="١:٠٠" title="ساعة آخر حضور قبل النزول">
+          <span class="dim">ونزلوا الساعة</span><input name="t_left" placeholder="١:٣٠" title="ساعة نزول الإجازة">
+        </span>
+        <button class="rt-btn gold" type="submit">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          تأكيد: نزولهم الإجازة + عمل التصريح
+        </button>
+      </form>
+      <div class="panel-hint" style="margin-top:8px">لو النزول النهارده، حط «حضروا لحد الساعة … ونزلوا الساعة …» وهتتحط في اليومية العامة (وتظهر في كشف اليومية المطبوع). إن وقع يومٌ مثبت داخل المدة يُرفض التسجيل حتى تفتحه.</div>
+    </div>
+    {% endif %}
+
     <!-- إسناد حالة بمدى — يظهر بس لما يكون في مجندين -->
     {% if recruits %}
     <div class="panel">
@@ -189,4 +228,42 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/recruits.js') }}?v={{ static_ver }}"></script>
+<script>
+// الإجازة المجمّعة من اليومية: «حالا/بكرة» + الأوقات + اختيار من جدول اليومية
+(function () {
+  "use strict";
+  var form = document.getElementById("rgSendLeaves");
+  if (!form) return;
+  var to = form.querySelector('input[name="to"]');
+  var times = form.querySelector(".sl-times");
+  var today = parseInt(form.dataset.today || "1", 10);
+  function syncStart() {
+    var val = form.querySelector('input[name="start"]:checked').value;
+    var startDay = today + (val === "tomorrow" ? 1 : 0);
+    to.value = "";
+    to.placeholder = String(startDay);
+    to.min = startDay;
+    if (times) times.style.display = (val === "today") ? "" : "none";
+  }
+  Array.prototype.forEach.call(form.querySelectorAll('input[name="start"]'), function (r) {
+    r.addEventListener("change", syncStart);
+  });
+  syncStart();
+  form.addEventListener("submit", function (e) {
+    var checked = Array.prototype.slice.call(document.querySelectorAll(".rc-jchk"))
+      .filter(function (b) { return b.checked; });
+    if (!checked.length) {
+      e.preventDefault();
+      alert("حدد واحد على الأقل من المجندين (مربع الاختيار في جدول اليومية)");
+      return;
+    }
+    Array.prototype.forEach.call(form.querySelectorAll('input[name="rid"]'), function (i) { i.remove(); });
+    checked.forEach(function (b) {
+      var i = document.createElement("input");
+      i.type = "hidden"; i.name = "rid"; i.value = b.getAttribute("data-rid");
+      form.appendChild(i);
+    });
+  });
+})();
+</script>
 {% endblock %}

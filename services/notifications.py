@@ -139,6 +139,19 @@ def day_events(year, month, matrix, day, by_id=None):
             items = sorted(groups[st], key=lambda x: x[0])
             out.append({"kind": "status", "status": st,
                         "names": [n for n, _n in items], "note": items[0][1]})
+    # ── قطع إجازات: يسري اليوم (حدّد الحالة) / يسري بكرة (معلق) ──
+    cuts = da.month_leave_cuts(year, month)
+    for rid in sorted(cuts, key=lambda i: by_id[i]["name"] if i in by_id else ""):
+        if rid not in by_id:
+            continue
+        for c in cuts[rid]:
+            if c["eff_day"] == day:
+                done_st = dmap.get(rid, {}).get("status")
+                if c["applied"] and done_st in ("حضور", "مستشفى"):
+                    continue  # اتطبّق وحالته اتسجلت — التنبيه بيتنسي
+                out.append({"kind": "leave_cut", "names": [by_id[rid]["name"]], "cut": c})
+            elif c["eff_day"] == day + 1 and not c["applied"]:
+                out.append({"kind": "leave_cut_soon", "names": [by_id[rid]["name"]], "cut": c})
     # ── مأمورية/مستشفى بتخلص النهارده (نفس منطق رجوع الإجازة) ──
     for st in ("مأمورية", "مستشفى"):
         ending = ending_by_status.get(st)
@@ -237,6 +250,18 @@ def _event_entries(year, month, matrix, recruits, d, eom, q):
                     "text": "↩️ {} — تصريح الإجازة خلص إمبارح — أكّد حضورهم في يومية النهارده".format(
                         and_join(ev["names"])),
                     "href": "/recruits?tab=journal&day={}".format(d) + q.replace("?", "&")})
+            elif ev["kind"] == "leave_cut" and evday == d:
+                c = ev["cut"]
+                leaves.append({
+                    "text": "🔪 {} — إجازته اتقطعت وراجع النهارده (كانت {}–{}) — حدّد حالته في اليومية (حضور/مستشفى)".format(
+                        and_join(ev["names"]),
+                        dates.period_date(year, month, c["period_from"]),
+                        dates.period_date(year, month, c["period_to"])),
+                    "href": "/recruits?tab=journal&day={}".format(evday) + q.replace("?", "&")})
+            elif ev["kind"] == "leave_cut_soon":
+                leaves.append({
+                    "text": "🛎️ بكرة: {} — قطع إجازة (بيرجع بكرة)".format(and_join(ev["names"])),
+                    "href": "/recruits?tab=journal&day={}".format(evday + 1) + q.replace("?", "&")})
             elif ev["kind"] == "status_end":
                 events.append({
                     "text": "{} {} — {} بتخلص النهارده — حط «حضور» في يومية بكرة".format(

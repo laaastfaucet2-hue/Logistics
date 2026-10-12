@@ -144,6 +144,10 @@
 .rc-range { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .rc-range .rc-num { width: 64px; text-align: center; }
 .rc-range .rc-ref { min-width: 250px; flex: 1; }
+.rc-slr { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; white-space: nowrap; cursor: pointer; }
+.rc-slr input { width: auto !important; accent-color: var(--brand-gold); }
+.sl-times { display: inline-flex; align-items: center; gap: 6px; }
+.sl-times input { width: 84px; }
 .rc-stat-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 
 /* ======== الإشعارات الداخلية ======== */

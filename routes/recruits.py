@@ -493,6 +493,16 @@ def _lists(v):
         v["ranges"] = da.leave_ranges(year, month, v["matrix"], 1, v["eom"])
         # تصاريح الشهر الصادرة — علامة «✓ تصريح» جنب كل صف اتعملت له تصريح
         v["permits"] = da.month_leave_permits(year, month)
+        # قطوع الشهر — «🔪 قطع» جنب الإجازة المتقطعة: الصف المختصر يطابق
+        # المدة الأصلية (بداية نفسها ونهاية الأصل ≥ نهاية الصف)
+        cut_rows = da.month_leave_cuts(year, month)
+        v["row_cut"] = {}
+        for rid, rs in v["ranges"].items():
+            for f, t in rs:
+                for c in cut_rows.get(rid, []):
+                    if c["period_from"] == f and c["period_to"] >= t:
+                        v["row_cut"][(rid, f, t)] = c
+                        break
         rd = v["info"]["real_day"] or 1
         # مرتقب مجمّع: {يوم البداية: «محمد وأحمد»} — «نازلين إجازة يوم ٥»
         # (فترات الشهر الكاملة — التقطيع على نافذة قصيرة كان بيعمل بدايات مزيفة)
@@ -539,6 +549,9 @@ def _lists(v):
                       for rid, days in v["matrix"].items()
                       for d, st in sorted(days.items()) if st == "أخرى" and rid in v["by_id"]]),
         ]
+        # لوحة المستشفى: يوم بيوم + الحالة الصحية + ملاحظة (قرار ١٢/١٠)
+        v["hospital"] = da.hospital_rows(year, month)
+        v["hospital_locked"] = _locked_days(year, month)
     return render_template("recruits_lists.html", **v)
 
 
@@ -619,35 +632,216 @@ def stats_read_all():
 
 
 # ======================================================================
-# تصريح الإجازة المجمّع (أكثر من مجند بنفس المدة — قرار الجولة ٣٥)
+# الإجازة المجمّعة من اليومية العامة (قرار ١٢/١٠):
+# اختيار من جدول اليومية + نزول حالا (النهارده) أو بكرة + الأوقات
+# في اليومية + التصريح (فردي/مجمّع) + فتح شاشة الطباعة
 # ======================================================================
-@recruits_bp.route("/joint-permit", methods=["POST"])
+@recruits_bp.route("/send-leaves", methods=["POST"])
 @login_required
-def joint_permit():
+def send_leaves():
     year, month = _ctx()
     rids = [x for x in (arnum.parse_int(v) for v in request.form.getlist("rid")) if x]
-    f = arnum.parse_int(request.form.get("from"))
+    start = request.form.get("start") or "today"
     t = arnum.parse_int(request.form.get("to"))
+    t_present = (request.form.get("t_present") or "").strip()
+    t_left = (request.form.get("t_left") or "").strip()
+    info = _today_info(year, month, 1)
+    real_day = info["real_day"] or 1
     eom = egtime.days_in_month(year, month)
-    if not rids or not (1 <= f <= t <= eom):
-        return _rb(err="اختر صفوف الإجازة أولًا", tab="leaves")
+    f = real_day if start == "today" else real_day + 1
+    if not rids:
+        return _rb(err="حدد واحد على الأقل من المجندين (مربع الاختيار في جدول اليومية)", tab="journal", day=real_day)
+    if not t or not (f <= t <= eom):
+        return _rb(err="حدد «حتى يوم» صحيح (من يوم {} لآخر الشهر)".format(arnum.to_arabic_indic(f)),
+                   tab="journal", day=real_day)
     by_id = {r["id"]: r for r in dr.list_recruits(year, month)}
     chosen = [by_id[i] for i in rids if i in by_id]
-    if len(chosen) < 2:
-        return _rb(err="التصريح المجمّع لـ ٢ مجند على الأقل — المجند الواحد تصريحه من صفه مباشرة",
-                   tab="leaves")
+    if not chosen:
+        return _rb(err="لم يُعرف أي من المجندين المختارين", tab="journal", day=real_day)
     matrix = da.month_matrix(year, month)
     bad = [c["name"] for c in chosen
-           if not all(matrix.get(c["id"], {}).get(d) == "إجازة" for d in range(f, t + 1))]
+           if any(matrix.get(c["id"], {}).get(d) == "إجازة" for d in range(f, t + 1))]
     if bad:
-        return _rb(err="هؤلاء ليسوا في إجازة طوال المدة المختارة: {}".format("، ".join(bad)),
-                   tab="leaves")
-    docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)
+        return _rb(err="هؤلاء في إجازة بالفعل جوا المدة: {} — شيلهم من الاختيار".format("، ".join(bad)),
+                   tab="journal", day=f)
+    locked = _locked_days(year, month) & set(range(f, t + 1))
+    if locked:
+        return _rb(err="يومية يوم {} مثبتة ومقفولة — افتحها الأول («تعديل رغم التثبيت»)".format(
+            arnum.to_arabic_indic(min(locked))), tab="journal", day=min(locked))
+    # «حضروا لحد الساعة … ونزلوا الساعة …» — ليوم البداية لو النزول النهارده
+    head_note = ""
+    if f == real_day:
+        if t_present and t_left:
+            head_note = "حضروا لحد الساعة {} ونزلوا الإجازة الساعة {}".format(t_present, t_left)
+        elif t_left:
+            head_note = "نزلوا الإجازة الساعة {}".format(t_left)
+    for c in chosen:
+        if f < t:
+            da.set_range(year, month, c["id"], "إجازة", f + 1, t)
+        da.set_range(year, month, c["id"], "إجازة", f, f, head_note)
+    _after_attendance_change(year, month)
+    if len(chosen) >= 2:
+        docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)
+    else:
+        docx_recruits.build_leave_permit(chosen[0], f, t, year, month)
     da.record_leave_permits(year, month, [c["id"] for c in chosen], f, t)
     _, token = current_session()
+    kw = {"from": f, "to": t, "year": year, "month": month, "sid": token}
+    if len(chosen) >= 2:
+        return redirect(url_for("recruits.print_doc", what="permit",
+                                rids=",".join(str(c["id"]) for c in chosen), **kw))
     return redirect(url_for("recruits.print_doc", what="permit",
-                            rids=",".join(str(c["id"]) for c in chosen),
-                            **{"from": f, "to": t, "year": year, "month": month, "sid": token}))
+                            rid=chosen[0]["id"], **kw))
+
+
+# ======================================================================
+# قطع الإجازة (قرار ١٢/١٠):
+# «فورا» → الأيام الجاية تصبح حضور + اليومية بتفتح وأنت بتكتب الساعة
+# «غدا» → معلق، اليومية بتذكرك بكرة وزرار (حاضر/مستشفى)
+# ======================================================================
+@recruits_bp.route("/leaves/cut", methods=["POST"])
+@login_required
+def leaves_cut():
+    year, month = _ctx()
+    rid = arnum.parse_int(request.form.get("rid"))
+    f = arnum.parse_int(request.form.get("from"))
+    t = arnum.parse_int(request.form.get("to"))
+    mode = request.form.get("mode")
+    r = dr.get_recruit(year, month, rid) if rid else None
+    info = _today_info(year, month, 1)
+    real_day = info["real_day"] or 1
+    eom = egtime.days_in_month(year, month)
+    if not r or not f or not t or mode not in ("now", "tomorrow") or not (f <= t <= eom):
+        return _rb(err="طلب غير صالح", tab="leaves")
+    if f > real_day:
+        return _rb(err="الإجازة لسه ما بدأتش — استخدم «إلغاء الإجازة»", tab="leaves")
+    matrix = da.month_matrix(year, month)
+    if not all(matrix.get(rid, {}).get(d) == "إجازة" for d in range(f, t + 1)):
+        return _rb(err="الإجازة دي مش مسجلة «إجازة» كامل المدة في اليومية — أكمل تسجيلها الأول",
+                   tab="leaves")
+    if mode == "now":
+        fut = list(range(real_day + 1, t + 1))
+        locked = _locked_days(year, month) & set(fut)
+        if locked:
+            return _rb(err="يومية يوم {} مثبتة ومقفولة — افتحها الأول عشان أقطع الإجازة".format(
+                arnum.to_arabic_indic(min(locked))), tab="leaves")
+        if fut:
+            da.set_range(year, month, rid, "حضور", fut[0], fut[-1])
+        da.record_leave_cut(year, month, rid, f, t, real_day, "now")
+        _after_attendance_change(year, month)
+        return _rb(ok="اتقطعت إجازة {} — يومية النهارده اتفتحت: حط «حضور» واكتب الساعة "
+                      "اللي رجع فيها، ثم ثبّت اليومية".format(r["name"]),
+                   tab="journal", day=real_day)
+    # mode == "tomorrow"
+    if real_day + 1 > eom:
+        return _rb(err="آخر يوم في الشهر — مفيش «غدًا»", tab="leaves")
+    da.record_leave_cut(year, month, rid, f, t, real_day + 1, "tomorrow")
+    return _rb(ok="اتسجل: إجازة {} هتقطع بكرة (يوم {}) — اليومية هتذكرك يومها "
+                  "بزرارين: «حاضر في اليومية» / «حطه في المستشفى»".format(
+                      r["name"], arnum.to_arabic_indic(real_day + 1)),
+               tab="leaves")
+
+
+@recruits_bp.route("/leaves/cut-apply", methods=["POST"])
+@login_required
+def leaves_cut_apply():
+    """زرارين بنر اليومية: «حاضر في اليومية» (+ ساعة الرجوع) أو «حطه في المستشفى»."""
+    year, month = _ctx()
+    cut_id = arnum.parse_int(request.form.get("cut_id"))
+    action = request.form.get("action")
+    ret_time = (request.form.get("ret_time") or "").strip()
+    if action not in ("present", "hospital") or not cut_id:
+        return _rb(err="طلب غير صالح", tab="journal")
+    cut = da.get_leave_cut(year, month, cut_id)
+    if not cut:
+        return _rb(err="القطع ده مش موجود", tab="journal")
+    eff, to = cut["eff_day"], cut["period_to"]
+    meta = da.get_meta(year, month, eff)
+    if meta["locked"]:
+        return _rb(err="يومية يوم {} مثبتة ومقفولة — افتحها الأول («تعديل رغم التثبيت»)".format(
+            arnum.to_arabic_indic(eff)), tab="journal", day=eff)
+    if action == "present":
+        note = "رجع من الإجازة الساعة {}".format(ret_time) if ret_time else ""
+        if eff < to:
+            da.set_range(year, month, cut["recruit_id"], "حضور", eff + 1, to)
+        da.set_range(year, month, cut["recruit_id"], "حضور", eff, eff, note)
+        da.set_cut_applied(year, month, cut_id)
+        _after_attendance_change(year, month)
+        return _rb(ok="اتحط «حضور» من يوم {}{} — ثبّت اليومية لو لسه".format(
+            arnum.to_arabic_indic(eff),
+            " (رجع الساعة {})".format(ret_time) if ret_time else ""),
+            tab="journal", day=eff)
+    da.set_range(year, month, cut["recruit_id"], "مستشفى", eff, to)
+    da.set_cut_applied(year, month, cut_id, hospital=1)
+    _after_attendance_change(year, month)
+    return _rb(ok="اتحط «مستشفى» من يوم {} — املأ الحالة الصحية والملاحظات من تاب "
+                  "«أخرى» (لوحة المستشفى)".format(arnum.to_arabic_indic(eff)),
+               tab="other")
+
+
+@recruits_bp.route("/leaves/cancel", methods=["POST"])
+@login_required
+def leaves_cancel():
+    """إلغاء إجازة «لم تبدأ» — الأيام بتبقى مفتوحة في اليومية."""
+    year, month = _ctx()
+    rid = arnum.parse_int(request.form.get("rid"))
+    f = arnum.parse_int(request.form.get("from"))
+    t = arnum.parse_int(request.form.get("to"))
+    r = dr.get_recruit(year, month, rid) if rid else None
+    info = _today_info(year, month, 1)
+    real_day = info["real_day"] or 1
+    eom = egtime.days_in_month(year, month)
+    if not r or not f or not t or not (f <= t <= eom) or f <= real_day:
+        return _rb(err="الإلغاء لإجازة «لم تبدأ» بس", tab="leaves")
+    matrix = da.month_matrix(year, month)
+    if not all(matrix.get(rid, {}).get(d) == "إجازة" for d in range(f, t + 1)):
+        return _rb(err="الإجازة دي مش مسجلة «إجازة» كامل المدة في اليومية", tab="leaves")
+    locked = sorted(_locked_days(year, month) & set(range(f, t + 1)))
+    for d in locked:
+        da.unlock_day(year, month, d)
+    da.delete_status_range(year, month, rid, f, t, "إجازة")
+    da.delete_leave_permit(year, month, rid, f, t)
+    _after_attendance_change(year, month)
+    msg = "اتلغت إجازة {} (من يوم {} لـ {}) والأيام دي بقيت مفتوحة في اليومية".format(
+        r["name"], arnum.to_arabic_indic(f), arnum.to_arabic_indic(t))
+    if locked:
+        msg += " — فُتحت الأيام المثبتة: {}".format(
+            "، ".join(arnum.to_arabic_indic(str(d)) for d in locked))
+    return _rb(ok=msg, tab="leaves")
+
+
+@recruits_bp.route("/other/save-hospital", methods=["POST"])
+@login_required
+def other_save_hospital():
+    """حفظ الحالة الصحية + الملاحظة لكل يوم مستشفى (يوم بيوم)."""
+    year, month = _ctx()
+    rids = [arnum.parse_int(x) for x in request.form.getlist("hc_rid")]
+    days = [arnum.parse_int(x) for x in request.form.getlist("hc_day")]
+    conds = request.form.getlist("hc_cond")
+    notes = request.form.getlist("hc_note")
+    locked = _locked_days(year, month)
+    saved, blocked = 0, set()
+    for i, rid in enumerate(rids):
+        d = days[i] if i < len(days) else 0
+        if not (rid and d):
+            continue
+        if d in locked:
+            blocked.add(d)
+            continue
+        da.set_hospital_day(year, month, d, rid,
+                            (conds[i] if i < len(conds) else "").strip(),
+                            (notes[i] if i < len(notes) else "").strip())
+        saved += 1
+    if saved and not blocked:
+        return _rb(ok="اتحفظت الحالة الصحية والملاحظات ({} يومًا)".format(
+            arnum.to_arabic_indic(saved)), tab="other")
+    if saved:
+        return _rb(ok="اتحفظ ({} يومًا) — الأيام دي مثبتة ومقفولة: {} (افتحهم الأول)".format(
+            arnum.to_arabic_indic(saved),
+            "، ".join(arnum.to_arabic_indic(str(d)) for d in sorted(blocked))), tab="other")
+    return _rb(err="مفيش أيام اتحفظت — الأيام المثبتة: {} (افتحهم الأول)".format(
+        "، ".join(arnum.to_arabic_indic(str(d)) for d in sorted(blocked)) or "—"),
+        tab="other")
 
 
 # ======================================================================

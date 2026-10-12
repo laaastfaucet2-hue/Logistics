@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     recruit_id INTEGER NOT NULL,
     status TEXT NOT NULL,
     note TEXT DEFAULT '',
+    condition TEXT DEFAULT '',
     UNIQUE(day, recruit_id)
 );
 CREATE TABLE IF NOT EXISTS journal_meta (
@@ -32,22 +33,39 @@ CREATE TABLE IF NOT EXISTS leave_permits (
     issued_at TEXT DEFAULT '',
     UNIQUE(recruit_id, from_day, to_day)
 );
+CREATE TABLE IF NOT EXISTS leave_cuts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recruit_id INTEGER NOT NULL,
+    period_from INTEGER NOT NULL,
+    period_to INTEGER NOT NULL,
+    eff_day INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    hospital INTEGER DEFAULT 0,
+    applied INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT ''
+);
 """
 
 
 def ensure_tables(conn):
     conn.executescript(_MIGRATE_SQL)
+    # ترحيلة آمنة لمرة واحدة: عمود «الحالة الصحية» لأيام المستشفى
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(attendance)").fetchall()}
+    if "condition" not in cols:
+        conn.execute("ALTER TABLE attendance ADD COLUMN condition TEXT DEFAULT ''")
+        conn.commit()
 
 
 # ==================== قراءة يوم ====================
 def get_day_map(year, month, day):
-    """{رقم المجند: {status, note}} ليوم محدد."""
+    """{رقم المجند: {status, note, condition}} ليوم محدد."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
     rows = conn.execute(
-        "SELECT recruit_id, status, note FROM attendance WHERE day=?", (day,)).fetchall()
+        "SELECT recruit_id, status, note, condition FROM attendance WHERE day=?", (day,)).fetchall()
     conn.close()
-    return {r["recruit_id"]: {"status": r["status"], "note": r["note"]} for r in rows}
+    return {r["recruit_id"]: {"status": r["status"], "note": r["note"],
+                              "condition": r["condition"] or ""} for r in rows}
 
 
 def get_meta(year, month, day):
@@ -61,14 +79,18 @@ def get_meta(year, month, day):
 
 # ==================== كتابة يوم كامل (تثبيت) ====================
 def save_day(year, month, day, entries, lock=True, source_day=0):
-    """entries = [(recruit_id, status, note)] — يستبدل محتوى اليوم ذرّيًا."""
+    """entries = [(recruit_id, status, note)] — يستبدل محتوى اليوم ذرّيًا
+    (الحالة الصحية لأيام المستشفى محفوظة — ما تُمسحش عند إعادة التثبيت)."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
+    old_cond = {r[0]: (r[1] or "") for r in conn.execute(
+        "SELECT recruit_id, condition FROM attendance WHERE day=?", (day,)).fetchall()}
     with conn:
         conn.execute("DELETE FROM attendance WHERE day=?", (day,))
         conn.executemany(
-            "INSERT INTO attendance (day, recruit_id, status, note) VALUES (?,?,?,?)",
-            [(day, rid, st, note) for rid, st, note in entries if st in STATUSES])
+            "INSERT INTO attendance (day, recruit_id, status, note, condition) VALUES (?,?,?,?,?)",
+            [(day, rid, st, note, old_cond.get(rid, "") if st == "مستشفى" else "")
+             for rid, st, note in entries if st in STATUSES])
         if lock:
             conn.execute(
                 "INSERT INTO journal_meta (day, locked, done_at, source_day) VALUES (?,1,datetime('now'),?)"
@@ -94,9 +116,10 @@ def set_range(year, month, recruit_id, status, from_day, to_day, note=""):
     with conn:
         for d in range(from_day, to_day + 1):
             conn.execute(
-                "INSERT INTO attendance (day, recruit_id, status, note) VALUES (?,?,?,?)"
-                " ON CONFLICT(day, recruit_id) DO UPDATE SET status=excluded.status, note=excluded.note",
-                (d, recruit_id, status, note))
+                "INSERT INTO attendance (day, recruit_id, status, note, condition) VALUES (?,?,?,?,?)"
+                " ON CONFLICT(day, recruit_id) DO UPDATE SET status=excluded.status,"
+                " note=excluded.note, condition=''",
+                (d, recruit_id, status, note, ""))
     conn.close()
     return to_day - from_day + 1
 
@@ -140,6 +163,102 @@ def month_leave_permits(year, month):
 def has_leave_permit(year, month, recruit_id, from_day, to_day):
     """هل صدر تصريح لهذا المجند عن هذه المدة بالظبط؟"""
     return (from_day, to_day) in month_leave_permits(year, month).get(recruit_id, [])
+
+
+def delete_leave_permit(year, month, recruit_id, from_day, to_day):
+    """حذف سجل تصريح (بعد إلغاء إجازة)."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    with conn:
+        conn.execute("DELETE FROM leave_permits WHERE recruit_id=? AND from_day=? AND to_day=?",
+                     (recruit_id, from_day, to_day))
+    conn.close()
+
+
+# ==================== قطع الإجازات (قرار ١٢/١٠) ====================
+def record_leave_cut(year, month, recruit_id, period_from, period_to, eff_day, mode):
+    """تسجيل قطع إجازة: mode='now' (يسري النهارده) / 'tomorrow' (يسري بكرة)."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO leave_cuts (recruit_id, period_from, period_to, eff_day, mode, applied,"
+            " created_at) VALUES (?,?,?,?,?,?,datetime('now'))",
+            (recruit_id, period_from, period_to, eff_day, mode,
+             1 if mode == "now" else 0))
+    conn.close()
+    return cur.lastrowid
+
+
+def month_leave_cuts(year, month):
+    """كل قطوع الشهر: {recruit_id: [dict, ...]}."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute("SELECT * FROM leave_cuts ORDER BY id").fetchall()
+    conn.close()
+    out = {}
+    for r in rows:
+        out.setdefault(r["recruit_id"], []).append(dict(r))
+    return out
+
+
+def get_leave_cut(year, month, cut_id):
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    row = conn.execute("SELECT * FROM leave_cuts WHERE id=?", (cut_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def set_cut_applied(year, month, cut_id, hospital=0):
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    with conn:
+        conn.execute("UPDATE leave_cuts SET applied=1, hospital=? WHERE id=?", (hospital, cut_id))
+    conn.close()
+
+
+def set_hospital_day(year, month, day, recruit_id, condition="", note=None):
+    """حفظ الحالة الصحية (+ الملاحظة اختياريًا) ليوم مستشفى."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    with conn:
+        if note is None:
+            conn.execute("UPDATE attendance SET condition=? WHERE day=? AND recruit_id=?",
+                         (condition, day, recruit_id))
+        else:
+            conn.execute("UPDATE attendance SET condition=?, note=? WHERE day=? AND recruit_id=?",
+                         (condition, note, day, recruit_id))
+    conn.close()
+
+
+def hospital_rows(year, month):
+    """أيام المستشفى في الشهر: {recruit_id: [(day, condition, note), ...]} مرتبة."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute(
+        "SELECT recruit_id, day, condition, note FROM attendance WHERE status='مستشفى'"
+        " ORDER BY day").fetchall()
+    conn.close()
+    out = {}
+    for r in rows:
+        out.setdefault(r["recruit_id"], []).append(
+            (r["day"], r["condition"] or "", r["note"] or ""))
+    return out
+
+
+def delete_status_range(year, month, recruit_id, from_day, to_day, status):
+    """حذف أيام من مدى — بس اللي حالتها `status` بالظبط (حماية لما تبقى)."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    n = 0
+    with conn:
+        for d in range(from_day, to_day + 1):
+            cur = conn.execute("DELETE FROM attendance WHERE day=? AND recruit_id=? AND status=?",
+                               (d, recruit_id, status))
+            n += cur.rowcount
+    conn.close()
+    return n
 
 
 # ==================== الترحيل لليوم التالي (مرة واحدة ومن يوم مُثبَّت) ====================
