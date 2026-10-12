@@ -25,8 +25,9 @@
     </div>
   </div>
 </div>
-<datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalis
-<script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script
+<datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalist>
+<script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+
 <header class="wh-hero">
   <div class="wh-hero-lines">
     <b class="wh-l1">🏬 المخازن والثلاجات — موحّدة لكل الأصناف</b>
