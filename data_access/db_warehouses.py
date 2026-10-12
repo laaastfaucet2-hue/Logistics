@@ -872,11 +872,11 @@ def permits_book(year, month, cycle):
         (cycle,))]
     conn.close()
     out = []
-    # الكميات الفعلية محفوظة بوحدة الحاسبة (جم/مل — الزيت كجم) —
-    # التسمية بوحدة الحاسبة مش وحدة الدفتر (قاعدة ١٢/١٠)
-    fine_units = {}
+    # الكميات الفعلية محفوظة بوحدة الحاسبة (١٣/١٠: وحدة إضافة الصنف —
+    # الزيت كجم) — التسمية بوحدة الحاسبة مش وحدة الدفتر
+    calc_units = {}
     for it in dw_raw:
-        fine_units[it["name"]] = ou.calc_unit(
+        calc_units[it["name"]] = ou.calc_unit(
             it["name"], it["ration_unit"],
             it.get("specific_weight"))[0]
     for permit in dp.list_permits(year, month):
@@ -885,7 +885,7 @@ def permits_book(year, month, cycle):
             if not str(key).startswith(prefix):
                 continue
             name = str(key)[len(prefix):]
-            unit = fine_units.get(name) or handle_units.get(name) \
+            unit = calc_units.get(name) or handle_units.get(name) \
                 or catalog_units.get(name) or ""
             items.append({"name": name, "qty": qty, "unit": unit})
         if not items:

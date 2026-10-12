@@ -28,7 +28,9 @@ with app.app_context():
     from data_access import months
     conn = months.get_db(year, month)
     db_attendance.ensure_tables(conn)
-    conn.execute("DELETE FROM attendance WHERE day IN (9, 10)")
+    # كل يوميات الشهر (٩/١٠ اللي زرعها السكربت + أي يوم تاني جرت تجربته)
+    # عشان حذف المجندين ما يترفضش «له يوميات»
+    conn.execute("DELETE FROM attendance")
     conn.commit()
     conn.close()
     for r in db_recruits.list_recruits(year, month):

@@ -11,7 +11,7 @@
 from datetime import date
 
 from core import egtime
-from core.config import DAYS, MEALS, calc_fine_unit
+from core.config import DAYS, MEALS
 from data_access import oil_units as ou
 from data_access import db_tameedat as dt
 from services import permit_build as pb
@@ -111,8 +111,8 @@ def rows_for_picks_free(year, month, picks, day_from, day_to, issue_days,
             force_day = g["day_forces"][day]
             base_force_days += force_day
             auto_custom += force_day * day_custom(item, wd)
-        f_unit, f_factor = ou.calc_unit(name, g["unit"])   # وحدة الدقيقة (الزيت: كجم — ١٠/١٠)
-        # المعدل المحفوظ من الواجهة بيه في الوحدة الدقيقة — معدل الكتالوج بيتحول
+        f_unit, f_factor = ou.calc_unit(name, g["unit"])   # وحدة الحاسبة (١٣/١٠: وحدة الإضافة — الزيت كجم)
+        # المعدل المحفوظ من الواجهة بيه في وحدة الحاسبة — معدل الكتالوج بيتحول
         rate = float(free_rate["rate"]) if free_rate else \
             round(float(g["catalog_rate"]) * f_factor, 6)
         auto_custom = round(auto_custom * f_factor, 6)

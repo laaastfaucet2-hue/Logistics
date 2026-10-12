@@ -2,7 +2,7 @@
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """قائمة التأميدات (كل جهة لوحدها) وجدول الكميات للأذون."""
 from core import arabic_numbers as arnum
-from core.config import calc_fine_unit
+
 from data_access import db_tameedat as dt
 from data_access import oil_units as ou
 from data_access import db_tameed_rations as snap
@@ -153,7 +153,7 @@ def rows_for_picks(year, month, picks, day_from, day_to, issue_days, section):
     rows = []
     for item in grouped.values():
         f_unit, f_factor = ou.calc_unit(item["name"], item["unit"])
-        if f_factor != 1.0:              # الأوزان بالجرام والحجوم بالمل (توجيه ٠٩/١٠) — الزيت كجم (١٠/١٠)
+        if f_factor != 1.0:              # الزيت بس: المقرر باللتر/المل → الحاسبة دايمًا كجم (١٠/١٠ · ١٣/١٠)
             item["unit"] = f_unit
             for k in ("auto", "per_person", "breakfast", "lunch", "dinner",
                       "custom_breakfast", "custom_lunch", "custom_dinner"):
