@@ -25,7 +25,7 @@
         <span class="dim">رقمه: {{ recruit.mil_no | aindic }}</span>
         <span class="rc-cert-badge sm s-{{ {'🟢':'ok','🟠':'soon','🔴':'exp','⚪':'none'}[cert_badge[0]] }}">{{ cert_badge[0] }} {{ cert_badge[1] }}</span>
         {% if latest %}<span class="rc-chip st-{{ latest[0] }}">الحالة الحالية: {{ latest[0] }} <b>منذ يوم {{ latest[1] | aindic }}</b></span>{% endif %}
-        {% if discharge_days is not none and discharge_days <= 60 %}
+        {% if discharge_days is not none and 0 <= discharge_days <= 60 %}
         <span class="rc-mini warn">⏳ {{ discharge_days | aindic }} يومًا للتسريح</span>{% endif %}
       </div>
       <div class="rc-file-grid">

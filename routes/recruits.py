@@ -583,8 +583,10 @@ def _stats(v):
         st = dr.cert_state(r, today)
         if st in ("expired", "soon"):
             v["certs"][st].append(r)
+    # «تنتهي خلال ٦٠ يومًا» = لسه بخدمة وقرب خروج (٠ ≤ المتبقي ≤ ٦٠) —
+    # اللي خدمته خلصت (سالبة) مالهاش مكان هنا — طاولة «الأقرب للخروج» بتعرضها «انتهت من X»
     v["discharging"] = [(r, dr.days_to_discharge(r, today)) for r in v["recruits"]
-                        if (dr.days_to_discharge(r, today) or 999) <= 60]
+                        if 0 <= (dr.days_to_discharge(r, today) or 999) <= 60]
     # الأقرب للخروج من الخدمة — ترتيب بالأيام المتبقية (أول ٥ من عندهم تاريخ)
     ranked = [(r, dr.days_to_discharge(r, today)) for r in v["recruits"]
               if (r.get("service_end") or "").strip()]

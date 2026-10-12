@@ -105,7 +105,7 @@
             <td><input type="checkbox" form="monthCopyForm" name="recruit_ids" value="{{ r.id }}" aria-label="تحديد {{ r.name }} للنسخ"></td>
             <td class="num">{{ loop.index | aindic }}</td>
             <td>{% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% else %}<span class="rc-avatar ph">؟</span>{% endif %}</td>
-            <td><b class="rc-sname">{{ r.name }}</b>{% if discharge[r.id] is not none and discharge[r.id] <= 60 %}
+            <td><b class="rc-sname">{{ r.name }}</b>{% if discharge[r.id] is not none and 0 <= discharge[r.id] <= 60 %}
               <span class="rc-mini warn">⏳ {{ discharge[r.id] | aindic }} يومًا للتسريح</span>{% endif %}</td>
             <td class="num rc-smil">{{ r.mil_no | aindic }}</td>
             <td>{% set ls = latest.get(r.id) %}
