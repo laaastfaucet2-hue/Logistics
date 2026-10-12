@@ -14,6 +14,7 @@
   <datalist id="{{ dlist }}">
     {% for n in force[fcat] %}<option value="{{ n }}"></option>{% endfor %}
   </datalist>
+  <script type="application/json" class="rg-slot-ranks">{{ group.rank_of | tojson }}</script>
 
   <div class="rg-slots-head">
     <b>مربعات {{ group.label }} الراغبين — يوم {{ sel_day | aindic }}</b>
@@ -30,16 +31,27 @@
 
   <div class="rg-slots-grid">
     {% for name in group.boxes %}
-    <input class="rag-slot" name="names" value="{{ name or '' }}"
-           {% if name %}style="{{ color_ring('person', name) }}"{% endif %}
-           data-combo="{{ dlist }}" autocomplete="off"
-           placeholder="{{ loop.index | aindic }}. اكتب اسم الراغب (بحث ذكي)">
+    {% set person_rank = group.rank_of.get(name) if name else '' %}
+    {% set extra = [person_rank] if (person_rank and person_rank not in group.ranks) else [] %}
+    <div class="rg-slotcell">
+      <select class="rag-slot-rank" name="ranks"
+              aria-label="رتبة المربع {{ loop.index | aindic }}">
+        <option value="">— اختر الرتبة —</option>
+        {% for rk in group.ranks + extra %}
+        <option value="{{ rk }}" {{ 'selected' if person_rank and rk == person_rank }}>{{ rk }}</option>
+        {% endfor %}
+      </select>
+      <input class="rag-slot" name="names" value="{{ name or '' }}"
+             {% if name %}style="{{ color_ring('person', name) }}"{% endif %}
+             data-combo="{{ dlist }}" autocomplete="off"
+             placeholder="{{ loop.index | aindic }}. اسم الراغب (بحث ذكي)">
+    </div>
     {% endfor %}
   </div>
   <p class="rg-dim rg-slots-hint">
     {% if group.boxes %}
-    الاسم يُجلب بالبحث الذكي من «الجهات والكوادر» — وأي اسم
-    جديد سيطرح عليك السؤال: هل تريد إضافته كقوة دائمة للجهة؟ (نعم = يدخل قوة الكوادر تلقائيًا).
+    كل مربع = رتبة (منسدلة بكل رتب الفئة) + اسم يُجلب بالبحث الذكي من «الجهات والكوادر» —
+    وأي اسم جديد سيطرح عليك السؤال: هل تريد إضافته كقوة دائمة للجهة؟ (نعم = يدخل قوة الكوادر تلقائيًا).
     حفظ المربعات هو كشف الراغبين كاملًا لليوم — الفارغ يعني غير راغب.
     {% else %}
     لا توجد مربعات بعد — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }} لتظهر مربعاتها

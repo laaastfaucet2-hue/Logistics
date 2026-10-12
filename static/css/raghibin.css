@@ -66,6 +66,16 @@
   border: 1px solid rgba(59, 130, 246, .5);
   background: rgba(59, 130, 246, .09);
   color: var(--text); font-weight: 700; }
+/* ١٣/١٠: كل صف/مربع = مربع رتبة (منسدلة بكل رتب الفئة) + مربع اسم */
+.rag-slot-rank { width: 100%; padding: 9px 10px; border-radius: 11px;
+  border: 1px solid rgba(59, 130, 246, .5);
+  background: rgba(59, 130, 246, .09);
+  color: var(--text); font-weight: 700; cursor: pointer; }
+.rag-slot-rank:focus { border-color: var(--blue, #3b82f6); outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .22); }
+.rg-slotrow .rag-slot-rank { width: auto; min-width: 150px; flex: 0 1 190px; }
+.rg-slotrow .rag-slot { flex: 1; }
+.rg-slotcell { display: flex; flex-direction: column; gap: 6px; }
 .rag-slot::placeholder { color: rgba(148, 163, 184, .8); font-weight: 500; }
 .rag-slot:focus { border-color: var(--blue, #3b82f6); outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, .22);
@@ -288,7 +298,8 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
   background: rgba(245,158,11,.15); border: 1px solid var(--gold-border); }
 /* ═══ شبكة الأيام ١..٣١ بترتيب (تصميم الاسكرين شوت) ═══ */
 .rg-dayseq { grid-template-columns: repeat(7, 1fr); }
-.rg-dayseq .tm-cell { aspect-ratio: 1.15; justify-content: center; }
+/* ١٣/١٠: مربعات «اختر يوم التأميدة» تصغر شوية (أعرض من ارتفاعها) */
+.rg-dayseq .tm-cell { aspect-ratio: 1.7; justify-content: center; }
 .rg-daylbl { font-style: normal; font-size: .68rem; color: var(--muted); }
 .rg-dayseq .tm-cell.sel .rg-daylbl { color: var(--on-orange); }
 .rg-dayseq .tm-dot { top: auto; bottom: 4px; }

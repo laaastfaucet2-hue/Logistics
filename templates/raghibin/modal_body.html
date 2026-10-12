@@ -55,7 +55,8 @@
       <div class="rg-force-item" data-name="{{ p.full_name }}">
         <label class="rg-force-check">
           <input type="checkbox" class="rg-force-toggle" data-person="{{ p.id }}"
-                 data-name="{{ p.full_name }}" {{ 'checked' if p.willing_today }}>
+                 data-name="{{ p.full_name }}" data-rank="{{ p.rank or '' }}"
+                 {{ 'checked' if p.willing_today }}>
           <span>{{ p.rank or '—' }} / <b class="c-name ring" style="{{ color_ring('person', p.full_name) }}">{{ p.full_name }}</b>
             {% if p.exclude_note %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}</span>
         </label>
@@ -82,17 +83,27 @@
       <input type="hidden" name="new_names" value="" class="rg-new-names">
       <div class="rg-slots-list">
         {% for name in group.boxes %}
+        {% set person_rank = group.rank_of.get(name) if name else '' %}
+        {% set extra = [person_rank] if (person_rank and person_rank not in group.ranks) else [] %}
         <div class="rg-slotrow">
           <span class="rg-slotnum">{{ loop.index | aindic }} -</span>
+          <select class="rag-slot-rank" name="ranks"
+                  aria-label="رتبة المربع {{ loop.index | aindic }}">
+            <option value="">— اختر الرتبة —</option>
+            {% for rk in group.ranks + extra %}
+            <option value="{{ rk }}" {{ 'selected' if person_rank and rk == person_rank }}>{{ rk }}</option>
+            {% endfor %}
+          </select>
           <input class="rag-slot" name="names" value="{{ name or '' }}"
                  data-combo="{{ dlist }}" autocomplete="off"
-                 placeholder="اكتب {{ 'رتبة أو اسم الضابط' if fcat == 'officers' else 'درجة أو اسم الفرد' }}...">
+                 placeholder="اكتب {{ 'اسم الضابط' if fcat == 'officers' else 'اسم الفرد' }} (بحث ذكي)...">
         </div>
         {% endfor %}
       </div>
       {% if group.boxes %}
-      <p class="rg-dim rg-slots-hint">التشيك من قائمة القوة يملأ المربعات تلقائيًا، والكتابة بالبحث الذكي —
-      وأي اسم جديد سيطرح عليك السؤال: هل تريد إضافته كقوة دائمة للجهة؟</p>
+      <p class="rg-dim rg-slots-hint">كل صف = مربع رتبة (كل رتب الفئة) + مربع اسم — التشيك من
+      قائمة القوة يملأهما تلقائيًا، والكتابة بالبحث الذكي. وأي اسم جديد سيطرح عليك السؤال:
+      هل تريد إضافته كقوة دائمة للجهة؟</p>
       {% else %}
       <p class="rg-dim rg-slots-hint">لا توجد مربعات بعد — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }}
       لتظهر مربعاتها (عدد المربعات = أعداد التأميدة). الزر بالأسفل يعمل دائمًا ويحفظ حالة الراغبين.</p>
@@ -123,5 +134,6 @@
     {% for r in individual_ranks %}<option value="{{ r }}"></option>{% endfor %}
   </datalist>
   <script type="application/json" class="rg-ranks-map">{{ ranks_map | tojson }}</script>
+  <script type="application/json" id="rgPersonRankData">{{ person_rank_pairs | tojson }}</script>
 
 </div>

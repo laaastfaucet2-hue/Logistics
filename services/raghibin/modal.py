@@ -31,6 +31,15 @@ def build(year, month, entity, day, cat, sid=""):
         "individual_ranks": dr.RANKS["individuals"],
         "ranks_map": {"officers": dr.RANKS["officers"],
                       "individuals": dr.RANKS["individuals"]},
+        # ١٣/١٠: خريطة (الرتبة، الاسم) لكل فئة — عشان كتابة اسم معروف
+        # تملأ مربع الرتبة التلقائي في صفه
+        "person_rank_pairs": {cat: [[p.get("rank") or "", p["full_name"]]
+                                    for p in dr.list_persons(
+                                        year, month,
+                                        entity_id=entity["id"],
+                                        category=cat)]
+                              if entity else []
+                              for cat in ("officers", "individuals")},
         "sid": sid,
         "month_names": MONTH_NAMES,
     })

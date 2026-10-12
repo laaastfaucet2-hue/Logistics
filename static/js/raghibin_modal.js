@@ -38,6 +38,41 @@
     });
   }
 
+  /* ١٣/١٠: كتابة اسم معروف تملأ مربع الرتبة في صفه تلقائيًا
+     (بدون ما تفرغ اختيار صريح كان المستخدم عمليه). */
+  function autoFillRank(input) {
+    var row = input.closest(".rg-slotrow") || input.closest(".rg-slotcell");
+    var sel = row ? row.querySelector(".rag-slot-rank") : null;
+    var v = (input.value || "").trim();
+    if (!sel || !v || sel.value) return;
+    var maps = [];
+    var form = input.closest("form");
+    if (form) {
+      var local = form.querySelector(".rg-slot-ranks");
+      if (local) {
+        try { maps.push(JSON.parse(local.textContent || "{}")); } catch (e) {}
+      }
+    }
+    var g = document.getElementById("rgPersonRankData");
+    if (g) {
+      try {
+        var gd = JSON.parse(g.textContent || "{}");
+        var m = {};
+        Object.keys(gd).forEach(function (k) {
+          (gd[k] || []).forEach(function (pr) { if (pr[1]) m[pr[1]] = pr[0]; });
+        });
+        maps.push(m);
+      } catch (e) {}
+    }
+    for (var i = 0; i < maps.length; i++) {
+      var r = Object.prototype.hasOwnProperty.call(maps[i], v) ? maps[i][v] : "";
+      if (!r) continue;
+      for (var j = 0; j < sel.options.length; j++) {
+        if (sel.options[j].value === r) { sel.value = r; return; }
+      }
+    }
+  }
+
   function enhanceForms(root) {
     (root || document).querySelectorAll("form[data-ragboxes]").forEach(function (form) {
       if (form.dataset.ragReady) return;
@@ -61,6 +96,10 @@
           }
         });
         if (box) box.value = JSON.stringify(fresh);
+      });
+      /* تزامن الرتبة عند الكتابة في المربع (بحث ذكي / لصق) */
+      form.querySelectorAll(".rag-slot").forEach(function (input) {
+        input.addEventListener("change", function () { autoFillRank(input); });
       });
     });
   }
@@ -216,7 +255,19 @@
           root.querySelectorAll(".rag-slot").forEach(function (i) {
             if (!first && !i.value.trim()) first = i;
           });
-          if (first) { first.value = name; first.dataset.prev = name; }
+          if (first) {
+            first.value = name; first.dataset.prev = name;
+            /* ١٣/١٠: مربع الرتبة في نفس الصف ياخد رتبة العضو من القوة */
+            var row = first.closest(".rg-slotrow");
+            var sel = row && row.querySelector(".rag-slot-rank");
+            if (sel && chk.dataset.rank) {
+              for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === chk.dataset.rank) {
+                  sel.value = chk.dataset.rank; break;
+                }
+              }
+            }
+          }
         } else {
           var slot = slotByName(name);
           if (slot) { slot.value = ""; slot.dataset.prev = ""; }

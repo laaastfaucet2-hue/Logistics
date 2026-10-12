@@ -159,7 +159,11 @@ def _slots_vars(year, month, entity, selected):
         boxes = list(willing) + [None] * max(0, tameeda - len(willing))
         slots[cat] = {"tameeda": tameeda, "count": len(willing),
                       "has_tameeda": bool(tameed_totals), "boxes": boxes,
-                      "label": label}
+                      "label": label,
+                      # ١٣/١٠: مربع رتبة منسدلة (كل رتب الفئة) + مربع اسم
+                      "ranks": list(dr.RANKS[cat]),
+                      "rank_of": {p["full_name"]: (p.get("rank") or "")
+                                  for p in persons}}
         force[cat] = [p["full_name"] for p in persons]
     return {"slots": slots, "force": force, "tameed_totals": tameed_totals}
 

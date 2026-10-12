@@ -142,11 +142,19 @@ def daily_save():
     source = "tamida" if request.form.get("source") == "tamida" else "manual"
     back_to = request.form.get("back", "raghibin")
 
-    names = []
-    for raw in request.form.getlist("names"):
+    # ١٣/١٠: كل صف = مربع رتبة (منسدلة) + مربع اسم — الرتبة بالترتيب
+    # نفسه لمربعات الاسم (getlist موازٍ).
+    name_raws = request.form.getlist("names")
+    rank_raws = request.form.getlist("ranks")
+    names = []      # أسماء فريدة بالترتيب
+    name_ranks = {} # الاسم ← الرتبة المختارة
+    for i, raw in enumerate(name_raws):
         name = " ".join((raw or "").split())
-        if name and name not in names:
-            names.append(name)
+        if not name or name in name_ranks:
+            continue
+        raw_rank = rank_raws[i] if i < len(rank_raws) else ""
+        name_ranks[name] = " ".join((raw_rank or "").split())
+        names.append(name)
     try:
         confirmed_new = {n for n in (json.loads(request.form.get("new_names") or "[]")
                                      if request.form.get("new_names") else [])}
@@ -155,11 +163,15 @@ def daily_save():
 
     warnings, added, resolved_ids = [], [], []
     for name in names:
+        rank = name_ranks.get(name, "")
         person = dr.find_person(year, month, entity["id"], cat, name)
         if person is None and name in confirmed_new:
-            dr.add_person(year, month, entity["id"], cat, name)
+            dr.add_person(year, month, entity["id"], cat, name, rank=rank)
             added.append(name)
             person = dr.find_person(year, month, entity["id"], cat, name)
+        elif person is not None and rank and (person.get("rank") or "") != rank:
+            # اختيار رتبة مختلفة عن المسجلة → حدّث رتبة العضو في القوة
+            dr.update_person(year, month, person["id"], name, rank=rank)
         if person is None:
             warnings.append(f"«{name}» غير موجود في القوة ولم يؤكد إضافته — تجاهلناه")
             continue
