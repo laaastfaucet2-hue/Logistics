@@ -30,7 +30,7 @@ from services.raghibin import modal as rg_modal
 
 from . import raghibin_bp
 from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
-                      _selected_entity, _registry_search_vars)
+                      _selected_entity)
 
 
 def _modal_page_url(entity, day, cat, sid=""):
@@ -59,26 +59,15 @@ def modal_page():
     variables["tameed_back"] = back + (f"&sid={quote(sid)}" if sid else "")
     variables["ok"] = request.args.get("ok", "")
     variables["err"] = request.args.get("err", "")
-    # تصميم الاسكرين شوت (١٠/١٠/٢٠): السجل المعتمد بكل الفئتين + قطع الجهة
-    variables["pieces_count"] = len(variables.get("entity_names", []))
-    variables.update(_registry_search_vars(year, month, entity))
+    # السجل المعتمد اتنقل لتاب «الجهات والكوادر» بس (توجيه ١٣/١٠) — هنا الاعتماد والممسح بس
     if entity:
-        variables["registry_officers"] = dr.list_persons(
-            year, month, entity_id=entity["id"], category="officers")
-        variables["registry_individuals"] = dr.list_persons(
-            year, month, entity_id=entity["id"], category="individuals")
         variables["approval"] = dr.get_approval(year, month, entity["id"], day)
         variables["scan_img_url"] = (
             f"/raghibin/scan/img?e={entity['id']}&d={day}"
             + (f"&sid={quote(sid)}" if sid else ""))
-        variables["entity_count"] = len(variables["registry_officers"]) \
-            + len(variables["registry_individuals"])
     else:
-        variables["registry_officers"] = []
-        variables["registry_individuals"] = []
         variables["approval"] = None
         variables["scan_img_url"] = ""
-        variables["entity_count"] = 0
     return render_template("raghibin/modal_page.html", **variables)
 
 
