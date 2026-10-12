@@ -1,5 +1,14 @@
 {% extends "base.html" %}
-{% block title %}المخازن والثلاجات • موحدة لكل الأصناف
+{% block title %}المخازن والثلاجات • موحدة لكل الأصناف{% endblock %}
+
+{% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
 <!-- نافذة الحذف: مخزن عليه حركة لا يُحذف إلا بنقل أصنافه (توجيه ٢٦/٠٩) -->
 <div id="storeDelModal" class="rt-modal" hidden>
   <div class="rt-modal-box">
@@ -16,74 +25,8 @@
     </div>
   </div>
 </div>
-<datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalist>
-<script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
-<script>
-(function () {
-  var modal = document.getElementById("storeDelModal");
-  if (!modal) return;
-  var pending = null;
-  function close() { modal.hidden = true; pending = null; }
-  Array.prototype.forEach.call(document.querySelectorAll(".js-del-form"), function (form) {
-    form.addEventListener("submit", function (ev) {
-      if (form.dataset.confirmed === "1") return;   // التأكيد تم — أرسل عادي
-      ev.preventDefault();
-      pending = form;
-      var moved = form.dataset.moved === "1";
-      document.getElementById("storeDelTitle").textContent =
-        "حذف مخزن «" + form.dataset.name + "»";
-      document.getElementById("storeDelText").textContent = moved
-        ? "هذا المخزن عليه حركة — لا يجوز حذفه إلا بعد نقل أصنافه إلى مخزن أو ثلاجة أخرى."
-        : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
-      document.getElementById("storeDelTransfer").hidden = !moved;
-      var input = modal.querySelector("[name=transfer_name]");
-      if (input) input.value = "";
-      modal.hidden = false;
-    });
-  });
-  document.getElementById("storeDelCancel").addEventListener("click", close);
-  document.getElementById("storeDelOk").addEventListener("click", function () {
-    if (!pending) return close();
-    var moved = pending.dataset.moved === "1";
-    var input = modal.querySelector("[name=transfer_name]");
-    if (moved) {
-      var name = (input && input.value || "").trim();
-      var map = {};
-      try { JSON.parse(document.getElementById("storeListData").textContent)
-        .forEach(function (t) { map[t.name] = t.id; }); } catch (err) {}
-      if (!map[name] || name === pending.dataset.name) { input.focus(); return; }
-      pending.querySelector("[name=transfer_to]").value = map[name];
-    }
-    pending.dataset.confirmed = "1";
-    close();
-    pending.submit();
-  });
-})();
-/* الـ 3 تابات الرئيسية لكارت المخزن (توجيه ٠٨/١٠): حركة · أصناف · كشف جرد */
-document.addEventListener("click", function (ev) {
-  var btn = ev.target.closest("[data-st-main]");
-  if (!btn) return;
-  var scope = btn.closest(".wh-store-card");
-  if (!scope) return;
-  var key = btn.getAttribute("data-st-main");
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-main]"), function (b) {
-    b.classList.toggle("active", b === btn);
-  });
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-mainpanel]"), function (p) {
-    p.hidden = p.getAttribute("data-st-mainpanel") !== key;
-  });
-});
-</script>
-
-{% endblock %}
-{% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
-
-{% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
-{% endblock %}
-
-{% block content %}
+<datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalis
+<script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script
 <header class="wh-hero">
   <div class="wh-hero-lines">
     <b class="wh-l1">🏬 المخازن والثلاجات — موحّدة لكل الأصناف</b>
@@ -258,6 +201,75 @@ document.addEventListener("click", function (ev) {
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script>
+
+(function () {
+  var modal = document.getElementById("storeDelModal");
+  if (!modal) return;
+  var pending = null;
+  function close() { modal.hidden = true; pending = null; }
+  Array.prototype.forEach.call(document.querySelectorAll(".js-del-form"), function (form) {
+    form.addEventListener("submit", function (ev) {
+      if (form.dataset.confirmed === "1") return;   // التأكيد تم — أرسل عادي
+      ev.preventDefault();
+      pending = form;
+      var moved = form.dataset.moved === "1";
+      document.getElementById("storeDelTitle").textContent =
+        "حذف مخزن «" + form.dataset.name + "»";
+      document.getElementById("storeDelText").textContent = moved
+        ? "هذا المخزن عليه حركة — لا يجوز حذفه إلا بعد نقل أصنافه إلى مخزن أو ثلاجة أخرى."
+        : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
+      document.getElementById("storeDelTransfer").hidden = !moved;
+      var input = modal.querySelector("[name=transfer_name]");
+      if (input) input.value = "";
+      modal.hidden = false;
+    });
+  });
+  document.getElementById("storeDelCancel").addEventListener("click", close);
+  document.getElementById("storeDelOk").addEventListener("click", function () {
+    if (!pending) return close();
+    var moved = pending.dataset.moved === "1";
+    var input = modal.querySelector("[name=transfer_name]");
+    if (moved) {
+      var name = (input && input.value || "").trim();
+      var map = {};
+      try { JSON.parse(document.getElementById("storeListData").textContent)
+        .forEach(function (t) { map[t.name] = t.id; }); } catch (err) {}
+      if (!map[name] || name === pending.dataset.name) { input.focus(); return; }
+      pending.querySelector("[name=transfer_to]").value = map[name];
+    }
+    pending.dataset.confirmed = "1";
+    close();
+    pending.submit();
+  });
+})();
+/* الـ 3 تابات الرئيسية لكارت المخزن (توجيه ٠٨/١٠): حركة · أصناف · كشف جرد */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-main]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  var key = btn.getAttribute("data-st-main");
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-main]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-mainpanel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-mainpanel") !== key;
+  });
+});
+
+/* تابات الأصناف داخل كارت المخزن: الضغط على «الحركة» يعرض حركة الصنف فقط */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-sub]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-sub]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-panel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-panel") !== btn.getAttribute("data-st-sub");
+  });
+});
 /* زرار «إضافة مخزن جديد» يفتح ويقفل النموذج فعلًا (توجيه ٢٧/٠٩) */
 (function () {
   var t = document.getElementById("whStoreToggle");
