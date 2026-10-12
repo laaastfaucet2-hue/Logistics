@@ -8,8 +8,9 @@
 (الأحدث أولًا) + الإجماليات.
 """
 import sqlite3
+from datetime import date, timedelta
 
-from core import arabic_numbers as arnum, dates
+from core import arabic_numbers as arnum, dates, egtime
 from core.config import MONTH_NAMES, month_folder
 from data_access import db_attendance as da, db_recruits as dr
 from data_access import storage
@@ -64,19 +65,25 @@ def _month_row(year, month, mil_no):
         if not row:
             return None
         rid = row["id"]
-        att = conn.execute(
-            "SELECT day, status, note FROM attendance WHERE recruit_id=? ORDER BY day",
-            (rid,)).fetchall()
-        permit_rows = conn.execute(
-            "SELECT from_day, to_day FROM leave_permits WHERE recruit_id=?",
-            (rid,)).fetchall()
+        try:
+            att = conn.execute(
+                "SELECT day, status, note FROM attendance WHERE recruit_id=? ORDER BY day",
+                (rid,)).fetchall()
+        except sqlite3.OperationalError:
+            att = []                      # شهر جديد — اليومية اتفتحتش فيه لسه
+        try:
+            permit_rows = conn.execute(
+                "SELECT from_day, to_day FROM leave_permits WHERE recruit_id=?",
+                (rid,)).fetchall()
+        except sqlite3.OperationalError:
+            permit_rows = []
         checkup_rows = []
         try:
             checkup_rows = conn.execute(
                 "SELECT day FROM health_checkups WHERE recruit_id=? ORDER BY day",
                 (rid,)).fetchall()
         except sqlite3.OperationalError:
-            pass                          # شهر قديم بلا جدول كشوف
+            pass                          # شهر قديم/جديد بلا جدول كشوف
     except sqlite3.OperationalError:
         return None                      # شهر قديم بلا جدول recruits
     finally:
@@ -93,16 +100,65 @@ def _month_row(year, month, mil_no):
         note = (a["note"] or "").strip()
         if note:
             notes.append((a["day"], note))
+    notes_by_day = {}
+    for d, note in notes:
+        notes_by_day[d] = note
     return {
         "year": year, "month": month, "month_name": MONTH_NAMES[month - 1],
         "year_ar": arnum.to_arabic_indic(year), "month_label": MONTH_NAMES[month - 1] + " " + arnum.to_arabic_indic(year),
-        "counts": counts, "recorded": len(att),
+        "counts": counts, "recorded": len(att), "days": days,
+        "notes_by_day": notes_by_day,
         "ranges": {st: _runs(days, st) for st in FILE_STATUSES},
         "permits": {(p["from_day"], p["to_day"]) for p in permit_rows},
         "first_days": first_days, "notes": notes,
         "checkup_days": [r["day"] for r in checkup_rows],
         "created_at": row["created_at"] or "",
     }
+
+
+def _daily_table(r, months_asc):
+    """التتبع اليومي: كل يوم من أول يوم في الخدمة لحد آخر يوم فيها — بيوم بيوم.
+
+    الأيام اللي من غير تسجيل في اليومية تظهر بلا حالة («لم يُسجَّل» في العرض).
+    المجموع على الشهور: [{label, year, month, days: [{day, ymd, weekday, status, note, today}]}]
+    """
+    index = {}
+    for row in months_asc:
+        y, m = row["year"], row["month"]
+        for d, st in row["days"].items():
+            index[(y, m, d)] = (st, row["notes_by_day"].get(d, ""))
+    start = dates.parse_date(r.get("service_start") or "")
+    end = dates.parse_date(r.get("service_end") or "")
+    if not start and months_asc:
+        f = months_asc[0]
+        start = date(f["year"], f["month"], 1)
+    if not end:
+        if index:
+            last = max(index)
+            end = date(last[0], last[1], last[2])
+        else:
+            end = start or egtime.today()
+    if end < start:
+        end = start
+    today = egtime.today()
+    groups = []
+    d = start
+    while d <= end:
+        st_note = index.get((d.year, d.month, d.day))
+        if not groups or (groups[-1]["year"], groups[-1]["month"]) != (d.year, d.month):
+            groups.append({"year": d.year, "month": d.month,
+                           "label": MONTH_NAMES[d.month - 1] + " " + arnum.to_arabic_indic(d.year),
+                           "days": []})
+        groups[-1]["days"].append({
+            "day": d.day,
+            "ymd": dates.format_date(d),
+            "weekday": egtime.weekday_ar(d),
+            "status": st_note[0] if st_note else "",
+            "note": st_note[1] if st_note else "",
+            "today": d == today,
+        })
+        d += timedelta(days=1)
+    return groups
 
 
 def build(year, month, rid):
@@ -192,11 +248,14 @@ def build(year, month, rid):
     for row in months_asc:
         for st in da.STATUSES:
             totals[st] += row["counts"][st]
+    daily = _daily_table(r, months_asc)
     return {
         "recruit": r,
         "months": list(reversed(months_asc)),
         "timeline": timeline,
         "milestones": milestones,
+        "daily": daily,
+        "daily_total_days": sum(len(g["days"]) for g in daily),
         "totals": totals,
         "n_months": len(months_asc),
         "n_recorded": sum(row["recorded"] for row in months_asc),

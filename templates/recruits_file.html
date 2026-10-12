@@ -45,10 +45,48 @@
   </div>
 </div>
 
-<!-- ==================== الملخص الشهري ==================== -->
+<!-- ==================== التواب الفرعية ==================== -->
+{% set ftabs = [("daily", "📅", "التتبع اليومي"), ("summary", "📊", "الملخص الشهري"),
+                ("milestones", "🎯", "محطات التتبع"), ("timeline", "🕐", "الخط الزمني")] %}
+<nav class="rc-ftabs">
+  {% for key, ico, label in ftabs %}
+  <a class="rc-ftab {{ 'on' if ftab == key }}" href="{{ url_for('recruits.page') }}&tab=file&rid={{ recruit.id }}&ftab={{ key }}">{{ ico }} {{ label }}</a>
+  {% endfor %}
+  <a class="rt-btn navy rc-ftab-act" href="{{ url_for('recruits.milfile_report', year=year, month=month, rid=recruit.id) }}" title="تقرير Word رسمي بالدباجة واللوجو والتوقيعين — يتحفظ في فولدر المجند المحلى وينزّل على جهازك">📄 التقرير الرسمى (Word)</a>
+</nav>
+
+<!-- ==================== التتبع اليومي — كل يوم ==================== -->
+{% if ftab == "daily" %}
 <div class="panel">
   <div class="panel-head">
-    <h3>📅 الملخص الشهري <span class="panel-hint">{{ file_data.n_months | aindic }} شهر — الأحدث أولًا</span></h3>
+    <h3>📅 التتبع اليومي <span class="panel-hint">{{ file_data.daily_total_days | aindic }} يومًا — من أول يوم في الخدمة لحد انتهائها، كل يوم بحالته وملاحظته</span></h3>
+  </div>
+  <div class="rc-daily">
+    {% for g in file_data.daily %}
+    <div class="rc-daily-month"><b>{{ g.label }}</b><span class="dim rc-mini">{{ g.days | length | aindic }} يومًا</span></div>
+    <div class="table-wrap"><table class="rt-table rc-daily-table">
+      <thead><tr><th class="w-date">التاريخ</th><th class="w-dow">اليوم</th><th class="w-st">الحالة</th><th>الملاحظات</th></tr></thead>
+      <tbody>
+      {% for dd in g.days %}
+      <tr class="{% if dd.today %}rc-daily-today{% elif not dd.status %}rc-daily-blank{% endif %}">
+        <td class="num">{{ dd.ymd }}</td>
+        <td>{{ dd.weekday }}</td>
+        <td>{% if dd.status %}<span class="rc-chip st-{{ dd.status }}">{{ dd.status }}</span>{% else %}<span class="dim">لم يُسجَّل</span>{% endif %}</td>
+        <td class="rc-daily-note">{{ dd.note }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== الملخص الشهري ==================== -->
+{% if ftab == "summary" %}
+<div class="panel">
+  <div class="panel-head">
+    <h3>📊 الملخص الشهري <span class="panel-hint">{{ file_data.n_months | aindic }} شهر — الأحدث أولًا</span></h3>
   </div>
   {% if file_data.months %}
   <div class="table-wrap"><table class="rt-table">
@@ -72,8 +110,10 @@
   <p class="panel-hint" style="text-align:center;padding:18px 0">لا توجد شهور أخرى — الملف يبدأ من شهر السياق.</p>
   {% endif %}
 </div>
+{% endif %}
 
 <!-- ==================== محطات التتبع (الأوائل) ==================== -->
+{% if ftab == "milestones" %}
 <div class="panel">
   <div class="panel-head">
     <h3>🎯 محطات التتبع <span class="panel-hint">كل خطوة في الخدمة العسكرية — أول كل حاجة بالتاريخ، من إضافة أصل القوة لحد انتهاء الخدمة</span></h3>
@@ -93,8 +133,10 @@
   <p class="panel-hint" style="text-align:center;padding:14px 0">ما فيش محطات مسجلة بعد — أول ما المجند يظهر في أصل القوة وتسجّل اليومية بتظهر أوائله هنا.</p>
   {% endif %}
 </div>
+{% endif %}
 
 <!-- ==================== الخط الزمني ==================== -->
+{% if ftab == "timeline" %}
 <div class="panel">
   <div class="panel-head">
     <h3>🕐 الخط الزمني <span class="panel-hint">كل أحداث المجند عبر الشهور — الأحدث أولًا (فترات الحالات + الملاحظات + الكشف الطبى)</span></h3>
@@ -115,4 +157,5 @@
   <p class="panel-hint" style="text-align:center;padding:18px 0">لا توجد أحداث بعد — سجّل اليومية والتصاريح وسيظهر الخط الزمني هنا.</p>
   {% endif %}
 </div>
+{% endif %}
 {% endblock %}

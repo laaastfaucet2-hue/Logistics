@@ -44,19 +44,22 @@
   .login-art .art-caption { right: 0; font-size: 9px; }
 }
 @media (max-width: 760px) {
-  .login-wrap { display: block; max-width: 450px; width: 100%; padding: 30px 22px; min-height: calc(100vh - 100px); }
-  .login-hero { margin-bottom: 28px; }
-  .login-identity { margin-bottom: 18px; }
+  /* الموبايل: الهوية أولًا ثم الكارت — وسط عمودي بلا فاضي كبير (توجيه ١٢/١٠) */
+  .login-wrap { display: flex; flex-direction: column; justify-content: center;
+    max-width: 500px; width: 100%; padding: 26px 20px; min-height: calc(100vh - 100px); gap: 22px; }
+  .login-hero { order: -1; margin-bottom: 0; }
+  .login-card { order: 0; }
+  .login-identity { margin-bottom: 14px; }
   .login-identity img { width: 43px; height: 43px; }
   .login-identity strong { font-size: 18px; }
-  .login-hero h1 { font-size: 29px; }
+  .login-hero h1 { font-size: 27px; }
   .login-hero h1 br { display: none; }
   .login-hero h1 span::before { content: " "; }
   .login-hero > p { font-size: 14px; margin-top: 10px; }
   .login-art { display: none; }
   .login-card { padding: 30px 25px; }
-  .login-card h2 { font-size: 27px; }
-  .login-foot { flex-wrap: wrap; padding: 0 22px 20px; gap: 7px; }
+  .login-card h2 { font-size: 26px; }
+  .login-foot { flex-wrap: wrap; padding: 14px 22px 18px; gap: 7px; }
 }
 /* سطر التصميم والتنفيذ (بدل WORKSPACE / الإصدار) */
 .login-foot .login-credit { color: var(--muted); letter-spacing: .2px; }

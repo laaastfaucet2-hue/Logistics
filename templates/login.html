@@ -1,6 +1,7 @@
 {% from 'partials/icons.html' import icon %}
 <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تسجيل الدخول • وزارة الداخلية — منظومة التعيينات</title><link rel="icon" href="{{ url_for('static',filename='img/mark.svg') }}?v={{ static_ver }}">
-{% for css in ['fonts','theme','style','workspace','login'] %}<link rel="stylesheet" href="{{ url_for('static',filename='css/'+css+'.css') }}?v={{ static_ver }}">{% endfor %}
+{% for css in ['fonts','theme','theme-modes','style','workspace','login'] %}<link rel="stylesheet" href="{{ url_for('static',filename='css/'+css+'.css') }}?v={{ static_ver }}">{% endfor %}
+<script>/* الوضع المحفوظ — قبل الرسم (نفس قاعدة base.html) */try{var m=localStorage.getItem("logistics.theme")||"slate";if(["slate","white","blue"].indexOf(m)<0)m="slate";document.documentElement.dataset.theme=m;}catch(e){document.documentElement.dataset.theme="slate";}</script>
 </head><body class="login-body" data-desktop="{{ '1' if desktop_mode else '0' }}">
 {% include 'partials/windowbar.html' %}
 <div class="login-wrap"><section class="login-card"><span class="eyebrow">دخول آمن إلى مساحة العمل</span><h2>أهلًا بعودتك.</h2><p class="login-sub">أدخل بيانات حسابك للمتابعة إلى المنظومة.</p>

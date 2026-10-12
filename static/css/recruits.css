@@ -251,3 +251,36 @@
 .rc-name-link { color: inherit; text-decoration: none; cursor: pointer;
   border-bottom: 1px dashed rgba(var(--gold-rgb, 201, 162, 39), .55); }
 .rc-name-link:hover { color: var(--gold-light, #d8b45a); border-bottom-style: solid; }
+
+/* ==================== تواب ملف المجند الفرعية + التتبع اليومي ==================== */
+.rc-ftabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+.rc-ftab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 9px;
+  border: 1px solid var(--field-border, #334155); color: var(--muted); font-size: .9rem;
+  text-decoration: none; background: var(--surface-soft, #172033); }
+.rc-ftab:hover { color: var(--text); border-color: var(--brand-gold, #f59e0b); }
+.rc-ftab.on { background: var(--surface-gold, #201708); border-color: var(--brand-gold, #f59e0b);
+  color: var(--gold-light, #fcd34d); font-weight: 600; }
+.rc-ftab-act { margin-inline-start: auto; }
+.rc-daily-month { display: flex; justify-content: space-between; align-items: baseline;
+  margin: 18px 2px 7px; padding: 7px 13px; border-radius: 9px;
+  background: var(--surface-gold, #201708); border: 1px solid var(--gold-border, #6b4206); }
+.rc-daily-month:first-child { margin-top: 4px; }
+.rc-daily-month b { color: var(--gold-light, #fcd34d); font-size: 1rem; }
+.rc-daily-table { font-size: .86rem; }
+.rc-daily-table thead th { font-size: .8rem; }
+.rc-daily-table .w-date { width: 105px; }
+.rc-daily-table .w-dow { width: 85px; }
+.rc-daily-table .w-st { width: 110px; }
+.rc-daily-table tbody tr { border-bottom: 1px dashed var(--card-border, #1e293b); }
+.rc-daily-blank td { opacity: .62; }
+.rc-daily-note { color: var(--text); font-size: .84rem; }
+.rc-daily-today { background: rgba(var(--gold-rgb, 245, 158, 11), .10);
+  outline: 1px solid rgba(var(--gold-rgb, 245, 158, 11), .45); }
+.rc-daily-today td:first-child { border-right: 3px solid var(--brand-gold, #f59e0b); }
+@media (max-width: 640px) {
+  .rc-ftabs { gap: 6px; }
+  .rc-ftab { padding: 7px 11px; font-size: .84rem; }
+  .rc-ftab-act { margin-inline-start: 0; width: 100%; text-align: center; }
+  .rc-daily-table .w-dow { display: none; }
+  .rc-daily-table th.w-dow { display: none; }
+}

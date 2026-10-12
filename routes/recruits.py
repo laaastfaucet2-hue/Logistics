@@ -20,7 +20,7 @@ from data_access import db_attendance as da
 from data_access import db_punishments as dpk
 from data_access import db_recruits as dr
 from data_access import db_health
-from documents import docx_recruits
+from documents import docx_recruits, docx_milfile
 from core import egtime, dates
 from services import notifications
 from data_access import storage, db_letterhead as lh
@@ -117,7 +117,21 @@ def page():
     return _registry(v)
 
 
-# ==================== تاب السجن والمحكمات والجزاءات (المراحل ٥ + ١٠) ====================
+# ==================== التقرير الرسمى للمجند (Word + فولدر محلى) ====================
+@recruits_bp.route("/milfile/<int:year>/<int:month>/<int:rid>")
+@login_required
+def milfile_report(year, month, rid):
+    """توليد تقرير التتبع الرسمى (بالدباجة واللوجو والتوقيعين) في فولدر المجند المحلى وتنزيله."""
+    r = dr.get_recruit(year, month, rid)
+    if not r:
+        abort(404)
+    path = docx_milfile.build(year, month, rid)
+    if not path:
+        abort(404)
+    return attachment(path, fallback="milfile" + path.suffix)
+
+
+# ==================== تاب السجن والمحكمات والجزاءات (المراحل ٥ + ٠) ====================
 def _prison(v):
     """٣ تابات فرعية (سجن/المحكمات/الجزاءات) — المدد مشتقة من اليومية العامة.
 
@@ -157,8 +171,10 @@ def _prison(v):
 
 
 def _file(v):
-    """ملف المجند الشامل — كل الشهور (المرحلة ٤)."""
+    """ملف المجند الشامل — كل الشهور (المرحلة ٤) — بتواب فرعية:
+    أساسى · يومي (كل يوم) · محطات · خط زمني."""
     rid = arnum.parse_int(request.args.get("rid"))
+    v["ftab"] = request.args.get("ftab") or "daily"
     data = recruit_file.build(*_ctx(), rid) if rid else None
     if not data:
         abort(404)
