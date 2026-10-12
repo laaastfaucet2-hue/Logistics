@@ -154,23 +154,32 @@ def tarfea_stats(year, month):
         supplied[name] = supplied.get(name, 0.0) + float(r["qty_handle"] or 0)
     for (_pn, item), qty in dws.fefo_actual_map(year, month, cycle).items():
         issued[item] = issued.get(item, 0.0) + float(qty or 0)
+    # صرف الترفية المباشر (issue2) بيتسجل في الدفتر نفسه — عمود «المَنصُرف»
+    # لازم يعكسه وإلّا الرصيد بيطرحه والعمود يظل صفراً (اكتشاف اختبار ١٢/١٠)
+    conn = dw._conn(year, month)
+    ledger_issued = {r[0]: float(r[1] or 0) for r in conn.execute(
+        "SELECT item_id, SUM(issued) FROM wh_ledger WHERE cycle=? "
+        "AND kind='issue2' GROUP BY item_id", (cycle,))}
+    conn.close()
     for it in dw.list_items(year, month, cycle):
         name = it["name"]
         items.append({
             "name": name,
             "unit": it["handle_unit"],
             "supplied": supplied.get(name, 0.0),
-            "issued": issued.get(name, 0.0),
+            "issued": issued.get(name, 0.0) + ledger_issued.get(it["id"], 0.0),
             "balance": balances.get(it["id"], 0.0),
         })
     items.sort(key=lambda x: x["name"])
-    top5 = [(k, v) for k, v in sorted(issued.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]
+    issued_total = sum(x["issued"] for x in items)
+    top5 = [(x["name"], x["issued"]) for x in sorted(
+        items, key=lambda x: (-x["issued"], x["name"]))[:5]]
     return {
         "item_rows": items,
         "top5": top5,
         "items_count": len(items),
         "supplied_total": sum(supplied.values()),
-        "issued_total": sum(issued.values()),
+        "issued_total": issued_total,
         "stores": tarfea_stores(year, month),
     }
 
