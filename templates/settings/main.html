@@ -11,7 +11,7 @@
 <header class="wh-hero">
   <div class="wh-hero-lines">
     <b class="wh-l1">⚙️ الإعدادات</b>
-    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · النسخ الاحتياطي</b>
+    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · النسخ الاحتياطي · الهوية للمنظمة</b>
   </div>
 </header>
 
@@ -31,5 +31,7 @@
   {% include "settings/tab_notes.html" %}
 {% elif sub == 'backups' %}
   {% include "settings/tab_backups.html" %}
+{% elif sub == 'identity' %}
+  {% include "settings/tab_identity.html" %}
 {% endif %}
 {% endblock %}

@@ -123,6 +123,16 @@ def register(app):
                "date_config": {"format": dates.DISPLAY_FORMAT, "months": MONTH_NAMES,
                                "weekdays": DAYS, "today": today.isoformat(),
                                "timeZone": "Africa/Cairo", "digits": arnum.digit_sets()}}
+        # لوجو المنظومة المرفوع (تاب «الهوية للمنظمة») — أو None ليعود الشعار الأصلي.
+        # يظهر على كل الصفحات بما فيها تسجيل الدخول (السياق متاح بلا مستخدم).
+        try:
+            from data_access import db_identity
+            _lname = db_identity.get_logo()
+            _lp = storage.identity_dir() / _lname if _lname else None
+            ctx["app_logo"] = ({"name": _lname, "v": int(_lp.stat().st_mtime)}
+                               if _lp and _lp.exists() else None)
+        except Exception:      # noqa: BLE001 — فشل اللوجو لا يسقط أي صفحة
+            ctx["app_logo"] = None
         if user:
             year, month = current_context(user["id"])
             nav_items = nav_monthly()

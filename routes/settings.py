@@ -6,20 +6,22 @@
 كل تاب له صلاحية مستقلة (settings:users / settings:log / settings:notes /
 settings:backups) يحددها الـ admin من تاب تسجيل المستخدمين.
 """
-from flask import Blueprint, g, redirect, render_template, request, url_for
+from flask import Blueprint, g, redirect, render_template, request, send_file, url_for
 
 from core.auth_core import login_required
 from core import arabic_numbers as arnum, dates, egtime
 from core import tabs_registry as tr
 from data_access import db_users
 from data_access import database as db
+from data_access import storage
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
 SUBS = [("users", "تسجيل المستخدمين", "👥"),
         ("log", "سجلات المستخدمين", "📈"),
         ("notes", "المتابعة والملاحظات", "🗒️"),
-        ("backups", "النسخ الاحتياطي", "💾")]
+        ("backups", "النسخ الاحتياطي", "💾"),
+        ("identity", "الهوية للمنظمة", "🖼️")]
 
 
 def _size_h(num):
@@ -145,7 +147,71 @@ def page():
                 ctx["notes_ctx"]["thread"] = t
                 if t["note"]["from_user"] == g.user["id"]:
                     db_users.mark_author_seen(nid, g.user["id"])
+    elif sub == "identity":
+        from data_access import db_identity
+        logo_name = db_identity.get_logo()
+        p = storage.identity_dir() / logo_name if logo_name else None
+        ctx["identity_ctx"] = {
+            "logo": logo_name,
+            "v": int(p.stat().st_mtime) if p and p.exists() else 0,
+            "updated_at": db_identity._read().get("updated_at") or "",
+        }
     return render_template("settings/main.html", **ctx)
+
+
+# ======================================================================
+# ٥) الهوية للمنظمة — لوجو واجهة البرنامج (تسجيل الدخول/القائمة/الرئيسية)
+# ======================================================================
+
+@settings_bp.route("/identity/logo")
+@login_required
+def identity_logo():
+    """ملف اللوجو المرفوع (PNG) — يظهر في الواجهة كاملة."""
+    from data_access import db_identity
+    name = db_identity.get_logo()
+    if not name:
+        return "لا يوجد لوجو مرفوع", 404
+    p = storage.identity_dir() / name
+    if not p.exists():
+        return "لا يوجد لوجو مرفوع", 404
+    return send_file(p, mimetype="image/png", conditional=True)
+
+
+@settings_bp.route("/identity/logo/upload", methods=["POST"])
+@login_required
+def identity_logo_upload():
+    if not tr.has_permission(g.user, "settings:identity"):
+        return _rb("identity", err="لا تملك صلاحية هذا القسم")
+    file = request.files.get("logo")
+    if not file or not file.filename:
+        return _rb("identity", err="اختر ملف الصورة أولًا")
+    from services import images
+    from data_access import db_identity
+    try:
+        name = images.save_logo(file.stream, storage.identity_dir())
+    except ValueError as e:
+        return _rb("identity", err=str(e))
+    old = db_identity.get_logo()
+    if old and old != name:
+        try:
+            (storage.identity_dir() / old).unlink()
+        except OSError:
+            pass
+    db_identity.set_logo(name)
+    db_users.log_activity(g.user["id"], "save", "settings:identity", "رفع لوجو المنظومة")
+    return _rb("identity", ok="اتعمل رفع اللوجو — ظهر فورًا في تسجيل الدخول والقائمة الرئيسية والرئيسية")
+
+
+@settings_bp.route("/identity/logo/delete", methods=["POST"])
+@login_required
+def identity_logo_delete():
+    if not tr.has_permission(g.user, "settings:identity"):
+        return _rb("identity", err="لا تملك صلاحية هذا القسم")
+    from data_access import db_identity
+    db_identity.delete_logo()
+    db_users.log_activity(g.user["id"], "delete", "settings:identity",
+                          "حذف لوجو المنظومة — رجع للشعار الأصلي")
+    return _rb("identity", ok="اتشال اللوجو — البرنامج رجع للشعار الأصلي")
 
 
 # ======================================================================

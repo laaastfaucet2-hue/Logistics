@@ -1,0 +1,55 @@
+{# تاب «الهوية للمنظمة» — لوجو واجهة البرنامج (تسجيل الدخول/القائمة الرئيسية/الرئيسية) —
+   مستقل عن لوجو الدباجة المرتبط بالشهر (توجيه ١٢/١٠). #}
+<div class="ctx-strip">
+  <span>🖼️ تاب عام (غير مرتب بالشهر)</span><span class="sep">•</span>
+  <span class="dim">اللوجو يظهر مكان شعار البرنامج الأصلي في: <strong>تسجيل الدخول</strong> + <strong>القائمة الرئيسية</strong> + <strong>الرئيسية</strong> + شريط النافذة + أيقونة المتصفح</span>
+  <span class="sep">•</span>
+  <span class="dim">المجلد: <code class="ltr">database/الهوية/</code> — محلي فقط</span>
+</div>
+
+<div class="panel" style="padding:22px">
+  <div class="panel-head"><h3>لوجو المنظمة الحالي</h3>
+    <span class="panel-hint">PNG واضح الملامح (مربع أو دائري) — يُحفظ محليًا ويُعرض فورًا في كل الواجهة</span></div>
+  <div style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
+    <div style="width:150px;height:150px;border:1.5px dashed var(--card-border);border-radius:16px;
+                display:flex;align-items:center;justify-content:center;background:var(--surface-soft)">
+      {% if identity_ctx.logo %}
+      <img src="{{ url_for('settings.identity_logo') }}?v={{ identity_ctx.v }}" alt="لوجو المنظمة"
+           style="max-width:100%;max-height:100%;object-fit:contain">
+      {% else %}
+      <img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="الشعار الأصلي"
+           style="width:64px;height:64px;opacity:.45">
+      <p class="dim" style="margin:0 12px;font-size:13px;text-align:center">لم يرفع لوجو بعد<br>البرنامج يعمل بالشعار الأصلي</p>
+      {% endif %}
+    </div>
+    <div style="flex:1;min-width:280px">
+      {% if identity_ctx.logo %}
+      <p style="margin-top:0"><b>اللوجو مرفوع</b>{% if identity_ctx.updated_at %}
+        <small class="dim"> — آخر تحديث: <bdi dir="ltr">{{ identity_ctx.updated_at[:16] }}</bdi></small>{% endif %}</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('settings.identity_logo_upload') }}" enctype="multipart/form-data"
+            style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required
+               style="flex:1;min-width:220px;padding:9px">
+        <button class="rt-btn gold" type="submit">رفع اللوجو</button>
+      </form>
+      <p class="panel-hint" style="margin-top:10px">الرفع <b>يستبدل</b> اللوجو الحالي — ويُطبَّق فورًا على كل صفحات البرنامج
+        (اللقطات المحفوظة قبل التحديث تتجدد بفتح الصفحة مرة أخرى).</p>
+      {% if identity_ctx.logo %}
+      <form method="post" action="{{ url_for('settings.identity_logo_delete') }}"
+            onsubmit="return confirm('هاتشال لوجو المنظمة ويرجع البرنامج للشعار الأصلي — متأكد؟')"
+            style="margin-top:12px">
+        <button class="rt-btn" type="submit" style="color:var(--red);border-color:var(--danger-border)">حذف اللوجو والرجوع للشعار الأصلي</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="panel" style="padding:18px 22px">
+  <h3 style="margin-top:0">ملاحظات</h3>
+  <ul class="dim" style="line-height:2;margin:8px 0 0">
+    <li>ده لوجو <b>واجهة البرنامج</b> فقط — لوجو <b>الدباجة</b> (ملفات Word/Excel الرسمية) يدار من قسم «الدباجة والتوقيعات» لكل شهر على حدة.</li>
+    <li>من الآخر: <code class="ltr">PNG / JPG / WEBP</code> — تتحفظ PNG محليًا، وبأبعاد مضبوطة (حد ١٠٠٠×١٠٠ بكسل للعرض).</li>
+  </ul>
+</div>
