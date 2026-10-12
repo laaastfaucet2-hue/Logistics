@@ -549,7 +549,9 @@ def page():
         # «عرض بالأيام المتتالية»: أعمدة الأيام اللي فيها شطب فقط (لو مفيش: كلها)
         _all_days = list(range(1, wh4_ctx["wh4_daily"]["last"] + 1))
         if request.args.get("wh4consec") == "1":
-            _hit = sorted({d for r in wh4_ctx["wh4_daily"]["rows"] for d in r["days"]})
+            # ١٣/١٠: الأيام اللي فيها استهلاك (يدوي أو تلقائي من الأذون)
+            _hit = sorted({d for r in wh4_ctx["wh4_daily"]["rows"]
+                           for d in list(r["days"]) + list(r["auto"])})
             wh4_ctx["wh4_day_cols"] = _hit or _all_days
             wh4_ctx["wh4_consec"] = True
         else:

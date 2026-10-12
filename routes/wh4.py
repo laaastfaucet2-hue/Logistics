@@ -11,6 +11,7 @@ from core import arabic_numbers as arnum
 from core.auth_core import current_context, login_required
 from data_access import db_wh4 as w4
 from data_access import months
+from services import wh4_build as wh4b
 
 wh4_bp = Blueprint("wh4", __name__, url_prefix="/warehouses")
 
@@ -47,16 +48,27 @@ def _back(year, month, ok=None):
 @wh4_bp.route("/wh4/strike", methods=["POST"])
 @login_required
 def strike_save():
-    """خلية شطب: صنف + يوم + كمية (فاضي/صفر = مسح)."""
+    """خلية شطب: صنف + يوم + كمية (فاضي/صفر = مسح الشطب اليدوي).
+
+    ١٣/١٠: الخلية المعروضة = تلقائي (أذون ٢ مخازن) + يدوي، فبيتحفظ هنا
+    الجزء اليدوي بس = مدخل الخلية − التلقائي — وإلا الاستهلاك هيتحسب
+    مرتين (مرة من الأذون ومرة من الشطب).
+    """
     year, month = _ctx()
     day = arnum.parse_int(request.form.get("day")) or 0
     qty = arnum.parse_float(request.form.get("qty"))
     cyc = _cycle()
-    if not (1 <= day <= 31) or not w4.set_strike(year, month, cyc,
-                                                  request.form.get("item"), day, qty):
+    if not (1 <= day <= 31):
+        return _back(year, month)
+    manual = round((qty or 0.0)
+                   - wh4b.auto_qty_for(year, month, cyc,
+                                       request.form.get("item") or "", day), 6)
+    if manual < 0:
+        manual = 0.0
+    if not w4.set_strike(year, month, cyc, request.form.get("item"), day, manual):
         return _back(year, month, ok=None)
     _mirror(year, month, cyc)
-    verb = "اتمسح شطب" if not qty else "تم حفظ الشطب"
+    verb = "اتمسح شطب يدوي" if not manual else "تم حفظ الشطب اليدوي"
     return _back(year, month, ok=f"{verb} «{request.form.get('item')}» — يوم {day}")
 
 

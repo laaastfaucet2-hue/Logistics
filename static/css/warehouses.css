@@ -455,7 +455,9 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 .wh4-mtable { width: 100%; border-collapse: collapse; font-size: .8rem; }
 .wh4-mtable th { background: #E9F1F9; color: #000; font-weight: 700;
   padding: 7px 6px; border: 1px solid #0d1b29; text-align: center; }
-.wh4-mtable td { border: 1px solid #9aa7b4; padding: 6px 5px; text-align: center; }
+/* ١٣/١٠: خلفية بيضاء صريحة — قبلها الخلفية الكحلى للصفحة كانت بتبان */
+.wh4-mtable td { border: 1px solid #9aa7b4; padding: 6px 5px;
+  text-align: center; background: #fff; }
 .wh4-mtable td:nth-child(3) { text-align: right; }
 .wh4-mtable tr.wh4-opener td, .wh4-mtable tr.wh4-closing td { background: #fff2cc; }
 .wh4-mtable tr.wh4-strike td { background: #fff8f0; }

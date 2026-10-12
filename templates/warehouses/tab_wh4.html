@@ -55,12 +55,14 @@
         <td><b>{{ r.name }}</b></td>
         <td>{{ r.unit or '—' }}</td>
         {% for d in wh4_day_cols %}
-        {% set v = r.days.get(d) %}
+        {% set av = r.auto.get(d) or 0 %}
+        {% set sv = r.days.get(d) or 0 %}
+        {% set tv = av + sv %}
         <td class="num wh4-cell">
           <input type="text" inputmode="decimal" class="wh4-cellin"
                  data-cycle="{{ cycle_key }}" data-item="{{ r.name }}" data-day="{{ d }}"
-                 placeholder="—" value="{{ (v | qty3) if v else '' }}"
-                 title="شطب «{{ r.name }}» يوم {{ d | aindic }}">
+                 placeholder="—" value="{{ (tv | qty3) if tv else '' }}"
+                 title="{% if av %}تلقائي من أذون ٢ مخازن: {{ av | qty3 }}{% endif %}{% if sv %} + شطب يدوي: {{ sv | qty3 }}{% endif %}{% if av or sv %} — «{{ r.name }}» يوم {{ d | aindic }}{% else %} «{{ r.name }}» يوم {{ d | aindic }} (فاضي = مفيش استهلاك){% endif %}">
         </td>
         {% endfor %}
         <td class="num wh4-tot"><b>{{ (r.total | qty3) if r.total else '—' }}</b></td>
@@ -88,8 +90,10 @@
     <div><span>ضابط توضيح التعيينات</span><bdi>(..........................)</bdi></div>
     <div><span>رئيس فرع التعينات بالقنا</span><bdi>(..........................)</bdi></div>
   </div>
-  <p class="panel-hint no-print">كل خلية = شطب هذا اليوم لهذا الصنف (بوحدة الدفتر) — تكتب وتضغط في مكان آخر أو Tab
-    فتتحفظ فورًا، ودفتر الشهرى يجمعها تلقائيًا في عمود «فعلي».</p>
+  <p class="panel-hint no-print">كل خلية = استهلاك اليوم لهذا الصنف (بوحدة الدفتر) = <b>تلقائي</b>
+    من أذون ٢ مخازن (يوم الإذن) <b>+ شطب يدوي</b> — التلقائي معروض ومقفل، واللي بتكتبه يتحفظ
+    كيدوي. تكتب وتضغط في مكان آخر أو Tab فتتحفظ فورًا، ودفتر الشهرى يجمعها في سطر
+    «استهلاك الشهر» (صرفيات + فعلي).</p>
 
   <script>
   (function () {

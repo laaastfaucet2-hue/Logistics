@@ -112,7 +112,8 @@ def _write_daily(year, month, cycle, path):
         _cell(ws, r, 2, it["name"], bold=True)
         _cell(ws, r, 3, it["unit"] or "—")
         for d in range(1, last + 1):
-            v = it["days"].get(d)
+            # ١٣/١٠: الخلية = تلقائي (أذون ٢ مخازن) + شطب يدوي
+            v = (it["auto"].get(d) or 0) + (it["days"].get(d) or 0)
             _cell(ws, r, 3 + d, arnum.fmt_qty(v) if v else "—")
         _cell(ws, r, 4 + last, arnum.fmt_qty(it["total"]) if it["total"] else "—",
               bold=True)

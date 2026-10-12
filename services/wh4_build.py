@@ -50,15 +50,38 @@ def ration_items(year, month, cycle):
 # ======================================================================
 # تاب 1: مصفوفة الشطب اليومى (بند ‖ وحدة ‖ يوم 1..N ‖ المجموع)
 # ======================================================================
+def auto_qty_for(year, month, cycle, item_name, day):
+    """الاستهلاك التلقائي لصنف في يوم = كميات أذون 2 مخازن (date_from = اليوم)."""
+    total = 0.0
+    for permit in dw.permits_book(year, month, cycle):
+        if int(permit.get("date_from") or 0) != day:
+            continue
+        for entry in permit["cycle_items"]:
+            if entry["name"] == item_name:
+                total += float(entry.get("qty") or 0)
+    return round(total, 6)
+
+
 def daily_matrix(year, month, cycle):
     last = egtime.days_in_month(year, month)
     strike = w4.strike_map(year, month, cycle)
+    # استهلاك تلقائي من أذون ٢ مخازن (اليوم = date_from للإذن) — ١٣/١٠
+    auto_map = {}
+    for permit in dw.permits_book(year, month, cycle):
+        d = int(permit.get("date_from") or 0)
+        if not (1 <= d <= last):
+            continue
+        for entry in permit["cycle_items"]:
+            am = auto_map.setdefault(entry["name"], {})
+            am[d] = round(am.get(d, 0.0) + float(entry.get("qty") or 0), 6)
     rows = []
     for it in ration_items(year, month, cycle):
         days = strike.get(it["name"], {})
-        rows.append({**it, "days": days, "total": round(sum(days.values()), 6)})
+        auto = auto_map.get(it["name"], {})
+        total = round(sum(days.values()) + sum(auto.values()), 6)
+        rows.append({**it, "days": days, "auto": auto, "total": total})
     day_names = [egtime.weekday_ar(date(year, month, d)) for d in range(1, last + 1)]
-    days_total = {d: round(sum(r["days"].get(d, 0) for r in rows), 6)
+    days_total = {d: round(sum((r["days"].get(d, 0) + r["auto"].get(d, 0)) for r in rows), 6)
                   for d in range(1, last + 1)}
     grand = round(sum(r["total"] for r in rows), 6)
     return {"rows": rows, "last": last, "day_names": day_names,
@@ -73,10 +96,10 @@ def monthly_ledger(year, month, cycle, item_name):
 
     الأسطر (بالترتيب الزمني):
     - «رصيد أول المدة» (صفرة) — من ٣ مخازن (لو الصنف مسجل فيها).
-    - سطر كامل لكل وردة من المورّد (رقم الإذن + اسم المورّد + الكمية المضافة).
-    - صرفيات أخرى — تلقائي من إذون ٢ مخازن.
-    - أسطر «استهلاك <الشهر>» (وردي) — «فعلي» = التراكمي من الشطب اليومى.
-    - سطر نهائي على آخر يوم في الشهر دايمًا (حتى مفيش شطب).
+    - سطر كامل لكل وردة من المورّد (اسم الشركة + الكمية المضافة) — كل
+      إضافة لوحدها (١٣/١٠).
+    - سطر واحد «استهلاك <الشهر>» (وردي) على آخر يوم = كل الاستهلاك
+      (صرفيات أذون ٢ مخازن + الشطب اليدوي) — من غير أسماء جهات (١٣/١٠).
     - «رصيد ختامي المدة» (صفرة).
     """
     name = " ".join((item_name or "").split())
@@ -89,8 +112,12 @@ def monthly_ledger(year, month, cycle, item_name):
     price = w4.price_map(year, month, cycle).get(name, 0.0)
 
     # أحداث ١/٢/٣ مخازن (لو الصنف له كارت في ٣ مخازن) — كميات بوحدة الدفتر
+    # ١٣/١٠: كل الاستهلاك (صرفيات الجهات + الشطب اليدوي) في سطر واحد
+    # «استهلاك <الشهر>» — من غير أسماء جهات. الإضافات كل واحدة سطر
+    # مستقل باسم الشركة الموردة.
     events = []      # (date_iso, seq, kind, permit_no, label, added, other, real_delta, real_cum)
     opener_balance = 0.0
+    other_total = 0.0
     if it and it.get("wh_id"):
         card = dw.item_card(year, month, it["wh_id"])
         if card:
@@ -117,24 +144,16 @@ def monthly_ledger(year, month, cycle, item_name):
                                    label or f"إذن إضافة ١ مخازن رقم {pn}",
                                    q, 0.0, 0.0, 0.0))
                 elif kind == "issue2":
-                    q = round(float(r.get("issued") or 0) * uf, 6)
-                    events.append((iso, 2, "issue2", pn,
-                                   r.get("notes") or r.get("label") or "إذن ٢ مخازن",
-                                   0.0, q, 0.0, 0.0))
+                    other_total = round(other_total
+                                        + float(r.get("issued") or 0) * uf, 6)
 
-    # الشطب اليومى (فعلي) — التراكمي لحد آخر يوم في الشهر
+    # الشطب اليومى (يدوي) — بيتجمع في نفس سطر «استهلاك <الشهر>»
     strike_days = w4.strike_map(year, month, cycle).get(name, {})
-    cum = 0.0
-    for d in sorted(strike_days):
-        cum = round(cum + strike_days[d], 6)
-        events.append((f"{year:04d}-{month:02d}-{d:02d}", 3, "strike", 0,
+    strike_total = round(sum(strike_days.values()), 6)
+    if other_total or strike_total:
+        events.append((f"{year:04d}-{month:02d}-{last:02d}", 4, "strike", 0,
                        f"استهلاك {MONTH_NAMES[month - 1]}",
-                       0.0, 0.0, strike_days[d], cum))
-    last_strike_day = max(strike_days) if strike_days else 0
-    if last_strike_day < last:
-        events.append((f"{year:04d}-{month:02d}-{last:02d}", 3, "strike", 0,
-                       f"استهلاك {MONTH_NAMES[month - 1]}",
-                       0.0, 0.0, 0.0, round(cum, 6)))
+                       0.0, other_total, strike_total, strike_total))
 
     # الدمج والزمن + الرصيد المتتالي + القيمة
     events.sort(key=lambda e: (e[0], e[1], e[2]))
@@ -144,10 +163,9 @@ def monthly_ledger(year, month, cycle, item_name):
         running = round(running + added - other - real_delta, 6)
         if kind in ("opener", "add1"):
             value = round(added * price, 6)
-        elif kind == "issue2":
-            value = round(other * price, 6)
         else:
-            value = round(real_delta * price, 6)
+            # سطر «استهلاك <الشهر>» = كل الاستهلاك (صرفيات + شطب يدوي)
+            value = round((other + real_delta) * price, 6)
         day = int(iso[-2:])
         try:
             wday = egtime.weekday_ar(date(year, month, day))
@@ -173,7 +191,8 @@ def monthly_ledger(year, month, cycle, item_name):
         "unit": unit, "status": it.get("status") if it else "—",
         "price": arnum.round3(price),
         "opener_balance": arnum.round3(opener_balance),
-        "consumed": arnum.round3(round(sum(strike_days.values()), 6)),
+        # استهلاك الشهر الكلى = صرفيات الأذون + الشطب اليدوي (١٣/١٠)
+        "consumed": arnum.round3(round(other_total + strike_total, 6)),
         "final_balance": arnum.round3(final_balance),
         "last": last, "rows": rows,
         "month_name": MONTH_NAMES[month - 1], "year": year, "month": month,
