@@ -2,7 +2,7 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}وزارة الداخلية — منظومة التعيينات{% endblock %}</title>
-{% if app_logo %}<link rel="icon" href="{{ url_for('settings.identity_logo') }}?v={{ app_logo.v }}">{% else %}<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">{% endif %}
+{% if app_logo %}<link rel="icon" href="{{ url_for('settings.identity_logo', v=app_logo.v) }}">{% else %}<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">{% endif %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}?v={{ static_ver }}">
@@ -22,7 +22,7 @@
 {% if request.args.get('err') %}<div class="toast err" role="alert"><span>{{ request.args.get('err') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
 {% if request.args.get('warn') %}<div class="toast warn" role="status"><span>{{ request.args.get('warn') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
 <div class="app"><aside class="sidebar" id="sidebar">
-  <div class="brand"><div class="brand-logo">{% if app_logo %}<img src="{{ url_for('settings.identity_logo') }}?v={{ app_logo.v }}" alt="لوجو المنظمة">{% else %}<img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار وزارة الداخلية">{% endif %}</div><div><div class="brand-name">وزارة الداخلية</div><div class="brand-sub">قطاع الأمن المركزى</div><div class="brand-sub">منطقة وسط وجنوب سيناء</div><div class="brand-sub">قطاع وسط سيناء</div><div class="brand-sub brand-sub2">قسم التعيينات</div></div></div>
+  <div class="brand"><div class="brand-logo">{% if app_logo %}<img src="{{ url_for('settings.identity_logo', v=app_logo.v) }}" alt="لوجو المنظمة">{% else %}<img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار وزارة الداخلية">{% endif %}</div><div><div class="brand-name">وزارة الداخلية</div><div class="brand-sub">قطاع الأمن المركزى</div><div class="brand-sub">منطقة وسط وجنوب سيناء</div><div class="brand-sub">قطاع وسط سيناء</div><div class="brand-sub brand-sub2">قسم التعيينات</div></div></div>
   <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
     <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
     <div class="nav-title">الأقسام الشهرية</div>
