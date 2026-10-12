@@ -60,7 +60,8 @@
     </nav>
   </div>
 
-  <!-- الفلاتر الذكية الأربعة -->
+  <!-- الفلاتر الذكية الأربعة — تاب التتبع فقط (توجيه ١٢/١٠) -->
+  {% if st_tab == 'track' %}
   <div class="panel st-filters">
     <div class="st-filters-head">
       <b>🎯 فلترة ذكية</b>
@@ -95,6 +96,7 @@
       <button type="submit" class="rt-btn navy">تطبيق الفلاتر</button>
     </div>
   </div>
+  {% endif %}
 </form>
 
 {% if st_tab == 'track' %}
