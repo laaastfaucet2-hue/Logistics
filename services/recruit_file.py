@@ -193,15 +193,17 @@ def build(year, month, rid):
             timeline.append({"ymd": (y, m, day), "icon": "🩺", "status": "",
                              "text": "كشف طبى دورى " + dates.period_date(y, m, day),
                              "month": row["month_label"]})
-    for field, icon, label in (("service_start", "🎖️", "دخول الخدمة"),
-                               ("service_end", "🏁", "انتهاء الخدمة")):
+    # دخول الخدمة في أول يومه وانتهاء الخدمة في آخر يومه — قبل/بعد أحداث اليوم نفسه
+    for field, icon, label, prio in (("service_start", "🎖️", "دخول الخدمة", -1),
+                                     ("service_end", "🏁", "انتهاء الخدمة", 1)):
         parsed = dates.parse_date(r.get(field) or "")
         if parsed:
             timeline.append({"ymd": (parsed.year, parsed.month, parsed.day),
-                             "icon": icon, "status": "",
+                             "prio": prio, "icon": icon, "status": "",
                              "text": label + " " + dates.format_date(parsed),
                              "month": MONTH_NAMES[parsed.month - 1] + " " + arnum.to_arabic_indic(parsed.year)})
-    timeline.sort(key=lambda x: x["ymd"], reverse=True)
+    # تصاعديًا (توجيه ١٢/١٠): من دخول الخدمة في الأول لحد آخر حدث
+    timeline.sort(key=lambda x: (x["ymd"], x.get("prio", 0)))
 
     # ==================== محطات التتبع (الأوائل) — كل خطوة في الخدمة ====================
     milestones = []
