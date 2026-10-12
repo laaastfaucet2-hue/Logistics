@@ -1039,7 +1039,7 @@ def delete_receipt(year, month, cycle, serial):
 # (قاعدة الملف ≤1000 سطر — نفس نمط db_pack)
 from data_access.db_warehouses_stores import (  # noqa: E402,F401
     UNASSIGNED, NO_EXPIRY, receipt_groups, user_notes, _batch_pool,
-    _rem_label, tafreeda_rows, stores_report)
+    _rem_label, tafreeda_rows, stores_report, stores_general_report)
 
 # إعادة تصدير — دوال التغليف عاشت في db_pack (قاعدة الملف ≤1000 سطر)
 from data_access.db_pack import card_pack_rows, collect_pack_kinds  # noqa: E402,F401

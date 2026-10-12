@@ -650,7 +650,9 @@ def build_store_folders(base, rep, units, year=2026, month=9):
             arnum.to_arabic_indic(str(row.get("permit_no") or ""))
 
     def _move_lines(target):
-        """كل حركات المخزن (داخل أولًا في نفس اليوم) — نفس ترتيب تاب السجل."""
+        """كل حركات المخزن (داخل أولًا في نفس اليوم) — نفس ترتيب تاب السجل.
+        🆕 (١٢/١٠) أعمدة البرنامج القديم: المورد/المنتج + الجهة/المندوب +
+        الكمية بعمودين (تغليف/وحدة) + رصيد المخزن بعد كل سطر."""
         rows = []
         for row in target["inn"]:
             rows.append(("in", row))
@@ -660,13 +662,28 @@ def build_store_folders(base, rep, units, year=2026, month=9):
                                  0 if p[0] == "in" else 1))
         out = []
         for i, (direction, row) in enumerate(rows, 1):
-            out.append((i, "إضافة" if direction == "in" else "صرف",
-                        _when(row["date_iso"]), row["item"], _q(row["qty"]),
-                        row["unit"] or "—", row.get("pack_label") or "—",
+            _in = direction == "in"
+            _q_u = _q(row["qty"]) + " " + (row["unit"] or "—")
+            out.append((i, "إضافة" if _in else "توزيع",
+                        _when(row["date_iso"]), row["item"],
+                        row.get("supplier") or "—", row.get("producer") or "—",
+                        row.get("entity") or "—", row.get("receiver") or "—",
+                        (row.get("pack_short") or "—") if _in else "—",
+                        _q_u if _in else "—",
+                        (row.get("pack_label") or "—") if not _in else "—",
+                        _q_u if not _in else "—",
+                        (row.get("rem_after")
+                         or _q(row.get("rem_qty") or 0) + " " + (row["unit"] or "—")),
                         _expiry(row.get("expiry") or ""),
-                        _doc(row, direction), row.get("cycle") or "—",
-                        row.get("supplier") or "—", row.get("producer") or "—"))
+                        _doc(row, direction), row.get("cycle") or "—"))
         return out
+
+    MOVE_HEADERS = ["م", "النوع", "التاريخ", "الصنف",
+                    "الشركة الموردة", "الشركة المنتجة",
+                    "مصروف إلى (الجهة)", "مندوب الجهة",
+                    "الكمية وارده (تغليف)", "الكمية وارده (وحدة)",
+                    "الكمية منصرف (تغليف)", "الكمية منصرف (وحدة)",
+                    "رصيد المخزن (بعد)", "الصلاحية", "المستند", "الدورة"]
 
     def _nearest_expiry(target, name):
         best = ""
@@ -695,10 +712,7 @@ def build_store_folders(base, rep, units, year=2026, month=9):
         move_dir.mkdir(parents=True, exist_ok=True)
         move_rows = _move_lines(target)
         _save_xlsx(move_dir / "حركة المخزن.xlsx", [(
-            "حركة المخزن",
-            ["م", "النوع", "التاريخ", "الصنف", "الكمية", "الوحدة",
-             "التغليف", "الصلاحية", "المستند", "الدورة", "الشركة الموردة",
-             "الشركة المنتجة"], move_rows)], year, month)
+            "حركة المخزن", MOVE_HEADERS, move_rows)], year, month)
         # 2) الأصناف/ — ملف إكسل لكل صنف باسمه
         items_dir = folder / "الأصناف"
         items_dir.mkdir(parents=True, exist_ok=True)
@@ -719,9 +733,8 @@ def build_store_folders(base, rep, units, year=2026, month=9):
         for name in sorted(per_item):
             _save_xlsx(items_dir / _file_name(name), [(
                 "حركة الصنف",
-                ["م", "النوع", "التاريخ", "الكمية", "الوحدة", "التغليف",
-                 "الصلاحية", "المستند", "الدورة", "الشركة الموردة",
-                 "الشركة المنتجة"], per_item[name])], year, month)
+                [h for h in MOVE_HEADERS if h != "الصنف"],
+                per_item[name])], year, month)
         # 3) كشف أرصدة المخازن/
         bal_dir = folder / "كشف أرصدة المخازن"
         bal_dir.mkdir(parents=True, exist_ok=True)

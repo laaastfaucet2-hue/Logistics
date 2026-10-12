@@ -165,7 +165,10 @@ def stores_report(year, month):
     from data_access import db_warehouses as _dw   # استيراد مؤجل — تجنّب الدوران
     """حركة وكشف أرصدة كل مخزن — الدورتان معًا (المخازن والثلاجات موحدة لكل الأصناف)."""
     from data_access import db_stores
+    from data_access import db_permits as _dp
     stores = db_stores.list_stores()
+    # 🆕 (١٢/١٠) جهة/مندوب كل إذن صرف — عمودا «مصروف إلى» و«مندوب الجهة» في سجل الحركة
+    permit_meta = {p["number"]: p for p in _dp.list_permits(year, month)}
     report = {s["id"]: {"store": s, "inn": [], "out": [],
                         "balances": {}, "pack_notes": {}, "total": 0.0} for s in stores}
     unassigned = {"store": {"id": None, "name": UNASSIGNED}, "inn": [], "out": [],
@@ -219,12 +222,17 @@ def stores_report(year, month):
                     target["balances"].get(item["name"], 0.0) + qty
         for row in tafreeda_rows(year, month, cycle):
             target = report.get(row["store_id"], unassigned)
+            pe = permit_meta.get(row["permit_no"]) or {}
             target["out"].append({
                 "date_iso": f"{year:04d}-{month:02d}-{int(row['date_from']):02d}",
                 "cycle": cycle_name, "item": row["item"], "unit": row["unit"],
                 "qty": row["qty"], "permit_no": row["permit_no"],
                 "expiry": row["expiry"],
                 "pack_label": row.get("issued_label") or row["pack_label"],
+                # 🆕 (١٢/١٠) زي البرنامج القديم: الجهة المستلمة + مندوبها من إذن الصرف
+                "entity": (pe.get("entity_label") or "").strip(),
+                "receiver": ((pe.get("receiver_rank") or "") + " " +
+                              (pe.get("receiver_name") or "")).strip(),
             })
             target["balances"][row["item"]] = \
                 target["balances"].get(row["item"], 0.0) - row["qty"]
@@ -248,6 +256,84 @@ def stores_report(year, month):
         target["balances"] = {k: round(v, 6) for k, v in target["balances"].items()
                               if abs(v) > 1e-9}
         target["total"] = round(sum(target["balances"].values()), 6)
+    # 🆕 (١٢/١٠) «رصيد المخزن (بعد)» لكل سطر + تسميات التغليف المختصرة —
+    # الرصيد التراكمي للصنف في المخزن بترتيب التواريخ (الوارد قبل المنصرف في نفس اليوم)
+    def _spec_of(name):
+        entry = specs.get(name) or {}
+        if not entry:
+            return ("", 0, 0, 0, "")
+        kind = list(entry)[-1]
+        sp = entry[kind] or {}
+        return (kind, sp.get("capacity") or 0, sp.get("inner_count") or 0,
+                sp.get("inner_capacity") or 0, sp.get("inner_kind") or "")
+
+    for target in all_targets:
+        seq = ([(r["date_iso"] or "", 0, r) for r in target["inn"]] +
+               [(r["date_iso"] or "", 1, r) for r in target["out"]])
+        seq.sort(key=lambda t: (t[0], t[1]))
+        run = {}
+        in_tot = {}
+        for _d, _k, r in seq:
+            nm = r["item"]
+            delta = float(r["qty"] or 0) if _k == 0 else -float(r["qty"] or 0)
+            bal = round(run.get(nm, 0.0) + delta, 6)
+            run[nm] = bal
+            kind, cap, icnt, icap, ikind = _spec_of(nm)
+            r["rem_qty"] = bal
+            r["rem_after"] = (pack_breakdown(kind, cap, icnt, icap, bal,
+                                             units.get(nm, ""), "",
+                                             inner_kind=ikind)
+                              if kind and bal else "")
+            if _k == 0:
+                in_tot[nm] = in_tot.get(nm, 0.0) + float(r["qty"] or 0)
+                if kind:
+                    r["pack_short"] = (pack_breakdown(kind, cap, icnt, icap,
+                                                      float(r["qty"] or 0),
+                                                      units.get(nm, ""), "",
+                                                      inner_kind=ikind) or "")
+        target["in_packs"] = {
+            nm: pack_breakdown(*_spec_of(nm)[:4], round(q, 6), units.get(nm, ""),
+                               "", inner_kind=_spec_of(nm)[4])
+            for nm, q in in_tot.items() if _spec_of(nm)[0]}
     return {"stores": list(report.values()), "unassigned": unassigned}
+
+
+def stores_general_report(year, month):
+    """«كافة الأصناف (كشف عام)» (١٢/١٠) — كشف مجمّع لكل أصناف الشهر بكل المخازن:
+    إجمالي داخل (تغليف + وحدة) · إجمالي خارج (وحدة) · الرصيد (تغليف + وحدة)."""
+    rep = stores_report(year, month)
+    from data_access import db_warehouses as _dw
+    specs = {}
+    units = {}
+    for _c in ("supply", "contractor"):
+        specs.update(_dw.pack_specs_map(year, month, _c))
+        for _it in _dw.list_items(year, month, _c):
+            units[_it["name"]] = _it["handle_unit"]
+    agg = {}
+    for target in rep["stores"] + [rep["unassigned"]]:
+        for row in target["inn"]:
+            agg.setdefault(row["item"], [0.0, 0.0])[0] += float(row["qty"] or 0)
+        for row in target["out"]:
+            agg.setdefault(row["item"], [0.0, 0.0])[1] += float(row["qty"] or 0)
+    out = []
+    for name, (inq, outq) in agg.items():
+        inq, outq = round(inq, 6), round(outq, 6)
+        bal = round(inq - outq, 6)
+        entry = specs.get(name) or {}
+        kind = list(entry)[-1] if entry else ""
+        sp = (entry.get(kind) or {}) if kind else {}
+        unit = units.get(name, "")
+        ict = (sp.get("inner_count") or 0), (sp.get("inner_capacity") or 0)
+        out.append({
+            "name": name, "unit": unit, "in": inq, "out": outq, "balance": bal,
+            "in_pack": (pack_breakdown(kind, sp.get("capacity"), ict[0], ict[1],
+                                       inq, unit, "", inner_kind=sp.get("inner_kind"))
+                        or "—"),
+            "balance_pack": (pack_breakdown(kind, sp.get("capacity"), ict[0], ict[1],
+                                            bal, unit, "", inner_kind=sp.get("inner_kind"))
+                             or "—"),
+        })
+    out.sort(key=lambda r: (-r["balance"], r["name"]))
+    return out
 
 

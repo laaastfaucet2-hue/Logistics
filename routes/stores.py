@@ -111,6 +111,11 @@ def _enrich(target):
             "doc": ("إذن إضافة رقم " + arnum.to_arabic_indic(str(row["serial"])))
                    if row.get("serial") else "رصيد أول المدة",
             "pack": row.get("pack_label") or "",
+            # 🆕 (١٢/١٠) التغليف المختصر + رصيد المخزن بعد السطر (عمودان زي البرنامج القديم)
+            "pack_short": row.get("pack_short") or row.get("pack_label") or "",
+            "rem_after": row.get("rem_after") or "",
+            "rem_qty": row.get("rem_qty"),
+            "entity": "", "receiver": "",
             "expiry": row.get("expiry") or ""})
         if row.get("expiry") and (not it["expiry"] or row["expiry"] < it["expiry"]):
             it["expiry"] = row["expiry"]
@@ -125,10 +130,16 @@ def _enrich(target):
             "supplier": row.get("supplier") or "",
             "doc": "إذن صرف ٢ مخازن رقم " + arnum.to_arabic_indic(str(row.get("permit_no") or "")),
             "pack": row.get("pack_label") or "",
+            # 🆕 (١٢/١٠) جهة/مندوب من إذن الصرف + رصيد المخزن بعد السطر
+            "rem_after": row.get("rem_after") or "",
+            "rem_qty": row.get("rem_qty"),
+            "entity": row.get("entity") or "",
+            "receiver": row.get("receiver") or "",
             "expiry": row.get("expiry") or ""})
     for name, it in items.items():
         it["balance"] = round(target["balances"].get(name, it["in"] - it["out"]), 6)
         it["pack"] = target["pack_notes"].get(name) or ""
+        it["in_pack"] = (target.get("in_packs") or {}).get(name) or ""
         it["moves"].sort(key=lambda m: (m["date"] or "", m["dir"]))
     target["items"] = dict(sorted(items.items(), key=lambda kv: -kv[1]["balance"]))
     # سجل حركة المخزن كله: داخل وخارج كل الأصناف بترتيب التواريخ (توجيه ٠٨/١٠)
@@ -176,13 +187,16 @@ def page():
             target = report["stores"][0]
             store_sel = target["store"]["id"]
         target = _enrich(target)
+    # 🆕 (١٢/١٠) «كافة الأصناف (كشف عام)» — كشف مجمّع بكل المخازن (زي البرنامج القديم)
+    general = dw.stores_general_report(year, month)
     return render_template(
         "stores/main.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
-        tabs=TABS, tab=tab, 
+        tabs=TABS, tab=tab,
         stores=db_stores.list_stores(), editing=editing,
         store_tabs=store_tabs, store_sel=store_sel, target=target,
         store_tabs_data=STORE_TABS,
+        general=general,
         tab_file=sf.TAB_FILES[tab],
         tab_folder="سجل المخازن",
         # علم «عليه حركة» لكل مخزن — يُستخدم في نافذة الحذف/النقل

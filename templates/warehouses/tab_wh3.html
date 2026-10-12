@@ -18,7 +18,7 @@
       <a class="wh-item {{ 'on' if card and card.item.id == it.id }}"
          href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh3', item=it.id) }}">
         <b>{{ it.name }}</b>
-        <small>{{ it.handle_unit }} — الرصيد: {{ it.balance | qty3 }}</small>
+        <small>{% if it.pack_note %}الرصيد: {{ it.pack_note }}{% else %}{{ it.handle_unit }} — الرصيد: {{ it.balance | qty3 }}{% endif %}</small>
       </a>
       {% else %}
       <p class="empty">الكتالوج فارغ — أول إذن إضافة من ١ مخازن يفتح كارت الصنف هنا تلقائيًا.</p>
@@ -144,8 +144,9 @@
                inputmode="decimal" autocomplete="off"
                placeholder="مثال 920 — للأصناف المتصرف بكجم والمخزنة باللتر (الزيت)"></label>
       <span class="wh-chip gold">الرصيد الحالي: <b>{{ card.balance_d | qty3 }}</b> {{ card.unit_disp }}</span>
-      <span class="wh-chip dim">مضاف: <b>{{ card.total_added_d | qty3 }}</b></span>
-      <span class="wh-chip dim">منصرف: <b>{{ card.total_issued_d | qty3 }}</b></span>
+      {% if card.balance_pack %}<span class="wh-chip">الرصيد بالتغليف: <b>{{ card.balance_pack }}</b></span>{% endif %}
+      <span class="wh-chip dim">مضاف: <b class="mv-in">{{ card.total_added_d | qty3 }}</b></span>
+      <span class="wh-chip dim">منصرف: <b class="mv-out">{{ card.total_issued_d | qty3 }}</b></span>
       {% if card.pack_note %}<span class="wh-chip">التغليف المتبقي: {{ card.pack_note }}</span>{% endif %}
     </form>
 
@@ -328,7 +329,7 @@
           <td class="num">—</td>
           <td>رصيد أول المدة</td>
           <td class="num">٠٫٠٠</td>
-          <td class="num">{{ card.opener_row.added_d | qty3 }}</td>
+          <td class="num"><span class="mv-in">{{ card.opener_row.added_d | qty3 }}</span></td>
           <td class="num">٠٫٠٠</td>
           <td class="num"><b>{{ card.opener_row.balance_d | qty3 }}</b> {{ card.unit_disp }}</td>
           <td class="notes-cell">
@@ -360,7 +361,7 @@
           <td class="num">{% if row.permit_no %}{{ row.permit_no | aindic }}{% else %}—{% endif %}</td>
           <td>{{ row.label or '—' }}</td>
           <td class="num">{{ row.open_d | qty3 }}</td>
-          <td class="num">{{ row.added_d | qty3 }}</td>
+          <td class="num">{% if row.added_d %}<span class="mv-in">{{ row.added_d | qty3 }}</span>{% else %}{{ row.added_d | qty3 }}{% endif %}</td>
           <td class="num {% if row.kind == 'issue2' %}wh-issued{% endif %}">{{ row.issued_d | qty3 }}</td>
           <td class="num"><b>{{ row.balance_d | qty3 }}</b> {{ card.unit_disp }}</td>
           <td class="notes-cell">
@@ -427,7 +428,7 @@
               <td class="num">{% if r.permit_no %}{{ r.permit_no | aindic }}{% else %}—{% endif %}</td>
               <td>{{ r.label or '—' }}</td>
               <td class="wh-pack-cell">{{ r.open_pack }}</td>
-              <td class="wh-pack-cell">{{ pack_chips(r.added_pack) }}</td>
+              <td class="wh-pack-cell">{% if r.added_pack %}<span class="mv-in">{{ pack_chips(r.added_pack) }}</span>{% else %}{{ pack_chips(r.added_pack) }}{% endif %}</td>
               <td class="wh-pack-cell{% if r.kind == 'issue2' %} wh-issued{% endif %}">{{ r.issued_pack }}</td>
               <td class="wh-pack-cell"><b>{{ r.bal_pack }}</b></td>
               <td>{{ r.notes or '—' }}</td>
@@ -437,8 +438,8 @@
           <tfoot>
             <tr>
               <td colspan="6">الإجماليات</td>
-              <td class="num">{{ taf.total_added | qty3 }}</td>
-              <td class="num">{{ taf.total_issued | qty3 }}</td>
+              <td class="num"><span class="mv-in">{{ taf.total_added | qty3 }}</span></td>
+              <td class="num"><span class="mv-out">{{ taf.total_issued | qty3 }}</span></td>
               <td class="wh-pack-cell"><b>{{ taf.balance_pack }}</b></td>
               <td></td>
             </tr>

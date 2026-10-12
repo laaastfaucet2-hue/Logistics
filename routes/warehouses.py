@@ -376,6 +376,22 @@ def page():
     stores_registry = db_stores.list_stores()
     pack_kinds = dw.collect_pack_kinds()
     packs_map = dw.pack_specs_map(year, month, cycle)
+    # 🆕 (١٢/١٠) قائمة أصناف ٣ مخازن: الرصيد بعمودين «N شكارة + X كجم» (زي البرنامج القديم)
+    for it in items:
+        _specs = packs_map.get(it["name"], {})
+        it["pack_note"] = ""
+        if it.get("balance") and it["balance"] > 0 and _specs:
+            _kind = list(_specs)[-1]
+            _sp = _specs[_kind] or {}
+            _iu = (_sp.get("inner_unit") or "").strip()
+            it["pack_note"] = (dw.pack_breakdown(_kind, _sp.get("capacity"),
+                                                 _sp.get("inner_count"),
+                                                 _sp.get("inner_capacity"),
+                                                 it["balance"],
+                                                 _iu or it["handle_unit"],
+                                                 "",
+                                                 inner_kind=_sp.get("inner_kind"))
+                               or "")
     # «٢ مخازن — التغليف» (توجيه ٠٨/١٠): النافذة المتراصة — الأصناف فوق بعض،
     # كل صنف ٣ سطور (الصنف/بالوحدة/بالتغليف) + سطر باتش صغير (تغليف الدفعة·مخزن·انتهاء)
     _permits_by_no = {p["number"]: p for p in permits}
@@ -443,6 +459,24 @@ def page():
                 card = None
     # كارت + فورم تعديل أول المدة — دالة واحدة يشترك فيها المستودعات والترفية
     opener_edit = prepare_card(card, year, month, cycle, packs_map)
+    # 🆕 (١٢/١٠) رصيد كارت الصنف «N شكارة + X كجم» (التغليف + الوحدة — زي البرنامج القديم)
+    if card:
+        _cit = next((it for it in items if it["id"] == card["item"]["id"]), None)
+        card["balance_pack"] = ""
+        if _cit and _cit.get("balance") and _cit["balance"] > 0:
+            _specs = packs_map.get(_cit["name"], {})
+            if _specs:
+                _kind = list(_specs)[-1]
+                _sp = _specs[_kind] or {}
+                _iu = (_sp.get("inner_unit") or "").strip()
+                card["balance_pack"] = (dw.pack_breakdown(_kind, _sp.get("capacity"),
+                                                          _sp.get("inner_count"),
+                                                          _sp.get("inner_capacity"),
+                                                          _cit["balance"],
+                                                          _iu or _cit["handle_unit"],
+                                                          "",
+                                                          inner_kind=_sp.get("inner_kind"))
+                                        or "")
     # التاب النشط في «٣ مخازن تفاريد»: الصنف المفتوح أو أول صنف في الدورة
     taf3_active_id = card["item"]["id"] if card else (
         items[0]["id"] if (sub == "wh3" and items) else None)

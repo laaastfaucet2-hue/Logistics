@@ -189,6 +189,13 @@
 .wh-in { color: var(--green); font-weight: 800; }
 .wh-out { color: var(--red); font-weight: 800; }
 
+/* 🆕 (١٢/١٠) القاعدة العامة: أي رقم وارد أخضر / أي رقم منصرف أحمر — سجل الحركة + كشف عام */
+.mv-in { color: var(--green); font-weight: 800; white-space: nowrap; }
+.mv-out { color: var(--red); font-weight: 800; white-space: nowrap; }
+table.mv-wide { font-size: .8rem; }
+table.mv-wide th, table.mv-wide td { padding: 7px 8px; }
+table.mv-wide .wh-co, table.mv-wide .name { max-width: 170px; }
+
 /* خلية التغليف: الصيغة اللفظية كاملة بلا لف مخل (توجيه ٢٦/٠٩) */
 .wh-pack-cell { min-width: 210px; font-size: .78rem; line-height: 1.9; }
 @media (max-width: 720px) {

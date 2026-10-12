@@ -32,43 +32,67 @@
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       </a>
     </div>
+    {# 🆕 (١٢/١٠) سجل الحركة زي البرنامج القديم: الجهة/المصدر/ال مندوب + الكمية
+       بعمودين (تغليف + وحدة) + رصيد المخزن بعد كل سطر — قاعدة الألوان: وارد أخضر / منصرف أحمر #}
     <div class="wh-scroll">
-    <table class="rt-table wh-table">
-      <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الصنف</th>
-        <th>الكمية</th><th>التغليف</th><th>الصلاحية</th><th>المستند</th>
-        <th>الشركة الموردة</th><th>الشركة المنتجة</th></tr></thead>
+    <table class="rt-table wh-table mv-wide">
+      <thead><tr>
+        <th>م</th><th>التاريخ</th><th>نوع الحركة</th><th>الصنف</th>
+        <th>الشركة الموردة</th><th>الشركة المنتجة</th>
+        <th>مصروف إلى (الجهة)</th><th>مندوب الجهة</th>
+        <th>الكمية وارده (تغليف)</th><th>الكمية وارده (وحدة)</th>
+        <th>الكمية منصرف (تغليف)</th><th>الكمية منصرف (وحدة)</th>
+        <th>رصيد المخزن (بعد)</th><th>الصلاحية</th><th>المستند</th>
+      </tr></thead>
       <tbody>
         {% for mv in target.all_moves %}
         <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
           <td class="num">{{ loop.index | aindic }}</td>
-          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
-              {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
           <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
+          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل (إضافة)</span>
+              {% else %}<span class="wh-out">خارج (توزيع)</span>{% endif %}</td>
           <td class="name"><b>{{ mv.item }}</b></td>
-          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }} {{ mv.unit }}</td>
-          <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
-          <td>{% if mv.expiry %}<bdi dir="ltr" class="date-display">{{ mv.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
-          <td>{{ mv.doc }}</td>
           <td class="wh-co">{{ mv.supplier or '—' }}</td>
           <td class="wh-co">{{ mv.producer or '—' }}</td>
+          <td>{{ mv.entity or '—' }}</td>
+          <td>{{ mv.receiver or '—' }}</td>
+          {% if mv.dir == 'in' %}
+          <td class="num"><b class="mv-in">{{ mv.pack_short or '—' }}</b></td>
+          <td class="num"><b class="mv-in">{{ mv.qty | qty3 }} {{ mv.unit }}</b></td>
+          <td class="num">—</td><td class="num">—</td>
+          {% else %}
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b class="mv-out">{{ mv.pack or '—' }}</b></td>
+          <td class="num"><b class="mv-out">{{ mv.qty | qty3 }} {{ mv.unit }}</b></td>
+          {% endif %}
+          <td class="num"><b>{% if mv.rem_after %}{{ mv.rem_after }}{% else %}{{ mv.rem_qty | qty3 }} {{ mv.unit }}{% endif %}</b></td>
+          <td>{% if mv.expiry %}<bdi dir="ltr" class="date-display">{{ mv.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td>{{ mv.doc }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="10" class="empty">لا حركة على هذا المخزن بعد</td></tr>
+        <tr><td colspan="15" class="empty">لا حركة على هذا المخزن بعد</td></tr>
         {% endfor %}
       </tbody>
       {% if target['items'] %}
       <tfoot>
         <tr>
-          <th colspan="4">الإجماليات لكل صنف</th><th>داخل</th><th>خارج</th>
-          <th colspan="3">الرصيد</th><th></th>
+          <th colspan="4">الإجماليات لكل صنف</th>
+          <th></th><th></th>
+          <th>داخل (تغليف)</th><th>داخل (وحدة)</th>
+          <th colspan="2">خارج (وحدة)</th>
+          <th></th><th></th>
+          <th>رصيد المخزن (تغليف)</th><th colspan="2">رصيد المخزن (وحدة)</th>
         </tr>
         {% for name, it in target['items'].items() %}
         <tr>
           <td colspan="4" class="name"><b>{{ name }}</b></td>
-          <td class="num">+{{ it.in | qty3 }}</td>
-          <td class="num">−{{ it.out | qty3 }}</td>
-          <td class="num" colspan="3"><b>{{ it.balance | qty3 }}</b> {{ it.unit }}</td>
-          <td></td>
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b class="mv-in">{{ it.in_pack or '—' }}</b></td>
+          <td class="num"><b class="mv-in">+{{ it.in | qty3 }}</b></td>
+          <td colspan="2" class="num"><b class="mv-out">−{{ it.out | qty3 }}</b></td>
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b>{{ it.pack or '—' }}</b></td>
+          <td colspan="2" class="num"><b>{{ it.balance | qty3 }} {{ it.unit }}</b></td>
         </tr>
         {% endfor %}
       </tfoot>
