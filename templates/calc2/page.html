@@ -200,6 +200,9 @@
         <option value="all"  {% if scope == "all" %}selected{% endif %}>مجمع — كل الجهات المحددة</option>
         <option value="main" {% if scope == "main" %}selected{% endif %}>الجهة الرئيسية</option>
         <option value="att"  {% if scope == "att" %}selected{% endif %}>الجهات الملحقة</option>
+        {% for p in selected if p.is_attachment %}
+        <option value="att:{{ p.key }}" {% if scope == "att:" ~ p.key %}selected{% endif %}>{{ p.name }} — ملحقة لوحدها</option>
+        {% endfor %}
       </select>
     </label>
     <span class="panel-hint">للمعاينة والتحقق فقط — الإذن المحفوظ دايمًا على المجموع (كل الجهات المحددة)</span>

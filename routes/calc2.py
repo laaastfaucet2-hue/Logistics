@@ -93,14 +93,15 @@ def _impact_report(before, after):
 
 
 def _scoped_picks(selected, scope):
-    """فلتر عرض المقررات: المجموع (افتراضي) / الجهة الرئيسية / الجهات الملحقة.
-
-    للمعاينة والتحقق فقط — الإذن المحفوظ دايمًا على كل الجهات المحددة (المجموع).
-    """
+    """فلتر عرض المقررات: المجموع (افتراضي) / الجهة الرئيسية / الجهات الملحقة
+    / ملحقة محددة بمفتاحها (att:key) — كل جهة ملحقة اختيار مستقل لوحدها."""
     if scope == "main":
         return [p for p in selected if not p["is_attachment"]]
     if scope == "att":
         return [p for p in selected if p["is_attachment"]]
+    if scope.startswith("att:"):
+        key = scope[4:]
+        return [p for p in selected if p["is_attachment"] and p["key"] == key]
     return selected
 
 

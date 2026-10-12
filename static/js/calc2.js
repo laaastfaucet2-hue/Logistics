@@ -116,6 +116,11 @@
     if (lab) lab.value = names.join(" + ");
     if (f) f.textContent = ar(off + ind + rec);
     if (cnt) cnt.textContent = "(" + ar(keys.length) + ")";
+    /* لو الملحقة المعروضة انضفت من المربع — نرجع العرض للمجموع */
+    if (scopeEl && scopeEl.value.indexOf("att:") === 0 &&
+        keys.indexOf(scopeEl.value.slice(4)) < 0) {
+      scopeEl.value = "all";
+    }
     markList(keys);
     loadRows(keys);
   }
