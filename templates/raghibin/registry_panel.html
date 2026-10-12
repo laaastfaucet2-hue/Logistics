@@ -27,9 +27,11 @@
         </select>
       </div>
       <div class="fld"><label>الرتبة / الدرجة العسكرية</label>
-        <input name="qa_rank" id="rgRegRank" class="rg-qa-rank" list="rgRankDl"
-               placeholder="اختر الرتبة أو اكتب جديدة" autocomplete="off">
-        <datalist id="rgRankDl"></datalist>
+        <select name="qa_rank" id="rgRegRank" class="rg-qa-rank">
+          {% for r in (rank_options.officers if fcat == 'officers' else rank_options.individuals) %}
+          <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="fld"><label>الاسم المعتمد بشكل رسمي</label>
         <input name="qa_name" class="rg-qa-name" list="rgNameDl"

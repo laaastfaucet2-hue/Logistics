@@ -126,18 +126,18 @@
       });
   });
 
-  /* ═══ البحث الذكي المرتبط: الرتبة تفلتر قائمة الأسماء (لمس محلي) ═══ */
+  /* ═══ البحث الذكي المرتبط: قائمة الرتب + الأسماء تفلتر على الرتبة (لمس محلي) ═══ */
   var catSel = root.querySelector(".rg-qa-cat");
-  var rankIn = root.querySelector(".rg-qa-rank");
-  var rankDl = document.getElementById("rgRankDl");
+  var rankSel = root.querySelector(".rg-qa-rank");
   var nameDl = document.getElementById("rgNameDl");
   var rankOpts = {}, personRank = {};
   try { rankOpts = JSON.parse(document.getElementById("rgRankOptions").textContent || "{}"); } catch (e) {}
   try { personRank = JSON.parse(document.getElementById("rgPersonRankData").textContent || "{}"); } catch (e) {}
-  function fillRankDl(cat) {
-    if (!rankDl) return;
-    rankDl.innerHTML = (rankOpts[cat] || []).map(function (r) {
-      return "<option value=\"" + r + "\"></option>";
+  function fillRankSel(cat) {
+    if (!rankSel) return;
+    var opts = rankOpts[cat] || [];
+    rankSel.innerHTML = opts.map(function (r) {
+      return "<option value=\"" + r + "\">" + r + "</option>";
     }).join("");
   }
   function fillNameDl(cat, rank) {
@@ -153,15 +153,14 @@
   }
   function refreshRegSearch() {
     var cat = catSel ? catSel.value : "officers";
-    fillRankDl(cat);
-    fillNameDl(cat, rankIn ? rankIn.value : "");
+    fillRankSel(cat);
+    fillNameDl(cat, rankSel ? rankSel.value : "");
   }
   if (catSel) catSel.addEventListener("change", function () {
-    if (rankIn) rankIn.value = "";      /* رتب الفئة التانية ما بتتنطبقش */
-    refreshRegSearch();
+    refreshRegSearch();   /* غيّر الفئة → رتبها وأسماءها تتجدد */
   });
-  if (rankIn) rankIn.addEventListener("input", function () {
-    fillNameDl(catSel ? catSel.value : "officers", rankIn.value);
+  if (rankSel) rankSel.addEventListener("change", function () {
+    fillNameDl(catSel ? catSel.value : "officers", rankSel.value);
   });
   refreshRegSearch();
 
