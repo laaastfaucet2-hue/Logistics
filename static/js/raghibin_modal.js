@@ -45,20 +45,21 @@
       form.addEventListener("submit", function () {
         var slot = form.querySelector(".rag-slot");
         var known = slot ? optionValues(slot.getAttribute("data-combo")) : [];
+        var box = form.querySelector(".rg-new-names");
         var fresh = [];
+        try { fresh = JSON.parse(box ? box.value : "[]"); } catch (e) { fresh = []; }
         form.querySelectorAll(".rag-slot").forEach(function (input) {
           var name = (input.value || "").trim();
           if (!name) return;
-          if (known.indexOf(name) === -1 &&
-              fresh.indexOf(name) === -1 &&
-              !window.confirm("«" + name + "» غير موجود في قوة الجهة.\n" +
+          /* أسماء اتأكد منها فورًا (التنبيه تحت المربع) مش بيتسأل عنها تاني */
+          if (known.indexOf(name) !== -1 || fresh.indexOf(name) !== -1) return;
+          if (!window.confirm("«" + name + "» غير موجود في قوة الجهة.\n" +
                               "هل تريد إضافته كقوة دائمة للجهة؟")) {
             input.value = "";            /* رفض → المربع يفضى ولا يُحفظ */
-          } else if (known.indexOf(name) === -1) {
+          } else {
             fresh.push(name);            /* موافقة → يُضاف للقوة الدائمة */
           }
         });
-        var box = form.querySelector(".rg-new-names");
         if (box) box.value = JSON.stringify(fresh);
       });
     });
@@ -74,6 +75,10 @@
       var entityField = document.getElementById("tmEntity");
       var dayField = document.getElementById("tmDayFrom");
       var entity = entityField ? entityField.value.trim() : "";
+      if (!entity) {
+        window.alert("اكتب اسم القطاع في فورم التأميدة أولًا — ثم اضغط الزرار تاني.");
+        return;
+      }
       var day = parseArabicInt(dayField ? dayField.value : "") || 1;
       var sid = urlParam("sid");
       var url = "/raghibin/modal?c=officers&d=" + day +
@@ -121,18 +126,86 @@
       });
   });
 
-  /* تبديل رتب «الإضافة السريعة» حسب الفئة */
+  /* ═══ البحث الذكي المرتبط: الرتبة تفلتر قائمة الأسماء (لمس محلي) ═══ */
   var catSel = root.querySelector(".rg-qa-cat");
-  var rankSel = root.querySelector(".rg-qa-rank");
-  var mapEl = root.querySelector(".rg-ranks-map");
-  var ranksMap = {};
-  try { ranksMap = mapEl ? JSON.parse(mapEl.textContent) : {}; } catch (e) {}
-  if (catSel && rankSel) catSel.addEventListener("change", function () {
-    var opts = ranksMap[catSel.value] || [];
-    rankSel.innerHTML = opts.map(function (r) {
-      return '<option value="' + r + '">' + r + "</option>";
+  var rankIn = root.querySelector(".rg-qa-rank");
+  var rankDl = document.getElementById("rgRankDl");
+  var nameDl = document.getElementById("rgNameDl");
+  var rankOpts = {}, personRank = {};
+  try { rankOpts = JSON.parse(document.getElementById("rgRankOptions").textContent || "{}"); } catch (e) {}
+  try { personRank = JSON.parse(document.getElementById("rgPersonRankData").textContent || "{}"); } catch (e) {}
+  function fillRankDl(cat) {
+    if (!rankDl) return;
+    rankDl.innerHTML = (rankOpts[cat] || []).map(function (r) {
+      return "<option value=\"" + r + "\"></option>";
     }).join("");
+  }
+  function fillNameDl(cat, rank) {
+    if (!nameDl) return;
+    var r = (rank || "").trim();
+    var names = [];
+    (personRank[cat] || []).forEach(function (pr) {
+      if (!r || pr[0] === r) names.push(pr[1]);
+    });
+    nameDl.innerHTML = names.map(function (n) {
+      return "<option value=\"" + n + "\"></option>";
+    }).join("");
+  }
+  function refreshRegSearch() {
+    var cat = catSel ? catSel.value : "officers";
+    fillRankDl(cat);
+    fillNameDl(cat, rankIn ? rankIn.value : "");
+  }
+  if (catSel) catSel.addEventListener("change", function () {
+    if (rankIn) rankIn.value = "";      /* رتب الفئة التانية ما بتتنطبقش */
+    refreshRegSearch();
   });
+  if (rankIn) rankIn.addEventListener("input", function () {
+    fillNameDl(catSel ? catSel.value : "officers", rankIn.value);
+  });
+  refreshRegSearch();
+
+  /* ═══ تنبيه فوري للاسم اللي مش مسجل: إضافة كقوة دائمة / إلغاء ═══ */
+  var approvedBox = root.querySelector(".rg-new-names");
+  function approvedNames() {
+    if (!approvedBox) return [];
+    try { return JSON.parse(approvedBox.value || "[]"); } catch (e) { return []; }
+  }
+  function hideWarn(input) {
+    var row = input.closest(".rg-slotrow");
+    if (!row) return;
+    var old = row.querySelector(".rg-slot-warn");
+    if (old) old.remove();
+  }
+  function checkSlot(input) {
+    hideWarn(input);
+    var v = input.value.trim();
+    if (!v) return;
+    var known = {};
+    optionValues(input.getAttribute("data-combo")).forEach(function (n) { known[n] = 1; });
+    approvedNames().forEach(function (n) { known[n] = 1; });
+    if (known[v]) return;
+    var row = input.closest(".rg-slotrow");
+    if (!row) return;
+    var div = document.createElement("div");
+    div.className = "rg-slot-warn";
+    div.innerHTML =
+      "<span>«" + v + "» مش مسجل في «الجهات والكوادر» — إضافة كقوة دائمة للجهة؟</span>" +
+      "<button type=\"button\" class=\"rg-warn-add\">إضافة كقوة دائمة</button>" +
+      "<button type=\"button\" class=\"rg-warn-cancel\">إلغاء</button>";
+    div.querySelector(".rg-warn-add").addEventListener("click", function () {
+      var list = approvedNames();
+      if (list.indexOf(v) === -1) { list.push(v); approvedBox.value = JSON.stringify(list); }
+      hideWarn(input);
+    });
+    div.querySelector(".rg-warn-cancel").addEventListener("click", function () {
+      input.value = "";
+      input.dataset.prev = "";
+      hideWarn(input);
+      setFilledCount();
+    });
+    row.appendChild(div);
+  }
 
   /* تشيك القوة ↔ المربعات */
   Array.prototype.forEach.call(root.querySelectorAll(".rg-force-toggle"),
@@ -166,6 +239,7 @@
           input.dataset.prev = v;
         }
         setFilledCount();
+        checkSlot(input);
       });
     });
   setFilledCount();

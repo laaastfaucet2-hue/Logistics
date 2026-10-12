@@ -31,11 +31,8 @@
   </div>
 
   {% if entity %}
-  <!-- ═══ السجل + القطع (مكونات مشتركة — نفس تصميم تاب الجهات والكوادر) ═══ -->
-  <div class="rg-twocol">
-    {% include "raghibin/registry_panel.html" %}
-    {% include "raghibin/piece_panel.html" %}
-  </div>
+  <!-- ═══ السجل المعتمد (وظائف القطاعات مدمجة في تاب «الجهات والكوادر») ═══ -->
+  {% include "raghibin/registry_panel.html" %}
 
   <div class="rg-day-inline">ضبط اليوم: <b>{{ sel_day | aindic }}</b></div>
 

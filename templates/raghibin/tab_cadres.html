@@ -9,13 +9,21 @@
   <!-- اختيار الجهة: قائمة جهات القاموس مع عداد القوة -->
   <div class="rg-card">
     <div class="rg-card-head">
-      <b>جهات القوة ({{ entities | length | aindic }} جهة)</b>
-      <span class="rg-dim">اختر جهة لعرض قوتها الضابطية والصفية — إجمالي الأسماء: {{ total_force | aindic }}</span>
+      <b>القطاعات — جهات القوة ({{ entities | length | aindic }} قطاع)</b>
+      <span class="rg-dim">اختر قطاعًا لعرض قوته الضابطية والصفية — إجمالي الأسماء: {{ total_force | aindic }}</span>
     </div>
+    {% if entity %}
+    <div class="rg-copyrow" style="margin-bottom:10px">
+      <button class="rt-btn" type="button" id="rgCopyMonthBtn"
+              title="ينقل قوة «{{ entity.name }}» (الأسماء والرتب وحالات الاستثناء) لشهر تاني">
+        📋 نسخ هذا القطاع إلى شهر آخر</button>
+      <span class="rg-dim">ينسخ الأسماء والرتب وحالات الاستثناء (بلا تسجيلات يومية) ويبني ملفات الشهر الهدف</span>
+    </div>
+    {% endif %}
     <form method="post" action="/raghibin/cadres/entity_add" class="rg-addform">
       <input type="hidden" name="sid" value="{{ sid }}">
-      <div class="fld rg-grow"><label>➕ إضافة جهة جديدة</label>
-        <input name="new_name" data-combo="rgEntityNames" required placeholder="اسم الجهة كما هو معتمد" autocomplete="off"></div>
+      <div class="fld rg-grow"><label>➕ إضافة قطاع جديد</label>
+        <input name="new_name" data-combo="rgEntityNames" required placeholder="اسم القطاع كما هو معتمد (شرطي / حربي)" autocomplete="off"></div>
       <div class="fld"><label>النوع</label>
         <select name="new_type">
           <option value="شرطية">شرطية</option>
@@ -39,9 +47,9 @@
           <span class="rg-dim">{{ ent.entity_type }} · {{ pair2(c.officers, c.individuals) }}{% if c.officers_excluded or c.individuals_excluded %} · <span class="rg-excluded-badge">غير راغبين {{ (c.officers_excluded + c.individuals_excluded) | aindic }}</span>{% endif %}</span>
         </a>
         <form method="post" action="/raghibin/cadres/entity_delete/{{ ent.id }}" class="rg-entity-del"
-              onsubmit="return confirm('حذف جهة «{{ ent.name }}» وكل أسمائها نهائيًا من هذا الشهر؟')">
+              onsubmit="return confirm('حذف قطاع «{{ ent.name }}» وكل أسمائه نهائيًا من هذا الشهر؟')">
           <input type="hidden" name="sid" value="{{ sid }}">
-          <button type="submit" title="حذف الجهة">🗑</button>
+          <button type="submit" title="حذف القطاع">🗑</button>
         </form>
       </div>
       {% endfor %}
@@ -50,11 +58,59 @@
   </div>
 
   {% if entity %}
-  <!-- ═══ السجل المعتمد + كشف القطع (عمودان) ═══ -->
-  <div class="rg-twocol">
-    {% include "raghibin/registry_panel.html" %}
-    {% include "raghibin/piece_panel.html" %}
+  <!-- دايالوج نسخ القطاع لشهر تاني: «عايز تنسخه في شهر إيه؟» + قوائم الشهور والسنة -->
+  <div class="rg-dialog-backdrop" id="rgCopyMonthBg" hidden>
+    <div class="rg-dialog">
+      <b>📋 نسخ «{{ entity.name }}» إلى شهر آخر</b>
+      <span class="rg-dialog-q">أي شهر تريد النسخ إليه؟</span>
+      <form method="post" action="/raghibin/cadres/copy">
+        <input type="hidden" name="e" value="{{ entity.id }}">
+        <input type="hidden" name="scope" value="one">
+        {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+        <label for="rgCopyMonthSel">الشهر:</label>
+        <select name="tm" id="rgCopyMonthSel" required>
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}" {{ 'selected' if m == month }}>{{ month_names[m - 1] }}</option>
+          {% endfor %}
+        </select>
+        <label for="rgCopyYearSel">السنة:</label>
+        <select name="ty" id="rgCopyYearSel" required>
+          {% for y in [year - 1, year, year + 1] %}
+          <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y | aindic }}</option>
+          {% endfor %}
+        </select>
+        <div class="rg-dialog-actions">
+          <button class="rt-btn gold" type="submit">نسخ القطاع</button>
+          <button class="rt-btn" type="button" id="rgCopyMonthCancel">إلغاء</button>
+        </div>
+      </form>
+    </div>
   </div>
+  <script>
+  (function () {
+    var bg = document.getElementById('rgCopyMonthBg');
+    var btn = document.getElementById('rgCopyMonthBtn');
+    if (!bg || !btn) return;
+    btn.addEventListener('click', function () {
+      bg.hidden = false;
+      bg.querySelector('select').focus();
+    });
+    document.getElementById('rgCopyMonthCancel').addEventListener('click', function () {
+      bg.hidden = true;
+    });
+    bg.addEventListener('click', function (e) {
+      if (e.target === bg) bg.hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') bg.hidden = true;
+    });
+  })();
+  </script>
+  {% endif %}
+
+  {% if entity %}
+  <!-- ═══ السجل المعتمد (القطاعات ووظائفها مدمجة في كارت «جهات القوة» فوق) ═══ -->
+  {% include "raghibin/registry_panel.html" %}
 
   <!-- قوة الجهة: الجدول الكامل (غير راغب / ملاحظات / حذف) -->
   {% set c = counts.get(entity.id, {'officers': 0, 'individuals': 0, 'officers_excluded': 0, 'individuals_excluded': 0}) %}

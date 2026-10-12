@@ -301,14 +301,38 @@ def _alerts_vars(year, month):
         return {}
 
 
+def _registry_search_vars(year, month, entity):
+    """البحث الذكي المرتبط في فورم «إضافة عضو معتمد جديد» (توجيه ١٢/١٠):
+
+    rank_options        = رتب الفئة القياسية + أي رتبة اتسجلت فعلًا بالشهر
+    registry_rank_map   = أزواج (الرتبة، الاسم) من سجل الجهة — عشان اختيار
+                          الرتبة يفلتر قائمة الأسماء على ناس الرتبة دي.
+    """
+    standard = {"officers": list(dr.RANKS["officers"]),
+                "individuals": list(dr.RANKS["individuals"])}
+    rank_map = {"officers": [], "individuals": []}
+    if entity:
+        for cat in ("officers", "individuals"):
+            for p in dr.list_persons(year, month, entity_id=entity["id"],
+                                     category=cat):
+                rank = (p.get("rank") or "").strip()
+                if not rank:
+                    continue
+                rank_map[cat].append([rank, p["full_name"]])
+                if rank not in standard[cat]:
+                    standard[cat].append(rank)
+    return {"rank_options": standard, "registry_rank_map": rank_map}
+
+
 def _cadres_vars(year, month, entity, selected):
     """متغيرات تاب «الجهات والكوادر المعتمدة» (تصميم الاسكرين شوت ١٠/١٠):
-    توقيتات الاعتماد + المسح الضوئي + السجل المعتمد + كشف القطع."""
+    توقيتات الاعتماد + المسح الضوئي + السجل المعتمد + البحث الذكي المرتبط."""
     sid = request.args.get("sid", "")
     variables = {"sel_day": selected,
                  "pieces_count": len(dt.list_entities(year, month)),
                  "ranks_map": {"officers": dr.RANKS["officers"],
-                               "individuals": dr.RANKS["individuals"]}}
+                               "individuals": dr.RANKS["individuals"]},
+                 **_registry_search_vars(year, month, entity)}
     if entity:
         variables["registry_officers"] = dr.list_persons(
             year, month, entity_id=entity["id"], category="officers")

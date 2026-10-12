@@ -30,7 +30,7 @@ from services.raghibin import modal as rg_modal
 
 from . import raghibin_bp
 from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
-                      _selected_entity)
+                      _selected_entity, _registry_search_vars)
 
 
 def _modal_page_url(entity, day, cat, sid=""):
@@ -61,6 +61,7 @@ def modal_page():
     variables["err"] = request.args.get("err", "")
     # تصميم الاسكرين شوت (١٠/١٠/٢٠): السجل المعتمد بكل الفئتين + قطع الجهة
     variables["pieces_count"] = len(variables.get("entity_names", []))
+    variables.update(_registry_search_vars(year, month, entity))
     if entity:
         variables["registry_officers"] = dr.list_persons(
             year, month, entity_id=entity["id"], category="officers")

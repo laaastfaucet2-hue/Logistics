@@ -308,3 +308,16 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-scan-col textarea { width: 100%; min-height: 170px; border-radius: 8px;
   border: 1px solid var(--card-border); background: var(--card);
   color: var(--text); padding: 10px; resize: vertical; }
+
+/* تنبيه فوري للاسم غير المسجل (تحت مربع الاسم مباشرة — توجيه ١٢/١٠) */
+.rg-slot-warn { flex-basis: 100%; display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; padding: 7px 10px; border-radius: 10px; margin-top: 2px;
+  background: var(--surface-gold); border: 1px solid var(--gold-border);
+  color: var(--text); font-size: .82rem; font-weight: 600; }
+.rg-slot-warn .rg-warn-add { background: var(--brand-gold); color: var(--on-gold);
+  border: 0; border-radius: 8px; padding: 5px 12px; font-weight: 800;
+  cursor: pointer; font-family: inherit; font-size: .8rem; }
+.rg-slot-warn .rg-warn-add:hover { background: var(--brand-gold-hover); }
+.rg-slot-warn .rg-warn-cancel { background: transparent; color: var(--text);
+  border: 1px solid var(--card-border); border-radius: 8px; padding: 5px 12px;
+  font-weight: 700; cursor: pointer; font-family: inherit; font-size: .8rem; }

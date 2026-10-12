@@ -8,12 +8,12 @@
     <span class="rg-dim">القوة الدائمة للجهة — أي اسم يُسجل راغب من مربعات اليوم أو زرار التأميدة</span>
   </div>
   <div class="rg-registry-meta">
-    <span class="rg-count-chip">عدد القطع: {{ pieces_count | aindic }}</span>
+    <span class="rg-count-chip">عدد القطاعات: {{ pieces_count | aindic }}</span>
     <span class="rg-count-chip">عدد الأفراد: {{ registry_individuals | length | aindic }}</span>
     <span class="rg-count-chip">الإجمالي: {{ entity_count | aindic }}</span>
   </div>
 
-  <!-- إضافة عضو جديد إلى السجل -->
+  <!-- إضافة عضو جديد إلى السجل — بحث ذكي مرتبط: اختار الرتبة → الأسماء تفلتر عليها -->
   <form method="post" action="/raghibin/panel/quick_add" class="rg-regform" autocomplete="off">
     <input type="hidden" name="e" value="{{ entity.id }}">
     <input type="hidden" name="d" value="{{ sel_day }}">
@@ -27,20 +27,22 @@
         </select>
       </div>
       <div class="fld"><label>الرتبة / الدرجة العسكرية</label>
-        <select name="qa_rank" id="rgRegRank" class="rg-qa-rank">
-          {% for r in (officer_ranks if fcat == 'officers' else individual_ranks) %}
-          <option value="{{ r }}">{{ r }}</option>
-          {% endfor %}
-        </select>
+        <input name="qa_rank" id="rgRegRank" class="rg-qa-rank" list="rgRankDl"
+               placeholder="اختر الرتبة أو اكتب جديدة" autocomplete="off">
+        <datalist id="rgRankDl"></datalist>
       </div>
       <div class="fld"><label>الاسم المعتمد بشكل رسمي</label>
-        <input name="qa_name" class="rg-qa-name" placeholder="مثل: مصطفى السيد عبدالحميد">
+        <input name="qa_name" class="rg-qa-name" list="rgNameDl"
+               placeholder="مثل: مصطفى السيد عبدالحميد" autocomplete="off">
+        <datalist id="rgNameDl"></datalist>
       </div>
     </div>
     <div class="rg-regform-foot">
       <button class="rt-btn gold rg-qa-add" type="submit">➕ إضافة للسجل</button>
     </div>
   </form>
+  <script type="application/json" id="rgRankOptions">{{ rank_options | tojson }}</script>
+  <script type="application/json" id="rgPersonRankData">{{ registry_rank_map | tojson }}</script>
 
   <!-- قائمة الضباط -->
   <div class="rg-reglist">
