@@ -19,15 +19,18 @@
 .rc-journal { display: grid; grid-template-columns: 224px 1fr; gap: 16px; align-items: start; }
 @media (max-width: 1100px) {
   .rc-grid, .rc-journal { grid-template-columns: 1fr; }
-  /* في العمود الواحد التثبيت كان يجعل اليومية تنزلق فوق مربع الأيام — نرجّعه للتيار */
-  .rc-daysbox { position: static; }
   /* شريط أيام مدموج: 11 أعمدة × ٣ صفوف بدل ٧ أعمدة × ٥ مربعات كبيرة */
   .rc-days { grid-template-columns: repeat(11, 1fr); }
   .rc-legend { flex-direction: row; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
 }
 
-/* ======== مربع الأيام (مدموج — مش مربعات كبيرة) ======== */
-.rc-daysbox { position: sticky; top: calc(var(--window-h) + 96px); }
+/* ======== مربع الأيام (مدموج — مش مربعات كبيرة) ========
+   مثبّت فوق وهو بتنزل في الصفحة (طلب ١٤/١٠): يفضل ظاهر تحت الشريطين في كل
+   المقاسات — الخلفية معتمة + z-index ليكون المحتوى بيمر تحته ومش فوقه. */
+.rc-daysbox { position: sticky; top: var(--stick-top, calc(var(--window-h) + 96px));
+  z-index: 30; background: var(--card); box-shadow: 0 10px 26px rgba(0, 0, 0, .22);
+  max-height: calc(100vh - var(--stick-top, 134px) - 14px); overflow-y: auto; }
+.rc-daysbox .panel-head { margin-bottom: 12px; }
 .rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .rc-daybox { position: relative; display: grid; place-items: center; min-height: 32px; padding: 3px 0; border-radius: 8px;
   border: 1px solid var(--card-border); background: var(--card); color: var(--text);
@@ -90,6 +93,73 @@
 
 .rc-status { min-width: 118px; }
 .rc-jtable select, .rc-jtable input.rc-status { padding: 6px 10px; background: var(--field-bg); }
+
+/* ======== رؤوس الجداول الطويلة — تفضل فوق وأنت بتنزل في الصفحة (طلب ١٤/١٠) ========
+   الشرط إن اللفافة ما تكونش حاوية تمرير رأسية، فبنلغي الرأسي ونخلي الأفقي
+   clip على الشاشات الواسعة (بلا scroll container) — وتحت ٧٨٠px نرجّع التمرير. */
+.table-wrap.rc-stickwrap { overflow-x: clip; overflow-y: visible; }
+.rc-stickwrap > table > thead th { position: sticky;
+  top: calc(var(--stick-top, calc(var(--window-h) + 96px)) + var(--stick-rows, 0px)); z-index: 6;
+  background-color: var(--card);
+  background-image: linear-gradient(rgba(var(--gold-rgb), .08), rgba(var(--gold-rgb), .08));
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .16); }
+@media (max-width: 780px) { .table-wrap.rc-stickwrap { overflow-x: auto; } }
+@media print { .rc-stickwrap > table > thead th { position: static; box-shadow: none; } }
+
+/* ======== توحيد جداول المجندين (طلب ١٤/١٠) ========
+   «الخانات فيها الكلام مش تحتها بالضبط»: كل خانة تقف تحت رأسها — النصوص يمين
+   زي الرأس، والأرقام والتواريخ في نص الخانة (ورأسها متوسّط فوقها كذلك)، بحشو
+   وفاصل موحّد في كل جداول الوحدة. الضبط مقصور على صفحات المجندين (.rc-page)
+   فلا يمسّ جداول الراغبين/التاميدات/المستودعات. */
+.rc-page .rt-table th, .rc-page .rt-table td { padding: 11px 12px; vertical-align: middle; }
+.rc-page .rt-table tbody tr { border-bottom: 1px solid var(--card-border); }
+.rc-page .rt-table tbody tr:last-child { border-bottom: none; }
+.rc-page .rt-table th.num, .rc-page .rt-table td.num,
+.rc-page .rt-table th.mid, .rc-page .rt-table td.mid { text-align: center; }
+.rc-page .rt-table td.num { direction: ltr; unicode-bidi: plaintext; }
+.rc-page .rt-table td.num .rc-person, .rc-page .rt-table td.num .rc-chip { direction: rtl; unicode-bidi: isolate; }
+
+/* ======== زر «إجازة مجمّعة» الثابت في تبويب الحضور (توجيه ١٤/١٠) ======== */
+.rc-quickbar { position: sticky; top: var(--stick-top, calc(var(--window-h) + 96px)); z-index: 25;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; margin-bottom: 14px;
+  background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .24); }
+.rc-quickbar .rc-mini-btn { padding: 7px 16px; font-size: .875rem; }
+
+/* ======== نافذة الإجازة المجمّعة ======== */
+.rc-jl { position: fixed; inset: 0; z-index: 420; display: grid; place-items: center;
+  background: rgba(0, 0, 0, .58); padding: 16px; }
+.rc-jl[hidden] { display: none !important; }
+.rc-jl-box { width: min(660px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--card); border: 1px solid var(--card-border); border-radius: 20px;
+  padding: 20px 22px 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }
+.rc-jl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rc-jl-head h3 { font-size: 1.1rem; }
+.rc-jl-x { border: 0; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+.rc-jl-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 12px 0 10px; }
+.rc-jl-tabs { display: flex; gap: 8px; margin: 6px 0 10px; }
+.rc-jl-tab { flex: 1; padding: 8px 12px; border-radius: 11px; cursor: pointer;
+  border: 1px solid var(--card-border); background: var(--card); color: var(--muted);
+  font-weight: 600; font-size: .86rem; }
+.rc-jl-tab.on { background: var(--surface-gold); border-color: rgba(var(--gold-rgb), .6); color: var(--gold-light); }
+.rc-jl-search { width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--field-border); background: var(--field-bg); font-size: .88rem; }
+.rc-jl-list { max-height: 40vh; overflow-y: auto; border: 1px solid var(--card-border);
+  border-radius: 12px; padding: 6px; }
+.rc-jl-list.only-present .rc-jl-p[data-present="0"] { display: none; }
+.rc-jl-p { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 9px;
+  cursor: pointer; font-size: .875rem; }
+.rc-jl-p:hover { background: var(--surface-soft); }
+.rc-jl-p input { width: 17px; height: 17px; flex-shrink: 0; }
+.rc-jl-p .rc-jl-name { font-weight: 600; }
+.rc-jl-p .rc-chip { margin-inline-start: auto; }
+.rc-jl-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.rc-jl-prev { width: 100%; padding: 9px 12px; border-radius: 10px; font-size: .875rem;
+  background: rgba(var(--gold-rgb), .1); border: 1px solid rgba(var(--gold-rgb), .4); color: var(--text); }
+.rc-jl-err { color: var(--red); font-size: .82rem; }
+.rc-jl-times { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rc-jl.tomorrow .rc-jl-times { display: none; }
 
 /* ======== أشخاص وصور ======== */
 .rc-person { display: flex; align-items: center; gap: 10px; }

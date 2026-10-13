@@ -604,7 +604,7 @@ def test_momoda_days_modal_lists_exact_dates_and_json_saves_them(client):
                         .read_text(encoding="utf-8"))
     unit = next(g for g in mirror["الجهات"] if g["الجهة"] == "وحدة الأيام")
     dates_list = unit["أيام التميد بالتواريخ"]
-    assert dates_list[0]["من"] == "٢٢/٠٩/٢٠٣١" and dates_list[0]["إلى"] == "٢٤/٠٩/٢٠٣١"
+    assert dates_list[0]["من"] == "٢٠٣١/٠٩/٢٢" and dates_list[0]["إلى"] == "٢٠٣١/٠٩/٢٤"
     assert dates_list[0]["عدد الأيام"] == 3
     attached = next(g for g in mirror["الجهات"] if g["الجهة"] == "فصيلة الأيام")
     assert attached["ملحقة"] is True and "أيام التميد بالتواريخ" in attached

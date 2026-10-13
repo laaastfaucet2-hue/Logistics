@@ -5,7 +5,7 @@
 تحتاج من db_warehouses استيراد مؤجل جوه الدالة (تجنّب الدوران)."""
 from core import arabic_numbers as arnum
 from data_access import months
-from data_access.packaging import pack_breakdown, pack_split
+from data_access.packaging import pack_breakdown, pack_split, parse_pack_label, PackLedger
 
 # ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
 UNASSIGNED = "غير موزع على مخازن"
@@ -74,6 +74,9 @@ def _batch_pool(year, month, cycle):
         if not item:
             continue
         parts = opener_parts.get(o["item_id"]) or [{"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
+        # ملخص أول المدة بنفس صيغة pack_summary — يُفكَّك لحقول تغليف (١٤/١٠)
+        # علشان الرصيد الافتتاحى يدخل حالة العبوات زي أي إضافة
+        _oc, _ok, _ocap, _oloose = parse_pack_label(o.get("pack_label"))
         for part in parts:
             pool.append({
                 "item": item, "qty": float(part["qty"]),
@@ -81,8 +84,8 @@ def _batch_pool(year, month, cycle):
                 "expiry": o["exp_date"] or NO_EXPIRY,
                 "order": f"{o['date_iso']}-00000",
                 "serial": 0, "pack_label": o["pack_label"] or "",
-                "pack_kind": "", "pack_count": 0,
-                "pack_capacity": 0, "pack_loose": 0,
+                "pack_kind": _ok, "pack_count": _oc,
+                "pack_capacity": _ocap, "pack_loose": _oloose,
                 "pack_inner_count": 0, "pack_inner_capacity": 0,
                 "pack_inner_kind": "", "pack_loose_unit": "",
                 "producer": _opener_producer(o),
@@ -98,11 +101,77 @@ def _rem_label(batch, q, rest_word="سائب"):
     return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word, inner_kind=batch.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
 
 
+def _batch_ledger(batch):
+    """مدير العبوات لدفعة واحدة (تغليف بالوزن فقط — ١٤/١٠):
+    كاملة/سائب/باقي مفتوحة/سالب. الدفعات بلا تغليف (أو بعبوات بعدّ
+    المعيار: جركن × ٢٠) ترجع None → السلوك القديم (تفكيك ساد)."""
+    from core.config import is_measure_unit
+    kind = (batch.get("pack_kind") or "").strip()
+    cap = float(batch.get("pack_capacity") or 0)
+    if not kind or cap <= 0 or is_measure_unit(kind):
+        return None
+    led = PackLedger(kind, cap, batch["item"]["handle_unit"])
+    if float(batch.get("pack_count") or 0) > 0 or float(batch.get("pack_loose") or 0) > 0:
+        led.add(batch.get("pack_count") or 0, batch.get("pack_loose") or 0)
+    return led
+
+
+def _leds_label(leds):
+    """تسمية حالة مجموعة مدراء عبوات (مصدر واحد ١٤/١٠): نفس النوع يندمج
+    في مدير واحد «٢ شكارة + شكارة مفتوحة (١٨ كجم)» وأنواع مختلفة تتجمع.
+    الحالة الصفرية ترجع فاضي (زي تفكيك الأرصدة)."""
+    real = [l for l in leds if l is not None]
+    if not real:
+        return ""
+    if all(l.kind == real[0].kind for l in real):
+        m = PackLedger(real[0].kind, real[0].capacity, real[0].unit)
+        for l in real:
+            m.full += l.full
+            m.loose = round(m.loose + l.loose, 6)
+            m.rest = round(m.rest + l.rest, 6)
+            m.deficit = round(m.deficit + l.deficit, 6)
+        if m.total() == 0 and m.deficit == 0:
+            return ""
+        return m.label()
+    return " + ".join(l.label() for l in real)
+
+
+def _state_label(batches):
+    """رصيد مخزن صنف بالتغليف — من حالة العبوات الفعلية (مصدر واحد ١٤/١٠).
+    دفعات قديمة بلا تغليف → تفكيك ساد على سعتها؛ الدفعات السادة البحتة
+    (بلا أي معيار) تندمج في كمية واحدة «١٢٠٠ كجم» مش «٦٠ + ٦٠»."""
+    parts = []
+    leds = []
+    plain_total = 0.0
+    for b in batches:
+        l = b.get("_led")
+        rem = float(b.get("remaining") or 0)
+        if l is not None:
+            leds.append(l)
+        elif rem > 0:
+            if not (b.get("pack_kind") or "").strip():
+                plain_total = round(plain_total + rem, 6)
+            else:
+                parts.append(_rem_label(b, rem, ""))
+    if plain_total > 0:
+        parts.append(f"{arnum.fmt_qty_trim(plain_total)} "
+                     f"{batches[0]['item']['handle_unit']}")
+    lbl = _leds_label(leds)
+    if lbl:
+        parts.append(lbl)
+    return " + ".join(parts)
+
+
 @months.memo
 def tafreeda_rows(year, month, cycle):
     from data_access import db_warehouses as _dw   # استيراد مؤجل — تجنّب الدوران
     """التفريدة التلقائية: الأقرب صلاحية أولًا — لكل سطر التفكيك ورصيد المخزن كله قبل/بعد."""
     pool = _batch_pool(year, month, cycle)
+    # مدير العبوات لكل دفعة — مصدر حالة التغليف الواحد (١٤/١٠): كل الشاشات
+    # اللي تقرأ التفريدة (حركة المخازن / FEFO / الدفتر / xlsx) تقرأ الحالة
+    # نفسها كاملة/مفتوحة/سائب — والكاملة ما تتحولش سائب (توجيه ٢٧/٠٩).
+    for b in pool:
+        b["_led"] = _batch_ledger(b)
     _seqs = {}                           # مسلسل السطر داخل التفريدة الواحدة
     store_bal = {}                       # رصيد المخزن كله (مجموع دفعات الصنف)
     for b in pool:
@@ -129,8 +198,11 @@ def tafreeda_rows(year, month, cycle):
                 if batch["item"]["name"] != entry["name"] or batch["remaining"] <= 0:
                     continue
                 take = min(need, batch["remaining"])
-                batch["remaining"] = round(batch["remaining"] - take, 6)
-                need = round(need - take, 6)
+                if take <= 0:
+                    continue
+                _k = (batch["item"]["name"], batch["store_id"])
+                _group = [b for b in pool
+                          if b["item"]["name"] == batch["item"]["name"] and b["store_id"] == batch["store_id"]]
                 rows.append({
                     "pack_inner_label": "", "pack_outer_label": "",
                     "permit_no": permit["number"], "date_from": permit["date_from"], "date_to": permit["date_to"],
@@ -142,12 +214,19 @@ def tafreeda_rows(year, month, cycle):
                 _inner, _outer = pack_split(batch.get("pack_kind"), batch.get("pack_count"), batch.get("pack_capacity"), batch.get("pack_loose"), batch["item"]["handle_unit"], batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), batch.get("pack_loose_unit"))
                 rows[-1]["pack_inner_label"], rows[-1]["pack_outer_label"] = _inner, _outer
                 rows[-1]["producer"] = batch.get("producer") or ""
-                # «١ شكارة + ١٠ كجم» أو «٣٠ كجم» — المنصرف مُفكَّك بعبوات الدفعة
-                rows[-1]["issued_label"] = _rem_label(batch, take, "")
-                # رصيد المخزن كله قبل الصرف وبعده (اختيار المستخدم — مجموع الدفعات)
-                _k = (batch["item"]["name"], batch["store_id"])
+                # رصيد المخزن كله قبل الصرف — من حالة العبوات الفعلية
+                rows[-1]["rem_before_label"] = _state_label(_group)
+                # المنصرف (تغليف) — من حالة الدفعة الفعلية: السائب أولًا ثم
+                # الباقي المفتوح ثم فتح كاملة (٢٧/٠٩)؛ دفعة بلا تغليف → القديم
+                led = batch.get("_led")
+                if led is not None:
+                    rows[-1]["issued_label"] = led.issued_label(led.take(take))
+                else:
+                    rows[-1]["issued_label"] = _rem_label(batch, take, "")
+                batch["remaining"] = round(batch["remaining"] - take, 6)
+                need = round(need - take, 6)
                 store_bal[_k] = round(store_bal.get(_k, 0.0) - take, 6)
-                rows[-1]["rem_before_label"] = _rem_label(batch, round(store_bal[_k] + take, 6)); rows[-1]["rem_after_label"] = _rem_label(batch, store_bal[_k])
+                rows[-1]["rem_after_label"] = _state_label(_group)
                 rows[-1]["seq"] = _seqs[permit["number"]] = _seqs.get(permit["number"], 0) + 1; rows[-1]["notes"] = user_notes(batch.get("notes"))
     return rows
 
@@ -237,23 +316,24 @@ def stores_report(year, month):
                 "entity": (pe.get("entity_label") or "").strip(),
                 "receiver": ((pe.get("receiver_rank") or "") + " " +
                               (pe.get("receiver_name") or "")).strip(),
+                # (١٤/١٠) مرجع سطر التفريدة — لإعادة تطبيق السحبة على الدفعة
+                "_tref": row,
             })
             target["balances"][row["item"]] = \
                 target["balances"].get(row["item"], 0.0) - row["qty"]
     all_targets = list(report.values()) + [unassigned]
-    for target in all_targets:
-        for item_name, qty in target["balances"].items():
-            spec_entry = specs.get(item_name) or {}
-            if not spec_entry or qty <= 0:
-                continue
-            # آخر مواصفات مسجلة للصنف (الأحدث تحديثًا) — بنوع تغليفها
-            pack_kind = list(spec_entry)[-1]
-            spec = spec_entry[pack_kind]
-            note = pack_breakdown(pack_kind, spec.get("capacity"),
-                                  spec.get("inner_count"), spec.get("inner_capacity"),
-                                  qty, units.get(item_name, ""), inner_kind=spec.get("inner_kind"))
-            if note:
-                target["pack_notes"][item_name] = note
+    # (١٤/١٠) حالة العبوات لكل مخزن × صنف — نفس مصدر التفريدة: نبني خطًا
+    # زمنيًا لكل مجموعة (كل وارد يزرع دفعتها، كل منصرف يسحب منها) — الرصيد
+    # بالتغليف في كل سطر وفي كشف الأرصدة من الحالة الفعلية مش تفكيك ساد.
+    _cyc_key = {"الإمداد": "supply", "المتعهد": "contractor"}
+    _bidx, _groups = {}, {}
+    for _c in ("supply", "contractor"):
+        for _b in _batch_pool(year, month, _c):
+            _bidx[(_c, _b["store_id"], _b["item"]["name"], _b["serial"])] = _b
+            _groups.setdefault((_b["store_id"], _b["item"]["name"]), []).append(_b)
+    _state_ok = {k: all(_batch_ledger(b) is not None for b in v)
+                 for k, v in _groups.items()}
+    _final_state = {}
     for target in all_targets:
         target["inn"].sort(key=lambda x: (x["date_iso"], x.get("serial") or 0))
         target["out"].sort(key=lambda x: (x["date_iso"], x.get("permit_no") or 0))
@@ -276,7 +356,9 @@ def stores_report(year, month):
                [(r["date_iso"] or "", 1, r) for r in target["out"]])
         seq.sort(key=lambda t: (t[0], t[1]))
         run = {}
-        in_tot = {}
+        in_tot, out_tot = {}, {}
+        _tid = (target.get("store") or {}).get("id")
+        _gs = {}   # item -> {serial: PackLedger} — حالة مجموعة المخزن × الصنف
         for _d, _k, r in seq:
             nm = r["item"]
             delta = float(r["qty"] or 0) if _k == 0 else -float(r["qty"] or 0)
@@ -284,12 +366,33 @@ def stores_report(year, month):
             run[nm] = bal
             kind, cap, icnt, icap, ikind = _spec_of(nm)
             r["rem_qty"] = bal
-            r["rem_after"] = (pack_breakdown(kind, cap, icnt, icap, bal,
-                                             units.get(nm, ""), "",
-                                             inner_kind=ikind)
-                              if kind and bal else "")
+            if _state_ok.get((_tid, nm)):
+                _st = _gs.setdefault(nm, {})
+                if _k == 0:
+                    _b = _bidx.get((_cyc_key.get(r.get("cycle"), ""), _tid, nm,
+                                    int(r.get("serial") or 0)))
+                    if _b is not None:
+                        _st[_b["serial"]] = _batch_ledger(_b)
+                else:
+                    _led = _st.get((r.get("_tref") or {}).get("receipt_serial"))
+                    if _led is not None:
+                        _led.take(float(r.get("qty") or 0))
+                r["rem_after"] = _leds_label(_st.values())
+            else:
+                r["rem_after"] = (pack_breakdown(kind, cap, icnt, icap, bal,
+                                                 units.get(nm, ""), "",
+                                                 inner_kind=ikind)
+                                  if kind and bal else "")
             if _k == 0:
                 in_tot[nm] = in_tot.get(nm, 0.0) + float(r["qty"] or 0)
+                if kind:
+                    r["pack_short"] = (pack_breakdown(kind, cap, icnt, icap,
+                                                      float(r["qty"] or 0),
+                                                      units.get(nm, ""), "",
+                                                      inner_kind=ikind) or "")
+            else:
+                out_tot[nm] = out_tot.get(nm, 0.0) + float(r["qty"] or 0)
+                # ١٤/١٠: المنصرف بالتغليف (مثل الوارد) — إجمالي خارج مزدوج
                 if kind:
                     r["pack_short"] = (pack_breakdown(kind, cap, icnt, icap,
                                                       float(r["qty"] or 0),
@@ -299,7 +402,88 @@ def stores_report(year, month):
             nm: pack_breakdown(*_spec_of(nm)[:4], round(q, 6), units.get(nm, ""),
                                "", inner_kind=_spec_of(nm)[4])
             for nm, q in in_tot.items() if _spec_of(nm)[0]}
+        target["out_packs"] = {
+            nm: pack_breakdown(*_spec_of(nm)[:4], round(q, 6), units.get(nm, ""),
+                               "", inner_kind=_spec_of(nm)[4])
+            for nm, q in out_tot.items() if _spec_of(nm)[0]}
+        for _nm, _st in _gs.items():
+            _final_state[(_tid, _nm)] = _st
+    # كشف الأرصدة بالتغليف (١٤/١٠) — من نفس حالة العبوات (المصدر الواحد)،
+    # والصنف القديم بلا تغليف بيتفكك ساد على آخر مواصفاته
+    for target in all_targets:
+        _tid = (target.get("store") or {}).get("id")
+        for item_name, qty in target["balances"].items():
+            if qty <= 0:
+                continue
+            _st = _final_state.get((_tid, item_name))
+            if _st is not None:
+                note = _leds_label(_st.values())
+                if note:
+                    target["pack_notes"][item_name] = note
+                continue
+            spec_entry = specs.get(item_name) or {}
+            if not spec_entry:
+                continue
+            # آخر مواصفات مسجلة للصنف (الأحدث تحديثًا) — بنوع تغليفها
+            pack_kind = list(spec_entry)[-1]
+            spec = spec_entry[pack_kind]
+            note = pack_breakdown(pack_kind, spec.get("capacity"),
+                                  spec.get("inner_count"), spec.get("inner_capacity"),
+                                  qty, units.get(item_name, ""), inner_kind=spec.get("inner_kind"))
+            if note:
+                target["pack_notes"][item_name] = note
     return {"stores": list(report.values()), "unassigned": unassigned}
+
+
+def item_day_rows(inn_rows, out_rows, item_name, unit=""):
+    """سطر لكل يوم فيه حركة على الصنف (توجيه ١٤/١٠) — مصدر واحد للشاشة والإكسل:
+    داخل/خارج اليوم بالتغليف + المورد/المنتج + الرصيد التراكمي في نهاية اليوم.
+    الصنف السادة (بلا تغليف) ما يظهرش «تغليف» — التسمية = الكمية بس."""
+    moves = []
+    for r in inn_rows:
+        if r["item"] != item_name:
+            continue
+        moves.append({"dir": "in", "date": r.get("date_iso") or "",
+                      "qty": float(r.get("qty") or 0),
+                      "supplier": (r.get("supplier") or "").strip(),
+                      "producer": (r.get("producer") or "").strip(),
+                      "pack": r.get("pack_short") or r.get("pack_label") or "",
+                      "rem_qty": r.get("rem_qty")})
+    for r in out_rows:
+        if r["item"] != item_name:
+            continue
+        moves.append({"dir": "out", "date": r.get("date_iso") or "",
+                      "qty": float(r.get("qty") or 0),
+                      "supplier": "", "producer": "",
+                      "pack": r.get("pack_label") or r.get("pack_short") or "",
+                      "rem_qty": r.get("rem_qty")})
+    moves.sort(key=lambda m: (m["date"], m["dir"]))
+    days = {}
+    def _plain(q):
+        return f"{arnum.fmt_qty_trim(float(q or 0))} {unit or ''}".strip()
+    def _add_pack(cell, pack, qty):
+        if not pack or pack == _plain(qty) or pack in cell:
+            return cell
+        return (cell + " + " + pack).strip(" +") if cell else pack
+    for m in moves:
+        key = m["date"]
+        d = days.setdefault(key, {"date": key, "in": 0.0, "out": 0.0,
+                                  "in_pack": "", "out_pack": "",
+                                  "supplier": "", "producer": "",
+                                  "balance": 0.0})
+        if m["dir"] == "in":
+            d["in"] = round(d["in"] + m["qty"], 6)
+            if m["supplier"] and m["supplier"] not in d["supplier"]:
+                d["supplier"] = (d["supplier"] + "، " + m["supplier"]).strip("، ")
+            if m["producer"] and m["producer"] not in d["producer"]:
+                d["producer"] = (d["producer"] + "، " + m["producer"]).strip("، ")
+            d["in_pack"] = _add_pack(d["in_pack"], m["pack"], m["qty"])
+        else:
+            d["out"] = round(d["out"] + m["qty"], 6)
+            d["out_pack"] = _add_pack(d["out_pack"], m["pack"], m["qty"])
+        if m.get("rem_qty") is not None:
+            d["balance"] = float(m["rem_qty"])   # آخر سطر في اليوم = رصيد نهاية اليوم
+    return list(days.values())
 
 
 def stores_general_report(year, month):
@@ -333,6 +517,10 @@ def stores_general_report(year, month):
             "in_pack": (pack_breakdown(kind, sp.get("capacity"), ict[0], ict[1],
                                        inq, unit, "", inner_kind=sp.get("inner_kind"))
                         or "—"),
+            # ١٤/١٠: إجمالي خارج بالتغليف كمان (المزدوجة على كل الأعمدة)
+            "out_pack": (pack_breakdown(kind, sp.get("capacity"), ict[0], ict[1],
+                                        outq, unit, "", inner_kind=sp.get("inner_kind"))
+                         or "—"),
             "balance_pack": (pack_breakdown(kind, sp.get("capacity"), ict[0], ict[1],
                                             bal, unit, "", inner_kind=sp.get("inner_kind"))
                              or "—"),

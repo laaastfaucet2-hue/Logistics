@@ -139,9 +139,26 @@ def _tameed_day_totals(year, month, entity_id, selected):
     return None
 
 
-def _slots_vars(year, month, entity, selected):
+def _draft_totals(req):
+    """عدّادات فورم التأميدة المفتوح (مش محفوظة) — ١٤/١٠:
+    المربعات تتبع الرقم المكتوب في الفورم حتى قبل حفظ التأميدة."""
+    vals = {k: req.values.get(k) for k in ("o", "i")}
+    if not any(v not in (None, "") for v in vals.values()):
+        return None
+    def _n(v):
+        try:
+            return max(0, int(str(v).strip()))
+        except (TypeError, ValueError):
+            return 0
+    return {"officers": _n(vals["o"]), "individuals": _n(vals["i"])}
+
+
+def _slots_vars(year, month, entity, selected, draft_totals=None):
     """مربعات اليوم الذكية: عدد المربعات من تأميدة اليوم (توجيه ٣٠/٠٩/٢٠٢٦)،
     والمملوء منها = الراغبون المسجلون بالأسماء (بالأقدمية) + قوة الفئة للكومبو.
+
+    draft_totals (١٤/١٠): عدّادات فورم التأميدة غير المحفوظ — لو مفيش
+    تأميدة محفوظة لليوم بتتبع الرقم المكتوب؛ المحفوظة لها الأولوية دايمًا.
 
     slots[cat] = {tameeda, count, has_tameeda, boxes (أسماء + فراغات), label}
     force[cat] = أسماء القوة غير المستثناة (للبحث الذكي).
@@ -149,23 +166,28 @@ def _slots_vars(year, month, entity, selected):
     eid = entity["id"] if entity else None
     state = dr.day_state(year, month, selected, eid) if eid else {}
     tameed_totals = _tameed_day_totals(year, month, eid, selected) if eid else None
+    draft_mode = bool(draft_totals) and not tameed_totals
+    # المحفوظة لها الأولوية دايمًا — الـ draft بيظهر بس لو مفيش محفوظة
+    totals = tameed_totals or draft_totals
     slots, force = {}, {}
     for cat, key, label in (("officers", "officers", "الضباط"),
                             ("individuals", "individuals", "فرد")):
         persons = dr.list_persons(year, month, entity_id=eid, category=cat,
                                   excluded=False) if eid else []
         willing = [p["full_name"] for p in persons if state.get(p["id"])]
-        tameeda = tameed_totals[key] if tameed_totals else 0
+        tameeda = totals[key] if totals else 0
         boxes = list(willing) + [None] * max(0, tameeda - len(willing))
         slots[cat] = {"tameeda": tameeda, "count": len(willing),
-                      "has_tameeda": bool(tameed_totals), "boxes": boxes,
+                      "has_tameeda": bool(totals), "draft_mode": draft_mode,
+                      "boxes": boxes,
                       "label": label,
                       # ١٣/١٠: مربع رتبة منسدلة (كل رتب الفئة) + مربع اسم
                       "ranks": list(dr.RANKS[cat]),
                       "rank_of": {p["full_name"]: (p.get("rank") or "")
                                   for p in persons}}
         force[cat] = [p["full_name"] for p in persons]
-    return {"slots": slots, "force": force, "tameed_totals": tameed_totals}
+    return {"slots": slots, "force": force, "tameed_totals": totals,
+            "draft_mode": draft_mode}
 
 
 def _daily_vars(year, month, entity, selected):

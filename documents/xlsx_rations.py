@@ -12,6 +12,7 @@ import json
 from data_access import dataguard
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 from data_access import storage
 from data_access import db_letterhead as db
@@ -125,6 +126,8 @@ def _kind_sheet(wb, name, year, month, short, section_name, kind_key):
 
 
 def _entity_sheet(wb, entity, year, month, section_name="مقررات المتعهد"):
+    """شيت جهة توزيع — ١٤/١٠: كل يوم بعموداته الثلاثة (فطار/غداء/عشاء)."""
+    from services import ration_lines as rl
     name = INVALID_SHEET.sub("", entity["name"])[:28] or "جهة"
     base = name
     i = 2
@@ -133,29 +136,61 @@ def _entity_sheet(wb, entity, year, month, section_name="مقررات المتع
         i += 1
     ws = wb.create_sheet(name)
     ws.sheet_view.rightToLeft = True
-    headers = (["مسلسل", "اسم الصنف", "الوحدة", "فطار", "غداء", "عشاء"] + DAYS)
-    add_letterhead(ws, year, month, len(headers))
+    static = ["مسلسل", "اسم الصنف", "الوحدة", "فطار", "غداء", "عشاء"]
+    ncols = len(static) + 7 * 3
+    label_row = TABLE_ROW + 1        # سطر ترويسة الوجبات (فطار/غداء/عشاء تحت كل يوم)
+    data_row = TABLE_ROW + 2
+    add_letterhead(ws, year, month, ncols)
     _title(ws, f"توزيع {section_name} — {entity['name']} — {MONTH_NAMES[month-1]} {arnum.to_arabic_indic(year)}",
-           len(headers))
-    _header(ws, TABLE_ROW, headers)
+           ncols)
+    # الترويسة: أعمدة ثابتة + اسم كل يوم مدموج فوق أعمدة وجباته الثلاثة
+    for j, h in enumerate(static, start=1):
+        c = ws.cell(TABLE_ROW, j, h)
+        c.font = Font(bold=True, size=12, color=WHITE, name="Cairo")
+        c.fill = PatternFill("solid", fgColor=GOLD)
+        c.alignment = CENTER
+        c.border = _BORDER
+        c2 = ws.cell(label_row, j, "")
+        c2.fill = PatternFill("solid", fgColor=GOLD)
+        c2.border = _BORDER
+    meal_labels = ("فطار", "غداء", "عشاء")
+    for d in range(7):
+        c0 = len(static) + d * 3 + 1
+        ws.merge_cells(start_row=TABLE_ROW, start_column=c0,
+                       end_row=TABLE_ROW, end_column=c0 + 2)
+        for k in range(3):
+            c = ws.cell(TABLE_ROW, c0 + k, DAYS[d] if k == 0 else None)
+            c.font = Font(bold=True, size=12, color=WHITE, name="Cairo")
+            c.fill = PatternFill("solid", fgColor=GOLD)
+            c.alignment = CENTER
+            c.border = _BORDER
+            s = ws.cell(label_row, c0 + k, meal_labels[k])
+            s.font = Font(bold=True, size=10, color=WHITE, name="Cairo")
+            s.fill = PatternFill("solid", fgColor="16305F")
+            s.alignment = CENTER
+            s.border = _BORDER
+    ws.row_dimensions[TABLE_ROW].height = 22
+    ws.row_dimensions[label_row].height = 18
     rows = []
     for it in entity["items"]:
-        dq = it.get("day_qty", {})
         days = []
         for d in range(7):
-            if d not in it["days"]:
-                days.append("")
-            elif dq.get(d) is None:
-                days.append("✓")
+            if d not in it.get("days", []):
+                days.extend(["", "", ""])
             else:
-                days.append(_num(dq[d]))
+                m = rl.daily_meals(it, d)
+                days.extend([_num(m["breakfast"]), _num(m["lunch"]), _num(m["dinner"])])
         rows.append([arnum.to_arabic_indic(it["serial"]), it["name"], it["unit"],
                      _num(it["breakfast"]), _num(it["lunch"]), _num(it["dinner"])] + days)
-    next_row = _rows(ws, DATA_ROW, rows) + 2
-    _signatures(ws, next_row, len(headers), year, month)
-    ws.print_area = f"A1:{__import__('openpyxl').utils.get_column_letter(len(headers))}{next_row + 1}"
-    for j, w in enumerate([8, 24, 9, 9, 9, 9] + [9] * 7, start=1):
-        ws.column_dimensions[chr(64 + j)].width = w
+    next_row = _rows(ws, data_row, rows) + 2
+    _signatures(ws, next_row, ncols, year, month)
+    last_col = __import__("openpyxl").utils.get_column_letter(ncols)
+    ws.print_area = f"A1:{last_col}{next_row + 1}"
+    ws.print_title_rows = f"1:{label_row}"
+    ws.freeze_panes = f"A{data_row}"
+    widths = [8, 24, 9] + [9] * 3 + [8] * (7 * 3)
+    for j, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(j)].width = w
 
 
 def xlsx_path(year, month, short):

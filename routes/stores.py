@@ -17,6 +17,7 @@ from core import arabic_numbers as arnum
 from core import egtime
 from data_access import months
 from data_access import db_warehouses as dw
+from data_access import db_warehouses_stores as dws
 from data_access import db_stores
 from services import stores_fs as sf
 
@@ -140,7 +141,12 @@ def _enrich(target):
         it["balance"] = round(target["balances"].get(name, it["in"] - it["out"]), 6)
         it["pack"] = target["pack_notes"].get(name) or ""
         it["in_pack"] = (target.get("in_packs") or {}).get(name) or ""
+        # ١٤/١٠: إجمالي خارج بالتغليف (المزدوجة: بالوحدة + بالتغليف)
+        it["out_pack"] = (target.get("out_packs") or {}).get(name) or ""
         it["moves"].sort(key=lambda m: (m["date"] or "", m["dir"]))
+        # ١٤/١٠: تاب فرعي لكل صنف — سطر لكل يوم نشط (نفس مصدر الإكسل)
+        it["days"] = dws.item_day_rows(target["inn"], target["out"], name,
+                                       it.get("unit") or "")
     target["items"] = dict(sorted(items.items(), key=lambda kv: -kv[1]["balance"]))
     # سجل حركة المخزن كله: داخل وخارج كل الأصناف بترتيب التواريخ (توجيه ٠٨/١٠)
     all_moves = []
@@ -149,6 +155,8 @@ def _enrich(target):
             all_moves.append(dict(m, item=name, unit=it["unit"]))
     all_moves.sort(key=lambda m: (m["date"] or "", m["dir"]))
     target["all_moves"] = all_moves
+    # تابات فرعية لكل صنف في سجل الحركة (١٤/١٠): الإجماليات فوق + تاب لكل صنف
+    target["mv_items"] = [(name, it) for name, it in target["items"].items() if it["moves"]]
     return target
 
 

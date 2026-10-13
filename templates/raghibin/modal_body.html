@@ -72,6 +72,11 @@
     <div class="rg-slotshead">
       <b>🏖 قسمة الأسماء في كشوفات التجهيز اليومية:</b>
       <span class="rg-updated-chip">تم تحديث (<span class="rg-filled-count">{{ group.count | aindic }}</span> من أصل {{ group.tameeda | aindic }} اسم)</span>
+      {% if group.draft_mode %}
+      <span class="rg-draft-chip" title="المربعات حسب عدّادات فورم التأميدة المفتوح — التأميدة نفسها لسه غير محفوظة">
+        حسب عدّادات فورم التأميدة (غير محفوظة)
+      </span>
+      {% endif %}
     </div>
     <form method="post" action="/raghibin/daily/save" data-ragboxes>
       <input type="hidden" name="e" value="{{ entity.id }}">
@@ -105,8 +110,14 @@
       قائمة القوة يملأهما تلقائيًا، والكتابة بالبحث الذكي. وأي اسم جديد سيطرح عليك السؤال:
       هل تريد إضافته كقوة دائمة للجهة؟</p>
       {% else %}
-      <p class="rg-dim rg-slots-hint">لا توجد مربعات بعد — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }}
-      لتظهر مربعاتها (عدد المربعات = أعداد التأميدة). الزر بالأسفل يعمل دائمًا ويحفظ حالة الراغبين.</p>
+      <p class="rg-dim rg-slots-hint">
+        {% if group.draft_mode %}
+        لا توجد مربعات — عدّادات التأميدة في الفورم صفر. اكتب عدّادات الضباط/الأفراد في فورم التأميدة واعمل تحديث.
+        {% else %}
+        لا توجد مربعات بعد — سجّل تأميدة لهذه الجهة يوم {{ sel_day | aindic }}
+        لتظهر مربعاتها (عدد المربعات = أعداد التأميدة). الزر بالأسفل يعمل دائمًا ويحفظ حالة الراغبين.
+        {% endif %}
+      </p>
       {% endif %}
       <div class="rg-modal-foot">
         <button class="rt-btn gold" type="submit">حفظ</button>

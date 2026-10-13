@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}ملف المجند — {{ recruit.name }} • منظومة التعيينات{% endblock %}
 {% block print_doc_title %}{{ print_title }}{% endblock %}
@@ -64,8 +65,8 @@
   <div class="rc-daily">
     {% for g in file_data.daily %}
     <div class="rc-daily-month"><b>{{ g.label }}</b><span class="dim rc-mini">{{ g.days | length | aindic }} يومًا</span></div>
-    <div class="table-wrap"><table class="rt-table rc-daily-table">
-      <thead><tr><th class="w-date">التاريخ</th><th class="w-dow">اليوم</th><th class="w-st">الحالة</th><th>الملاحظات</th></tr></thead>
+    <div class="table-wrap rc-stickwrap"><table class="rt-table rc-daily-table">
+      <thead><tr><th class="w-date num">التاريخ</th><th class="w-dow">اليوم</th><th class="w-st">الحالة</th><th>الملاحظات</th></tr></thead>
       <tbody>
       {% for dd in g.days %}
       <tr class="{% if dd.today %}rc-daily-today{% elif not dd.status %}rc-daily-blank{% endif %}">
@@ -90,7 +91,7 @@
   </div>
   {% if file_data.months %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>الشهر</th><th>حضور</th><th>إجازة</th><th>غياب</th><th>مأمورية</th><th>مستشفى</th><th>أخرى</th><th>أيام مسجلة</th></tr></thead>
+    <thead><tr><th>الشهر</th><th class="num">حضور</th><th class="num">إجازة</th><th class="num">غياب</th><th class="num">مأمورية</th><th class="num">مستشفى</th><th class="num">أخرى</th><th class="num">أيام مسجلة</th></tr></thead>
     <tbody>
       {% for row in file_data.months %}
       <tr>

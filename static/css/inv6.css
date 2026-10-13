@@ -17,7 +17,11 @@
 
 /* ===== الورقة (شكل الدفتر) ===== */
 .inv6-paper { background: #fff; color: #10141f; border-radius: 10px;
-  padding: 26px 26px 22px; direction: rtl; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  padding: 26px 26px 22px; direction: rtl; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  /* ١٤/١٠: لو الورقة أوسع من الشاشة تاخد اسكرول أفقي بدل ما الأعمدة تتضغط */
+  overflow-x: auto; }
+@media screen { .inv6-paper > * { min-width: 940px; } }
+@media print { .inv6-paper { overflow: visible; } .inv6-paper > * { min-width: 0; } }
 
 .inv6-headrow { display: grid; grid-template-columns: 1.1fr 1fr 1.1fr; gap: 10px;
   align-items: start; margin-bottom: 18px; }
@@ -32,6 +36,11 @@
 .inv6-inl { border: 0; border-bottom: 1px solid #9aa3b5; background: transparent;
   font: inherit; font-weight: 700; padding: 1px 4px; min-width: 110px; }
 .inv6-inl:focus { outline: 2px solid #b8860b55; }
+
+/* رسالة «مفيش أصناف» جوه الورقة نفسها (توجيه ١٥/١٠) — بدل التوست المؤقت والخروج من الصفحة */
+.iv6-note { border: 1px solid #b8860b; background: #fff7e0; color: #7a4b00;
+  border-radius: 8px; padding: 10px 14px; margin: 0 0 14px;
+  font-size: .86rem; font-weight: 700; line-height: 1.9; }
 
 /* ===== جدول الجرد — نِسب أعمدة ملف التصميم المعتمد (P..D) ===== */
 .inv6-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -54,6 +63,9 @@
 .inv6-table .iv-num { white-space: nowrap; }
 .inv6-table .iv-wide { }
 .inv6-table .iv-book { font-weight: 900; }
+/* قاعدة ٨٨ (١٢/١٠): الزيادة وارد = أخضر · العجز منصرف = أحمر */
+.inv6-table .iv-inc { color: var(--green); font-weight: 900; }
+.inv6-table .iv-dec { color: var(--red); font-weight: 900; }
 .inv6-table .empty { text-align: center; color: #666; padding: 16px; }
 
 .iv-in, .iv-sel { width: 100%; border: 0; background: transparent; text-align: center;

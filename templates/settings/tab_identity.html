@@ -25,7 +25,7 @@
     <div style="flex:1;min-width:280px">
       {% if identity_ctx.logo %}
       <p style="margin-top:0"><b>اللوجو مرفوع</b>{% if identity_ctx.updated_at %}
-        <small class="dim"> — آخر تحديث: <bdi dir="ltr">{{ identity_ctx.updated_at[:16] }}</bdi></small>{% endif %}</p>
+        <small class="dim"> — آخر تحديث: <bdi dir="ltr">{{ identity_ctx.updated_at | datetimefmt }}</bdi></small>{% endif %}</p>
       {% endif %}
       <form method="post" action="{{ url_for('settings.identity_logo_upload') }}" enctype="multipart/form-data"
             style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">

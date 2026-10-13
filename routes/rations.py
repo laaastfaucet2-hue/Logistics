@@ -94,6 +94,11 @@ def page(section):
     v = _page_vars(section, kind)
     if cfg["has_dist"] and request.args.get("tab") == "dist":
         v["entities"] = de.list_entities(year, month, section)
+        # ١٤/١٠: قيم عرض مربعات الوجبات الثلاث لكل يوم (فطار/غداء/عشاء)
+        from services import ration_lines as rl
+        for e in v["entities"]:
+            for it in e.get("items") or []:
+                it["day_cells"] = rl.day_cell_values(it)
         v["ee"] = arnum.parse_int(request.args.get("ee"))
         v["ee_item"] = de.get_entity_item(year, month, v["ee"]) if v["ee"] else None
         # ١٤/١٠: تأكيد الربط — اسم الجهة في التاميدات لازم يكون هو نفس اسمها
@@ -360,14 +365,19 @@ def eitem_delete(section, item_id):
 def eitem_days(section, item_id):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
-    # حفظ دفعة واحدة: كل يوم محدد + مقرره الخاص (فارغ = رقم الوجبات العام)
+    # ١٤/١٠: كل يوم محدد + وجباته الثلاث (فطار/غداء/عشاء) — الفارغ = القيمة
+    # العامة لوجبتها. يوم محدد بلا وجبات مملوءة = مقيد باليوم على قيمه العامة.
     day_qty = {}
     for d in range(7):
         if request.form.get(f"wd_{d}") is not None:
-            day_qty[d] = arnum.parse_float(request.form.get(f"qty_{d}", ""))
+            day_qty[d] = {
+                "breakfast": arnum.parse_float(request.form.get(f"qty_{d}_b", "")),
+                "lunch": arnum.parse_float(request.form.get(f"qty_{d}_l", "")),
+                "dinner": arnum.parse_float(request.form.get(f"qty_{d}_d", "")),
+            }
     de.set_days(year, month, item_id, day_qty)
     xlsx_rations.rebuild(year, month, section)
-    msg = (f"حُفظ تخصيص {arnum.to_arabic_indic(len(day_qty))} يومًا بمقرراتها ✓"
+    msg = (f"حُفظ تخصيص {arnum.to_arabic_indic(len(day_qty))} يومًا بوجباته ✓"
            if day_qty else "عاد الصنف للصرف اليومي")
     return _rb(section, tab="dist", ok=msg + " — وتحديث الإكسل")
 

@@ -709,7 +709,7 @@ def _save_wh1(year, month, cycle, fixed_serial=None):
             prod_iso = _opt_date(request.form.get(f"l{i}_prod_date"))
             exp_iso = _opt_date(request.form.get(f"l{i}_exp_date"))
         except ValueError:
-            raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه يوم/شهر/سنة صحيحًا")
+            raise ValueError(f"الصنف «{name}»: تاريخ مستحيل — اكتبه سنة/شهر/يوم صحيحًا")
         if prod_iso and exp_iso and exp_iso < prod_iso:
             raise ValueError(f"الصنف «{name}»: تاريخ الصلاحية قبل تاريخ الإنتاج")
         stores_parts = _stores_from_form(f"l{i}_")
@@ -833,7 +833,7 @@ def wh3_opener():
         prod_iso = _opt_date(request.form.get("prod_date"))
         exp_iso = _opt_date(request.form.get("exp_date"))
     except ValueError:
-        return _rb(cycle, "wh3", err="تاريخ مستحيل — اكتب التاريخ يوم/شهر/سنة صحيحًا",
+        return _rb(cycle, "wh3", err="تاريخ مستحيل — اكتب التاريخ سنة/شهر/يوم صحيحًا",
                    item=item_id)
     date_iso = f"{year:04d}-{month:02d}-{day:02d}"
     # تعديل (مش تسجيل أول مرة)؟ — لقطات قبل الحفظ للتقرير

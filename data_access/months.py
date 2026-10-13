@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS entity_item_days (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     entity_item_id INTEGER NOT NULL REFERENCES entity_items(id) ON DELETE CASCADE,
     weekday INTEGER NOT NULL,       -- وجود أي يوم = المقرر مخصص لتلك الأيام فقط
-    qty REAL                        -- مقرر هذا اليوم تحديدًا؛ الفارغ = قيمة الوجبات العامة
+    meal TEXT,                      -- ١٤/١٠: breakfast/lunch/dinner؛ NULL = صف إرثي (مجموع اليوم)
+    qty REAL                        -- مقرر هذا اليوم (والوجبة لو meal)؛ الفارغ = القيمة العامة
 );
 """
 
@@ -69,6 +70,10 @@ def _migrate(conn):
         cols = {r[1] for r in conn.execute("PRAGMA table_info(entity_item_days)")}
         if cols and "qty" not in cols:
             conn.execute("ALTER TABLE entity_item_days ADD COLUMN qty REAL")
+            conn.commit()
+        if cols and "meal" not in cols:
+            # ١٤/١٠: تخصيص اليوم بوجباته الثلاث (فطار/غداء/عشاء)
+            conn.execute("ALTER TABLE entity_item_days ADD COLUMN meal TEXT")
             conn.commit()
     except Exception:
         pass

@@ -743,11 +743,25 @@ def build_store_folders(base, rep, units, year=2026, month=9):
         per_item = {}
         for l in move_rows:
             per_item.setdefault(l[3], []).append(l[:3] + l[4:])
+        # ١٤/١٠: شيت «بيوم بيوم» جوه ملف كل صنف — نفس تاب الصنف في الشاشة
+        # (الورق = الإكسل): سطر لكل يوم نشط + الرصيد + المورد/المنتج
+        from data_access import db_warehouses_stores as dws
         for name in sorted(per_item):
-            _save_xlsx(items_dir / _file_name(name), [(
-                "حركة الصنف",
-                [h for h in MOVE_HEADERS if h != "الصنف"],
-                per_item[name])], year, month)
+            days = dws.item_day_rows(target["inn"], target["out"], name,
+                                     units.get(name, ""))
+            day_rows = [(i, _when(d["date"]), d["supplier"] or "—",
+                         d["producer"] or "—",
+                         (d["in_pack"] or _q(d["in"])) if d["in"] else "—",
+                         (d["out_pack"] or _q(d["out"])) if d["out"] else "—",
+                         _q(d["balance"]) + " " + (units.get(name) or "—"))
+                        for i, d in enumerate(days, 1)]
+            _save_xlsx(items_dir / _file_name(name), [
+                ("حركة الصنف",
+                 [h for h in MOVE_HEADERS if h != "الصنف"],
+                 per_item[name]),
+                ("بيوم بيوم",
+                 ["م", "اليوم", "الشركة الموردة", "الشركة المنتجة",
+                  "داخل (تغليف)", "خارج (تغليف)", "الرصيد"], day_rows)], year, month)
         # 3) كشف أرصدة المخازن/
         bal_dir = folder / "كشف أرصدة المخازن"
         bal_dir.mkdir(parents=True, exist_ok=True)

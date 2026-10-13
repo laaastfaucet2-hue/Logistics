@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}المجندين — الإحصائيات والإشعارات • منظومة التعيينات{% endblock %}
 {% block print_doc_title %}الإحصائيات والإشعارات — {{ month_name }} {{ year | aindic }}{% endblock %}
@@ -119,7 +120,7 @@
       <span class="panel-hint">ترتيب أصل القوة بتاريخ انتهاء الخدمة (أول ٥)</span></div>
     {% if discharge_rank %}
     <div class="table-wrap"><table class="rt-table">
-      <thead><tr><th>المجند</th><th>المتبقي</th><th>تاريخ التسريح</th></tr></thead>
+      <thead><tr><th>المجند</th><th class="num">المتبقي</th><th class="num">تاريخ التسريح</th></tr></thead>
       <tbody>{% for r, n in discharge_rank %}<tr>
         <td><a class="rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند"><b>{{ r.name }}</b></a>{% if r.governorate %} <small class="dim">{{ r.governorate }}</small>{% endif %}</td>
         <td class="num {% if n is not none and n <= 0 %}bad{% elif n is not none and n <= 60 %}warn{% else %}good{% endif %}">
@@ -149,7 +150,7 @@
     <div class="panel-head"><h3>⏳ خدمة تنتهي خلال ٦٠ يومًا</h3></div>
     {% if discharging %}
     <div class="table-wrap"><table class="rt-table">
-      <thead><tr><th>المجند</th><th>المتبقي</th><th>التسريح</th></tr></thead>
+      <thead><tr><th>المجند</th><th class="num">المتبقي</th><th class="num">التسريح</th></tr></thead>
       <tbody>{% for r, n in discharging %}<tr>
         <td><a class="rc-name-link" href="{{ url_for('recruits.page', tab='file', rid=r.id) }}" title="فتح تتبع المجند"><b>{{ r.name }}</b></a></td><td class="num">{{ n | aindic }} يومًا</td><td class="num">{{ date_text(r.service_end) }}</td>
       </tr>{% endfor %}</tbody></table></div>

@@ -1,4 +1,4 @@
-/* Local Arabic calendar + fixed dd/mm/yyyy text inputs; no native US-format field. */
+/* Local Arabic calendar + fixed yyyy/mm/dd text inputs; no native US-format field. */
 (function () {
   'use strict';
   const D = window.LogisticsDates;
@@ -11,7 +11,7 @@
       input.setCustomValidity(''); input.removeAttribute('aria-invalid'); return true;
     }
     const date = D.parse(input.value);
-    const message = date ? '' : 'تاريخ غير صالح؛ اكتب يوم/شهر/سنة، مثال: ٢٢/٠٩/٢٠٢٦';
+    const message = date ? '' : 'تاريخ غير صالح؛ اكتب سنة/شهر/يوم، مثال: ٢٠/٠٩/٢٢';
     input.setCustomValidity(message);
     if (date) {
       input.removeAttribute('aria-invalid');
@@ -90,7 +90,7 @@
   function createPopover() {
     const box = document.createElement('section');
     box.id = 'arabicDatePicker'; box.className = 'date-popover'; box.hidden = true; box.dir = 'rtl'; box.lang = 'ar';
-    box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'اختيار التاريخ — يوم/شهر/سنة');
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'اختيار التاريخ — سنة/شهر/يوم');
     box.innerHTML = `<div class="date-calendar-head">
       <button type="button" class="icon-btn" data-date-prev title="الشهر السابق" aria-label="الشهر السابق">${arrow('right')}</button>
       <strong class="date-month-title" aria-live="polite"></strong>

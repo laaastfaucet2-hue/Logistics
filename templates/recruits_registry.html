@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_field, date_text, period_text %}
 {% block title %}المجندين — أصل القوة • منظومة التعيينات{% endblock %}
 {% block print_doc_title %}أصل القوة — {{ month_name }} {{ year | aindic }}{% endblock %}
@@ -21,7 +22,7 @@
       <h3>{{ '✏️ تعديل بيانات مجند' if is_edit else '➕ تسجيل مجند جديد' }}</h3>
       {% if is_edit %}<a class="rt-btn dim" href="{{ url_for('recruits.page') }}&tab=registry">إلغاء</a>{% endif %}
     </div>
-    <p class="date-format-hint" id="date-format-hint">كل التواريخ: يوم/شهر/سنة <bdi dir="ltr">٢٢/٠٩/٢٠٢٦</bdi> — يمكن الكتابة أو الاختيار من التقويم.</p>
+    <p class="date-format-hint" id="date-format-hint">كل التواريخ: سنة/شهر/يوم <bdi dir="ltr">٢٠٢٦/٠٩/٢٢</bdi> — يمكن الكتابة أو الاختيار من التقويم.</p>
     {% if form_error %}<div class="flash flash-error" role="alert">{{ form_error }}</div>{% endif %}
     <input type="hidden" name="id" value="{{ edit_item.id if edit_item else '' }}">
 
@@ -95,16 +96,16 @@
     <div class="table-wrap">
       <table class="rt-table">
         <thead><tr>
-          <th title="تحديد للنسخ">نسخ</th><th>م</th><th>الصورة</th><th>الاسم</th><th>الرقم العسكري</th>
+          <th class="mid" title="تحديد للنسخ">نسخ</th><th class="num">م</th><th class="mid">الصورة</th><th>الاسم</th><th class="num">الرقم العسكري</th>
           <th title="آخر حالة مسجلة في اليومية العامة حتى اليوم — تتجدد تلقائيًا">الحالة</th><th>الخدمة</th>
           <th>المحافظة / المدينة</th><th>الشهادة الصحية</th><th>إجراءات</th>
         </tr></thead>
         <tbody>
           {% for r in recruits %}
           <tr>
-            <td><input type="checkbox" form="monthCopyForm" name="recruit_ids" value="{{ r.id }}" aria-label="تحديد {{ r.name }} للنسخ"></td>
+            <td class="mid"><input type="checkbox" form="monthCopyForm" name="recruit_ids" value="{{ r.id }}" aria-label="تحديد {{ r.name }} للنسخ"></td>
             <td class="num">{{ loop.index | aindic }}</td>
-            <td>{% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% else %}<span class="rc-avatar ph">؟</span>{% endif %}</td>
+            <td class="mid">{% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% else %}<span class="rc-avatar ph">؟</span>{% endif %}</td>
             <td><b class="rc-sname">{{ r.name }}</b>{% if discharge[r.id] is not none and 0 <= discharge[r.id] <= 60 %}
               <span class="rc-mini warn">⏳ {{ discharge[r.id] | aindic }} يومًا للتسريح</span>{% endif %}</td>
             <td class="num rc-smil">{{ r.mil_no | aindic }}</td>

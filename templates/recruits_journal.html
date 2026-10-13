@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}المجندين — اليومية العامة • منظومة منظومة التعيينات{% endblock %}
 {% block print_doc_title %}يومية يوم {{ period_text(year, month, day) }} — {{ month_name }} {{ year | aindic }}{% endblock %}
@@ -68,7 +69,11 @@
       </form></div>
     {% elif ev.kind == 'permit_gap' %}
     {% set r0 = ev.ranges.values() | first %}
-    <div class="rc-banner danger">⚠️ <b>{{ ev.names | andjoin }}</b> — تصريح يوم {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }} صادر في يومية اليوم فقط دون «إجازة» — أكمل التسجيل.</div>
+    <div class="rc-banner danger">⚠️ <b>{{ ev.names | andjoin }}</b> — تصريح يوم {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }} صادر في يومية اليوم فقط دون «إجازة» — أكمل التسجيل.
+      <form method="post" action="{{ url_for('recruits.journal_confirm_leaves') }}" class="inline-f">
+        <input type="hidden" name="day" value="{{ day }}">
+        <button class="rc-mini-btn" type="submit">سجّلهم في اليومية</button>
+      </form></div>
     {% elif ev.kind == 'permit_end' %}
     <div class="rc-banner draft">↩️ <b>{{ ev.names | andjoin }}</b> — انتهى تصريح الإجازة أمس — أكّد حضورهم في يومية اليوم.</div>
     {% elif ev.kind == 'leave_cut' %}
@@ -97,10 +102,18 @@
     <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }} في إجازة</b> — {{ 'التصريح صادر ✓' if ev.all_permitted else 'أصدر التصريح اليوم' }}.</div>
     {% elif ev.kind == 'permit_start' %}
     {% set r0 = ev.ranges.values() | first %}
-    <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }}</b> — إجازة منذ يوم {{ period_text(year, month, r0[0]) }} والتصريح صادر ✓ — لا تنسَ اليومية.</div>
+    <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }}</b> — إجازة بتصريح ({{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }}) صادر ✓ — سجّلهم بضغطة.
+      <form method="post" action="{{ url_for('recruits.journal_confirm_leaves') }}" class="inline-f">
+        <input type="hidden" name="day" value="{{ day + 1 }}">
+        <button class="rc-mini-btn" type="submit">سجّلهم في اليومية</button>
+      </form></div>
     {% elif ev.kind == 'permit_gap' %}
     {% set r0 = ev.ranges.values() | first %}
-    <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }}</b> — التصريح ساري {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }} — لا تنسَ «إجازة» في يومية الغد.</div>
+    <div class="rc-banner warn">🛎️ <b>غدًا: {{ ev.names | andjoin }}</b> — التصريح ساري {{ period_text(year, month, r0[0]) }}–{{ period_text(year, month, r0[1]) }} — لا تنسَ «إجازة» في يومية الغد.
+      <form method="post" action="{{ url_for('recruits.journal_confirm_leaves') }}" class="inline-f">
+        <input type="hidden" name="day" value="{{ day + 1 }}">
+        <button class="rc-mini-btn" type="submit">سجّلهم في اليومية</button>
+      </form></div>
     {% elif ev.kind in ('pun_start', 'pun_end') %}
     {% set r0 = ev.ranges.values() | first %}
     <div class="rc-banner {{ 'warn' if ev.kind == 'pun_start' else 'draft' }}">{{ ev.icon }} <b>غدًا: {{ ev.names | andjoin }} — {% if ev.kind == 'pun_start' %}يدخلون {{ ev.noun }}{% else %}{{ ev.noun }} تنتهي{% endif %}</b>
@@ -130,14 +143,14 @@
       <form method="post" action="{{ url_for('recruits.journal_save') }}">
         <input type="hidden" name="day" value="{{ day }}">
         <input type="hidden" name="source_day" value="{{ meta.source_day or carried_from | default(0) }}">
-        <div class="table-wrap">
+        <div class="table-wrap rc-stickwrap">
           <table class="rt-table rc-jtable">
-            <thead><tr><th title="حدد للنزول في الإجازة المجمّعة (اللوحة تحت الجدول)"></th><th>م</th><th>المجند</th><th>الحالة</th><th>ملاحظة (لحالة أخرى)</th></tr></thead>
+            <thead><tr><th class="mid" title="حدد للنزول في الإجازة المجمّعة (اللوحة تحت الجدول)"></th><th class="num">م</th><th>المجند</th><th>الحالة</th><th>ملاحظة (لحالة أخرى)</th></tr></thead>
             <tbody>
               {% for r in recruits %}
               {% set cur = day_map.get(r.id) %}
               <tr>
-                <td><input type="checkbox" class="rc-jchk" data-rid="{{ r.id }}" title="حدد للنزول في الإجازة المجمّعة"></td>
+                <td class="mid"><input type="checkbox" class="rc-jchk" data-rid="{{ r.id }}" title="حدد للنزول في الإجازة المجمّعة"></td>
                 <td class="num">{{ loop.index | aindic }}</td>
                 <td>
                   <div class="rc-person">
@@ -197,7 +210,7 @@
           تأكيد: نزولهم الإجازة + عمل التصريح
         </button>
       </form>
-      <div class="panel-hint" style="margin-top:8px">لو النزول النهارده، حط «حضروا لحد الساعة … ونزلوا الساعة …» وهتتحط في اليومية العامة (وتظهر في كشف اليومية المطبوع). إن وقع يومٌ مثبت داخل المدة يُرفض التسجيل حتى تفتحه.</div>
+      <div class="panel-hint" style="margin-top:8px">لو النزول النهارده، حط «حضروا لحد الساعة … ونزلوا الساعة …» وهتتحط في اليومية العامة (وتظهر في كشف اليومية المطبوع). ولو النزول <b>بكرة</b>: التصريح يتعمل حالًا والتسجيل بيتم بضغطة «سجّلهم في اليومية» من بانر الغد داخل اليومية. إن وقع يومٌ مثبت داخل المدة يُرفض التسجيل حتى تفتحه.</div>
     </div>
     {% endif %}
 

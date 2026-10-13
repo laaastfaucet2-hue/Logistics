@@ -479,6 +479,8 @@ def _lists(v):
         day = arnum.parse_int(request.args.get("day")) or v["info"]["real_day"] or 1
         dmap = da.get_day_map(year, month, day)
         v["day"] = day
+        # «إجازة مجمّعة» من الحضور (قرار ١٤/١٠): النافذة كلها بتلف حول اليوم الحقيقي
+        v["jl_today"] = v["info"]["real_day"] or 1
         v["rows"] = [(v["by_id"][rid], st) for rid, st in dmap.items()
                      if rid in v["by_id"] and st["status"] == "حضور"]
         # «حضور من يوم كام + المدة + آخر إجازة»
@@ -644,13 +646,14 @@ def send_leaves():
     year, month = _ctx()
     rids = [x for x in (arnum.parse_int(v) for v in request.form.getlist("rid")) if x]
     start = request.form.get("start") or "today"
-    t = arnum.parse_int(request.form.get("to"))
     t_present = (request.form.get("t_present") or "").strip()
     t_left = (request.form.get("t_left") or "").strip()
     info = _today_info(year, month, 1)
     real_day = info["real_day"] or 1
     eom = egtime.days_in_month(year, month)
     f = real_day if start == "today" else real_day + 1
+    # «حتى يوم» اختياري: سيبتها فاضية = إجازة يوم واحد (نفس يوم النزول)
+    t = arnum.parse_int(request.form.get("to")) or f
     if not rids:
         return _rb(err="حدد واحد على الأقل من المجندين (مربع الاختيار في جدول اليومية)", tab="journal", day=real_day)
     if not t or not (f <= t <= eom):
@@ -677,10 +680,14 @@ def send_leaves():
             head_note = "حضروا لحد الساعة {} ونزلوا الإجازة الساعة {}".format(t_present, t_left)
         elif t_left:
             head_note = "نزلوا الإجازة الساعة {}".format(t_left)
-    for c in chosen:
-        if f < t:
-            da.set_range(year, month, c["id"], "إجازة", f + 1, t)
-        da.set_range(year, month, c["id"], "إجازة", f, f, head_note)
+    # نزول «بكرة» (قرار ١٤/١٠): التصريح يتعمل حالًا والتسجيل مُرجأ لضغطة واحدة
+    # من بانر اليومية («سجّلهم في اليومية») — عشان الترحيل التلقائي لباقي المجندين
+    # ليوم بكرة يشتغل عادي ما دام اليوم لسه فاضي.
+    if start == "today":
+        for c in chosen:
+            if f < t:
+                da.set_range(year, month, c["id"], "إجازة", f + 1, t)
+            da.set_range(year, month, c["id"], "إجازة", f, f, head_note)
     _after_attendance_change(year, month)
     if len(chosen) >= 2:
         docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)

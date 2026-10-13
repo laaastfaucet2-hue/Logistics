@@ -11,8 +11,10 @@ from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 
 
-def build(year, month, entity, day, cat, sid=""):
-    """متغيرات قالب raghibin/modal_body.html لجهة/يوم/فئة."""
+def build(year, month, entity, day, cat, sid="", draft_totals=None):
+    """متغيرات قالب raghibin/modal_body.html لجهة/يوم/فئة.
+    draft_totals (١٤/١٠): عدّادات فورم التأميدة غير المحفوظ — المربعات
+    بتتبعها لو مفيش تأميدة محفوظة لليوم."""
     state = dr.day_state(year, month, day, entity["id"]) if entity else {}
     # قائمة القوة في المودال = غير المستثنين فقط (إدارتهم من «الجهات والكوادر»)
     persons = dr.list_persons(year, month, entity_id=entity["id"], category=cat,
@@ -20,7 +22,7 @@ def build(year, month, entity, day, cat, sid=""):
     for person in persons:
         person["willing_today"] = state.get(person["id"])
     from routes.raghibin.context import _slots_vars
-    variables = _slots_vars(year, month, entity, day)
+    variables = _slots_vars(year, month, entity, day, draft_totals=draft_totals)
     variables.update({
         "fcat": cat, "entity": entity, "sel_day": day,
         "year": year, "month": month,

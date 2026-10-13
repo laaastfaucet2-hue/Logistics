@@ -41,6 +41,22 @@ def register(app):
     app.add_template_filter(dates.format_date, "datefmt")
     app.add_template_filter(dates.input_date, "dateinput")
     app.add_template_global(dates.period_date, "period_date")
+
+    def datetimefmt(value, seconds=False):
+        """ISO datetime string/timestamp → «سنة/شهر/يوم — ساعة:دقيقة» عربي (٢٠/١٠/١٣)."""
+        import datetime as _dt
+        try:
+            if isinstance(value, _dt.datetime):
+                parsed = value
+            elif isinstance(value, (int, float)):
+                parsed = _dt.datetime.fromtimestamp(value)
+            else:
+                parsed = _dt.datetime.fromisoformat(str(value)[:19])
+        except (TypeError, ValueError):
+            return value if value is not None else ""
+        return dates.format_datetime(parsed, seconds=seconds)
+
+    app.add_template_filter(datetimefmt, "datetimefmt")
     # تسميات فئات القوة (ضابط/فرد/مجندين) — مصدر واحد لكل عرض في التاميدات والراغبين (توجيه ٠٨/١٠/٢٠٢ — الحروف اتشالت)
     from core import labels
     app.add_template_global(labels.pair3, "pair3")

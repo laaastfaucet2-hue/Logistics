@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}المجندين — {{ {'present':'الحضور','leaves':'الإجازات','absent':'الغياب','other':'أخرى'}[tab] }} • منظومة التعيينات{% endblock %}
 {% block print_doc_title %}{% if tab == 'present' %}حضور يوم {{ period_text(year, month, day) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'leaves' %}إجازات شهر {{ month_name }} {{ year | aindic }}{% elif tab == 'absent' %}سجل الغياب — {{ month_name }} {{ year | aindic }}{% else %}حالات أخرى — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
@@ -21,6 +22,16 @@
 
 {% if tab == 'present' %}
 <!-- ==================== الحضور ==================== -->
+<!-- زر ثابت (يمشي معاك وانت بتنزل): إجازة مجمّعة بتصريح + تسجيل في اليومية (توجيه ١٤/١٠) -->
+<div class="rc-quickbar">
+  <button type="button" class="rt-btn gold" id="rcJointBtn">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    إجازة مجمّعة + تصريح
+  </button>
+  <span class="panel-hint">اختار حاضري اليوم (أو أي مجند) → تصريح بتاريخ اليوم + تسجيل تلقائي في اليومية.
+    ونزول «بكرة» بيفضل تذكير في اليومية لحد ما تضغط «سجّلهم في اليومية».</span>
+</div>
+
 <div class="panel">
   <div class="panel-head">
     <h3>✅ حاضرو يوم {{ period_text(year, month, day) }} <span class="panel-hint">{{ rows | length | aindic }} من {{ recruits | length | aindic }}</span></h3>
@@ -32,8 +43,8 @@
     </div>
   </div>
   {% if rows %}
-  <div class="table-wrap"><table class="rt-table"><thead><tr><th>م</th><th>المجند</th><th>الرقم العسكري</th>
-    <th title="بداية فترة الحضور المتواصلة">حضور من</th><th>المدة</th><th title="آخر فترة إجازة قبل بداية الحضور">آخر إجازة</th></tr></thead>
+  <div class="table-wrap"><table class="rt-table"><thead><tr><th class="num">م</th><th>المجند</th><th class="num">الرقم العسكري</th>
+    <th class="num" title="بداية فترة الحضور المتواصلة">حضور من</th><th class="num">المدة</th><th class="num" title="آخر فترة إجازة قبل بداية الحضور">آخر إجازة</th></tr></thead>
     <tbody>{% for r, st in rows %}{% set run = runs.get(r.id) %}{% set ll = last_leave.get(r.id) %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ r.mil_no | aindic }}</td>
       <td class="num">{{ period_text(year, month, run[0]) if run else '—' }}</td>
@@ -41,8 +52,10 @@
       <td class="num">{{ period_text(year, month, ll) if ll else '—' }}</td>
     </tr>{% endfor %}</tbody>
   </table></div>
-  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا حضور مسجل لهذا اليوم.</p>{% endif %}
+  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا حضور مسجل لهذا اليوم — سجّل اليومية الأول ثم ارجع هنا.</p>{% endif %}
 </div>
+
+{% include "recruits/_joint_leave.html" %}
 
 {% elif tab == 'leaves' %}
 <!-- ==================== الإجازات ==================== -->
@@ -57,7 +70,7 @@
 <div class="panel">
   <div class="panel-head"><h3>⏳ إجازات تنتهي خلال ٧ أيام <span class="panel-hint">الذين يعودون قريبًا</span></h3></div>
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>من</th><th>إلى</th><th>تنتهي</th><th>يعود</th></tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">من</th><th class="num">إلى</th><th class="num">تنتهي</th><th class="num">يعود</th></tr></thead>
     <tbody>{% for r, f, t in leaving_soon %}{% set left = t - info.real_day %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td>
       <td class="num">{{ period_text(year, month, f) }}</td>
@@ -84,8 +97,8 @@
   </div>
   {% if ranges %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>من — إلى</th><th>المدة</th>
-      <th>الحالة</th><th title="مدة الإجازة من بدايتها لحد اليوم">حتى اليوم</th><th>معاد الحضور</th><th title="أيام الحضور بعد الرجوع">بعد الحضور</th><th>إجراءات</th></tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">من — إلى</th><th class="num">المدة</th>
+      <th>الحالة</th><th class="num" title="مدة الإجازة من بدايتها لحد اليوم">حتى اليوم</th><th class="num">معاد الحضور</th><th title="أيام الحضور بعد الرجوع">بعد الحضور</th><th>إجراءات</th></tr></thead>
     <tbody>
       {% set ns = namespace(i=1) %}
       {% set rd = info.real_day %}
@@ -148,7 +161,7 @@
     <div class="rt-actions">{% include "partials/print_btn.html" %}</div></div>
   {% if episodes %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>غياب من</th><th>إلى</th><th>المدة</th><th>إجراءات</th></tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">غياب من</th><th class="num">إلى</th><th class="num">المدة</th><th>إجراءات</th></tr></thead>
     <tbody>{% for r, f, t in episodes %}{% set ongoing = info.real_day and t >= info.real_day %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td>
       <td class="num">{{ period_text(year, month, f) }}</td>
@@ -172,7 +185,7 @@
   {% if items %}
   <form method="post" action="{{ url_for('recruits.other_save_hospital') }}">
     <div class="table-wrap"><table class="rt-table">
-      <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th><th>الحالة الصحية</th><th>ملاحظات</th></tr></thead>
+      <thead><tr><th class="num">م</th><th>المجند</th><th class="num">التاريخ</th><th>الحالة الصحية</th><th>ملاحظات</th></tr></thead>
       <tbody>
       {% set ns = namespace(i=1) %}
       {% for rid, days in hospital.items() %}{% for d, cond, note in days %}{% if by_id.get(rid) %}
@@ -201,7 +214,7 @@
   <div class="panel-head"><h3>{{ {'مأمورية':'🧭','أخرى':'➕'}[title] }} {{ title }} <span class="panel-hint">{{ items | length | aindic }}</span></h3></div>
   {% if items %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th>{% if title == 'أخرى' %}<th>الملاحظة</th>{% endif %}</tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">التاريخ</th>{% if title == 'أخرى' %}<th>الملاحظة</th>{% endif %}</tr></thead>
     <tbody>{% for item in items %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(item[0], badges) }}</td>
       <td class="num">{{ period_text(year, month, item[1]) }}</td>{% if title == 'أخرى' %}<td>{{ item[2] or '—' }}</td>{% endif %}
@@ -212,4 +225,8 @@
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/recruits_joint.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

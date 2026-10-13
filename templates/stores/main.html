@@ -166,7 +166,7 @@
     <thead><tr>
       <th>م</th><th>الصنف</th><th>الوحدة</th>
       <th>إجمالي داخل (تغليف)</th><th>إجمالي داخل (وحدة)</th>
-      <th>إجمالي خارج (وحدة)</th>
+      <th>إجمالي خارج (تغليف)</th><th>إجمالي خارج (وحدة)</th>
       <th>رصيد المخزن (تغليف)</th><th>رصيد المخزن (وحدة)</th>
     </tr></thead>
     <tbody>
@@ -177,12 +177,13 @@
         <td>{{ r.unit or '—' }}</td>
         <td class="num"><b class="mv-in">{{ r.in_pack }}</b></td>
         <td class="num"><b class="mv-in">+{{ r.in | qty3 }}</b></td>
+        <td class="num"><b class="mv-out">{{ r.out_pack }}</b></td>
         <td class="num"><b class="mv-out">−{{ r.out | qty3 }}</b></td>
         <td class="num"><b>{{ r.balance_pack }}</b></td>
         <td class="num"><b>{{ r.balance | qty3 }}</b></td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="empty">لا أصناف في هذا الشهر بعد</td></tr>
+      <tr><td colspan="9" class="empty">لا أصناف في هذا الشهر بعد</td></tr>
       {% endfor %}
     </tbody>
   </table>

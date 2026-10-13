@@ -71,7 +71,7 @@
           <td class="num">{{ r.date_label or (r.day | aindic) }}</td>
           <td class="num">{{ r.serial | aindic }}</td>
           <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
-          <td class="num">{{ r.qty_handle | qty }} {{ r.unit }}</td>
+          <td class="num"><b class="st-in">{{ r.qty_handle | qty }}</b> {{ r.unit }}</td>
           <td>{{ r.supplier_name or '—' }}</td>
           <td>{{ r.producer or '—' }}</td>
           <td class="num">{{ r.prod_date or '—' }}</td>
@@ -103,8 +103,8 @@
           <td class="num">{{ r.permit_no | aindic }}</td>
           <td>{% for n in split_entities(r.entity) %}{% set ec = color('entity', n) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ n }}</span>{% else %}{{ n }}{% endif %}{% endfor %}</td>
           <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
-          <td>{{ r.issued_label or '—' }}</td>
-          <td class="num">{{ r.qty | qty }} {{ r.unit }}</td>
+          <td><span class="st-out">{{ r.issued_label or '—' }}</span></td>
+          <td class="num"><b class="st-out">{{ r.qty | qty }}</b> {{ r.unit }}</td>
           <td>{{ r.supplier or '—' }}</td>
           <td>{{ r.producer or '—' }}</td>
           <td class="num">{{ r.expiry or '—' }}</td>

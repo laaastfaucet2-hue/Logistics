@@ -150,4 +150,4 @@ def test_pages_render(client):
     assert "المقررات والتخصيص التفاعلي للمتعهد والتموين للجهة الحالية" in day.text
     assert "تسجيل أسماء الضباط والأفراد الراغبين للجهة الحالية" in day.text
     assert "tmRationsModal" in day.text
-    assert "قيد التطوير" in day.text
+    assert "قيد التطوير" not in day.text  # المودال الأصفر اتشال (١٠-أ) — الحوار الوحيد هو #tmRagDialog

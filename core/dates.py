@@ -1,4 +1,4 @@
-"""Day-first Gregorian dates for presentation; ISO stays the storage/wire format.
+"""Year-first Gregorian dates for presentation; ISO stays the storage/wire format.
 
 All digit conversion belongs to arabic_numbers. Never infer a US month-first date.
 """
@@ -6,19 +6,21 @@ import re
 from datetime import date, datetime
 from core import arabic_numbers as arnum
 
-DISPLAY_FORMAT = "dd/mm/yyyy"
-FORMAT_LABEL = "يوم/شهر/سنة"
+DISPLAY_FORMAT = "yyyy/mm/dd"
+FORMAT_LABEL = "سنة/شهر/يوم"
 EMPTY_DATE = "—"
 _DATE_ISO = re.compile(r"^([0-9]{4})-([0-9]{2})-([0-9]{2})$")
+_DATE_YMD = re.compile(r"^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})$")
 _DATE_DMY = re.compile(r"^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$")
 _BIDI_MARKS = dict.fromkeys(map(ord, "\u061c\u200e\u200f\u2066\u2067\u2068\u2069"))
 
 
 def parse_date(value):
-    """A date object, strict ISO, or day/month/year (Arabic/Latin/Persian digits).
+    """A date object, strict ISO, or year/month/day (Arabic/Latin/Persian digits).
 
     Blank -> None. Invalid or month-first-only input -> ValueError, never a swap.
-    Eight digits on a numeric keyboard are read as ddmmyyyy, not yyyymmdd.
+    Old day-first dd/mm/yyyy entries are still accepted so legacy drafts survive.
+    Eight digits on a numeric keyboard are read as yyyymmdd, not ddmmyyyy.
     """
     if value is None or value == "":
         return None
@@ -30,15 +32,18 @@ def parse_date(value):
     if not text:
         return None
     iso = _DATE_ISO.fullmatch(text)
+    ymd = _DATE_YMD.fullmatch(text)
     dmy = _DATE_DMY.fullmatch(text)
     if iso:
         year, month, day = map(int, iso.groups())
+    elif ymd:
+        year, month, day = map(int, ymd.groups())
     elif dmy:
         day, month, year = map(int, dmy.groups())
     elif re.fullmatch(r"[0-9]{8}", text):
-        day, month, year = int(text[:2]), int(text[2:4]), int(text[4:])
+        year, month, day = int(text[:4]), int(text[4:6]), int(text[6:])
     else:
-        raise ValueError("اكتب التاريخ بالترتيب يوم/شهر/سنة، مثال: ٢٢/٠٩/٢٠٢٦")
+        raise ValueError("اكتب التاريخ بالترتيب سنة/شهر/يوم، مثال: ٢٠/٠٩/٢")
     try:
         return date(year, month, day)
     except ValueError as exc:
@@ -52,14 +57,14 @@ def to_iso(value):
 
 
 def format_date(value, empty=EMPTY_DATE, arabic=True):
-    """Display only: zero-padded dd/mm/yyyy, independent of OS/browser locale."""
+    """Display only: zero-padded yyyy/mm/dd, independent of OS/browser locale."""
     try:
         parsed = parse_date(value)
     except (ValueError, TypeError):
         return empty
     if not parsed:
         return empty
-    text = f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year:04d}"
+    text = f"{parsed.year:04d}/{parsed.month:02d}/{parsed.day:02d}"
     return arnum.to_arabic_indic(text) if arabic else text
 
 
@@ -92,5 +97,5 @@ def format_datetime(value, seconds=False, empty=EMPTY_DATE):
 
 
 def document_date(value):
-    """Keep the date segment day-first within Arabic Word paragraphs."""
+    """Wrap the display date for an Arabic Word paragraph with LRM marks."""
     return "\u200e" + format_date(value, empty="") + "\u200e"

@@ -146,7 +146,7 @@ def _save_json(path, payload):
 
 
 def _d(day, year, month):
-    """تاريخ اليوم داخل الشهر بصيغة العرض dd/mm/yyyy."""
+    """تاريخ اليوم داخل الشهر بصيغة العرض yyyy/mm/dd."""
     try:
         return dates.format_date(f"{year:04d}-{month:02d}-{int(day):02d}")
     except (TypeError, ValueError):
@@ -412,6 +412,12 @@ def taf3_pack_rows(year, month, cycle, item_id):
                                  spec.get("pack_inner_count"), spec.get("pack_inner_capacity"),
                                  q, _u, rest, inner_kind=spec.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {_u}"
 
+    # المنصرف (تغليف) من مصدر واحد (١٤/١٠): حالة العبوات الفعلية في التفريدة
+    # (سائب أولًا → باقي مفتوح → فتح كاملة) بدل تفكيك الكمية بس
+    from data_access import db_warehouses_stores as _dws
+    _tref_rows = [x for x in _dws.tafreeda_rows(year, month, cycle)
+                  if x["item"] == item["name"]]
+
     rows, _i = [], 0
     for r in card["rows"]:
         _i += 1
@@ -423,8 +429,9 @@ def taf3_pack_rows(year, month, cycle, item_id):
         if r["kind"] != "issue2":
             cnt, kind, cap, loose = packaging.parse_pack_label(added_pack)
             # «٦٠ كجم» (رقم + وحدة قياس بلا «×») = كمية سادة مش عبوات —
-            # من غيرها بيتفسر ٦٠ «عبوة» ويطلع الرصيد بالتغليف غلط (جولة ٢٤)
-            if cnt > 0 and not is_measure_unit(kind):
+            # من غيرها بيتفسر ٦٠ «عبوة» ويطلع الرصيد بالتغليف غلط (جولة ٢٤).
+            # لو «العبوة» اسمها نفس وحدة الصنف (٤٨٠ وحدة) = كمية سادة كمان.
+            if cnt > 0 and kind and not is_measure_unit(kind) and kind != unit:
                 led.set_kind(kind, cap)
                 over = round(float(r["added"] or 0) - (cnt * cap + loose), 6)
                 led.add(cnt, loose + (over if over > 0 else 0))
@@ -433,7 +440,11 @@ def taf3_pack_rows(year, month, cycle, item_id):
             added_pack = added_pack or "—"
         else:
             led.take(r["issued"])
-            issued_pack = _brk(r["issued"], fb, "") if r["issued"] else "—"
+            # «سائب أولًا ثم باقى مفتوح ثم فتح كاملة» — نفس أرقام التفريدة
+            _tlabels = [x["issued_label"] for x in _tref_rows
+                        if x["permit_no"] == r.get("permit_no")]
+            issued_pack = " / ".join(l for l in _tlabels if l) \
+                or (_brk(r["issued"], fb, "") if r["issued"] else "—")
         rows.append({"seq": _i, "day": r["day"], "date_iso": r["date_iso"],
                      "permit_no": r.get("permit_no"), "label": r.get("label"),
                      "kind": r["kind"], "open_pack": open_pack,

@@ -99,7 +99,7 @@ def _calendar(year, month, selected):
 
 
 def _parse_day_form(year, month):
-    """يقرأ تاريخ النموذج dd/mm/yyyy ويفرض أنه داخل الشهر النشط. يرجع اليوم أو يرمي."""
+    """يقرأ تاريخ النموذج yyyy/mm/dd (أو التراثي dd/mm/yyyy) ويفرض أنه داخل الشهر النشط. يرجع اليوم أو يرمي."""
     raw = request.form.get("day", "")
     try:
         parsed = dates.parse_date(raw)

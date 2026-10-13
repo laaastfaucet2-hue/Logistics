@@ -16,6 +16,12 @@
 {%- if s -%}{{ num(s) }}{%- endif -%}
 {%- endmacro %}
 
+{# ١٤/١٠ (تطوير): قيمة مربع وجبة يوم — من day_cells (معاملات اليوم الفعلية) #}
+{% macro cellval(it, di, mk) -%}
+{%- set v = (it.day_cells.get(di) or {}).get(mk) -%}
+{%- if v -%}{{ v | qtyx }}{%- endif -%}
+{%- endmacro %}
+
 {% block content %}
 <div class="ctx-strip">
   <span>🗓️ السنة النشطة:</span><span class="val">{{ year | aindic }}</span>
@@ -152,16 +158,23 @@
           <td class="daycell {% if di in it.days %}on{% endif %}">
             <input type="checkbox" class="ck" name="wd_{{ di }}" form="df-{{ it.id }}"
                    aria-label="تخصيص يوم {{ days[di] }}" {% if di in it.days %}checked{% endif %}>
-            <span class="qwrap">
-              <input class="dq" name="qty_{{ di }}" form="df-{{ it.id }}" inputmode="decimal"
-                     data-gen="{{ gen(it) }}"
-                     {% if di in it.days %}
-                     value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) not in [none, 0] else gen(it) }}"
-                     {% else %}
-                     value="{% if it.is_custom %}{% else %}{{ gen(it) }}{% endif %}" disabled
-                     {% endif %} placeholder="٠">
-              {% if it.unit %}<span class="du">{{ it.unit }}</span>{% endif %}
+            {# ١٤/١٠: ثلاثة مربعات فطار/غداء/عشاء لكل يوم — الفارغ = الوجبة العامة #}
+            <span class="mwrap">
+              {%- for mabbr, mk, mlab in (('b', 'breakfast', 'فطار'), ('l', 'lunch', 'غداء'), ('d', 'dinner', 'عشاء')) -%}
+              <span class="mrow">
+                <span class="mlab">{{ mlab[:1] }}</span>
+                <input class="dm" name="qty_{{ di }}_{{ mabbr }}" form="df-{{ it.id }}"
+                       inputmode="decimal" placeholder="٠"
+                       title="{{ mlab }} — {{ days[di] }} (الفارغ = قيمة {{ mlab }} العامة)"
+                       {% if di in it.days %}
+                       value="{{ cellval(it, di, mk) }}"
+                       {% else %}
+                       value="{{ cellval(it, di, mk) }}" disabled
+                       {% endif %}>
+              </span>
+              {%- endfor -%}
             </span>
+            {% if it.unit %}<span class="du">{{ it.unit }}</span>{% endif %}
           </td>
           {% endfor %}
           <td class="ops">

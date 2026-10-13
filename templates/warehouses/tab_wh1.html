@@ -121,7 +121,7 @@
         <div class="wh-pack-diff js-pack-diff"></div>
       </fieldset>
       <div class="wh-grid">
-        <label class="wh-f">تاريخ الإنتاج <small>(يوم/شهر/سنة)</small>
+        <label class="wh-f">تاريخ الإنتاج <small>(سنة/شهر/يوم)</small>
           <input name="l__IDX___prod_date" class="js-prod-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
         <label class="wh-f">تاريخ الصلاحية
           <input name="l__IDX___exp_date" class="js-exp-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
@@ -184,7 +184,7 @@
         <tr>
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="name"><b>{{ r.item_name }}</b></td>
-          <td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
+          <td class="num"><b class="mv-in">{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
           <td>{{ r.unit or '—' }}</td>
           <td class="wh-pack-cell">{{ pack_chips(r.pack_label) }}</td>
           <td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>

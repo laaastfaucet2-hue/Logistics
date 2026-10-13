@@ -29,8 +29,8 @@ from services import tameed_alerts
 from services.raghibin import modal as rg_modal
 
 from . import raghibin_bp
-from .context import (_category, _ctx, _entity_or_back, _rb, _selected_day,
-                      _selected_entity)
+from .context import (_category, _ctx, _draft_totals, _entity_or_back, _rb,
+                      _selected_day, _selected_entity)
 
 
 def _modal_page_url(entity, day, cat, sid=""):
@@ -49,8 +49,11 @@ def modal_page():
     day = _selected_day(year, month)
     cat = _category()
     sid = request.values.get("sid", "")
-    variables = rg_modal.build(year, month, entity, day, cat, sid=sid)
-    # الرجوع بعد الحفظ: من تاب الراغبين يرجع للراغبين (back=raghibin) —
+    # ١٤/١٠: عدّادات فورم التأميدة (o/i) — المربعات تتبع الرقم المكتوب
+    # حتى لو التأميدة غير محفوظة (تفتح من زر «تسجيل أسماء» في التاميدات).
+    variables = rg_modal.build(year, month, entity, day, cat, sid=sid,
+                               draft_totals=_draft_totals(request))
+    # الرجوع بعد الحفظ: من تاب الراغبين يرجع للراحبين (back=raghibin) —
     # ومن التأميدات يفضل في التاميدات (الافتراضي tameedat)
     variables["back"] = request.args.get("back", "tameedat")
     # url_for('tameedat.page') بيحمل ?year&month&sid تلقائيًا (url_defaults) — فالفاصل &
@@ -74,11 +77,13 @@ def modal_page():
 @raghibin_bp.route("/panel")
 @login_required
 def panel():
-    """جزء المودال (legacy) — نفس محتوى الصفحة الكاملة بدون هيكل الصفحة."""
+    """جزء المودال — نفس محتوى الصفحة الكاملة بدون هيكل الصفحة.
+    ١٤/١٠: المودال المنبثق من فورم التاميدة بيجيب الجزء ده بـ fetch."""
     year, month = _ctx()
     entity = _selected_entity(year, month, by_name=True)
     day = _selected_day(year, month)
-    return _modal_fragment(year, month, entity, day, _category())
+    return _modal_fragment(year, month, entity, day, _category(),
+                           draft_totals=_draft_totals(request))
 
 
 @raghibin_bp.route("/panel/quick_add", methods=["POST"])
@@ -121,10 +126,14 @@ def panel_delete(person_id):
                                     _category(), request.form.get("sid", "")))
 
 
-def _modal_fragment(year, month, entity, day, cat):
+def _modal_fragment(year, month, entity, day, cat, draft_totals=None):
     """جزء المودال — عبر الخدمة المشتركة (نفس محتوى الصفحة الكاملة)."""
     variables = rg_modal.build(year, month, entity, day, cat,
-                               sid=request.values.get("sid", ""))
+                               sid=request.values.get("sid", ""),
+                               draft_totals=draft_totals)
+    # ١٤/١٠: المودال المنبثق بيحضر الجزء بـ fetch — رسائل الحفظ توصل هنا
+    variables["ok"] = request.values.get("ok", "")
+    variables["err"] = request.values.get("err", "")
     return render_template("raghibin/modal_body.html", **variables)
 
 

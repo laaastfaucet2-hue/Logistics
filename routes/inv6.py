@@ -12,7 +12,8 @@ import os
 import subprocess
 import sys
 
-from flask import (Blueprint, g, redirect, request, url_for, abort)
+from flask import (Blueprint, g, jsonify, redirect, render_template,
+                   request, url_for, abort)
 
 from core.auth_core import current_context, current_session, login_required
 from core import arabic_numbers as arnum
@@ -68,6 +69,30 @@ def page():
     keep = {k: v for k, v in request.args.items() if k in ("day", "ok", "err", "cycle")}
     keep.setdefault("sub", "inv6")
     return redirect(url_for("warehouses.page", **keep))
+
+
+@inv6_bp.route("/day")
+@login_required
+def day_json():
+    """يوم الجرد من غير ما تخرج من الصفحة (توجيه ١٤/١٠): يرجّع الورقة كاملة HTML
+    بنفس قوالب الصفحة + بيانات الملف/الحفظ لتحديث الشريط وعلامة ✓ في القائمة."""
+    year, month = _ctx()
+    days_in = egtime.days_in_month(year, month)
+    day = arnum.parse_int(request.args.get("day"))
+    if not day or not 1 <= day <= days_in:
+        return jsonify(ok=False, err="يوم الجرد خارج الشهر"), 400
+    ctx = ib.page_context(year, month, day)
+    ctx["iv_sectors"] = []
+    ctx["iv_ranks"] = []
+    ctx["iv_names"] = []
+    paper = render_template("warehouses/_inv6_paper.html",
+                            inv6=ctx, year=year, month=month)
+    return jsonify(ok=True, day=day,
+                   day_label=arnum.to_arabic_indic(str(day)),
+                   paper=paper, saved_days=ctx["saved_days"],
+                   has_saved=ctx["has_saved"], file_rel=ctx["file_rel"],
+                   has_rows=bool(ctx["rows"]),      # التطبيق يتقفل لو مفيش أصناف (توجيه ١٥/١٠)
+                   file_exists=ctx["file_exists"])
 
 
 @inv6_bp.route("/apply", methods=["POST"])
@@ -174,5 +199,8 @@ def open():
             if fpath.is_file():
                 _open_path(fpath)
         else:
-            _open_path(if6._safe_day_dir(year, month, day))
+            # الفولدر بيتعمل عند الحفظ بس — لو لسه مش موجود نفتح أقرب أب موجود
+            d = if6._safe_day_dir(year, month, day)
+            _open_path(d if d.is_dir() else (d.parent if d.parent.is_dir()
+                                             else d.parent.parent))
     return _rb(day or None)

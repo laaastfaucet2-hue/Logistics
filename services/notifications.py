@@ -233,11 +233,13 @@ def _event_entries(year, month, matrix, recruits, d, eom, q):
                             dates.period_date(year, month, f), dates.period_date(year, month, t)),
                         "href": "/recruits?tab=journal&day={}".format(evday) + q.replace("?", "&")})
                 else:
+                    # التصريح صادر ومستني يومه — الرابط يودّي على يومية اليوم المختار
+                    # وهو فيه زر «سجّلهم في اليومية» بضغطة (توجيه ١٤/١٠)
                     leaves.append({
                         "text": "🛎️ {} {} إجازة ({}) — التصريح متعمل ✓".format(
                             and_join(ev["names"]), "نازل" if len(ev["names"]) == 1 else "نازلون",
                             _when_word(evday, d)),
-                        "href": "/recruits?tab=leaves" + q})
+                        "href": "/recruits?tab=journal&day={}".format(evday) + q.replace("?", "&")})
             elif ev["kind"] == "permit_gap" and evday == d:
                 f, t = next(iter(ev["ranges"].values()))
                 leaves.append({

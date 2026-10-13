@@ -184,7 +184,7 @@ def find_source(rel):
     p = root / rel
     if p.is_file() and not p.name.startswith("~$"):
         return p
-    # 6 مخازن: اسم ملف الجرد فيه يوم/شهر/سنة المستخدم — نطابق على الشكل بس
+    # 6 مخازن: اسم ملف الجرد تقني (يوم-شهر-سنة لاتيني) — نطابق على الشكل بس
     if "6-مخازن" in rel and rel.lower().endswith(".xlsx"):
         for q in sorted(root.rglob("*.xlsx")):
             if "6-مخازن" in str(q.relative_to(root)) and not q.name.startswith("~$"):

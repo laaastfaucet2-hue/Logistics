@@ -332,3 +332,8 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-slot-warn .rg-warn-cancel { background: transparent; color: var(--text);
   border: 1px solid var(--card-border); border-radius: 8px; padding: 5px 12px;
   font-weight: 700; cursor: pointer; font-family: inherit; font-size: .8rem; }
+
+/* ١٤/١٠: المربعات حسب عدّادات فورم التأميدة غير المحفوظ */
+.rg-draft-chip { padding: 5px 13px; border-radius: 10px; font-weight: 700;
+  background: rgba(59, 130, 246, .14); color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, .4); }

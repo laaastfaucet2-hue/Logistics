@@ -70,15 +70,15 @@ def test_calendar_grids_pin_every_day_to_its_real_weekday(app, year, month):
         assert ragh_columns[day] == expected, (year, month, day)
 
 
-def test_dates_render_day_first_in_arabic_digits():
-    """كل تاريخ ظاهر = يوم/شهر/سنة بصفر بادئ وأرقام عربية مشرقية."""
-    assert dates.format_date("2026-09-22") == "٢٢/٠٩/٢٠٢٦"
-    assert dates.format_date(date(2026, 10, 1)) == "٠١/١٠/٢٠٢٦"
-    assert dates.format_date("22/09/2026") == "٢٢/٠٩/٢٠٢٦"
-    assert dates.input_date("2026-10-06") == "٠٦/١٠/٢٠٢٦"
-    assert egtime.fmt_ar("2026-10-06") == "٠٦/١٠/٢٠٢٦ — الثلاثاء"
+def test_dates_render_year_first_in_arabic_digits():
+    """كل تاريخ ظاهر = سنة/شهر/يوم بصفر بادئ وأرقام عربية مشرقية."""
+    assert dates.format_date("2026-09-22") == "٢٠٢٦/٠٩/٢٢"
+    assert dates.format_date(date(2026, 10, 1)) == "٢٠٢٦/١٠/٠١"
+    assert dates.format_date("22/09/2026") == "٢٠٢٦/٠٩/٢٢"   # التراثي dd/mm/yyyy نفس الناتج
+    assert dates.input_date("2026-10-06") == "٢٠٢٦/١٠/٠٦"
+    assert egtime.fmt_ar("2026-10-06") == "٢٠٢٦/١٠/٠٦ — الثلاثاء"
     assert dates.period_date(2026, 2, 29) == "—"          # يوم مستحيل في شهر غير كبيس
-    assert dates.period_date(2026, 10, 5) == "٠٥/١٠/٢٠٢٦"
+    assert dates.period_date(2026, 10, 5) == "٢٠٢٦/١٠/٠٥"
 
 
 def test_days_in_month_and_leap_years():

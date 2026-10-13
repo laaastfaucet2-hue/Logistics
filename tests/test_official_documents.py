@@ -69,8 +69,13 @@ def test_embedded_logo_and_letterhead_in_every_sheet(app, section):
             assert len(ws._images) == 1
             assert ws._images[0].width <= 116
             assert ws.sheet_view.rightToLeft
-            assert ws.freeze_panes == "A8"
-            assert ws.print_title_rows == "$1:$7"
+            # شيتات المقررات: ترويسة واحدة (A8) — شيتات الجهات: سطر ترويسة الوجبات (A9)
+            if ws.title.startswith("مقرر"):
+                assert ws.freeze_panes == "A8"
+                assert ws.print_title_rows == "$1:$7"
+            else:
+                assert ws.freeze_panes == "A9"
+                assert ws.print_title_rows == "$1:$8"
             assert ws.page_setup.fitToWidth == 1
             values = {c.value for row in ws for c in row if c.value}
             assert {RIGHT_NAME, LEFT_NAME} <= values  # التوقيعان المحفوظان في كل شيت

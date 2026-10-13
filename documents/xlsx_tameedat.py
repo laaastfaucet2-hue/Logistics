@@ -136,7 +136,7 @@ def _daily_sheet(wb, year, month, records):
 
 
 def day_count_cell(rec, month, year):
-    """تاريخ اليوم كاملًا dd/mm/yyyy عربي داخل خلية الإكسل."""
+    """تاريخ اليوم كاملًا yyyy/mm/dd عربي داخل خلية الإكسل."""
     return dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")
 
 

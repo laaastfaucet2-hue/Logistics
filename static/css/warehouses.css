@@ -488,3 +488,7 @@ fieldset.wh-pack legend { color: var(--gold-light); font-weight: 800;
 .wh5-table th { white-space: nowrap; }
 .wh5-table .wh5-details { min-width: 260px; text-align: right; line-height: 1.5; }
 .wh5-grand td { background: #FFF2CC; font-weight: 700; }
+
+/* ١٤/١٠: التغليف تحت رقم الوحدة (المزدوجة: بالوحدة + بالتغليف) */
+.wh-pack-sub { font-size: .72rem; font-weight: 600; color: var(--status-other);
+  margin-top: 2px; white-space: nowrap; }

@@ -194,3 +194,7 @@
 .st-inv { padding: 0 0 8px; display: grid; gap: 10px; }
 .st-inv-store { margin: 0 18px; }
 .st-inv .panel-hint { display: block; padding: 0 18px 6px; }
+
+/* قاعدة ٨٨ (١٢/١٠): أي رقم وارد = أخضر · أي رقم منصرف = أحمر */
+.st-in { color: var(--green); font-weight: 800; white-space: nowrap; }
+.st-out { color: var(--red); font-weight: 800; white-space: nowrap; }

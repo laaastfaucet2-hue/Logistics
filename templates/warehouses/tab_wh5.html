@@ -10,7 +10,7 @@
     <span class="wh-chip gold">إجمالي الحركات المسجلة: <b>{{ wh5.count | aindic }} حركة</b></span>
     <span class="wh-chip dim">إجمالي المضاف بالدفتر (+): <b>{{ wh5.total_added | qty3 }}</b></span>
     <span class="wh-chip dim">إجمالي المنصرف بالدفتر (−): <b>{{ wh5.total_issued | qty3 }}</b></span>
-    <span class="wh-chip dim">آخر حركة مسجلة: <b><bdi dir="ltr">{{ wh5.last }}</bdi></b></span>
+    <span class="wh-chip dim">آخر حركة مسجلة: <b><bdi dir="ltr">{{ wh5.last | datefmt }}</bdi></b></span>
   </div>
   <div class="wh-scroll">
   <table class="rt-table wh-table wh5-table">
@@ -32,8 +32,8 @@
         <td class="name">{{ r.party or '—' }}</td>
         <td>{{ r.source or '—' }}</td>
         <td class="name">{{ r.issued_to or '—' }}</td>
-        <td class="num"><b>{{ (r.added | qty3) if r.added else '—' }}</b></td>
-        <td class="num"><b>{{ (r.issued | qty3) if r.issued else '—' }}</b></td>
+        <td class="num"><b class="mv-in">{{ (r.added | qty3) if r.added else '—' }}</b></td>
+        <td class="num"><b class="mv-out">{{ (r.issued | qty3) if r.issued else '—' }}</b></td>
         <td class="wh5-details">{{ r.details }}</td>
         <td>{{ r.responsible or '—' }}</td>
         <td class="no-print">
@@ -58,8 +58,8 @@
     <tfoot>
       <tr class="wh5-grand">
         <td colspan="6"><b>الإجمالي العام لحركات الشهر (كم / ورود):</b></td>
-        <td class="num"><b>{{ wh5.total_added | qty3 }}</b></td>
-        <td class="num"><b>{{ wh5.total_issued | qty3 }}</b></td>
+        <td class="num"><b class="mv-in">{{ wh5.total_added | qty3 }}</b></td>
+        <td class="num"><b class="mv-out">{{ wh5.total_issued | qty3 }}</b></td>
         <td class="num" colspan="2">الحركات: {{ wh5.count | aindic }}</td>
       </tr>
     </tfoot>

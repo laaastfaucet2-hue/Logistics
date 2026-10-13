@@ -169,15 +169,4 @@
     if (list._lines) dumpLines(list._lines);
     modal.hidden = true;
   });
-
-  var namesBtn = document.getElementById("tmRagNamesBtn");
-  var namesModal = document.getElementById("tmRagNamesModal");
-  function closeNames() { if (namesModal) namesModal.hidden = true; }
-  if (namesBtn && namesModal) {
-    namesBtn.addEventListener("click", function () { namesModal.hidden = false; });
-    var namesClose = document.getElementById("tmRagNamesClose");
-    var namesOk = document.getElementById("tmRagNamesOk");
-    if (namesClose) namesClose.addEventListener("click", closeNames);
-    if (namesOk) namesOk.addEventListener("click", closeNames);
-  }
 })();

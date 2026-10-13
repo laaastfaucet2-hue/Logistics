@@ -116,7 +116,7 @@
     <span class="st-card-ico">🚚</span>
     <b class="st-card-num">{{ summary.sup_count | aindic }}</b>
     <small>إذن توريد (١ مخازن)</small>
-    <span class="st-card-sub">{{ summary.sup_qty | qty }} وحدة متلقاة</span>
+    <span class="st-card-sub st-in">{{ summary.sup_qty | qty }} وحدة متلقاة</span>
   </div>
   <div class="st-card">
     <span class="st-card-ico">📄</span>
@@ -126,7 +126,7 @@
   </div>
   <div class="st-card">
     <span class="st-card-ico">📤</span>
-    <b class="st-card-num">{{ summary.iss_qty | qty }}</b>
+    <b class="st-card-num st-out">{{ summary.iss_qty | qty }}</b>
     <small>وحدة صُرفت فعليًا (FEFO)</small>
     <span class="st-card-sub">{{ summary.iss_count | aindic }} سطر تفريدة</span>
   </div>
@@ -176,7 +176,7 @@
         <td class="num">{{ r.date_label or (r.day | aindic) }}</td>
         <td class="num">{{ r.serial | aindic }}</td>
         <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ r.item }}</b></td>
-        <td class="num"><b>{{ r.qty_handle | qty }}</b> {{ r.unit }}</td>
+        <td class="num"><b class="st-in">{{ r.qty_handle | qty }}</b> {{ r.unit }}</td>
         <td>{{ r.supplier_name or '—' }}</td>
         <td>{{ r.producer or '—' }}</td>
         <td class="dim">{{ r.prod_date or '—' }}</td>
@@ -190,7 +190,7 @@
     </tbody>
     <tfoot>
       <tr><td colspan="{{ 4 if scope == 'month' else 3 }}">الإجمالي</td>
-        <td class="num"><b>{{ summary.sup_qty | qty }}</b></td>
+        <td class="num"><b class="st-in">{{ summary.sup_qty | qty }}</b></td>
         <td colspan="{{ 4 if scope == 'month' else 5 }}"></td></tr>
     </tfoot>
   </table>
@@ -220,8 +220,8 @@
         <td class="num">{{ r.permit_no | aindic }}</td>
         <td>{% for n in r.entities or split_entities(r.entity) %}{% set ec = color('entity', n) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ n }}</span>{% else %}<b>{{ n }}</b>{% endif %}{% endfor %}</td>
         <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
-        <td class="dim">{{ r.issued_label or '—' }}</td>
-        <td class="num"><b>{{ r.qty | qty }}</b> {{ r.unit }}</td>
+        <td class="st-out">{{ r.issued_label or '—' }}</td>
+        <td class="num"><b class="st-out">{{ r.qty | qty }}</b> {{ r.unit }}</td>
         <td>{{ r.supplier or '—' }}</td>
         <td>{{ r.producer or '—' }}</td>
         <td>
@@ -234,7 +234,7 @@
     </tbody>
     <tfoot>
       <tr><td colspan="{{ 5 if scope == 'month' else 4 }}">الإجمالي</td>
-        <td class="num"><b>{{ summary.iss_qty | qty }}</b></td>
+        <td class="num"><b class="st-out">{{ summary.iss_qty | qty }}</b></td>
         <td colspan="{{ 3 if scope == 'month' else 4 }}"></td></tr>
     </tfoot>
   </table>

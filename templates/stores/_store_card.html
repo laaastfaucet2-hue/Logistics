@@ -79,7 +79,7 @@
           <th colspan="4">الإجماليات لكل صنف</th>
           <th></th><th></th>
           <th>داخل (تغليف)</th><th>داخل (وحدة)</th>
-          <th colspan="2">خارج (وحدة)</th>
+          <th>خارج (تغليف)</th><th>خارج (وحدة)</th>
           <th></th><th></th>
           <th>رصيد المخزن (تغليف)</th><th colspan="2">رصيد المخزن (وحدة)</th>
         </tr>
@@ -89,7 +89,8 @@
           <td class="num">—</td><td class="num">—</td>
           <td class="num"><b class="mv-in">{{ it.in_pack or '—' }}</b></td>
           <td class="num"><b class="mv-in">+{{ it.in | qty3 }}</b></td>
-          <td colspan="2" class="num"><b class="mv-out">−{{ it.out | qty3 }}</b></td>
+          <td class="num"><b class="mv-out">{{ it.out_pack or '—' }}</b></td>
+          <td class="num"><b class="mv-out">−{{ it.out | qty3 }}</b></td>
           <td class="num">—</td><td class="num">—</td>
           <td class="num"><b>{{ it.pack or '—' }}</b></td>
           <td colspan="2" class="num"><b>{{ it.balance | qty3 }} {{ it.unit }}</b></td>
@@ -98,6 +99,44 @@
       </tfoot>
       {% endif %}
     </table>
+    {# تابات فرعية لكل صنف (١٤/١٠): الإجماليات فوق، وتحت تاب لكل صنف
+       بسطر لكل يوم نشط — داخل/خارج (تغليف) + المورد/المنتج + الرصيد التراكمي #}
+    {% if target.get('mv_items') %}
+    {% set mv_items = target['mv_items'] %}
+    <div class="wh-subtabs no-print">
+      {% for name, it in mv_items %}
+      <button type="button" class="wh-subtab" data-st-sub="mv:{{ name }}">📄 {{ name }}</button>
+      {% endfor %}
+    </div>
+    {% for name, it in mv_items %}
+    <div class="wh-subpanel" data-st-panel="mv:{{ name }}" hidden>
+      <b class="wh-taf-title">«{{ name }}» بيوم بيوم في {{ target.store.name }} — داخل/خارج (تغليف) + الرصيد</b>
+      <div class="wh-scroll">
+      <table class="rt-table wh-table">
+        <thead><tr>
+          <th>م</th><th>اليوم</th><th>الشركة الموردة</th><th>الشركة المنتجة</th>
+          <th>داخل (تغليف)</th><th>خارج (تغليف)</th><th>الرصيد</th>
+        </tr></thead>
+        <tbody>
+          {% for d in it.days %}
+          <tr>
+            <td class="num">{{ loop.index | aindic }}</td>
+            <td><bdi dir="ltr" class="date-display">{{ d.date | datefmt }}</bdi></td>
+            <td class="wh-co">{{ d.supplier or '—' }}</td>
+            <td class="wh-co">{{ d.producer or '—' }}</td>
+            <td class="num">{% if d.in %}<b class="mv-in">+{{ d.in | qty3 }}</b> {{ it.unit }}
+              {% if d.in_pack %}<div class="wh-pack-sub">{{ d.in_pack }}</div>{% endif %}{% else %}—{% endif %}</td>
+            <td class="num">{% if d.out %}<b class="mv-out">−{{ d.out | qty3 }}</b> {{ it.unit }}
+              {% if d.out_pack %}<div class="wh-pack-sub">{{ d.out_pack }}</div>{% endif %}{% else %}—{% endif %}</td>
+            <td class="num"><b>{{ d.balance | qty3 }}</b> {{ it.unit }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
     </div>
   </div>
 
@@ -118,8 +157,11 @@
         <tr>
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="name"><b>{{ name }}</b></td>
-          <td class="num">+{{ it.in | qty3 }}</td>
-          <td class="num">−{{ it.out | qty3 }}</td>
+          {# ١٤/١٠: المزدوجة — كل إجمالي بالوحدة وتحته بالتغليف #}
+          <td class="num"><b class="mv-in">+{{ it.in | qty3 }}</b>
+            {% if it.in_pack %}<div class="wh-pack-sub">{{ it.in_pack }}</div>{% endif %}</td>
+          <td class="num"><b class="mv-out">−{{ it.out | qty3 }}</b>
+            {% if it.out_pack %}<div class="wh-pack-sub">{{ it.out_pack }}</div>{% endif %}</td>
           <td class="num"><b>{{ it.balance | qty3 }}</b> {{ it.unit }}</td>
           <td class="wh-pack-cell">{{ it.pack or '—' }}</td>
           <td>{% if it.expiry %}<bdi dir="ltr" class="date-display">{{ it.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>

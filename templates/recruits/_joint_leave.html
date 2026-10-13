@@ -1,0 +1,64 @@
+{# نافذة «إجازة مجمّعة + تصريح» — بتُفتح من الزر الثابت في تبويب الحضور (توجيه ١٤/١٠).
+   قائمة واحدة بكل المجندين وعلامة حضور اليوم عليها: تبويب «حاضرو اليوم» بيفلترها
+   والاختيار بيفضل محفوظ وانت بتتنقل بين التبويبين (مفيش مربعين لنفس المجند). #}
+{% from "partials/dates.html" import period_text %}
+<div class="rc-jl" id="rcJointModal" hidden>
+  <div class="rc-jl-box" role="dialog" aria-modal="true" aria-labelledby="rcJlTitle">
+    <div class="rc-jl-head">
+      <h3 id="rcJlTitle">إجازة مجمّعة + تصريح <span class="panel-hint">{{ month_name }} {{ year | aindic }}</span></h3>
+      <button type="button" class="rc-jl-x" id="rcJlClose" aria-label="إغلاق">✕</button>
+    </div>
+
+    <form method="post" action="{{ url_for('recruits.send_leaves') }}" id="rcJlForm" autocomplete="off"
+          data-today="{{ jl_today }}" data-eom="{{ eom }}" data-year="{{ year }}" data-month="{{ month }}">
+      <div class="rc-jl-row">
+        <span class="dim">نزول الإجازة</span>
+        <label class="rc-slr"><input type="radio" name="start" value="today" checked>
+          اليوم (طارئة) — <b>{{ period_text(year, month, jl_today) }}</b></label>
+        <label class="rc-slr" {% if jl_today >= eom %}style="opacity:.45" title="آخر يوم في الشهر"{% endif %}>
+          <input type="radio" name="start" value="tomorrow" {% if jl_today >= eom %}disabled{% endif %}>
+          بكرة — <b>{{ period_text(year, month, jl_today + 1) }}</b></label>
+      </div>
+
+      <div class="rc-jl-tabs" role="tablist">
+        <button type="button" class="rc-jl-tab on" data-jl-tab="present">
+          حاضرو اليوم <b>{{ rows | length | aindic }}</b></button>
+        <button type="button" class="rc-jl-tab" data-jl-tab="all">
+          كل المجندين <b>{{ recruits | length | aindic }}</b></button>
+      </div>
+      <input class="rc-jl-search" id="rcJlSearch" placeholder="ابحث بالاسم أو الرقم العسكري…" aria-label="بحث">
+
+      <div class="rc-jl-list only-present" id="rcJlList">
+        {% for r in recruits %}
+        {% set st = matrix.get(r.id, {}).get(jl_today) %}
+        <label class="rc-jl-p" data-present="{{ '1' if st == 'حضور' else '0' }}"
+               data-search="{{ r.name }} {{ r.mil_no }}">
+          <input type="checkbox" name="rid" value="{{ r.id }}">
+          <span class="rc-jl-name">{{ r.name }}</span>
+          <span class="dim rc-mini">{{ r.mil_no | aindic }}</span>
+          {% if st %}<span class="rc-chip st-{{ st }}">{{ st }}</span>{% endif %}
+        </label>
+        {% endfor %}
+        {% if not recruits %}
+        <p class="panel-hint" style="text-align:center;padding:14px 0">
+          لا يوجد مجندون مسجلون — ابدأ من تبويب «أصل القوة».</p>
+        {% endif %}
+      </div>
+
+      <div class="rc-jl-foot">
+        <button type="button" class="rc-mini-btn" id="rcJlAll">تحديد الكل</button>
+        <button type="button" class="rc-mini-btn" id="rcJlClear">إلغاء التحديد</button>
+        <span class="rc-jl-times">
+          <span class="dim">حضروا لحد الساعة</span><input name="t_present" placeholder="١:٠٠" style="width:88px">
+          <span class="dim">ونزلوا الساعة</span><input name="t_left" placeholder="١:٣٠" style="width:88px">
+        </span>
+        <span class="dim">حتى يوم</span>
+        <input name="to" id="rcJlTo" inputmode="numeric" placeholder="{{ jl_today | aindic }}" style="width:88px"
+               title="آخر يوم الإجازة — سيبتها فاضية يعني إجازة يوم واحد">
+        <button class="rt-btn gold" type="submit" id="rcJlGo">تأكيد + عمل التصريح</button>
+        <div class="rc-jl-prev" id="rcJlPrev"></div>
+        <div class="rc-jl-err" id="rcJlErr"></div>
+      </div>
+    </form>
+  </div>
+</div>

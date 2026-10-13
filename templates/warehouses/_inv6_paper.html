@@ -1,0 +1,122 @@
+    {# ================= الورقة (شكل الدفتر المعتمد) ================= #}
+    <form id="inv6ApplyForm" method="post" action="{{ url_for('inv6.apply') }}">
+    <div class="a4 inv6-paper">
+      <div class="inv6-headrow">
+        <div class="inv6-hr">
+          <div class="inv6-line">اسم الجهة /
+            <input type="text" name="sector" data-combo="ivSectorsList" autocomplete="off" value="{{ inv6.header.sector or '' }}" class="inv6-inl" placeholder="الجهة"></div>
+          <div class="inv6-line">مخزن /
+            <input type="text" name="warehouse" value="{{ inv6.header.warehouse or '' }}" class="inv6-inl" placeholder="المخزن"></div>
+        </div>
+        <div class="inv6-hc">
+          <div class="inv6-title">محضر جرد الاصناف</div>
+          <div class="inv6-date">تاريخ الجرد: <bdi dir="ltr">{{ "%04d-%02d-%02d" | format(year, month, inv6.day) | datefmt }}</bdi></div>
+        </div>
+        <div class="inv6-hl">
+          <div class="inv6-model">نموذج 6 مخازن حكومه</div>
+          <div class="inv6-owner">اسم صاحب العهدة /
+            <input type="text" name="owner_rank" data-combo="ivRanksList" autocomplete="off" value="{{ inv6.header.owner_rank or '' }}" class="inv6-inl" placeholder="الرتبة"> /
+            <input type="text" name="owner_name" data-combo="ivNamesList" autocomplete="off" value="{{ inv6.header.owner_name or '' }}" class="inv6-inl" placeholder="الاسم"></div>
+        </div>
+      </div>
+
+      {# توجيه ١٥/١٠: الشهر مفيهوش أصناف → رسالة واضحة جوه الورقة نفسها (مش توست مؤقت)
+         وزر «تطبيق الجرد» بيتقفل — مفيش خروج من الصفحة ولا فولدر فاضي. #}
+      {% if not inv6.rows %}
+      <div class="iv6-note no-print" id="inv6NoItems">
+        ⚠️ لا توجد أصناف في دفتر ٣ مخازن لهذا الشهر — عشان تطبّق الجرد:
+        افتح تبويب «١ مخازن» من نفس القسم وسجّل «إذن إضافة» (الصنف بيتفتح في الدفتر تلقائيًا)،
+        وبعدها ارجع هنا واضغط «تطبيق الجرد».
+      </div>
+      {% endif %}
+
+      <table class="inv6-table">
+        <colgroup>
+          <col class="iv-c1"><col class="iv-c2"><col class="iv-c3"><col class="iv-c4">
+          <col class="iv-c5"><col class="iv-c6"><col class="iv-c7"><col class="iv-c8">
+          <col class="iv-c9"><col class="iv-c10"><col class="iv-c11">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>رقم<br>الصنف</th>
+            <th>اسم الصنف</th>
+            <th>الوحدة</th>
+            <th>الموجود من<br>واقع الجرد</th>
+            <th>حالة الصنف</th>
+            <th>الرصيد الدفتري</th>
+            <th>حالة الصنف</th>
+            <th>الزيادة</th>
+            <th>العجز</th>
+            <th>سعر الوحدة</th>
+            <th>القيمه</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in inv6.rows %}
+          <tr class="iv-row" data-book="{{ r.book }}">
+            <input type="hidden" name="row{{ loop.index0 }}_cycle" value="{{ r.cycle }}">
+            <input type="hidden" name="row{{ loop.index0 }}_item_id" value="{{ r.item_id }}">
+            <input type="hidden" name="row{{ loop.index0 }}_name" value="{{ r.name }}">
+            <input type="hidden" name="row{{ loop.index0 }}_unit" value="{{ r.unit }}">
+            <input type="hidden" name="row{{ loop.index0 }}_serial" value="{{ r.serial }}">
+            <input type="hidden" name="row{{ loop.index0 }}_book" value="{{ r.book }}">
+            <td class="iv-num">{{ r.serial | aindic }}</td>
+            <td class="iv-name">{{ r.name }}{% if r.cycle == 'contractor' %} <small class="dim">(المتعهد)</small>{% endif %}</td>
+            <td class="iv-num">{{ r.unit or '—' }}</td>
+            <td class="iv-num"><input type="text" inputmode="decimal" class="iv-in" name="row{{ loop.index0 }}_counted" value="{{ r.counted | ivnum }}" title="الموجود الفعلي من واقع الجرد"></td>
+            <td class="iv-num">
+              <select name="row{{ loop.index0 }}_status_item" class="iv-sel">
+                <option {{ 'selected' if r.status_item == 'جيدة' }}>جيدة</option>
+                <option {{ 'selected' if r.status_item == 'سئة' }}>سئة</option>
+              </select>
+            </td>
+            <td class="iv-num iv-book">{{ r.book | ivnum }}</td>
+            <td class="iv-num">
+              <select name="row{{ loop.index0 }}_status_issue" class="iv-sel">
+                <option {{ 'selected' if r.status_issue == 'جيدة' }}>جيدة</option>
+                <option {{ 'selected' if r.status_issue == 'سئة' }}>سئة</option>
+              </select>
+            </td>
+            <td class="iv-num iv-inc">{{ r.inc | ivnum if r.inc else 'لا يوجد' }}</td>
+            <td class="iv-num iv-dec">{{ r.dec | ivnum if r.dec else 'لا يوجد' }}</td>
+            <td class="iv-num"><input type="text" inputmode="decimal" class="iv-in" name="row{{ loop.index0 }}_price" value="{{ r.price | ivnum if r.price else '' }}" placeholder="لا يوجد" title="سعر الوحدة"></td>
+            <td class="iv-num iv-val">{{ r.value | ivnum if r.value else '' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="empty">لا توجد أصناف في دفتر ٣ مخازن لهذا الشهر — سجّل أصناف وإذن إضافة أولًا.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="inv6-sigs">
+        <div class="inv6-sig">
+          <div class="iv-st">توقيع كاتب الشطب</div>
+          <input type="text" name="sig_writer_rank" data-combo="ivRanksList" autocomplete="off" value="{{ inv6.header.sigs.writer.rank or '' }}" class="iv-sin" placeholder="الرتبة">
+          <input type="text" name="sig_writer_name" data-combo="ivNamesList" autocomplete="off" value="{{ inv6.header.sigs.writer.name or '' }}" class="iv-sin" placeholder="الاسم">
+        </div>
+        <div class="inv6-sig">
+          <div class="iv-st">توقيع صاحب العهدة</div>
+          <input type="text" name="sig_owner_rank" data-combo="ivRanksList" autocomplete="off" value="{{ inv6.header.sigs.owner.rank or '' }}" class="iv-sin" placeholder="الرتبة">
+          <input type="text" name="sig_owner_name" data-combo="ivNamesList" autocomplete="off" value="{{ inv6.header.sigs.owner.name or '' }}" class="iv-sin" placeholder="الاسم">
+        </div>
+        <div class="inv6-sig iv-sig3">
+          <div class="iv-st">توقيع لجنة الجرد</div>
+          <input type="text" name="sig_committee_1" value="{{ inv6.header.sigs.committee[0] or '' }}" class="iv-sin" placeholder="السطر الأول">
+          <input type="text" name="sig_committee_2" value="{{ inv6.header.sigs.committee[1] or '' }}" class="iv-sin" placeholder="السطر التاني">
+          <input type="text" name="sig_committee_3" value="{{ inv6.header.sigs.committee[2] or '' }}" class="iv-sin" placeholder="السطر التالت">
+        </div>
+        <div class="inv6-sig">
+          <div class="iv-st">مدير المخازن</div>
+          <input type="text" name="sig_manager_rank" data-combo="ivRanksList" autocomplete="off" value="{{ inv6.header.sigs.manager.rank or '' }}" class="iv-sin" placeholder="الرتبة">
+          <input type="text" name="sig_manager_name" data-combo="ivNamesList" autocomplete="off" value="{{ inv6.header.sigs.manager.name or '' }}" class="iv-sin" placeholder="الاسم">
+        </div>
+        <div class="inv6-sig">
+          <div class="iv-st">رئيس المصلحه</div>
+          <input type="text" name="sig_chief_rank" data-combo="ivRanksList" autocomplete="off" value="{{ inv6.header.sigs.chief.rank or '' }}" class="iv-sin" placeholder="الرتبة">
+          <input type="text" name="sig_chief_name" data-combo="ivNamesList" autocomplete="off" value="{{ inv6.header.sigs.chief.name or '' }}" class="iv-sin" placeholder="الاسم">
+        </div>
+      </div>
+    </div>
+    <input type="hidden" name="day" value="{{ inv6.day }}">
+    </form>
+
