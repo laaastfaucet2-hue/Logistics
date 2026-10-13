@@ -7,7 +7,7 @@
 .login-hero { background: none; color: var(--text); padding: 0; position: relative;
   text-align: right; }
 .login-identity { display: flex; gap: 13px; align-items: center; margin-bottom: 35px; }
-.login-identity img { width: 51px; height: 51px; }
+.login-identity img { width: 80px; height: 80px; object-fit: contain; }
 .login-identity strong { font-size: 21px; display: block; }
 .login-identity small { display: block; color: var(--muted); font-size: 11px; letter-spacing: 1.8px; margin-top: 4px; }
 .login-hero h1 { font-size: 42px; line-height: 1.6; font-weight: 600; margin: 0; color: var(--text); }
