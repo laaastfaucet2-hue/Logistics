@@ -118,5 +118,8 @@
       </div>
     </div>
     <input type="hidden" name="day" value="{{ inv6.day }}">
+    {# رمز الجلسة جوه الورقة نفسها — الورقة بتتبدل بالـ fetch عند تغيير اليوم،
+       والفورم كان بيطلع من غير الرمز فيطرد المستخدم لشاشة الدخول (١٥/١٠) #}
+    <input type="hidden" name="sid" value="{{ sid or '' }}">
     </form>
 

@@ -141,6 +141,15 @@
   function refresh(d) {
     wrap.innerHTML = d.paper;
     if (window.inv6BindRows) window.inv6BindRows(wrap);
+    /* الشبكة الآمنة (١٥/١٠): لو الورقة الجديدة جت من غير رمز الجلسة لأي سبب،
+       نلزقه من بيانات الصفحة — منع خروج المستخدم لشاشة الدخول عند التطبيق. */
+    var sidVal = document.body.dataset.sid;
+    var form = wrap.querySelector("form");
+    if (sidVal && form && !form.querySelector('[name="sid"]')) {
+      var inp = document.createElement("input");
+      inp.type = "hidden"; inp.name = "sid"; inp.value = sidVal;
+      form.appendChild(inp);
+    }
     syncApply();
     var w = el("inv6DayWord"); if (w) w.textContent = d.day_label;
     var dd = el("inv6DelDay"); if (dd) dd.textContent = d.day_label;

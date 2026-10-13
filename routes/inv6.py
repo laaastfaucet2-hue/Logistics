@@ -65,9 +65,13 @@ def _open_path(path):
 @login_required
 def page():
     # «6 مخازن» فرع جوه صفحة «مستودعات وسجلات» (توجيه ١٠/١٠) — الروابط القديمة
-    # توجّه للتبويب نفسه مع الحفاظ على اليوم والرسايل.
-    keep = {k: v for k, v in request.args.items() if k in ("day", "ok", "err", "cycle")}
+    # توجّه للتبويب نفسه مع الحفاظ على اليوم والرسايل ورمز الجلسة (١٥/١٠:
+    # ضياع الرمز هنا كان بيطرد المستخدم لشاشة الدخول بعد «تطبيق الجرد»).
+    keep = {k: v for k, v in request.args.items()
+            if k in ("day", "ok", "err", "cycle", "sid", "year", "month")}
     keep.setdefault("sub", "inv6")
+    if getattr(g, "sid", None) and not keep.get("sid"):
+        keep["sid"] = g.sid
     return redirect(url_for("warehouses.page", **keep))
 
 

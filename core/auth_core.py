@@ -19,7 +19,9 @@ def current_session():
         if not fresh or fresh["id"] != u.get("id"):
             session.pop("user", None)
             return None, None
-        return u, request.args.get("sid") or None
+        # الرمز من الرابط أو الفورم: بناء التحويلات بعد POST بيحافظ عليه
+        # فما بيتوهش لو الكوكي محجوب في المتصفح (١٥/١٠ — خروج «٦ مخازن»)
+        return u, request.args.get("sid") or request.form.get("sid") or None
     token = request.args.get("sid") or request.form.get("sid")
     if token:
         user = db.get_session_user(token)
