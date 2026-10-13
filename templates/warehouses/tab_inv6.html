@@ -45,7 +45,7 @@
         </div>
         <div class="inv6-hc">
           <div class="inv6-title">محضر جرد الاصناف</div>
-          <div class="inv6-date">تاريخ الجرد: <bdi dir="ltr">{{ year }}/{{ month }}/{{ inv6.day }}</bdi></div>
+          <div class="inv6-date">تاريخ الجرد: <bdi dir="ltr">{{ year | aindic }}/{{ month | aindic }}/{{ inv6.day | aindic }}</bdi></div>
         </div>
         <div class="inv6-hl">
           <div class="inv6-model">نموذج 6 مخازن حكومه</div>
@@ -85,7 +85,7 @@
             <input type="hidden" name="row{{ loop.index0 }}_unit" value="{{ r.unit }}">
             <input type="hidden" name="row{{ loop.index0 }}_serial" value="{{ r.serial }}">
             <input type="hidden" name="row{{ loop.index0 }}_book" value="{{ r.book }}">
-            <td class="iv-num">{{ r.serial }}</td>
+            <td class="iv-num">{{ r.serial | aindic }}</td>
             <td class="iv-name">{{ r.name }}{% if r.cycle == 'contractor' %} <small class="dim">(المتعهد)</small>{% endif %}</td>
             <td class="iv-num">{{ r.unit or '—' }}</td>
             <td class="iv-num"><input type="text" inputmode="decimal" class="iv-in" name="row{{ loop.index0 }}_counted" value="{{ r.counted | ivnum }}" title="الموجود الفعلي من واقع الجرد"></td>
@@ -170,7 +170,8 @@
   function f(x) {
     x = Math.round(x * 1000) / 1000;
     if (!x) return "";
-    return x.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    return x.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")
+      .replace(/\./g, "٫").replace(/[0-9]/g, function (d) { return AR[d]; });
   }
   document.querySelectorAll("tr.iv-row").forEach(function (tr) {
     var cEl = tr.querySelector("input[name$='_counted']");

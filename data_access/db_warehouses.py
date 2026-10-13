@@ -827,8 +827,10 @@ def item_card(year, month, item_id):
         r["added_d"] = arnum.round3(float(r["added"] or 0) * uf)
         r["issued_d"] = arnum.round3(float(r["issued"] or 0) * uf)
 
-    def sort_key(r):   # الإضافات قبل المنصرف في نفس اليوم — لا رصيد سالب بالخطأ
-        return (r["date_iso"], {"opener": 0, "add1": 1}.get(r["kind"], 2), r.get("permit_no") or 0)
+    def sort_key(r):   # الترتيب الزمني باليوم (الإضافات قبل المنصرف في نفس اليوم) —
+        # day هو المرجع الدقيق؛ date_iso ممكن يكون فاضي في استلامات ١ مخازن
+        return (int(r.get("day") or 0),
+                {"opener": 0, "add1": 1}.get(r["kind"], 2), r.get("permit_no") or 0)
     rows.sort(key=sort_key)
     running = 0.0
     out = []

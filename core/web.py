@@ -198,7 +198,8 @@ def register(app):
 
     @app.template_filter("ivnum")
     def ivnum_number(value):
-        """«6 مخازن» — أرقام لاتينية صيغ 0.### زي ملف التصميم المعتمد (1.250 → 1.25)."""
+        """«6 مخازن» — صيغ 0.### بلا أصفار زائدة بالأرقام العربية المشرقية (1.250 → ١٫٢٥).
+        ملف الإكسل على القرص لسه بالأرقام اللاتينية زي الملفات الرسمية (توجيه ١٤/١٠)."""
         if value in (None, ""):
             return ""
         try:
@@ -206,8 +207,8 @@ def register(app):
         except (TypeError, ValueError):
             return value
         if n == int(n):
-            return str(int(n))
-        return f"{n:.3f}".rstrip("0").rstrip(".")
+            return arnum.to_arabic_indic(str(int(n)))
+        return arnum.to_arabic_indic(f"{n:.3f}".rstrip("0").rstrip(".").replace(".", "٫"))
 
 
     @app.template_filter("oval")
