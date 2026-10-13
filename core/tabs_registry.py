@@ -45,7 +45,6 @@ SUBTABS = {
         ("users", "تسجيل المستخدمين"),
         ("log", "سجلات المستخدمين"),
         ("notes", "المتابعة والملاحظات"),
-        ("backups", "النسخ الاحتياطي"),
         ("identity", "الهوية للمنظمة"),
     ],
 }
@@ -69,7 +68,6 @@ ROUTE_MAP = [
     ("/occasions", "occasions", None),
     ("/files", "files", None),
     ("/settings", "settings", "sub"),
-    ("/backups", "settings", "backups"),   # الروابط القديمة → تاب النسخ الاحتياطي
 ]
 
 # روابط النظام اللي مش تاب (مايتطلبش صلاحية)
@@ -135,7 +133,7 @@ def _sub_from_path(section, path):
                 return sub
         return None
     if section == "settings":
-        for sub in ("users", "log", "notes", "backups"):
+        for sub in ("users", "log", "notes"):
             if p.startswith(f"/settings/{sub}"):
                 return sub
         return None

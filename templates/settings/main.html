@@ -3,7 +3,7 @@
 {% block print_doc_title %}الإعدادات{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/backups.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v={{ static_ver }}">
 {% endblock %}
 
@@ -11,7 +11,7 @@
 <header class="wh-hero">
   <div class="wh-hero-lines">
     <b class="wh-l1">⚙️ الإعدادات</b>
-    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · النسخ الاحتياطي · الهوية للمنظمة</b>
+    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · الهوية للمنظمة</b>
   </div>
 </header>
 
@@ -23,14 +23,23 @@
   {% endfor %}
 </nav>
 
+{% if sub in ('log', 'notes') %}
+<div class="sg-gatebar no-print">
+  <span class="dim small">القسم مفتوح في هذه الجلسة — الرمز مش هيتطلب من تاني لحد ما تقفله أو تسجل الخروج.</span>
+  <form method="post" action="{{ url_for('settings.gate') }}">
+    <input type="hidden" name="sub" value="{{ sub }}">
+    <input type="hidden" name="action" value="lock">
+    <button type="submit" class="sg-lockbtn">قفل القسم</button>
+  </form>
+</div>
+{% endif %}
+
 {% if sub == 'users' %}
   {% include "settings/tab_users.html" %}
 {% elif sub == 'log' %}
   {% include "settings/tab_log.html" %}
 {% elif sub == 'notes' %}
   {% include "settings/tab_notes.html" %}
-{% elif sub == 'backups' %}
-  {% include "settings/tab_backups.html" %}
 {% elif sub == 'identity' %}
   {% include "settings/tab_identity.html" %}
 {% endif %}

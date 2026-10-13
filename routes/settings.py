@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """«الإعدادات» — أربعة تابات: تسجيل المستخدمين · سجلات المستخدمين ·
-المتابعة والملاحظات · النسخ الاحتياطي (توجيه ١٠/١٠).
+المتابعة والملاحظات · الهوية للمنظمة (توجيه ١٠/١٠).
 
 كل تاب له صلاحية مستقلة (settings:users / settings:log / settings:notes /
-settings:backups) يحددها الـ admin من تاب تسجيل المستخدمين.
+settings:identity) يحددها الـ admin من تاب تسجيل المستخدمين.
+
+الأقسام المحمية (log/notes): الرمز الرئيسي يفتحها مرة واحدة لباقي
+الجلسة (قرار المستخدم ١٤/١٠) — مفتاح الفتح مرتبط بتوكن الجلسة.
 """
 from flask import Blueprint, g, redirect, render_template, request, send_file, url_for
 
@@ -20,18 +23,7 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 SUBS = [("users", "تسجيل المستخدمين", "👥"),
         ("log", "سجلات المستخدمين", "📈"),
         ("notes", "المتابعة والملاحظات", "🗒️"),
-        ("backups", "النسخ الاحتياطي", "💾"),
         ("identity", "الهوية للمنظمة", "🖼️")]
-
-
-def _size_h(num):
-    if num < 1024 * 1024:
-        return "{:.3f} ك.ب.".format(num / 1024)
-    return "{:.3f} م.ب.".format(num / 1024)
-
-
-def _time_h(epoch):
-    return dates.format_datetime(egtime.from_timestamp(epoch), seconds=True)
 
 
 def _sync_quiet(fn, *args, **kwargs):
@@ -68,9 +60,11 @@ def page():
     if not tr.has_permission(g.user, f"settings:{sub}"):
         from flask import render_template as rt
         return rt("forbidden.html", tab=f"settings:{sub}"), 403
-    # الأقسام المحمية (سجلات المستخدمين + المتابعة والملاحظات): الرمز الرئيسي 7799
-    # مطلوب كل مرة يُفتح فيها القسم (توجيه المستخدم ١١/١٠)
-    if sub in ("log", "notes") and request.args.get("open") != "1":
+    # الأقسام المحمية (سجلات المستخدمين + المتابعة والملاحظات): الرمز الرئيسي
+    # يفتحها مرة واحدة لباقي الجلسة (قرار المستخدم ١٤/١٠) — مفتاح الجلسة =
+    # توكن sid في الرابط، أو «cookie:<id>» لو الدخول بكوكي.
+    gate_key = g.sid or "cookie:%d" % g.user["id"]
+    if sub in ("log", "notes") and not db.is_gate_open(gate_key, sub):
         keep = {k: v[0] for k, v in request.args.items(multi=True) if k not in ("open", "err", "ok")}
         return render_template("settings/lock.html", subs=SUBS, sub=sub,
                                sub_name=dict((t[0], t[1]) for t in SUBS)[sub], keep=keep)
@@ -84,22 +78,6 @@ def page():
         "perm_user": None,
         "perm_tabs": set(),
     }
-    if sub == "backups":
-        from data_access import dataguard
-        results = dataguard.verify_all()
-        files = dataguard.data_files()
-        rows = []
-        for b in dataguard.list_backups():
-            rows.append({**b, "size_h": _size_h(b["size"]), "time_h": _time_h(b["mtime"])})
-        ctx.update(
-            broken=[(rel, err) for rel, (ok, err) in results.items() if not ok],
-            files_count=len(files),
-            total_h=_size_h(sum(p.stat().st_size for p in files)),
-            verified_count=len(results),
-            backups=rows, backups_count=len(rows),
-            keep_n=dataguard.KEEP_N,
-            newest=rows[0] if rows else None,
-        )
     if sub == "users":
         sel = arnum.parse_int(request.args.get("permuser"))
         sel_user = db_users.get_user_full(sel) if sel else None
@@ -223,19 +201,31 @@ def identity_logo_delete():
 @settings_bp.route("/gate", methods=["POST"])
 @login_required
 def gate():
-    """بوابة الرمز الرئيسي للأقسام المحمية (log/notes) — 7799 كل مرة."""
+    """بوابة الرمز الرئيسي للأقسام المحمية (log/notes).
+
+    فتح: الرمز 7799 يفتح القسم لباقي الجلسة (مرة واحدة — قرار ١٤/١٠).
+    قفل: action=lock يقفل القسم فورًا (زر «قفل القسم» في أعلى السجلات).
+    """
     import secrets
     from services import settings_fs
     sub = request.form.get("sub", "")
     if sub not in ("log", "notes") or not tr.has_permission(g.user, f"settings:{sub}"):
         return _rb("users")
+    gate_key = g.sid or "cookie:%d" % g.user["id"]
+    name = dict((t[0], t[1]) for t in SUBS)[sub]
+    if request.form.get("action") == "lock":
+        db.clear_gate(gate_key, sub)
+        db_users.log_activity(g.user["id"], "gate", f"settings:{sub}",
+                              "قفل القسم «" + name + "» يدويًا")
+        return _rb(sub, ok="اتقفل القسم — هيتطلب الرمز تاني عند فتحه")
     pw = (request.form.get("password") or "").strip()
     if pw and secrets.compare_digest(pw, settings_fs.MASTER_PASSWORD):
-        name = dict((t[0], t[1]) for t in SUBS)[sub]
+        db.set_gate_open(gate_key, sub)
         db_users.log_activity(g.user["id"], "gate", f"settings:{sub}",
-                              "فتح القسم المحمي «" + name + "» بالرمز الرئيسي")
-        keep = {k: v for k, v in request.form.items() if k not in ("sub", "password")}
-        return redirect(url_for("settings.page", sub=sub, open="1", **keep))
+                              "فتح القسم المحمي «" + name + "» بالرمز الرئيسي (مفتوح لباقي الجلسة)")
+        keep = {k: v for k, v in request.form.items()
+                if k not in ("sub", "password", "action")}
+        return redirect(url_for("settings.page", sub=sub, **keep))
     return _rb(sub, err="الرمز غير صحيح — حاول مرة أخرى")
 
 

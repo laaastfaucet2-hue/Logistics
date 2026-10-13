@@ -174,3 +174,12 @@ tr.sg-sel td:first-child { box-shadow: inset 4px 0 0 var(--brand-gold); }
 .sg-permbtn { display: inline-flex; align-items: center; gap: 6px; }
 .sg-permbtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .sg-permbtn.on { box-shadow: inset 0 0 0 2px var(--gold); }
+/* شريط «القسم مفتوح في الجلسة» + زرار القفل (قرار ١٤/١٠: الرمز مرة واحدة) */
+.sg-gatebar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 14px; margin-bottom: 12px; border: 1px solid var(--gold-border);
+  border-radius: 10px; background: rgba(var(--gold-rgb), .06); flex-wrap: wrap; }
+.sg-gatebar form { margin: 0; }
+.sg-lockbtn { border: 1px solid var(--card-border); background: var(--card); color: var(--text);
+  font: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
+  cursor: pointer; transition: .15s; }
+.sg-lockbtn:hover { border-color: var(--danger-border); color: var(--red); }

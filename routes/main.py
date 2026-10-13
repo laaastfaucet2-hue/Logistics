@@ -92,7 +92,11 @@ def register(app):
         token = request.args.get("sid") or request.form.get("sid")
         user = db.get_session_user(token) if token else None
         if token:
-            db.delete_session(token)
+            db.delete_session(token)   # بيُمسح معها فتح البوابات المحمية
+        else:
+            u = session.get("user")
+            if u and u.get("id"):
+                db.clear_gate("cookie:%d" % u["id"])
         if user:
             from data_access import db_users
             db_users.log_activity(user["id"], "logout")
