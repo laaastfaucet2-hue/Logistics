@@ -158,6 +158,10 @@ def page():
     tamween = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "tamween") if scoped else []
     contractor = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "contractor") if scoped else []
     nxt, fiscal = dp.peek_next_number(egtime.today())
+    # رقم في البارامتر (بعد حفظ) = فورم بيبقى عليه — الحفظ التاني يعمل تحديث
+    form_number = arnum.parse_int(request.args.get("number"))
+    if form_number is not None and form_number < 1:
+        form_number = None
     stock = {"tamween": stock_link.for_rows(year, month, "tamween", tamween),
              "contractor": stock_link.for_rows(year, month, "contractor", contractor)}
     entity_names = dt.entity_names(year, month)   # قاموس الجهات — الاسم يتبعه
@@ -179,6 +183,8 @@ def page():
         stock=stock, stock_low_ratio=STOCK_LOW_RATIO,
         stock_totals={k: stock_link.totals(v) for k, v in stock.items()},
         next_number=nxt, fiscal_year=fiscal, days_in_month=last,
+        form_number=arnum.to_arabic_indic(form_number) if form_number
+                   else arnum.to_arabic_indic(nxt),
         used_numbers=used_numbers,
         meal_on={"breakfast": True, "lunch": True, "dinner": True},
     )
@@ -288,4 +294,7 @@ def save():
         import logging
         logging.exception("calc2 warehouses mirrors failed")
     keys = ",".join(p["key"] for p in selected)
-    return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys, "days": issue_days})
+    # الرقم المحفوظ يرجع في الفورم — إعادة الحفظ بنفس البيانات تحدّث الإذن
+    # نفسه بدل ما تكرر برقم جديد (تصحيح ١٤/١٠ «مش بيحفظ الاذن»)
+    return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys,
+                         "days": issue_days, "number": number})

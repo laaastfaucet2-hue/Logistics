@@ -73,6 +73,7 @@ def set_strike(year, month, cycle, item_name, day, qty):
     return True
 
 
+@months.memo
 def strike_map(year, month, cycle):
     """{(اسم الصنف): {يوم: كمية}} — مصفوفة الشطب كلها للشهر."""
     conn = _conn(year, month)
@@ -108,6 +109,7 @@ def set_price(year, month, cycle, item_name, price):
     return True
 
 
+@months.memo
 def price_map(year, month, cycle):
     conn = _conn(year, month)
     rows = conn.execute("SELECT item_name, price FROM wh4_price WHERE cycle=?", (cycle,)).fetchall()

@@ -4,6 +4,7 @@
 انفصل عن db_warehouses بقاعدة ≤1000 سطر (نفس نمط db_pack): الاستدعاءات اللي
 تحتاج من db_warehouses استيراد مؤجل جوه الدالة (تجنّب الدوران)."""
 from core import arabic_numbers as arnum
+from data_access import months
 from data_access.packaging import pack_breakdown, pack_split
 
 # ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
@@ -30,6 +31,7 @@ def user_notes(notes):
     return " — ".join(seg for seg in segs if seg and not seg.startswith(("مخازن:", "منتج:", "مورد:")))
 
 
+@months.memo
 def _batch_pool(year, month, cycle):
     from data_access import db_warehouses as _dw   # استيراد مؤجل — تجنّب الدوران
     """دفعات الدورة مرتبة: الأقرب صلاحية أولًا وتساوي ⇒ الأقدم إضافةً (قرار المستخدم)."""
@@ -96,6 +98,7 @@ def _rem_label(batch, q, rest_word="سائب"):
     return pack_breakdown(batch.get("pack_kind"), batch.get("pack_capacity"), batch.get("pack_inner_count"), batch.get("pack_inner_capacity"), q, batch["item"]["handle_unit"], rest_word, inner_kind=batch.get("pack_inner_kind")) or f"{arnum.fmt_qty_trim(q)} {batch['item']['handle_unit']}"
 
 
+@months.memo
 def tafreeda_rows(year, month, cycle):
     from data_access import db_warehouses as _dw   # استيراد مؤجل — تجنّب الدوران
     """التفريدة التلقائية: الأقرب صلاحية أولًا — لكل سطر التفكيك ورصيد المخزن كله قبل/بعد."""
@@ -149,6 +152,7 @@ def tafreeda_rows(year, month, cycle):
     return rows
 
 
+@months.memo
 def fefo_actual_map(year, month, cycle):
     """المنصرف الفعلي (FEFO) لكل (permit_no, item) — نفس ما استهلكه المخزن
     الفيزيائي من كل إذن. يُستخدم في دفتر ٣ مخازن عشان الدفتر يسجل الأفعال

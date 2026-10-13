@@ -126,7 +126,7 @@
                placeholder="حاضر بشهادة صحية أو اكتب اسمًا"></label>
       <datalist id="c2Issuers">{% for r in issuers %}<option value="{{ r.name }}">{% endfor %}</datalist>
       <label>رقم إذن الصرف (بون ٢ مخازن)
-        <input name="number" inputmode="numeric" id="c2NumberInput" value="{{ next_number | aindic }}">
+        <input name="number" inputmode="numeric" id="c2NumberInput" value="{{ form_number }}">
         <small class="c2-dup-warn" id="c2DupWarn" hidden></small></label>
     </div>
   </div>

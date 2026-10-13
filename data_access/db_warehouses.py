@@ -140,6 +140,7 @@ def ration_catalog(year, month, cycle):
     return out
 
 
+@months.memo
 def list_items(year, month, cycle):
     """أصناف الكتالوج مع أرصدتها من دفتر ٣ مخازن."""
     balances = item_balances(year, month, cycle)
@@ -175,6 +176,7 @@ def running_balance(conn, cycle, item_id, exclude_id=None):
     return round(float(row["a"] or 0.0) - float(row["i"] or 0.0), 6)
 
 
+@months.memo
 def item_balances(year, month, cycle):
     """{item_id: الرصيد النهائي} — رصيد أول المدة/الإضافات − منصرف إذون ٢ مخازن."""
     conn = _conn(year, month)
@@ -286,6 +288,7 @@ def _remember_spec(conn, cycle, item_id, kind, capacity,
          (inner_unit or "").strip(), egtime.now().isoformat(timespec="seconds")))
 
 
+@months.memo
 def pack_specs_map(year, month, cycle):
     """{الصنف: {النوع: {capacity, inner_count, inner_capacity}}} — للتعبئة التلقائية."""
     conn = _conn(year, month)
@@ -413,6 +416,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     }
 
 
+@months.memo
 def list_receipts(year, month, cycle, limit=10000):
     """إذون الدورة مع تفاصيل التغليف وتوزيعها على المخازن (من الأحدث)."""
     conn = _conn(year, month)
@@ -739,6 +743,7 @@ def save_row_note(year, month, cycle, item_id, kind, permit_no, day, notes):
     conn.close()
 
 
+@months.memo
 def row_notes_map(year, month, cycle, item_id):
     """{(kind, permit_no, day): notes} — ملاحظات المستخدم على أسطر صنف."""
     conn = _conn(year, month)
@@ -797,6 +802,7 @@ def issue_rows_for_item(year, month, cycle, item):
     return rows
 
 
+@months.memo
 def item_card(year, month, item_id):
     """كارت الصنف: أول المدة + إضافات + منصرف بالترتيب الزمني والرصيد التراكمي."""
     item = get_item(year, month, item_id)
@@ -859,6 +865,7 @@ def item_card(year, month, item_id):
 
 
 # ========== دفتر ٢ مخازن — إذون آلة الحاسبة (عرض؛ الخصم التلقائي مع ٤–٧ مخازن) ==========
+@months.memo
 def permits_book(year, month, cycle):
     """أذون ٢ مخازن وأصناف دورة {cycle} — actuals تفصل التموين عن المتعهد."""
     from data_access import db_permits as dp
