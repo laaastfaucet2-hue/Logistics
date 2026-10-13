@@ -254,14 +254,16 @@ def _seed_rations(year, month):
         for name, _, _, _, _ in ENTITIES:
             count, _kind = de.add_entity(year, month, section, name)
             added += 1 if count else 0
-        # تخصيص أيام لصنفين: يظهران يومين محددين فقط (٢ = الاثنين، ٤ = الأربعاء)
+        # تخصيص أيام لصنفين: يظهران يومين محددين فقط (٢ = الاثنين، ٤ = الأربعاء).
+        # ١٤/١٠: مقرر اليوم = مجموع الوجبات (قبلها كان ياخد العشاء/الغداء بس).
         entities = de.list_entities(year, month, section)
         for entity in entities:
             for item in entity["items"]:
                 key = item["name"].strip()
                 if key in ("دواجن", "فول مدمس"):
-                    de.set_days(year, month, item["id"], {2: item["dinner"] or 0.200,
-                                                          4: item["dinner"] or 0.200})
+                    q = (item["breakfast"] or 0) + (item["lunch"] or 0) \
+                        + (item["dinner"] or 0)
+                    de.set_days(year, month, item["id"], {2: q, 4: q})
         print(f"✅ {section}: {len(items)} صنفًا و{added} جهة مسحوبة من المقرر الصيفي")
 
 

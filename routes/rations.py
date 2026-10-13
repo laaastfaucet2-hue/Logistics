@@ -96,6 +96,15 @@ def page(section):
         v["entities"] = de.list_entities(year, month, section)
         v["ee"] = arnum.parse_int(request.args.get("ee"))
         v["ee_item"] = de.get_entity_item(year, month, v["ee"]) if v["ee"] else None
+        # ١٤/١٠: تأكيد الربط — اسم الجهة في التاميدات لازم يكون هو نفس اسمها
+        # في التوزيع (الحاسبة بتاخد التخصيصات بالاسم) — لو فيه فرق يظهر تنبيه.
+        from data_access import db_tameedat as dt
+        t_names = {" ".join((n or "").split()) for n in dt.entity_names(year, month)}
+        d_names = {" ".join((e.get("name") or "").split()) for e in v["entities"]}
+        v["link_missing"] = {
+            "in_dist": sorted(n for n in t_names - d_names if n),
+            "in_tameed": sorted(n for n in d_names - t_names if n),
+        }
         return render_template("rations_dist.html", **v)
     v["items"], v["custom"] = dr.get_items(year, month, section, kind)
     v["edit_item"] = dr.get_item(year, month, v["edit_id"]) if v["edit_id"] else None

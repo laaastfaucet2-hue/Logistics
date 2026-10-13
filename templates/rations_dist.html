@@ -9,11 +9,11 @@
 {%- if v is none or v == 0 -%}—{%- else -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
 
+{# ١٤/١٠: مقرر اليوم = مجموع الوجبات الموزعة (فطار+غداء+عشاء) —
+   قبلها كان ياخد الغداء بس فالتخصيص اليومي كان نص اليوم #}
 {% macro gen(it) -%}
-{%- if it.lunch not in [none, 0] -%}{{ num(it.lunch) }}
-{%- elif it.breakfast not in [none, 0] -%}{{ num(it.breakfast) }}
-{%- elif it.dinner not in [none, 0] -%}{{ num(it.dinner) }}
-{%- endif -%}
+{%- set s = (it.breakfast or 0) + (it.lunch or 0) + (it.dinner or 0) -%}
+{%- if s -%}{{ num(s) }}{%- endif -%}
 {%- endmacro %}
 
 {% block content %}
@@ -40,6 +40,22 @@
     </button>
   </div>
 </div>
+
+{# ١٤/١٠: تأكيد الربط بين أسماء جهات التاميدات وأسماء جهات التوزيع —
+   الحاسبة بتاخد التخصيصات بالاسم، فأي فرق = الجهة هتشتغل بالمقرر العام #}
+{% if link_missing and (link_missing.in_dist or link_missing.in_tameed) %}
+<div style="margin:0 0 14px;padding:11px 15px;border-radius:11px;font-size:.9rem;font-weight:700;
+            background:rgba(245,158,11,.13);border:1px solid var(--gold-border,#f59e0b66);color:var(--gold-light,#fbbf24)">
+  ⚠️ تنبيه الربط بين التاميدات والتوزيع:
+  {% if link_missing.in_dist %}
+  جهات مسجلة في التاميدات <b>مش موجودة في التوزيع</b> (هتشتغل بالمقرر العام من غير تخصيصات):
+  {{ link_missing.in_dist | join('، ') }} — ضيفها هنا أو صحح الاسم.
+  {% endif %}
+  {% if link_missing.in_tameed %}
+  جهات في التوزيع <b>مش مسجلة في التاميدات</b>: {{ link_missing.in_tameed | join('، ') }}.
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- إضافة جهة -->
 <div class="panel rt-formcard">
