@@ -99,7 +99,8 @@ def monthly_ledger(year, month, cycle, item_name):
     - سطر كامل لكل وردة من المورّد (اسم الشركة + الكمية المضافة) — كل
       إضافة لوحدها (١٣/١٠).
     - سطر واحد «استهلاك <الشهر>» (وردي) على آخر يوم = كل الاستهلاك
-      (صرفيات أذون ٢ مخازن + الشطب اليدوي) — من غير أسماء جهات (١٣/١٠).
+      (صرفيات أذون ٢ مخازن + الشطب اليدوي) في عمود «فعلي» — عمود
+      «صرفيات أخرى» فاضي دايمًا، ومن غير أسماء جهات (١٣–١٤/١٠).
     - «رصيد ختامي المدة» (صفرة).
     """
     name = " ".join((item_name or "").split())
@@ -150,10 +151,13 @@ def monthly_ledger(year, month, cycle, item_name):
     # الشطب اليومى (يدوي) — بيتجمع في نفس سطر «استهلاك <الشهر>»
     strike_days = w4.strike_map(year, month, cycle).get(name, {})
     strike_total = round(sum(strike_days.values()), 6)
-    if other_total or strike_total:
+    # ١٤/١٠: كل الاستهلاك (صرفيات الأذون + الشطب اليدوي) في عمود «فعلي»
+    # — عمود «صرفيات أخرى» في دفتر 4 مخازن فاضي دايمًا.
+    consumed_total = round(other_total + strike_total, 6)
+    if consumed_total:
         events.append((f"{year:04d}-{month:02d}-{last:02d}", 4, "strike", 0,
                        f"استهلاك {MONTH_NAMES[month - 1]}",
-                       0.0, other_total, strike_total, strike_total))
+                       0.0, 0.0, consumed_total, consumed_total))
 
     # الدمج والزمن + الرصيد المتتالي + القيمة
     events.sort(key=lambda e: (e[0], e[1], e[2]))
