@@ -34,10 +34,12 @@ def cadres_add():
         return _rb("cadres", e=entity["id"], c=category, err="اكتب الاسم الرتبعي الكامل")
     person_id, created = dr.add_person(year, month, entity["id"], category, name, rank)
     rfs.write_entity_files(year, month, entity["id"], entity["name"])
+    rank_txt = f" برتبة {rank}" if rank else ""
     if created:
         return _rb("cadres", e=entity["id"], c=category,
-                   ok=f"تم إضافة {name} إلى قوة {entity['name']}")
-    return _rb("cadres", e=entity["id"], c=category, warn=f"{name} موجود بالفعل في القوة")
+                   ok=f"تم إضافة {name}{rank_txt} إلى قوة {entity['name']}")
+    return _rb("cadres", e=entity["id"], c=category,
+               warn=f"{name}{rank_txt} مسجل بالفعل في القوة")
 
 
 @raghibin_bp.route("/cadres/exclude/<int:person_id>", methods=["POST"])

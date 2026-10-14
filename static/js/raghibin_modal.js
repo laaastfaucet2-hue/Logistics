@@ -15,6 +15,9 @@
 (function () {
   "use strict";
 
+  /* ١٤/١٠: آخر جزء كشف معروض — نرجع له بعد الحفظ (في المودال أو الصفحة) */
+  var ragPanelUrl = "";
+
   function toArabic(n) {
     var d = "٠١٣٤٥٦٧٨٩";
     return String(n).replace(/\d/g, function (x) { return d[+x]; });
@@ -44,6 +47,62 @@
     return Array.prototype.map.call(src.querySelectorAll("option"), function (o) {
       return o.value;
     });
+  }
+
+  /* ═══ الرتبة جزء من هوية الشخص (١٤/١٠) ═══
+     «محمد أحمد محمد» برتبة مقدم ≠ «محمد أحمد محمد» برتبة عقيد.
+     بنجمع كل أزواج (الرتبة، الاسم) المتاحة، من:
+     • سكربت JSON محلي جوه الفورم (.rg-slot-ranks) — {اسم: رتبة}
+     • سكربت JSON عام (#rgPersonRankData) — {فئة: [[رتبة, اسم], …]}
+     اللي مالوش بيانات رتب يفضل على السلوك القديم (الاسم بس). */
+  function addRankPair(map, rank, name) {
+    name = String(name || "").trim();
+    if (!name) return;
+    if (!map[name]) map[name] = {};
+    map[name][String(rank || "").trim()] = 1;
+  }
+
+  function rankMapFor(form) {
+    var map = {};
+    var nodes = [];
+    if (form) {
+      var local = form.querySelector(".rg-slot-ranks");
+      if (local) nodes.push(local);
+    }
+    var global = document.getElementById("rgPersonRankData");
+    if (global && nodes.indexOf(global) === -1) nodes.push(global);
+    nodes.forEach(function (el) {
+      var data;
+      try { data = JSON.parse(el.textContent || "{}"); } catch (e) { return; }
+      if (!data || typeof data !== "object") return;
+      Object.keys(data).forEach(function (key) {
+        var value = data[key];
+        if (typeof value === "string") { addRankPair(map, value, key); return; }
+        if (Object.prototype.toString.call(value) === "[object Array]") {
+          value.forEach(function (pair) {
+            if (Object.prototype.toString.call(pair) === "[object Array]") {
+              addRankPair(map, pair[0], pair[1]);
+            }
+          });
+        }
+      });
+    });
+    return map;
+  }
+
+  /* true = مسجل بنفس رتبة الصف | false = موجود برتبة تانية (شخص جديد)
+     | undefined = مفيش بيانات رتب → نرجع للسلوك القديم */
+  function personKnown(input) {
+    var row = input.closest(".rg-slotrow") || input.closest(".rg-slotcell");
+    var sel = row ? row.querySelector(".rag-slot-rank") : null;
+    if (!sel) return undefined;
+    var name = (input.value || "").trim();
+    if (!name) return true;
+    var ranks = rankMapFor(input.closest("form"))[name];
+    if (!ranks) return undefined;
+    var rank = (sel.value || "").trim();
+    if (!rank) return true;
+    return !!(ranks[rank] || ranks[""]);
   }
 
   /* ١٣/١٠: كتابة اسم معروف تملأ مربع الرتبة في صفه تلقائيًا
@@ -95,9 +154,18 @@
           var name = (input.value || "").trim();
           if (!name) return;
           /* أسماء اتأكد منها فورًا (التنبيه تحت المربع) مش بيتسأل عنها تاني */
-          if (known.indexOf(name) !== -1 || fresh.indexOf(name) !== -1) return;
-          if (!window.confirm("«" + name + "» غير موجود في قوة الجهة.\n" +
-                              "هل تريد إضافته كقوة دائمة للجهة؟")) {
+          if (fresh.indexOf(name) !== -1) return;
+          /* ١٤/١٠: الرتبة جزء من الاسم — نفس الاسم برتبة مختلفة بيتسأل عشان
+             يُضاف كشخص جديد، بدل ما يتجاهله السجل بصمت */
+          var flag = personKnown(input);
+          if (flag === true) return;
+          if (flag === undefined && known.indexOf(name) !== -1) return;
+          var ask = (flag === false)
+            ? "«" + name + "» مسجل في القوة برتبة مختلفة.\n" +
+              "هل تريد إضافته كشخص جديد بنفس الاسم؟"
+            : "«" + name + "» غير موجود في قوة الجهة.\n" +
+              "هل تريد إضافته كقوة دائمة للجهة؟";
+          if (!window.confirm(ask)) {
             input.value = "";            /* رفض → المربع يفضى ولا يُحفظ */
           } else {
             fresh.push(name);            /* موافقة → يُضاف للقوة الدائمة */
@@ -213,13 +281,19 @@
       var known = {};
       optionValues(input.getAttribute("data-combo")).forEach(function (n) { known[n] = 1; });
       approvedNames().forEach(function (n) { known[n] = 1; });
-      if (known[v]) return;
+      /* ١٤/١٠: الرتبة جزء من الاسم — نفس الاسم برتبة مختلفة = شخص جديد */
+      var flag = personKnown(input);
+      if (flag === true) return;
+      if (flag === undefined && known[v]) return;
       var row = input.closest(".rg-slotrow");
       if (!row) return;
       var div = document.createElement("div");
       div.className = "rg-slot-warn";
+      var msg = (flag === false)
+        ? "«" + v + "» مسجل في القوة برتبة مختلفة — إضافته كشخص جديد بنفس الاسم؟"
+        : "«" + v + "» مش مسجل في «الجهات والكوادر» — إضافة كقوة دائمة للجهة؟";
       div.innerHTML =
-        "<span>«" + v + "» مش مسجل في «الجهات والكوادر» — إضافة كقوة دائمة للجهة؟</span>" +
+        "<span>" + msg + "</span>" +
         "<button type=\"button\" class=\"rg-warn-add\">إضافة كقوة دائمة</button>" +
         "<button type=\"button\" class=\"rg-warn-cancel\">إلغاء</button>";
       div.querySelector(".rg-warn-add").addEventListener("click", function () {
@@ -325,6 +399,7 @@
     }
 
     function loadPanel(url) {
+      ragPanelUrl = url;
       fetch(withCtx(url), { credentials: "same-origin" })
         .then(function (r) {
           if (!r.ok) throw new Error("http " + r.status);
@@ -334,6 +409,33 @@
         .catch(function () {
           body.innerHTML = '<p class="rg-note err">تعذّر تحميل القائمة — جرّب مرة أخرى.</p>';
         });
+    }
+
+    /* ١٤/١٠: بعد الحفظ السيرفر بيرجّع تحويل لصفحة كاملة (اليومية أو الراغبين)
+       والرسالة بتبقى في الـquery — فبنرجّع الجزء تاني بنفس السياق + الرسالة. */
+    function resumePanel(fd, finalUrl) {
+      var base = ragPanelUrl;
+      if (!base) return false;
+      var p;
+      try { p = new URL(base, window.location.href); } catch (e) { return false; }
+      ["ok", "warn", "err"].forEach(function (k) { p.searchParams.delete(k); });
+      /* اليوم/الفئة من الفورم نفسه — لو اتغيروا جوه النافذة */
+      var fdDay = fd.get("d");
+      if (fdDay && String(fdDay) !== "") p.searchParams.set("d", fdDay);
+      var fdCat = fd.get("cat");
+      if (fdCat && String(fdCat) !== "") p.searchParams.set("c", fdCat);
+      var got = false;
+      try {
+        var src = new URL(finalUrl, window.location.href);
+        ["ok", "warn", "err", "sid"].forEach(function (k) {
+          var v = src.searchParams.get(k);
+          if (v) { p.searchParams.set(k, v); got = true; }
+        });
+      } catch (e) { /* رابط غير قابل للقراءة — بنكمل بالرسالة الافتراضية */ }
+      if (!got) p.searchParams.set("ok", "تم حفظ الكشف ✓");
+      p.searchParams.set("_v", Date.now());   /* نسخة جديدة — بلا كاش */
+      loadPanel(p.toString());
+      return true;
     }
 
     /* كل النماذج جوه المودال → fetch + رجوع للجزء (بلا تصفح) */
@@ -346,7 +448,10 @@
       var fd = new FormData(f);
       if (ctxYear && !fd.has("year")) fd.set("year", ctxYear);
       if (ctxMonth && !fd.has("month")) fd.set("month", ctxMonth);
-      var opts = { credentials: "same-origin", redirect: "manual", method: method };
+      /* ١٤/١٠: كانت `redirect: "manual"` — والمتصفحات بترجّع رد مقفول
+         (بدون حالة ولا مكان تحويل) فالحفظ كان بيتقري «فشل» رغم إنه بيتم
+         فعلًا. دلوقتي بنتبع التحويل ونقرا الصفحة النهائية ونستخرج الجزء. */
+      var opts = { credentials: "same-origin", method: method };
       if (method === "GET") {
         action += (action.indexOf("?") === -1 ? "?" : "&") + fd.toString();
       } else {
@@ -354,17 +459,23 @@
       }
       fetch(withCtx(action), opts)
         .then(function (r) {
-          var loc = r.headers.get("Location");
-          if (r.status >= 300 && r.status < 400 && loc) {
-            loadPanel(toPanelUrl(new URL(loc, window.location.href).toString()));
-            return null;
-          }
           if (!r.ok) throw new Error("http " + r.status);
-          return r.text().then(function (t) {
-            var d = new DOMParser().parseFromString(t, "text/html");
-            var nf = d.querySelector(".rg-modal-form");
-            if (nf) { body.innerHTML = ""; body.appendChild(nf); bindModalScope(nf); }
-          });
+          var finalUrl = r.url || "";
+          return r.text().then(function (t) { return { html: t, url: finalUrl }; });
+        })
+        .then(function (res) {
+          var d = new DOMParser().parseFromString(res.html, "text/html");
+          if (d.querySelector(".rg-modal-form")) {
+            swapFragment(res.html);      /* الرد نفسه فيه الجزء → نستبدله */
+            return;
+          }
+          /* الرد صفحة كاملة (اليومية/الراغبين) → نرجع الجزء بالرسالة */
+          if (resumePanel(fd, res.url)) return;
+          if (res.url.indexOf("/raghibin/modal") !== -1) {
+            loadPanel(toPanelUrl(res.url));
+            return;
+          }
+          throw new Error("no fragment");
         })
         .catch(function () {
           body.innerHTML = '<p class="rg-note err">تعذّر الحفظ — جرّب مرة أخرى.</p>';
@@ -431,22 +542,21 @@
     });
   }
 
+  function fullModalUrl(url) {
+    return url.replace("/raghibin/panel", "/raghibin/modal");
+  }
+
   function openRagDialog(url) {
     var dialog = document.getElementById("tmRagDialog");
     var body = document.getElementById("tmRagDialogBody");
-    if (!dialog || !body) {
-      /* بلا الديالوق (صفحة معدلة) → الرجوع للسلوك القديم: صفحة كاملة */
-      window.location.href = url.replace("/raghibin/panel", "/raghibin/modal");
+    /* بلا ديالوج أو متصفح مش داعم للنافذة المنبثقة → صفحة الكشف الكاملة
+       (أحسن من صندوق مفتوح جوّه الصفحة شكله مكسور) */
+    if (!dialog || !body || typeof dialog.showModal !== "function") {
+      window.location.href = fullModalUrl(url);
       return;
     }
     body.innerHTML = '<p class="rg-dim">جارٍ التحميل…</p>';
-    if (dialog.open) {
-      /* مفتوح بالفعل → حدّث محتواه فقط (showModal تاني = خطأ) */
-    } else if (typeof dialog.showModal === "function") {
-      dialog.showModal();
-    } else {
-      dialog.setAttribute("open", "");
-    }
+    if (!dialog.open) dialog.showModal();   /* مفتوح بالفعل → تحديث المحتوى فقط */
     loadPanelInto(url, body, dialog);
   }
 
@@ -463,6 +573,7 @@
           body.innerHTML = '<p class="rg-note err">لم يتحمل الكشف.</p>';
           return;
         }
+        ragPanelUrl = url;
         body.innerHTML = "";
         body.appendChild(frag);
         enhanceForms(frag);
@@ -470,7 +581,10 @@
         body.scrollTop = 0;
       })
       .catch(function () {
-        body.innerHTML = '<p class="rg-note err">تعذّر فتح القائمة — جرّب مرة أخرى.</p>';
+        /* فشل التحميل → بديل واضح: الصفحة الكاملة بنفس السياق */
+        body.innerHTML = '<p class="rg-note err">تعذّر فتح القائمة — جرّب مرة أخرى.</p>' +
+          '<p class="rg-open-full"><a href="' + fullModalUrl(url) + '">' +
+          "فتح الكشف في صفحة كاملة</a></p>";
       });
   }
 

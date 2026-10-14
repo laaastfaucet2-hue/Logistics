@@ -133,6 +133,7 @@ def _modal_fragment(year, month, entity, day, cat, draft_totals=None):
                                draft_totals=draft_totals)
     # ١٤/١٠: المودال المنبثق بيحضر الجزء بـ fetch — رسائل الحفظ توصل هنا
     variables["ok"] = request.values.get("ok", "")
+    variables["warn"] = request.values.get("warn", "")
     variables["err"] = request.values.get("err", "")
     return render_template("raghibin/modal_body.html", **variables)
 
@@ -155,15 +156,16 @@ def daily_save():
     # نفسه لمربعات الاسم (getlist موازٍ).
     name_raws = request.form.getlist("names")
     rank_raws = request.form.getlist("ranks")
-    names = []      # أسماء فريدة بالترتيب
-    name_ranks = {} # الاسم ← الرتبة المختارة
+    rows = []       # (الاسم، الرتبة) فريدة بالترتيب — ١٤/١٠: الرتبة جزء من الاسم
     for i, raw in enumerate(name_raws):
         name = " ".join((raw or "").split())
-        if not name or name in name_ranks:
+        if not name:
             continue
         raw_rank = rank_raws[i] if i < len(rank_raws) else ""
-        name_ranks[name] = " ".join((raw_rank or "").split())
-        names.append(name)
+        pair = (name, " ".join((raw_rank or "").split()))
+        if pair in rows:      # نفس الاسم بنفس الرتبة = صف مكرر
+            continue
+        rows.append(pair)
     try:
         confirmed_new = {n for n in (json.loads(request.form.get("new_names") or "[]")
                                      if request.form.get("new_names") else [])}
@@ -171,18 +173,19 @@ def daily_save():
         confirmed_new = set()
 
     warnings, added, resolved_ids = [], [], []
-    for name in names:
-        rank = name_ranks.get(name, "")
-        person = dr.find_person(year, month, entity["id"], cat, name)
+    for name, rank in rows:
+        # ١٤/١٠: البحث بـ «الاسم + الرتبة» — نفس الاسم برتبة مختلفة شخص تاني
+        person = dr.find_person(year, month, entity["id"], cat, name, rank=rank)
         if person is None and name in confirmed_new:
             dr.add_person(year, month, entity["id"], cat, name, rank=rank)
             added.append(name)
-            person = dr.find_person(year, month, entity["id"], cat, name)
-        elif person is not None and rank and (person.get("rank") or "") != rank:
-            # اختيار رتبة مختلفة عن المسجلة → حدّث رتبة العضو في القوة
+            person = dr.find_person(year, month, entity["id"], cat, name, rank=rank)
+        elif person is not None and rank and not (person.get("rank") or "").strip():
+            # المسجل من غير رتبة → تتكمّل رتبته بالرتبة المختارة في المربع
             dr.update_person(year, month, person["id"], name, rank=rank)
         if person is None:
-            warnings.append(f"«{name}» غير موجود في القوة ولم يؤكد إضافته — تجاهلناه")
+            rank_txt = f" برتبة {rank}" if rank else ""
+            warnings.append(f"«{name}»{rank_txt} غير موجود في القوة ولم يؤكد إضافته — تجاهلناه")
             continue
         if person["excluded"]:
             reason = person["exclude_note"] or "بدون سبب"
@@ -239,13 +242,13 @@ def daily_save():
         from flask import url_for
         _, token = current_session()
         params = {"tab": "day", "day": f"{year:04d}-{month:02d}-{day:02d}"}
-        if token:
+        base = url_for("tameedat.page")
+        if token and "sid=" not in base:   # ١٤/١٠: بلا تكرار للتوكن في الرابط
             params["sid"] = token
         if ok:
             params["ok"] = ok
         if warn:
             params["warn"] = warn
-        base = url_for("tameedat.page")
         separator = "&" if "?" in base else "?"
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
         return redirect(f"{base}{separator}{query}")

@@ -4,6 +4,9 @@
 {% block print_doc_title %}{% if tab == 'day' %}تأميدات يوم {{ date_text(sel_date_iso) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'momoda' %}الجهات المومدة — {{ month_name }} {{ year | aindic }}{% elif tab == 'dict' %}قاموس ودليل الجهات — {{ month_name }} {{ year | aindic }}{% else %}التقرير الشامل للتأميدات — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tameedat.css') }}?v={{ static_ver }}">
+{# ١٤/١٠: المودال المنبثق «تسجيل أسماء الراغبين» بيعرض جزء الراغبين جوه صفحات
+   التأميدات — فلازم ستايل الراغبين يتحمّل هنا كمان وإلا الجزء يطلع بلا تنسيق #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/raghibin.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 

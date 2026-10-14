@@ -337,3 +337,7 @@ details.rg-forcebox[open] > summary { margin-bottom: 10px; }
 .rg-draft-chip { padding: 5px 13px; border-radius: 10px; font-weight: 700;
   background: rgba(59, 130, 246, .14); color: #93c5fd;
   border: 1px solid rgba(59, 130, 246, .4); }
+
+/* ١٤/١٠: بديل واضح لو المودال المنبثق فشل في تحميل القائمة — يفتحها صفحة كاملة */
+.rg-open-full { margin: 10px 0 2px; }
+.rg-open-full a { color: var(--brand-orange, #f59e0b); font-weight: 600; text-decoration: underline; }

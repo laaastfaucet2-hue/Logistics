@@ -180,33 +180,48 @@ def get_person(year, month, person_id):
     return dict(row) if row else None
 
 
-def find_person(year, month, entity_id, category, full_name):
-    """بحث بالاسم المطابق داخل فئة جهة — لتجنب التكرار وللإضافة السريعة من الزرار."""
+def find_person(year, month, entity_id, category, full_name, rank=None):
+    """بحث بالاسم المطابق داخل فئة جهة — لتجنب التكرار وللإضافة السريعة من الزرار.
+    ١٤/١٠: لو اتحددت رتبة، الشخص بيتعرّف بـ «الاسم + الرتبة» — نفس الاسم برتبة
+    مختلفة = شخص تاني (والمسجل من غير رتبة يُعتبر نفسه وتتكمّل رتبته)."""
     name = (full_name or "").strip()
     if not name:
         return None
+    rank = (rank or "").strip() if rank is not None else ""
     conn = _conn(year, month)
-    row = conn.execute(
-        "SELECT * FROM ragh_persons WHERE entity_id = ? AND category = ? "
-        "AND TRIM(full_name) = ?", (entity_id, _clean_category(category), name)).fetchone()
+    if rank:
+        row = conn.execute(
+            "SELECT * FROM ragh_persons WHERE entity_id = ? AND category = ? "
+            "AND TRIM(full_name) = ? AND (TRIM(rank) = ? OR TRIM(rank) = '')",
+            (entity_id, _clean_category(category), name, rank)).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT * FROM ragh_persons WHERE entity_id = ? AND category = ? "
+            "AND TRIM(full_name) = ?", (entity_id, _clean_category(category), name)).fetchone()
+    conn.close()
     return dict(row) if row else None
 
 
 def add_person(year, month, entity_id, category, full_name, rank="",
                excluded=False, exclude_note=""):
-    """إضافة عضو للقوة — يرجع (person_id, created)؛ التكرار يرجع الموجود دون إضافة."""
+    """إضافة عضو للقوة — يرجع (person_id, created)؛ التكرار يرجع الموجود دون إضافة.
+    ١٤/١٠: التكرار بالأسماء + الرتبة — «محمد أحمد محمد» برتبة مقدم وبرتبة عقيد
+    شخصان مختلفان؛ والاسم المسجل من غير رتبة تتكمّل رتبته بدل ما يتكرر."""
     name = (full_name or "").strip()
+    rank = (rank or "").strip()
     category = _clean_category(category)
     if not name:
         raise ValueError("الاسم مطلوب")
-    existing = find_person(year, month, entity_id, category, name)
+    existing = find_person(year, month, entity_id, category, name, rank=rank)
     if existing:
+        if rank and not (existing.get("rank") or "").strip():
+            update_person(year, month, existing["id"], name, rank=rank)
         return existing["id"], False
     conn = _conn(year, month)
     cur = conn.execute(
         "INSERT INTO ragh_persons (entity_id, category, rank, full_name, excluded, "
         "exclude_note, serial, created_at) VALUES (?,?,?,?,?,?,?,?)",
-        (entity_id, category, (rank or "").strip(), name,
+        (entity_id, category, rank, name,
          1 if excluded else 0, (exclude_note or "").strip(),
          _next_serial(conn, entity_id, category), _stamp()))
     conn.commit()

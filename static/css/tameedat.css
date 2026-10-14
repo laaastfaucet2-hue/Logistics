@@ -385,14 +385,24 @@ input, select, textarea {
 .tm-rg-chip.warn { background: rgba(245, 158, 11, .16); color: #fbbf24; }
 .tm-rg-chip.over { background: rgba(239, 68, 68, .16); color: #f87171; }
 
-/* ١٤/١٠: مودال الراغبين المنبثق فوق فورم التأميدة */
-.tm-rgdialog { width: min(980px, 94vw); max-height: 88vh; padding: 0;
-  border-radius: 14px; background: var(--panel-bg, #101828);
+/* ١٤/١٠: مودال الراغبين المنبثق فوق فورم التأميدة (شكل احترافي) */
+.tm-rgdialog { width: min(1060px, 94vw); max-height: 88vh; padding: 0; margin: auto;
+  border-radius: 16px; background: var(--panel-bg, #101828);
   color: var(--text-main, #e5e7eb);
-  border: 1px solid var(--panel-border, #2a3550); }
-.tm-rgdialog::backdrop { background: rgba(2, 6, 23, .72); backdrop-filter: blur(2px); }
+  border: 1px solid var(--panel-border, #2a3550);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .55); overflow: hidden; }
+.tm-rgdialog::backdrop { background: rgba(2, 6, 23, .76); backdrop-filter: blur(3px); }
 .tm-rgdialog[open] { display: flex; flex-direction: column; }
 .tm-rgdialog-head { display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 13px 18px; border-bottom: 1px solid var(--panel-border, #2a3550);
-  font-size: 1.02rem; }
-.tm-rgdialog-body { overflow-y: auto; padding: 14px 18px 18px; }
+  gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--panel-border, #2a3550);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0)); }
+.tm-rgdialog-head b { font-size: 1.05rem; display: block; }
+.tm-rgdialog-sub { display: block; margin-top: 4px; font-size: .82rem; opacity: .72; }
+.tm-rgdialog-body { overflow-y: auto; padding: 16px 18px 22px; overscroll-behavior: contain; }
+/* على الموبايل: النافذة تاخد الشاشة كلها تقريبًا */
+@media (max-width: 760px) {
+  .tm-rgdialog { width: 96vw; max-height: 92vh; border-radius: 12px; }
+  .tm-rgdialog-head { padding: 12px 14px; }
+  .tm-rgdialog-head b { font-size: .98rem; }
+  .tm-rgdialog-body { padding: 12px 12px 18px; }
+}
