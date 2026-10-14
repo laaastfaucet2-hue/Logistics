@@ -36,7 +36,25 @@ from .context import (_category, _ctx, _draft_totals, _entity_or_back, _rb,
 def _modal_page_url(entity, day, cat, sid=""):
     """رابط صفحة كشف الراغبين الكاملة (تصفح عادي — sid في الرابط)."""
     url = f"/raghibin/modal?c={cat}&d={day}&en={quote(entity['name'])}"
+    et = (request.values.get("et") or "").strip()   # ١٤/١٠: نوع التأميدة يكمل للصفحة الكاملة
+    if et:
+        url += f"&et={quote(et)}"
     return url + (f"&sid={quote(sid)}" if sid else "")
+
+
+# ١٤/١٠: أنواع القاموس المخزنة بالإنجليزية → عرض عربي (كانت تظهر workshop/salon)
+ENTITY_TYPE_AR = {"salon": "صالة", "workshop": "ورشة", "gate": "بوابة",
+                  "store": "مخزن", "hall": "صالة", "office": "مكتب"}
+
+
+def _entity_type_label(entity):
+    """نوع الجهة المعروض: نوع التأميدة المختار في فورم اليومية (شرطية/حربية)
+    ولو مش ممرر → ترجمة نوع القاموس للعربي."""
+    form_type = (request.values.get("et") or "").strip()
+    if form_type:
+        return form_type
+    raw = ((entity or {}).get("entity_type") or "").strip()
+    return ENTITY_TYPE_AR.get(raw.lower(), raw or "غير محدد")
 
 
 @raghibin_bp.route("/modal")
@@ -135,6 +153,7 @@ def _modal_fragment(year, month, entity, day, cat, draft_totals=None):
     variables["ok"] = request.values.get("ok", "")
     variables["warn"] = request.values.get("warn", "")
     variables["err"] = request.values.get("err", "")
+    variables["entity_type_label"] = _entity_type_label(entity)
     return render_template("raghibin/modal_body.html", **variables)
 
 
@@ -185,7 +204,8 @@ def daily_save():
             dr.update_person(year, month, person["id"], name, rank=rank)
         if person is None:
             rank_txt = f" برتبة {rank}" if rank else ""
-            warnings.append(f"«{name}»{rank_txt} غير موجود في القوة ولم يؤكد إضافته — تجاهلناه")
+            warnings.append(f"«{name}»{rank_txt} غير مسجّل في قوة الجهة "
+                            "ولم يؤكد إضافته — تجاهلناه")
             continue
         if person["excluded"]:
             reason = person["exclude_note"] or "بدون سبب"

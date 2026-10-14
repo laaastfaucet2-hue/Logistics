@@ -130,14 +130,29 @@ form3["ranks"] = ["مقدم"]
 form3["new_names"] = "[]"
 r4 = c.post("/raghibin/daily/save", data=form3, follow_redirects=True)
 q4 = r4.request.query_string.decode()
-from urllib.parse import unquote_plus   # noqa: E402
-chk("رسالة «غير موجود» فيها الرتبة", "برتبة مقدم" in unquote_plus(q4), unquote_plus(q4)[:200])
+from urllib.parse import unquote_plus, quote   # noqa: E402
+chk("رسالة «غير مسجّل» فيها الرتبة", "برتبة مقدم" in unquote_plus(q4)
+    and "غير مسجّل" in unquote_plus(q4), unquote_plus(q4)[:200])
+
+print("\n=== ③ نوع الجهة بالعربي من نوع التأميدة (١٤/١٠) ===")
+r_t = c.get("/raghibin/panel?en=" + ENT + "&d=22&c=officers&et=" + quote("شرطية") + "&sid=" + token)
+tb = r_t.get_data(as_text=True)
+chk("نوع التأميدة الممرر يظهر زي ما هو", "نوع الجهة: شرطية معتمدة" in tb)
+chk("مفيش «جهة» مكررة في الشريط", "نوع الجهة: جهة " not in tb)
+chk("مفيش نوع إنجليزي في الشريط", "workshop" not in tb and "salon" not in tb)
+chk("النوع الحقل الخفي يكمل مع تغيير الجهة", 'name="et" value="شرطية"' in tb)
+eid_w = dt.add_entity(Y, M, "الورشة التجريبية", "workshop")
+r_w = c.get("/raghibin/panel?en=" + quote("الورشة التجريبية") + "&d=22&c=officers&sid=" + token)
+wb = r_w.get_data(as_text=True)
+chk("بدون نوع تأميدة → نوع القاموس بالعربي", "نوع الجهة: ورشة معتمدة" in wb,
+    [ln for ln in wb.splitlines() if "نوع الجهة" in ln][:1])
 
 print("\n=== ③ تحميل ستايل الراغبين في صفحات التأميدات ===")
 pg = c.get("/tameedat?tab=day").get_data(as_text=True)
 chk("raghibin.css محمّل في اليومية", "css/raghibin.css" in pg)
-chk("STATIC_VER = 225", "?v=225" in pg)
+chk("STATIC_VER = 226", "?v=226" in pg)
 chk("الديالوج فيه شرح فرعي", "tm-rgdialog-sub" in pg)
+chk("حقل نوع التأميدة ممرر من الزر", "type_choice" in pg)
 chk("زر فتح الراغبين موجود", 'id="tmRagNamesBtn"' in pg)
 
 

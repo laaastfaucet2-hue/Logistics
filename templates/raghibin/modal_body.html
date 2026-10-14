@@ -18,6 +18,7 @@
     <form method="get" action="/raghibin/modal" class="rg-entity-form">
       <input type="hidden" name="d" value="{{ sel_day }}">
       <input type="hidden" name="c" value="{{ fcat }}">
+      {% if request.values.get('et') %}<input type="hidden" name="et" value="{{ request.values.get('et') }}">{% endif %}
       {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
       <select class="rg-entity-select" name="en" aria-label="الجهة المختارة للراغبين"
               onchange="this.form.submit()">
@@ -27,7 +28,7 @@
       </select>
       <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
     </form>
-    {% if entity %}<span class="rg-type-chip">✓ نوع الجهة: جهة {{ entity.entity_type }} معتمدة</span>{% endif %}
+    {% if entity %}<span class="rg-type-chip">✓ نوع الجهة: {{ entity_type_label | default(entity.entity_type) }} معتمدة</span>{% endif %}
   </div>
 
   {% if entity %}

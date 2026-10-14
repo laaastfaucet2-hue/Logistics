@@ -161,9 +161,9 @@
           if (flag === true) return;
           if (flag === undefined && known.indexOf(name) !== -1) return;
           var ask = (flag === false)
-            ? "«" + name + "» مسجل في القوة برتبة مختلفة.\n" +
+            ? "«" + name + "» مسجّل في القوة برتبة مختلفة.\n" +
               "هل تريد إضافته كشخص جديد بنفس الاسم؟"
-            : "«" + name + "» غير موجود في قوة الجهة.\n" +
+            : "«" + name + "» غير مسجّل في قوة هذه الجهة.\n" +
               "هل تريد إضافته كقوة دائمة للجهة؟";
           if (!window.confirm(ask)) {
             input.value = "";            /* رفض → المربع يفضى ولا يُحفظ */
@@ -289,9 +289,11 @@
       if (!row) return;
       var div = document.createElement("div");
       div.className = "rg-slot-warn";
+      /* ١٤/١٠: «مش مسجل في الجهات والكوادر» كانت بتطلع لاسم مسجّل في جهة
+         تانية أو برتبة تانية — الصياغة بقت عن قوة الجهة الحالية نفسها */
       var msg = (flag === false)
-        ? "«" + v + "» مسجل في القوة برتبة مختلفة — إضافته كشخص جديد بنفس الاسم؟"
-        : "«" + v + "» مش مسجل في «الجهات والكوادر» — إضافة كقوة دائمة للجهة؟";
+        ? "«" + v + "» مسجّل في القوة برتبة مختلفة — إضافته كشخص جديد بنفس الاسم؟"
+        : "«" + v + "» غير مسجّل في قوة هذه الجهة — إضافته كقوة دائمة للجهة؟";
       div.innerHTML =
         "<span>" + msg + "</span>" +
         "<button type=\"button\" class=\"rg-warn-add\">إضافة كقوة دائمة</button>" +
@@ -536,6 +538,15 @@
         }
         url += "&o=" + (parseArabicInt(val("officers")) || 0) +
                "&i=" + (parseArabicInt(val("individuals")) || 0);
+        /* ١٤/١٠: نوع الجهة المعتمد من فورم التأميدة (شرطية/حربية) —
+           كان بيفتح على نوع القاموس الإنجليزي (workshop/salon) */
+        var picked = form.querySelector('input[name="type_choice"]:checked');
+        var et = picked ? (picked.value || "").trim() : "";
+        if (et === "أخرى") {
+          var other = document.getElementById("tmTypeOther");
+          et = other && other.value.trim() ? other.value.trim() : "أخرى";
+        }
+        if (et) url += "&et=" + encodeURIComponent(et);
       }
       if (sid) url += "&sid=" + encodeURIComponent(sid);
       openRagDialog(url);

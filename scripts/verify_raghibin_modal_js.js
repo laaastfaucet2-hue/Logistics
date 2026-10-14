@@ -47,6 +47,7 @@ const dom = new JSDOM(`<!DOCTYPE html><html dir="rtl"><body>
   <form id="tmForm">
     <input id="tmEntity" value="صالة الترفية"><input id="tmDayFrom" value="٢٢">
     <input name="officers" value="٢"><input name="individuals" value="٠">
+    <input type="radio" name="type_choice" value="شرطية" checked>
     <button type="button" id="tmRagNamesBtn">تسجيل أسماء</button>
   </form>
   <dialog id="tmRagDialog"><div class="tm-rgdialog-head"><span class="tm-rgdialog-sub"></span>
@@ -99,6 +100,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   chk("الجزء اتحمّل جوّه المودال", body.innerHTML.indexOf('class="rg-modal-form"') !== -1);
   chk("الرابط الأول فيه اسم الجهة واليوم",
       calls[0].url.indexOf("en=") !== -1 && calls[0].url.indexOf("d=22") !== -1, calls[0].url);
+  chk("نوع التأميدة (شرطية) متمرر من الفورم",
+      decodeURIComponent(calls[0].url).indexOf("et=شرطية") !== -1, decodeURIComponent(calls[0].url));
 
   console.log("=== الحفظ من المودال (رد السيرفر = تحويل لصفحة التاميدات) ===");
   const form = body.querySelector("form[data-ragboxes]");
@@ -132,6 +135,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   form2.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true }));
   await sleep(20);
   chk("اتسأل عن «رتبة مختلفة»", confirmMsgs.some((m) => m.indexOf("برتبة مختلفة") !== -1), JSON.stringify(confirmMsgs));
+  chk("صياغة «غير مسجّل» مش «مش مسجل»",
+      confirmMsgs.every((m) => m.indexOf("مش مسجل") === -1), JSON.stringify(confirmMsgs));
   const fresh = form2.querySelector(".rg-new-names").value;
   chk("موافقة → الاسم اتأكد كشخص جديد", fresh.indexOf("محمد احمد محمد") !== -1, fresh);
 
