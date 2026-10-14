@@ -88,6 +88,16 @@ def ensure_initialized(current_year):
         create_year(current_year)
 
 
+def identity_dir():
+    """فولدر هوية المنظومة (لوجو الواجهة) — ثابت، لا يرتبط بسنة أو شهر.
+
+    منفصل عن الدباجة (letterhead_dir المرتبط بالشهر) لأن شعار البرنامج
+    يظهر في تسجيل الدخول والقائمة والرئيسية لكل الشهور."""
+    d = DATA_DIR / "الهوية"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def letterhead_dir(year, month):
     """مجلد الدباجة والتوقيعات الرسمية: اللوجو + ملف Word الدباجة."""
     path = year_path(year) / month_folder(month) / "الدباجة"

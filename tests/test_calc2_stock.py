@@ -66,6 +66,7 @@ def test_availability_reflects_permits_deduction(app):
     dp.save_permit(YEAR, MONTH, {
         "number": 7, "fiscal_year": 2026, "date_from": 1, "date_to": 1, "issue_days": 1,
         "mode": "box", "entity_label": "جهة", "officers": 0, "individuals": 0, "recruits": 0,
+        # الكمية الفعلية بوحدة الحاسبة هي وحدة الإضافة نفسها: ٤٠ كجم
         "actuals": {"tamween_" + name: 40},
     })
     info = sl.availability(YEAR, MONTH, "supply", name, needed=10)
@@ -80,6 +81,7 @@ def test_saving_same_permit_number_replaces_actuals_without_double_deduction(app
     base = {"number": 9, "fiscal_year": 2026, "date_from": 1, "date_to": 1,
             "issue_days": 1, "mode": "box", "entity_label": "جهة",
             "officers": 0, "individuals": 0, "recruits": 0}
+    # الكمية بالحاسبة بوحدة الإضافة: ٣٠ كجم ثم ٥٠ كجم
     dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 30}})
     assert sl.availability(YEAR, MONTH, "supply", name)["avail"] == 70
     dp.save_permit(YEAR, MONTH, {**base, "actuals": {"tamween_" + name: 50}})   # «تحديث الإذن»
@@ -91,7 +93,8 @@ def test_for_rows_maps_every_row_by_name(app):
     a, b = _catalog_item("فول"), _catalog_item("مكرونة", unit="كيس")
     dw.add_opener(YEAR, MONTH, "supply", a, 30, 1, handle_unit_hint="كجم", exp_iso="2027-06-30")
     data = sl.for_rows(YEAR, MONTH, "tamween", [
-        {"name": a, "auto": 100}, {"name": b, "auto": 5}, {"name": "صنف غير موجود", "auto": 1}])
+        {"name": a, "auto": 100},  # ١٠٠ كجم بوحدة الإضافة
+        {"name": b, "auto": 5}, {"name": "صنف غير موجود", "auto": 1}])
     assert data[a]["status"] == sl.STATUS_LOW               # ٣٠ والمطلوب ١٠٠
     assert data[b]["status"] == sl.STATUS_NONE              # لا رصيد
     assert data["صنف غير موجود"]["avail"] == 0
@@ -129,4 +132,4 @@ def test_calc2_page_shows_live_balance_columns(client):
     assert "قيد التطوير" not in page                        # شيلت من العمودين
     assert "بعد الإذن" in page and "c2-stock-legend" in page
     assert "/calc2/stock" in page                           # الجافاسكربت يعرف المسار
-    assert "بدون خصم مزدوج" in page                         # زر تحديث الإذن
+    assert "دون خصم مزدوج" in page                         # زر تحديث الإذن

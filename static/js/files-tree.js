@@ -1,6 +1,6 @@
 /* 📁 شجرة حصر الملفات المحلية — عرض لحظي من القرص (توجيه المستخدم ٠٦/١٠/٢٠٢٦).
    كل نداء يجيب الحالة الحقيقية للملفات: الاسم + الحجم + وقت آخر تحديث،
-   والملف اللي اتحدث في آخر ثوانٍ يتعلّم «اتحدث الآن» بلون أخضر. */
+   والملف الذي حُدّث في آخر ثوانٍ يتعلّم «حُدّث الآن» بلون أخضر. */
 (function () {
   var zone = document.getElementById('ftZone');
   if (!zone) return;
@@ -39,7 +39,7 @@
       '<span class="ft-name">' + esc(node.name) + '</span>' +
       '<span class="ft-meta"><span>' + arabic(node.files) + ' ملف</span>' +
       '<span>' + esc(node.size_text) + '</span>' +
-      (node.fresh ? '<b class="ft-now">اتحدث الآن</b>' : '') + '</span></div>' + inner + '</li>';
+      (node.fresh ? '<b class="ft-now">حُدّث الآن</b>' : '') + '</span></div>' + inner + '</li>';
   }
 
   function fileHtml(node) {
@@ -49,7 +49,7 @@
       '<span class="ft-ico">' + icon + '</span>' +
       '<span class="ft-name">' + esc(node.name) + '</span>' +
       '<span class="ft-meta">' +
-      (node.fresh ? '<b class="ft-now">اتحدث الآن</b>' : '') +
+      (node.fresh ? '<b class="ft-now">حُدّث الآن</b>' : '') +
       '<span>' + esc(node.size_text) + '</span>' +
       '<span>🕒 ' + esc(node.mtime_text) + '</span></span></div></li>';
   }
@@ -71,19 +71,19 @@
     lastSignature = signature;
     tree.innerHTML = data.children.length
       ? '<ul class="ft-list">' + data.children.map(nodeHtml).join('') + '</ul>'
-      : '<div class="ft-empty">📂 الفولدر لسه فاضي — أول حفظ في القسم هينشئ ملفاته هنا فورًا.</div>';
+      : '<div class="ft-empty">📂 المجلد فارغ بعد — أول حفظ في القسم سيُنشئ ملفاته هنا فورًا.</div>';
     if (where) where.innerHTML = '📂 <bdi dir="ltr">' + esc(data.root) + '</bdi>';
     if (live) live.innerHTML = '<i class="ft-dot"></i>مزامنة لحظية — آخر حصر ' + esc(data.checked_at);
     if (open) chips.innerHTML =
       '<i class="ft-chip gold">' + arabic(data.files) + ' ملف</i>' +
-      '<i class="ft-chip dim">' + arabic(data.folders) + ' فولدر</i>' +
+      '<i class="ft-chip dim">' + arabic(data.folders) + ' مجلد</i>' +
       '<i class="ft-chip live">🕒 ' + esc(data.checked_at) + '</i>';
   }
 
   function header(data) {
     chips.innerHTML =
       '<i class="ft-chip gold">' + arabic(data.files) + ' ملف</i>' +
-      '<i class="ft-chip dim">' + arabic(data.folders) + ' فولدر</i>' +
+      '<i class="ft-chip dim">' + arabic(data.folders) + ' مجلد</i>' +
       '<i class="ft-chip live">🕒 ' + esc(data.checked_at) + '</i>';
   }
 

@@ -5,15 +5,16 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
-  <span>🎖️ الترفية — دورة مستقلة زي الإمداد والمتعهد</span><span class="sep">•</span>
+  <span>🎖️ الترفية — دورة مستقلة مثل الإمداد والمتعهد</span><span class="sep">•</span>
   <span class="dim hl-month-chip">📅 شهر <strong>{{ month_name }} {{ year | aindic }}</strong> — ملفات منفصلة شهر بشهر</span>
 </div>
 
 <nav class="hl-tabs">
-  {% for key, name, icon in tabs %}
+  {% for key, name, icon in visible_subtabs('tarfea', tabs) %}
   <a class="hl-tab {{ 'on' if sub == key }}" href="{{ url_for('tarfea.page', sub=key) }}">
     <span class="hl-tab-ico">{{ icon }}</span>
     <span class="hl-tab-name">{{ name }}</span>
@@ -24,7 +25,7 @@
 {% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
 {% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
 
-<!-- زرارا الملفات المحلية للتاب — نفس شكل المستودعات وعلى مجلدات 11-الترفية المنفصلة -->
+<!-- زرا فتح الملفات المحلية للتاب — نفس شكل المستودعات وعلى مجلدات 11-الترفية المنفصلة -->
 <div class="wh-fsbar no-print">
   <a class="rt-btn dim" href="{{ url_for('tarfea.open_folder', sub=sub) }}">📂 فتح مجلد «{{ sub_name }}»</a>
   <a class="rt-btn dim" href="{{ url_for('tarfea.open_file', sub=sub) }}">📗 فتح ملف «{{ tab_file }}»</a>
@@ -34,7 +35,7 @@
   </a>
 </div>
 
-<!-- ==================== تاب الأصناف ==================== -->
+<!-- ==================== تبويب الأصناف ==================== -->
 {% if sub == 'items' %}
 <div class="panel">
   <div class="panel-head"><h3>📦 كتالوج أصناف الترفية — الاسم + المعيار</h3></div>
@@ -49,25 +50,28 @@
       </div>
     </fieldset>
     <div class="wh-form-actions no-print">
-      <button class="rt-btn green" type="submit">💾 إضافة صنف — وكارته يتفتح في ٣ مخازن</button>
+      <button class="rt-btn green" type="submit">💾 إضافة صنف — وتُفتح بطاقته في ٣ مخازن</button>
     </div>
   </form>
   {% if items %}
   <div class="wh-scroll"><table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th><th>وحدة القاعدة</th><th>عليه حركة</th><th class="no-print">إجراءات</th></tr></thead>
+    <thead><tr><th>م</th><th>اسم الصنف</th><th>وحدة التعامل (المعيار)</th>
+      <th title="القيمة تتبع المقررات التموينية تلقائيًا — إذا كان الصنف في المقرر النشط ظهر معدله، وإذا تغيّر المقرر تغيّر المعدل مباشرةً">معدل التموينية</th>
+      <th>وحدة القاعدة</th><th>عليه حركة</th><th class="no-print">إجراءات</th></tr></thead>
     <tbody>
       {% for it in items %}
       <tr>
         <td class="num">{{ loop.index | aindic }}</td>
         <td class="name"><b>{{ it.name }}</b></td>
         <td>{{ it.handle_unit }}</td>
+        <td class="num">{% if it.tw_rate is not none %}{{ it.tw_rate | qty3 }}{% else %}—{% endif %}</td>
         <td>{{ it.base_unit }}</td>
         <td>{{ 'نعم' if has_move.get(it.id) else 'لا' }}</td>
         <td class="no-print">
           <form method="post" action="{{ url_for('tarfea.items_delete') }}" class="inline-f">
             <input type="hidden" name="id" value="{{ it.id }}">
             <button class="rt-btn small dim" type="submit"
-                    onclick="return confirm('حذف «{{ it.name }}» ودورته كاملة؟ هتمسح إيذاناته وحركاته والافتتاحي وإذون صرفه — مفيش رجوع.')">
+                    onclick="return confirm('حذف «{{ it.name }}» ودورته كاملة؟ ستُحذف إيذاناته وحركاته والافتتاحي وإذون صرفه — لا رجعة.')">
               🗑️ حذف الصنف ودورته</button>
           </form>
         </td>
@@ -75,17 +79,17 @@
       {% endfor %}
     </tbody>
   </table></div>
-  {% else %}<div class="hl-empty">مفيش أصناف ترفية لسه — ابدأ بإضافة أول صنف فوق 👆</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد أصناف ترفية بعد — ابدأ بإضافة أول صنف بالأعلى 👆</div>{% endif %}
 </div>
 
-<!-- ==================== تاب ١ مخازن — قالب المستودعات الحقيقي ==================== -->
+<!-- ==================== تبويب ١ مخازن — قالب المستودعات الحقيقي ==================== -->
 {% elif sub == 'wh1' %}
 {% include "warehouses/tab_wh1.html" %}
 
-<!-- ==================== تاب ٢ مخازن ==================== -->
+<!-- ==================== تبويب ٢ مخازن ==================== -->
 {% elif sub == 'wh2' %}
 <div class="panel">
-  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختار الصنف وصُرف منه قد إيه</h3></div>
+  <div class="panel-head"><h3>📤 إذن صرف ٢ مخازن ترفية — اختر الصنف وحدد الكمية المصروفة منه</h3></div>
   <div class="wh-subtabs no-print">
     <button type="button" class="wh-subtab active" data-wh2sub="day">📤 ٢ مخازن</button>
     <button type="button" class="wh-subtab" data-wh2sub="ghilaf">📦 ٢ مخازن تغليف</button>
@@ -95,7 +99,7 @@
     <fieldset class="wh-fs">
       <legend>📤 بيانات إذن الصرف</legend>
       <div class="wh-grid">
-        <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
+        <label class="wh-f">رقم الإذن <small>(فارغ = يكمّل التسلسل)</small>
           <input name="serial" value="{{ next_serial | aindic }}" inputmode="numeric" autocomplete="off"></label>
         <label class="wh-f">يوم الإذن (داخل الشهر النشط)
           <input name="day" value="{{ default_day | aindic }}" inputmode="numeric" autocomplete="off">
@@ -108,7 +112,9 @@
         <label class="wh-f">الكمية المنصرفة (بوحدة التعامل)
           <input name="qty" inputmode="decimal" autocomplete="off" required></label>
         <label class="wh-f">منصرف إلى (الجهة/الشخص)
-          <input name="receiver" autocomplete="off" dir="rtl"></label>
+          <input name="receiver" data-combo="tarfeaEntitiesList" autocomplete="off" dir="rtl"
+                 title="اسم الجهة يتبع قاموس جهات البرنامج"></label>
+        <datalist id="tarfeaEntitiesList">{% for n in entity_names %}<option value="{{ n }}"></option>{% endfor %}</datalist>
         <label class="wh-f">المسؤول عن الصرف
           <input name="responsible" autocomplete="off" dir="rtl"></label>
         <label class="wh-f">ملاحظات
@@ -117,7 +123,7 @@
     </fieldset>
     <div class="wh-form-actions no-print">
       <button class="rt-btn green" type="submit">💾 حفظ إذن الصرف</button>
-      <span class="wh-hintline">بيخصم من كارت ٣ مخازن تلقائيًا وينزل في سجل ٥ مخازن — مفيش رصيد سالب</span>
+      <span class="wh-hintline">يُخصم من بطاقة ٣ مخازن تلقائيًا ويُسجَّل في سجل ٥ مخازن — لا يوجد رصيد سالب</span>
     </div>
   </form>
   {% if issues %}
@@ -125,14 +131,14 @@
     <thead><tr><th>رقم</th><th>اليوم</th><th>الصنف</th><th>الكمية</th><th>منصرف إلى</th><th>المسؤول</th><th>ملاحظات</th><th class="no-print">إجراءات</th></tr></thead>
     <tbody>{% for i in issues %}
       <tr><td class="num">{{ i.serial | aindic }}</td><td>{{ i.day | aindic }} {{ month_name }}</td>
-        <td class="name"><b>{{ i.item_name or '—' }}</b></td><td class="num">{{ i.qty | qty3 }} {{ i.unit }}</td>
+        <td class="name"><b>{{ i.item_name or '—' }}</b></td><td class="num"><span class="mv-out">{{ i.qty | qty3 }}</span> {{ i.unit }}</td>
         <td>{{ i.receiver or '—' }}</td><td>{{ i.responsible or '—' }}</td><td>{{ i.notes or '—' }}</td>
         <td class="no-print"><form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=i.id) }}" class="inline-f">
           <button class="rt-btn small dim" type="submit">🗑️ حذف</button></form></td>
       </tr>{% endfor %}
     </tbody>
   </table></div>
-  {% else %}<div class="hl-empty">مفيش إذون صرف لسه</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد إذون صرف بعد</div>{% endif %}
   </div>
   <div class="wh-subpanel" data-wh2panel="ghilaf" hidden>
     {% if issues_pack %}
@@ -142,16 +148,16 @@
       <tbody>{% for p in issues_pack %}
         <tr><td class="num">{{ p.i.serial | aindic }}</td><td>{{ p.i.day | aindic }} {{ month_name }}</td>
           <td class="name"><b>{{ p.i.item_name or '—' }}</b></td>
-          <td class="num">{{ p.i.qty | qty3 }} {{ p.i.unit }}</td>
+          <td class="num"><span class="mv-out">{{ p.i.qty | qty3 }}</span> {{ p.i.unit }}</td>
           <td>{{ p.pack }}</td><td>{{ p.kind }}</td>
           <td>{{ p.i.receiver or '—' }}</td><td>{{ p.i.responsible or '—' }}</td></tr>
       {% endfor %}</tbody>
     </table></div>
-    {% else %}<div class="hl-empty">مفيش إذون صرف لسه — أول إذن هيظهر هنا بالتغليف</div>{% endif %}
+    {% else %}<div class="hl-empty">لا توجد إذون صرف بعد — أول إذن سيظهر هنا بالتغليف</div>{% endif %}
   </div>
 </div>
 
-<!-- ==================== تاب ٣ مخازن — قالب المستودعات الحقيقي ==================== -->
+<!-- ==================== تبويب ٣ مخازن — قالب المستودعات الحقيقي ==================== -->
 {% elif sub == 'wh3' %}
 {% include "warehouses/tab_wh3.html" %}
 <div class="panel">
@@ -164,41 +170,78 @@
         <td>{{ s.unit }}</td><td class="num"><b>{{ s.balance | qty3 }}</b></td></tr>{% endfor %}
     </tbody>
   </table></div>
-  {% else %}<div class="hl-empty">مفيش أصناف</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد أصناف</div>{% endif %}
 </div>
 
-<!-- ==================== تاب ٥ مخازن ==================== -->
+<!-- ==================== تبويب ٥ مخازن (صادر المخزن التقصيلى) — نفس الدفتر للدورتين (توجيه ١١/١٠) ==================== -->
 {% elif sub == 'wh5' %}
-<div class="panel">
-  <div class="panel-head"><h3>📋 سجل ٥ مخازن اليومي — مشتق تلقائيًا من ١ و٢ و٣ مخازن</h3></div>
-  <div class="hl-hint row"><span>الكميات بتظهر <b>بالمعيار (وحدة التعامل)</b> وليس بالتغليف — وبيتحدث تلقائيًا مع كل رصيد افتتاحي أو إذن إضافة أو صرف.</span></div>
-  {% if t5 %}
-  <div class="wh-scroll"><table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>التاريخ</th><th>رقم الإذن</th><th>وارد من / منصرف إلى</th>
-      <th>قيمة الأصناف المضافة</th><th>قيمة الأصناف المنصرفة</th>
-      <th>البيان والملحوظات والتفاصيل</th><th>المسؤول عن الصرف</th><th class="no-print">إجراءات</th></tr></thead>
-    <tbody>{% for r in t5 %}
+<div class="panel wh-wh5">
+  <div class="panel-head">
+    <h3>📋 ٥ مخازن — دفتر حركة صادر ووارد المخزن التقصيلى (توزيع 5 مخازن)</h3>
+    <span class="panel-hint">سجل تلقائي من ١ مخازن (إذون الإضافة) + ٢ مخازن (إذون الصرف) — نفس دفتر الإمداد والمتعهد تمامًا: كل رقم إذن مسجل، ودون رصيد أول المدة</span>
+  </div>
+  <div class="wh5-stats no-print">
+    <span class="wh-chip gold">إجمالي الحركات المسجلة: <b>{{ wh5.count | aindic }} حركة</b></span>
+    <span class="wh-chip dim">إجمالي المضاف بالدفتر (+): <b class="mv-in">{{ wh5.total_added | qty3 }}</b></span>
+    <span class="wh-chip dim">إجمالي المنصرف بالدفتر (−): <b class="mv-out">{{ wh5.total_issued | qty3 }}</b></span>
+    <span class="wh-chip dim">آخر حركة مسجلة: <b><bdi dir="ltr">{{ wh5.last | datefmt }}</bdi></b></span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table wh5-table">
+    <thead>
       <tr>
-        <td class="num">{{ loop.index | aindic }}</td>
-        <td>{{ r.day | aindic }} {{ month_name }}</td>
-        <td class="num">{{ r.permit_no | aindic if r.permit_no else 'رصيد' }}</td>
-        <td>{{ r.party }}</td>
-        <td class="num">{% if r.added %}{{ r.added | qty3 }} {{ r.unit }}{% else %}—{% endif %}</td>
-        <td class="num">{% if r.issued %}{{ r.issued | qty3 }} {{ r.unit }}{% else %}—{% endif %}</td>
-        <td>{{ r.details }}</td>
+        <th class="num">م</th><th>التاريخ</th><th class="num">رقم الإذن</th>
+        <th>الجهة</th><th>المصدر</th><th>مصروف إلى</th>
+        <th class="num">قيمة الأصناف المضافة</th><th class="num">قيمة الأصناف المنصرفة</th>
+        <th>البيان والملحوظات والتفاصيل</th><th>المسؤول والمراقب</th>
+        <th class="no-print">إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in wh5.rows %}
+      <tr class="{{ 'wh-issue-row' if r.kind == 'issue2' }}">
+        <td class="num dim">{{ loop.index | aindic }}</td>
+        <td><bdi dir="ltr">{{ r.date_iso | datefmt }}</bdi></td>
+        <td class="num"><b>{{ r.permit_no | aindic }}</b></td>
+        <td class="name">{{ r.party or '—' }}</td>
+        <td>{{ r.source or '—' }}</td>
+        <td class="name">{{ r.issued_to or '—' }}</td>
+        <td class="num"><b class="mv-in">{{ (r.added | qty3) if r.added else '—' }}</b></td>
+        <td class="num"><b class="mv-out">{{ (r.issued | qty3) if r.issued else '—' }}</b></td>
+        <td class="wh5-details">{{ r.details }}</td>
         <td>{{ r.responsible or '—' }}</td>
-        <td class="no-print">{% if r.kind == 'wh2' %}
-          <form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=r.issue_id) }}" class="inline-f">
+        <td class="no-print">
+          {% if r.kind == 'add1' %}
+          <a class="rt-btn small dim" href="{{ url_for('warehouses.page', cycle='tarfea', sub='wh1', wh1edit=r.permit_no) }}"
+             title="تعديل إذن الإضافة رقم {{ r.permit_no | aindic }}">✏️</a>
+          {% else %}
+          <form method="post" action="{{ url_for('tarfea.wh2_delete', issue_id=r.ref_id) }}" class="inline-f">
             <button class="rt-btn small dim" type="submit">🗑️</button></form>
-        {% elif r.kind == 'wh1' %}<a class="rt-btn small dim" href="{{ url_for('warehouses.page', cycle='tarfea', sub='wh1', wh1edit=r.serial) }}">✏️</a>
-        {% else %}<span class="hl-hint">افتتاحي</span>{% endif %}</td>
-      </tr>{% endfor %}
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="11" class="empty">
+          لا توجد حركات مسجلة لهذا الشهر بعد — أول إذن إضافة من ١ مخازن أو إذن صرف من ٢ مخازن يظهر هنا تلقائيًا
+          (السجل يبدأ من الإذونات مباشرةً — لا يُسجّل رصيد أول المدة أبدًا).
+        </td>
+      </tr>
+      {% endfor %}
     </tbody>
-  </table></div>
-  {% else %}<div class="hl-empty">السجل فاضي — أول ما تسجل رصيد افتتاحي أو إذن إضافة أو صرف هينزل هنا تلقائيًا</div>{% endif %}
+    <tfoot>
+      <tr class="wh5-grand">
+        <td colspan="6"><b>الإجمالي العام لحركات الشهر (كم / ورود):</b></td>
+        <td class="num"><b class="mv-in">{{ wh5.total_added | qty3 }}</b></td>
+        <td class="num"><b class="mv-out">{{ wh5.total_issued | qty3 }}</b></td>
+        <td class="num" colspan="2">الحركات: {{ wh5.count | aindic }}</td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
 </div>
 
-<!-- ==================== تاب مخزن الترفية — مخزن منفصل تمامًا ==================== -->
+<!-- ==================== تبويب مخزن الترفية — مخزن منفصل تمامًا ==================== -->
 {% elif sub == 'store' %}
 <div class="panel">
   <div class="panel-head"><h3>🏠 مخزن الترفية — حركة المخزن مجمعه</h3></div>
@@ -218,7 +261,7 @@
         <td>{{ row.unit }}</td><td>{{ row.pack_label or '—' }}</td><td>{{ row.doc }} — إلى: {{ row.receiver }}</td></tr>
     {% endfor %}</tbody>
   </table></div>
-  {% else %}<div class="hl-empty">مفيش حركة لسه — سجّل رصيد افتتاحي أو إذن إضافة من ١ مخازن</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد حركة بعد — سجّل رصيدًا افتتاحيًا أو إذن إضافة من ١ مخازن</div>{% endif %}
 </div>
 
 <div class="panel">
@@ -237,7 +280,7 @@
       {% endfor %}</tbody>
     </table></div>
     {% endfor %}
-  {% else %}<div class="hl-empty">مفيش أصناف بحركة لسه</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد أصناف بحركة بعد</div>{% endif %}
 </div>
 
 <div class="panel">
@@ -251,7 +294,7 @@
         <td>{{ pack }}</td></tr>
     {% endfor %}</tbody>
   </table></div>
-  {% else %}<div class="hl-empty">مفيش أرصدة لسه</div>{% endif %}
+  {% else %}<div class="hl-empty">لا توجد أرصدة بعد</div>{% endif %}
 </div>
 {% endif %}
 
@@ -259,7 +302,7 @@
   <div class="panel-head"><h3>📁 مكان الملفات المحلية — منفصلة شهر بشهر</h3></div>
   <pre dir="ltr">{{ folder_path }}</pre>
   <span class="hl-hint">├── الأصناف/كشف الأصناف.xlsx · ├── ١ مخازن إذون الإضافة/ · ├── ٢ مخازن إذون الصرف/ ·
-├── ٣ مخازن دفتر الأصناف/ · └── ٥ مخازن السجل اليومي/ — كل حفظ بيحدّث الملفات فورًا.</span>
+├── ٣ مخازن دفتر الأصناف/ · └── ٥ مخازن السجل اليومي/ — كل حفظ يُحدّث الملفات فورًا.</span>
 </div>
 
 <!-- قوائم الكومبو وبيانات JS (نفس معرفات المستودعات — تقرأها combo.js وwarehouses.js) -->
@@ -268,17 +311,18 @@
 <datalist id="whProducersList">{% for n in producers %}<option value="{{ n }}"></option>{% endfor %}</datalist>
 <datalist id="whItemsList">{% for n in items_data %}<option value="{{ n }}"></option>{% endfor %}</datalist>
 <datalist id="whPackKindsList">{% for k in pack_kinds %}<option value="{{ k }}"></option>{% endfor %}</datalist>
-<datalist id="whStoresList">{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
+<datalist id="whStoresList"><option value="مخزن الترفية"></option>{% for s in stores_registry %}<option value="{{ s.name }}"></option>{% endfor %}</datalist>
 <datalist id="whMissingList"></datalist>
 <datalist id="whLooseUnitsList"><option value="كجم"></option><option value="لتر"></option><option value="جرام"></option><option value="علبة"></option></datalist>
 <datalist id="whInnerKindsList">{% for u in units %}<option value="{{ u }}"></option>{% endfor %}{% for k in pack_kinds %}{% if k != "بدون تغليف" %}<option value="{{ k }}"></option>{% endif %}{% endfor %}<option value="باكت"></option><option value="علبة"></option></datalist>
 <script type="application/json" id="whItemsData">{{ items_data | tojson }}</script>
 <script type="application/json" id="whUnitBaseData">{{ unit_base_data | tojson }}</script>
-<script type="application/json" id="whStoresData">{{ stores_registry | tojson }}</script>
-<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month} | tojson }}</script>
+<script type="application/json" id="whStoresData">{{ ([{"name": "مخزن الترفية", "id": 0}] + stores_registry) | tojson }}</script>
+<script type="application/json" id="whContext">{{ {"year": year, "month": month, "days_in_month": days_in_month, "cycle": "tarfea"} | tojson }}</script>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/warehouses.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/warehouses-tabs.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

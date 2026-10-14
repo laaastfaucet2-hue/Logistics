@@ -70,15 +70,15 @@ def test_calendar_grids_pin_every_day_to_its_real_weekday(app, year, month):
         assert ragh_columns[day] == expected, (year, month, day)
 
 
-def test_dates_render_day_first_in_arabic_digits():
-    """كل تاريخ ظاهر = يوم/شهر/سنة بصفر بادئ وأرقام عربية مشرقية."""
-    assert dates.format_date("2026-09-22") == "٢٢/٠٩/٢٠٢٦"
-    assert dates.format_date(date(2026, 10, 1)) == "٠١/١٠/٢٠٢٦"
-    assert dates.format_date("22/09/2026") == "٢٢/٠٩/٢٠٢٦"
-    assert dates.input_date("2026-10-06") == "٠٦/١٠/٢٠٢٦"
-    assert egtime.fmt_ar("2026-10-06") == "٠٦/١٠/٢٠٢٦ — الثلاثاء"
+def test_dates_render_year_first_in_arabic_digits():
+    """كل تاريخ ظاهر = سنة/شهر/يوم بصفر بادئ وأرقام عربية مشرقية."""
+    assert dates.format_date("2026-09-22") == "٢٠٢٦/٠٩/٢٢"
+    assert dates.format_date(date(2026, 10, 1)) == "٢٠٢٦/١٠/٠١"
+    assert dates.format_date("22/09/2026") == "٢٠٢٦/٠٩/٢٢"   # التراثي dd/mm/yyyy نفس الناتج
+    assert dates.input_date("2026-10-06") == "٢٠٢٦/١٠/٠٦"
+    assert egtime.fmt_ar("2026-10-06") == "٢٠٢٦/١٠/٠٦ — الثلاثاء"
     assert dates.period_date(2026, 2, 29) == "—"          # يوم مستحيل في شهر غير كبيس
-    assert dates.period_date(2026, 10, 5) == "٠٥/١٠/٢٠٢٦"
+    assert dates.period_date(2026, 10, 5) == "٢٠٢٦/١٠/٠٥"
 
 
 def test_days_in_month_and_leap_years():
@@ -183,7 +183,7 @@ def test_alert_rows_cover_every_day_of_every_record(app):
     day4 = " ".join(issue["text"] for issue in by_day[4]["issues"])
     assert "أقل من التأميدة" in day4 and "الناقص" in day4
     day5 = " ".join(issue["text"] for issue in by_day[5]["issues"])
-    assert "مفيش راغب واحد مسجل" in day5
+    assert "لا يوجد أي راغب مسجل" in day5
 
     summary = tameed_alerts.summary(year, month)
     assert summary["rows"] == 4 and summary["problem_rows"] == 3
@@ -209,11 +209,17 @@ def test_rations_entities_are_pulled_from_their_own_section_only(app):
 
 
 def test_every_get_page_answers_without_server_error(client, app):
-    """تصيّد الأخطاء البرمجية: كل مسارات GET كاملة المعاملات لا تُسقط البرنامج (بلا 5xx).
+    """تصيّد الأخطاء البرمجية: كل مسارات GET لا تُسقط البرنامج بخطأ خادم.
 
-    التحويلات (302) مقبولة لأن بعض المسارات أفعال (فتح مجلد/ملف، تغيير سياق)،
-    و404 الوحيد المتوقع هو شعار الدباجة قبل رفعه — والمهم: لا خطأ خادم داخلي أبدًا.
+    التحويلات مقبولة، وكذلك أخطاء الإدخال المتوقعة لمسارات التنزيل وواجهات JSON
+    التي تحتاج معاملات استعلام أو ملفًا منشأً مسبقًا.
     """
+    expected_errors = {
+        "/inv6/day": 400,                 # يحتاج day في معاملات الاستعلام
+        "/inv6/download": 404,            # لا يوجد جرد محفوظ في البيئة الفارغة
+        "/letterhead/logo": 404,          # الشعار اختياري
+        "/settings/identity/logo": 404,   # الشعار الاختياري نفسه من الإعدادات
+    }
     checked, bad = 0, []
     for rule in sorted(app.url_map.iter_rules(), key=lambda r: str(r)):
         if "GET" not in (rule.methods - {"HEAD", "OPTIONS"}) or rule.endpoint == "static":
@@ -225,9 +231,7 @@ def test_every_get_page_answers_without_server_error(client, app):
             url = url.replace(f"<{argument}>", "2031" if argument == "year" else "9")
         checked += 1
         response = client.get(url)
-        if response.status_code >= 400 and response.status_code != 404:
-            bad.append((url, response.status_code))
-        elif response.status_code == 404 and url != "/letterhead/logo":
+        if response.status_code >= 400 and expected_errors.get(url) != response.status_code:
             bad.append((url, response.status_code))
     assert checked > 30, "عدد المسارات المفحوصة أقل من المتوقع"
     assert not bad, bad

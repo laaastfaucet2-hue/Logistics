@@ -19,7 +19,7 @@
     if (value?.trim()) go("/years/create", {year:value.trim()});
   });
   document.getElementById("archiveYearBtn")?.addEventListener("click", function () {
-    if (confirm("نقل سنة " + year.value + " إلى الأرشيف محليًا؟\nتنتقل السنة بمجلداتها كاملة إلى فولدر «الأرشيف» — ولا يُسمح بالأرشفة إلا بعد انتهائها تمامًا.\nستبقى قابلة للاسترجاع يدويًا من داخل مجلد البيانات.")) go("/years/archive", {year:year.value});
+    if (confirm("نقل سنة " + year.value + " إلى الأرشيف محليًا؟\nتنتقل السنة بمجلداتها كاملة إلى مجلد «الأرشيف» — ولا يُسمح بالأرشفة إلا بعد انتهائها تمامًا.\nستبقى قابلة للاسترجاع يدويًا من داخل مجلد البيانات.")) go("/years/archive", {year:year.value});
   });
   document.getElementById("delYearBtn")?.addEventListener("click", function () {
     if (confirm("حذف سنة " + year.value + " وكل بياناتها؟ احتفظ بنسخة احتياطية أولًا. لا يمكن التراجع.")) go("/years/delete", {year:year.value});

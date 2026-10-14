@@ -2,7 +2,9 @@
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """قائمة التأميدات (كل جهة لوحدها) وجدول الكميات للأذون."""
 from core import arabic_numbers as arnum
+
 from data_access import db_tameedat as dt
+from data_access import oil_units as ou
 from data_access import db_tameed_rations as snap
 from services import ration_lines as rl
 
@@ -149,6 +151,13 @@ def rows_for_picks(year, month, picks, day_from, day_to, issue_days, section):
                 bucket["custom_lunch"] = used.get("lunch") or 0.0
                 bucket["custom_dinner"] = used.get("dinner") or 0.0
     rows = []
+    for item in grouped.values():
+        f_unit, f_factor = ou.calc_unit(item["name"], item["unit"])
+        if f_factor != 1.0:              # الزيت بس: المقرر باللتر/المل → الحاسبة دايمًا كجم (١٠/١٠ · ١٣/١٠)
+            item["unit"] = f_unit
+            for k in ("auto", "per_person", "breakfast", "lunch", "dinner",
+                      "custom_breakfast", "custom_lunch", "custom_dinner"):
+                item[k] = round(float(item[k] or 0) * f_factor, 6)
     for i, item in enumerate(grouped.values(), start=1):
         rows.append({
             "serial": i, "name": item["name"], "unit": item["unit"],

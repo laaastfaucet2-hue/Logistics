@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 from core import arabic_numbers as arnum
 from core import egtime
+from core import dates
 from core.auth_core import current_context, current_session, login_required
 from core.config import DAYS, MONTH_NAMES
 from data_access import db_raghibin as dr
@@ -37,8 +38,8 @@ def _rb(tab="cadres", ok=None, err=None, warn=None, **extra):
 
 
 def _selected_entity(year, month, by_name=False):
-    """الجهة المحددة: ?e معرف أو ?en اسم (للمودال) أو فورم e —
-    الافتراضي أول جهة بالقاموس (أو None لو فاضي)."""
+    """الجهة المحددة: ?e معرف أو ?en اسم (للمودال) أو نموذج e —
+    الافتراضي أول جهة بالقاموس (أو None لو فارغ)."""
     if by_name:
         name = " ".join((request.values.get("en") or "").split())
         if name:
@@ -61,7 +62,7 @@ def _selected_entity(year, month, by_name=False):
 
 
 def _selected_day(year, month):
-    """اليوم المحدد للتاب اليومي: ?d أو فورم d — الافتراضي تاريخ اليوم وإلا ١."""
+    """اليوم المحدد للتاب اليومي: ?d أو نموذج d — الافتراضي تاريخ اليوم وإلا ١."""
     raw = request.values.get("d", "")
     day = arnum.parse_int(raw) if raw else 0
     if day and 1 <= day <= egtime.days_in_month(year, month):
@@ -104,7 +105,7 @@ def _day_grid(year, month, selected, counts):
 
 
 def _excluded_vars(year, month, entity, query):
-    """متغيرات تاب «عدم الراغبين»: المستثنون (ضباطًا وأفرادًا) لجهة التاب."""
+    """متغيرات تبويب «عدم الراغبين»: المستثنون (ضباطًا وأفرادًا) لجهة التاب."""
     persons = dr.list_persons(year, month, entity_id=entity["id"], query=query,
                               excluded=True) if entity else []
     return {"excluded_persons": persons,
@@ -112,12 +113,25 @@ def _excluded_vars(year, month, entity, query):
 
 
 def _monthly_vars(year, month, entity, category):
-    """متغيرات تاب «تجميع الكشف العام»: وجبات الشهر (وجبة/يوم) بالفئة المختارة."""
-    meals = dr.month_meals(year, month, entity["id"], category) if entity else {}
-    persons = dr.list_persons(year, month, entity_id=entity["id"], category=category,
+    """متغيرات التجميع العام: أيام الشهر وتسلسل الوجبات الفعلية لكل شخص."""
+    entity_id = entity["id"] if entity else None
+    meal_days = dr.month_meal_days(year, month, entity_id, category) if entity else {}
+    persons = dr.list_persons(year, month, entity_id=entity_id, category=category,
                               excluded=False) if entity else []
-    rows = [{"person": p, "meals": meals.get(p["id"], 0)} for p in persons]
+    rows = []
+    for person in persons:
+        days = meal_days.get(person["id"], [])
+        rows.append({
+            "person": person,
+            "meals": len(days),
+            "meal_sequence": {day: index for index, day in enumerate(days, 1)},
+        })
+    monthly_days = [
+        {"day": day, "weekday": egtime.weekday_ar(date(year, month, day))}
+        for day in range(1, egtime.days_in_month(year, month) + 1)
+    ]
     return {
+        "monthly_days": monthly_days,
         "monthly_rows": rows,
         "monthly_total_persons": len(rows),
         "monthly_total_meals": sum(r["meals"] for r in rows),
@@ -125,22 +139,46 @@ def _monthly_vars(year, month, entity, category):
 
 
 def _tameed_day_totals(year, month, entity_id, selected):
-    """أعداد تأميدة اليوم المحدد للجهة (حسب مداها من-إلى) أو None."""
+    """أعداد الجهة في تأميدات اليوم، سواء رئيسية أو ملحقة، أو None."""
+    entity = dt.get_entity(year, month, entity_id) if entity_id else None
+    entity_name = " ".join(((entity or {}).get("name") or "").split())
     officers_total = individuals_total = 0
     for rec in dt.records_for_day(year, month, selected, "all", ""):
-        if rec.get("entity_id") != entity_id:
+        if not rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
             continue
-        if rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
+        if rec.get("entity_id") == entity_id:
             officers_total += rec["officers"]
             individuals_total += rec["individuals"]
+        for attachment in rec.get("attachments") or []:
+            attached_name = " ".join((attachment.get("name") or "").split())
+            if entity_name and attached_name == entity_name:
+                officers_total += attachment.get("officers", 0)
+                individuals_total += attachment.get("individuals", 0)
     if officers_total or individuals_total:
         return {"officers": officers_total, "individuals": individuals_total}
     return None
 
 
-def _slots_vars(year, month, entity, selected):
+def _draft_totals(req):
+    """عدّادات نموذج التأميدة المفتوح (مش محفوظة) — ١٤/١٠:
+    المربعات تتبع الرقم المكتوب في النموذج حتى قبل حفظ التأميدة."""
+    vals = {k: req.values.get(k) for k in ("o", "i")}
+    if not any(v not in (None, "") for v in vals.values()):
+        return None
+    def _n(v):
+        try:
+            return max(0, int(str(v).strip()))
+        except (TypeError, ValueError):
+            return 0
+    return {"officers": _n(vals["o"]), "individuals": _n(vals["i"])}
+
+
+def _slots_vars(year, month, entity, selected, draft_totals=None):
     """مربعات اليوم الذكية: عدد المربعات من تأميدة اليوم (توجيه ٣٠/٠٩/٢٠٢٦)،
     والمملوء منها = الراغبون المسجلون بالأسماء (بالأقدمية) + قوة الفئة للكومبو.
+
+    draft_totals (١٤/١٠): عدّادات نموذج التأميدة غير المحفوظ — لو لا يوجد
+    تأميدة محفوظة لليوم بتتبع الرقم المكتوب؛ المحفوظة لها الأولوية دائمًا.
 
     slots[cat] = {tameeda, count, has_tameeda, boxes (أسماء + فراغات), label}
     force[cat] = أسماء القوة غير المستثناة (للبحث الذكي).
@@ -148,34 +186,53 @@ def _slots_vars(year, month, entity, selected):
     eid = entity["id"] if entity else None
     state = dr.day_state(year, month, selected, eid) if eid else {}
     tameed_totals = _tameed_day_totals(year, month, eid, selected) if eid else None
+    draft_mode = bool(draft_totals) and not tameed_totals
+    # المحفوظة لها الأولوية دائمًا — الـ draft يظهر بس لو لا يوجد محفوظة
+    totals = tameed_totals or draft_totals
     slots, force = {}, {}
     for cat, key, label in (("officers", "officers", "الضباط"),
-                            ("individuals", "individuals", "الأفراد والصف")):
+                            ("individuals", "individuals", "فرد")):
         persons = dr.list_persons(year, month, entity_id=eid, category=cat,
                                   excluded=False) if eid else []
         willing = [p["full_name"] for p in persons if state.get(p["id"])]
-        tameeda = tameed_totals[key] if tameed_totals else 0
+        tameeda = totals[key] if totals else 0
         boxes = list(willing) + [None] * max(0, tameeda - len(willing))
         slots[cat] = {"tameeda": tameeda, "count": len(willing),
-                      "has_tameeda": bool(tameed_totals), "boxes": boxes,
-                      "label": label}
+                      "has_tameeda": bool(totals), "draft_mode": draft_mode,
+                      "boxes": boxes,
+                      "label": label,
+                      # ١٣/١٠: مربع رتبة منسدلة (كل رتب الفئة) + مربع اسم
+                      "ranks": list(dr.RANKS[cat]),
+                      "rank_of": {p["full_name"]: (p.get("rank") or "")
+                                  for p in persons}}
         force[cat] = [p["full_name"] for p in persons]
-    return {"slots": slots, "force": force, "tameed_totals": tameed_totals}
+    return {"slots": slots, "force": force, "tameed_totals": totals,
+            "draft_mode": draft_mode}
 
 
 def _daily_vars(year, month, entity, selected):
-    """متغيرات تاب «الراغبين (يومي)»: التقويم + المربعات + عدادات + تنبيهات اليوم."""
+    """متغيرات تبويب «الراغبين (يومي)»: التقويم + المربعات + عدادات + تنبيهات اليوم."""
     eid = entity["id"] if entity else None
     counts_map = dr.day_willing_counts(year, month, eid) if eid else {}
     base = _slots_vars(year, month, entity, selected)
     slots = base["slots"]
+    # «من أصل» = حجم القوة المعتمدة للجهة (ضباط/أفراد) — مش عدد مربعات التأميدة
     day_counts = {"officers": slots["officers"]["count"],
                   "individuals": slots["individuals"]["count"],
-                  "officers_total": slots["officers"]["tameeda"],
-                  "individuals_total": slots["individuals"]["tameeda"]}
+                  "officers_total": len(base["force"]["officers"]),
+                  "individuals_total": len(base["force"]["individuals"])}
+    # اسم اليوم (السبت/الأحد/...) + يوم الشهر لكل خلية في الشبكة (توجيه ١٠/١٠)
+    day_names = {d: DAYS[(date(year, month, d).weekday() + 2) % 7]
+                 for d in range(1, egtime.days_in_month(year, month) + 1)}
+    # عداد «الضباط وسياء» (تصميم الاسكرين شوت): ضباط الجهة السيائية نفسها
+    is_wastaya = bool(entity) and "وسياء" in entity["name"]
+    day_counts["wastaya_officers"] = day_counts["officers"] if is_wastaya else 0
+    day_counts["wastaya_officers_total"] = day_counts["officers_total"] if is_wastaya else 0
     return {
         "sel_day": selected,
         "weeks": _day_grid(year, month, selected, counts_map),
+        "day_counts_map": counts_map,
+        "day_names": day_names,
         "weekdays": DAYS,
         "slots": slots,
         "force": base["force"],
@@ -197,10 +254,18 @@ def _cadres_of(year, month, entity):
 
 
 def _day_alert_issues(year, month, entity, tameed_totals, day_counts):
-    """تنبيهات اليوم المفتوح: التأميدة مقابل الراغبين المسجلين مقابل الكوادر المعتمدة."""
-    if not entity or not tameed_totals:
+    """تنبيهات اليوم المفتوح: التأميدة مقابل الراغبين المسجلين مقابل الكوادر المعتمدة.
+
+    من غير تأميدة لليوم: ساكت غير ما في راغبين مسجلين — ساعتها ينبه
+    «سجلت راغبين من غير تأميدة» (توجيه ١٠/١٠/٢٠٦)."""
+    if not entity:
         return []
     from services import tameed_alerts
+    if not tameed_totals:
+        total_willing = day_counts["officers"] + day_counts["individuals"]
+        if total_willing:
+            return [tameed_alerts.no_tameeda_issue(total_willing)]
+        return []
     return tameed_alerts.record_day_issues(
         {"officers": tameed_totals["officers"], "individuals": tameed_totals["individuals"]},
         {"officers": day_counts["officers"], "individuals": day_counts["individuals"]},
@@ -237,6 +302,7 @@ def _page_vars(tab):
     return {
         "tabs": TABS, "tab": tab,
         "year": year, "month": month, "month_name": MONTH_NAMES[month - 1],
+        "month_names": MONTH_NAMES,
         "q": query, "fcat": category,
         "categories": dr.CATEGORIES,
         "entities": entities,
@@ -269,6 +335,58 @@ def _alerts_vars(year, month):
         return {}
 
 
+def _registry_search_vars(year, month, entity):
+    """البحث الذكي المرتبط في نموذج «إضافة عضو معتمد جديد» (توجيه ١٢/١٠):
+
+    rank_options        = رتب الفئة القياسية + أي رتبة اتسجلت فعلًا بالشهر
+    registry_rank_map   = أزواج (الرتبة، الاسم) من سجل الجهة — عشان اختيار
+                          الرتبة يفلتر قائمة الأسماء على ناس الرتبة دي.
+    """
+    standard = {"officers": list(dr.RANKS["officers"]),
+                "individuals": list(dr.RANKS["individuals"])}
+    rank_map = {"officers": [], "individuals": []}
+    if entity:
+        for cat in ("officers", "individuals"):
+            for p in dr.list_persons(year, month, entity_id=entity["id"],
+                                     category=cat):
+                rank = (p.get("rank") or "").strip()
+                if not rank:
+                    continue
+                rank_map[cat].append([rank, p["full_name"]])
+                if rank not in standard[cat]:
+                    standard[cat].append(rank)
+    return {"rank_options": standard, "registry_rank_map": rank_map}
+
+
+def _cadres_vars(year, month, entity, selected):
+    """متغيرات تبويب «الجهات والكوادر المعتمدة» (تصميم الاسكرين شوت ١٠/١٠):
+    توقيتات الاعتماد + المسح الضوئي + السجل المعتمد + البحث الذكي المرتبط."""
+    sid = request.args.get("sid", "")
+    variables = {"sel_day": selected,
+                 "pieces_count": len(dt.list_entities(year, month)),
+                 "ranks_map": {"officers": dr.RANKS["officers"],
+                               "individuals": dr.RANKS["individuals"]},
+                 **_registry_search_vars(year, month, entity)}
+    if entity:
+        variables["registry_officers"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="officers")
+        variables["registry_individuals"] = dr.list_persons(
+            year, month, entity_id=entity["id"], category="individuals")
+        variables["approval"] = dr.get_approval(year, month, entity["id"], selected)
+        variables["scan_img_url"] = (
+            f"/raghibin/scan/img?e={entity['id']}&d={selected}"
+            + (f"&sid={quote(sid)}" if sid else ""))
+        variables["entity_count"] = len(variables["registry_officers"]) \
+            + len(variables["registry_individuals"])
+    else:
+        variables["registry_officers"] = []
+        variables["registry_individuals"] = []
+        variables["approval"] = None
+        variables["scan_img_url"] = ""
+        variables["entity_count"] = 0
+    return variables
+
+
 @raghibin_bp.route("")
 @raghibin_bp.route("/")
 @login_required
@@ -286,4 +404,19 @@ def page():
         variables.update(_excluded_vars(year, month, entity, variables["q"]))
     elif tab == "monthly":
         variables.update(_monthly_vars(year, month, entity, variables["fcat"]))
+    elif tab == "cadres":
+        variables.update(_cadres_vars(year, month, entity, _selected_day(year, month)))
     return render_template("raghibin/main.html", **variables)
+
+
+@raghibin_bp.route("/files/rebuild", methods=["POST"])
+@login_required
+def files_rebuild():
+    """إعادة بناء كل الملفات المحلية للشهر بالدباجة والتوقيعين الرسميين والشعار
+    (يعيد كتابة كل الملفات الحالية — لتجديد الملفات القديمة التي قبل القواعد)."""
+    year, month = _ctx()
+    ents, days = rfs.rebuild_all(year, month)
+    ok = (f"اتعدلت كل الملفات المحلية عن {MONTH_NAMES[month - 1]} {arnum.to_arabic_indic(year)} "
+          f"بالدباجة والتوقيعين الرسميين والشعار — {arnum.to_arabic_indic(ents)} جهة "
+          f"وعلي {arnum.to_arabic_indic(days)} يوم يومية.")
+    return _rb("files", ok=ok)

@@ -189,8 +189,10 @@ def _other_xlsx(year, month, names, mils, matrix, eom):
     notes = {}
     for d in range(1, eom + 1):
         for rid, x in da.get_day_map(year, month, d).items():
-            if x.get("note"):
-                notes[(rid, d)] = x["note"]
+            c = (x.get("condition") or "").strip()
+            n = (x.get("note") or "").strip()
+            if c or n:
+                notes[(rid, d)] = ("حالة: " + c + (" — " + n if n else "")) if c else n
     rows = []
     idx = 0
     for rid, days in matrix.items():

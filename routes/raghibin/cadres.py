@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""تاب «الجهات والكوادر المعتمدة» — قوة الجهات بالأسماء والرتب وحالة الرغبة.
+"""تبويب «الجهات والكوادر المعتمدة» — قوة الجهات بالأسماء والرتب وحالة الرغبة.
 
 كل تعديل يُبنى بعده ملفا القوة (ضباط/أفراد) للجهة لحظيًا عبر
 services.raghibin.files_rosters — ونسخ القوة لشهر/سنة آخر يبني كل ملفاته.
@@ -34,10 +34,12 @@ def cadres_add():
         return _rb("cadres", e=entity["id"], c=category, err="اكتب الاسم الرتبعي الكامل")
     person_id, created = dr.add_person(year, month, entity["id"], category, name, rank)
     rfs.write_entity_files(year, month, entity["id"], entity["name"])
+    rank_txt = f" برتبة {rank}" if rank else ""
     if created:
         return _rb("cadres", e=entity["id"], c=category,
-                   ok=f"تم إضافة {name} إلى قوة {entity['name']}")
-    return _rb("cadres", e=entity["id"], c=category, warn=f"{name} موجود بالفعل في القوة")
+                   ok=f"تم إضافة {name}{rank_txt} إلى قوة {entity['name']}")
+    return _rb("cadres", e=entity["id"], c=category,
+               warn=f"{name}{rank_txt} مسجل بالفعل في القوة")
 
 
 @raghibin_bp.route("/cadres/exclude/<int:person_id>", methods=["POST"])
@@ -95,7 +97,7 @@ def cadres_note(person_id):
 @raghibin_bp.route("/cadres/entity_add", methods=["POST"])
 @login_required
 def cadres_entity_add():
-    """➕ إضافة جهة جديدة للقوة مباشرة من تاب الكوادر (بنفس نوع القاموس)."""
+    """➕ إضافة جهة جديدة للقوة مباشرة من تبويب الكوادر (بنفس نوع القاموس)."""
     year, month = _ctx()
     name = " ".join((request.form.get("new_name") or "").split())
     if not name:
@@ -106,7 +108,7 @@ def cadres_entity_add():
     entity_id = dt.add_entity(year, month, name, entity_type)
     rfs.write_entity_files(year, month, entity_id, name)
     return _rb("cadres", e=entity_id,
-               ok=f"تم إضافة جهة «{name}» ({entity_type}) وبناء ملفاتها — أضف قوتها من الفورم تحت")
+               ok=f"تم إضافة جهة «{name}» ({entity_type}) وبناء ملفاتها — أضف قوتها من النموذج تحت")
 
 
 @raghibin_bp.route("/cadres/entity_delete/<int:entity_id>", methods=["POST"])

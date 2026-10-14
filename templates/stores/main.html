@@ -1,5 +1,14 @@
 {% extends "base.html" %}
-{% block title %}المخازن والثلاجات • موحدة لكل الأصناف
+{% block title %}المخازن والثلاجات • موحدة لكل الأصناف{% endblock %}
+
+{% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
 <!-- نافذة الحذف: مخزن عليه حركة لا يُحذف إلا بنقل أصنافه (توجيه ٢٦/٠٩) -->
 <div id="storeDelModal" class="rt-modal" hidden>
   <div class="rt-modal-box">
@@ -18,57 +27,7 @@
 </div>
 <datalist id="storeTransferList">{% for t in stores %}<option value="{{ t.name }}"></option>{% endfor %}</datalist>
 <script type="application/json" id="storeListData">[{% for t in stores %}{"id": {{ t.id }}, "name": {{ t.name | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
-<script>
-(function () {
-  var modal = document.getElementById("storeDelModal");
-  if (!modal) return;
-  var pending = null;
-  function close() { modal.hidden = true; pending = null; }
-  Array.prototype.forEach.call(document.querySelectorAll(".js-del-form"), function (form) {
-    form.addEventListener("submit", function (ev) {
-      if (form.dataset.confirmed === "1") return;   // التأكيد تم — أرسل عادي
-      ev.preventDefault();
-      pending = form;
-      var moved = form.dataset.moved === "1";
-      document.getElementById("storeDelTitle").textContent =
-        "حذف مخزن «" + form.dataset.name + "»";
-      document.getElementById("storeDelText").textContent = moved
-        ? "هذا المخزن عليه حركة — ممنوع حذفه إلا بنقل أصنافه إلى مخزن أو ثلاجة أخرى."
-        : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
-      document.getElementById("storeDelTransfer").hidden = !moved;
-      var input = modal.querySelector("[name=transfer_name]");
-      if (input) input.value = "";
-      modal.hidden = false;
-    });
-  });
-  document.getElementById("storeDelCancel").addEventListener("click", close);
-  document.getElementById("storeDelOk").addEventListener("click", function () {
-    if (!pending) return close();
-    var moved = pending.dataset.moved === "1";
-    var input = modal.querySelector("[name=transfer_name]");
-    if (moved) {
-      var name = (input && input.value || "").trim();
-      var map = {};
-      try { JSON.parse(document.getElementById("storeListData").textContent)
-        .forEach(function (t) { map[t.name] = t.id; }); } catch (err) {}
-      if (!map[name] || name === pending.dataset.name) { input.focus(); return; }
-      pending.querySelector("[name=transfer_to]").value = map[name];
-    }
-    pending.dataset.confirmed = "1";
-    close();
-    pending.submit();
-  });
-})();
-</script>
 
-{% endblock %}
-{% block print_doc_title %}المخازن والثلاجات — {{ month_name }} {{ year | aindic }}{% endblock %}
-
-{% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
-{% endblock %}
-
-{% block content %}
 <header class="wh-hero">
   <div class="wh-hero-lines">
     <b class="wh-l1">🏬 المخازن والثلاجات — موحّدة لكل الأصناف</b>
@@ -80,7 +39,7 @@
   </div>
 </header>
 
-<nav class="wh-tabs no-print" aria-label="تويبات المخازن">
+<nav class="wh-tabs no-print" aria-label="تبويبات المخازن">
   {% for key, name, ic in tabs %}
   <a class="wh-tab {{ 'on' if tab == key }}" href="{{ url_for('stores.page', tab=key) }}">
     {{ ic }} <span>{{ name }}</span>
@@ -89,17 +48,18 @@
 </nav>
 
 <div class="wh-fsbar no-print">
-  <a class="rt-btn dim" href="{{ url_for('stores.open_folder', tab=tab) }}">📂 فتح مجلد «{{ tab_file }}»</a>
+  <a class="rt-btn dim" href="{{ url_for('stores.open_folder', tab=tab) }}">📂 فتح مجلد «{{ tab_folder }}»</a>
   <a class="rt-btn dim" href="{{ url_for('stores.open_file', tab=tab) }}">📗 فتح ملف «{{ tab_file }}»</a>
   <a class="icon-btn down" title="تنزيل «{{ tab_file }}» إكسل" href="{{ url_for('stores.download', tab=tab) }}">
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
   </a>
+  <span class="wh-chip dim">مجلد كل مخزن داخل «10-المخازن والثلاجات»: حركة المخزن · الأصناف · كشف أرصدة المخازن</span>
 </div>
 
-<!-- تابات المخازن: تاب لكل مخزن — في تاب «المخازن» و«حركة وكشف الأرصدة» معًا:
+<!-- تبويبات المخازن: تبويب لكل مخزن — في تبويب «المخازن» و«حركة وكشف الأرصدة» معًا:
      يفتح حركته وجرد أرصدته وكل صنف داخله بالتفصيل (توجيه ٢٧/٠٩) -->
 {% if store_tabs or stores %}
-<nav class="wh-subtabs no-print" aria-label="تويبات كل مخزن">
+<nav class="wh-subtabs no-print" aria-label="تبويبات كل مخزن">
   {% for st in store_tabs %}
   <a class="wh-tab {{ 'on' if store_sel == st.id }}"
      href="{{ url_for('stores.page', tab=tab, store=st.id) }}">🏬 <span>{{ st.name }}</span></a>
@@ -123,7 +83,7 @@
       <input name="name" required autocomplete="off" value="{{ editing.name if editing else '' }}"
              placeholder="مخزن الأرز / مخزن الثلاجة..."></label>
     <label class="wh-f">الموقع
-      <input name="location" autocomplete="off" value="{{ editing.location if editing else '' }}"
+      <input name="location" data-combo="storeLocList" autocomplete="off" value="{{ editing.location if editing else '' }}"
              placeholder="مبنى / دور / جهة"></label>
     <label class="wh-f">سعة المخزن (متر)
       <input name="capacity_m2" inputmode="decimal" autocomplete="off"
@@ -150,6 +110,9 @@
   <div class="panel-head">
     <h3>🏬 سجل المخازن — مواصفات وتجهيزات</h3>
     <span class="panel-hint">سجل عام مستمر لا يتغير بتغيّر الشهر — والحركة والأرصدة شهرية معزولة</span>
+    <button type="button" class="rt-btn gold js-general-toggle" id="generalToggle">
+      📊 كافة الأصناف (كشف عام) <b class="wh-count">{{ general | length | aindic }}</b>
+    </button>
   </div>
   <div class="wh-scroll">
   <table class="rt-table wh-table">
@@ -191,18 +154,125 @@
   </div>
 </div>
 
+{# 🆕 (١٢/١٠) «كافة الأصناف (كشف عام)» — كشف مجمّع لكل أصناف الشهر بكل المخازن
+   (زي البرنامج القديم): داخل/خارج/رصيد بالتغليف وبالوحدة — وارد أخضر / منصرف أحمر #}
+<div class="panel" id="generalReport" hidden>
+  <div class="panel-head">
+    <h3>📊 كافة الأصناف (كشف عام) — كل المخازن {{ month_name }} {{ year | aindic }}</h3>
+    <span class="panel-hint">مجمّع تلقائيًا من كل حركات الشهر — والتوازن بالتغليف وبالوحدة معًا</span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table">
+    <thead><tr>
+      <th>م</th><th>الصنف</th><th>الوحدة</th>
+      <th>إجمالي داخل (تغليف)</th><th>إجمالي داخل (وحدة)</th>
+      <th>إجمالي خارج (تغليف)</th><th>إجمالي خارج (وحدة)</th>
+      <th>رصيد المخزن (تغليف)</th><th>رصيد المخزن (وحدة)</th>
+    </tr></thead>
+    <tbody>
+      {% for r in general %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td class="name"><b>{{ r.name }}</b></td>
+        <td>{{ r.unit or '—' }}</td>
+        <td class="num"><b class="mv-in">{{ r.in_pack }}</b></td>
+        <td class="num"><b class="mv-in">+{{ r.in | qty3 }}</b></td>
+        <td class="num"><b class="mv-out">{{ r.out_pack }}</b></td>
+        <td class="num"><b class="mv-out">−{{ r.out | qty3 }}</b></td>
+        <td class="num"><b>{{ r.balance_pack }}</b></td>
+        <td class="num"><b>{{ r.balance | qty3 }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty">لا أصناف في هذا الشهر بعد</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
 {% if target %}
 {% include "stores/_store_card.html" %}
 {% endif %}
 {% else %}
 {% include "stores/_store_card.html" %}
 {% endif %}
+
+<datalist id="storeLocList">{% for loc in (stores | map(attribute="location") | select | unique | list) %}<option value="{{ loc }}">{% endfor %}</datalist>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script>
-/* زرار «إضافة مخزن جديد» يفتح ويقفل النموذج فعلًا (توجيه ٢٧/٠٩) */
+
+(function () {
+  var modal = document.getElementById("storeDelModal");
+  if (!modal) return;
+  var pending = null;
+  function close() { modal.hidden = true; pending = null; }
+  Array.prototype.forEach.call(document.querySelectorAll(".js-del-form"), function (form) {
+    form.addEventListener("submit", function (ev) {
+      if (form.dataset.confirmed === "1") return;   // التأكيد تم — أرسل عادي
+      ev.preventDefault();
+      pending = form;
+      var moved = form.dataset.moved === "1";
+      document.getElementById("storeDelTitle").textContent =
+        "حذف مخزن «" + form.dataset.name + "»";
+      document.getElementById("storeDelText").textContent = moved
+        ? "هذا المخزن عليه حركة — لا يجوز حذفه إلا بعد نقل أصنافه إلى مخزن أو ثلاجة أخرى."
+        : "المخزن بلا حركة — سيُحذف من السجل مباشرة.";
+      document.getElementById("storeDelTransfer").hidden = !moved;
+      var input = modal.querySelector("[name=transfer_name]");
+      if (input) input.value = "";
+      modal.hidden = false;
+    });
+  });
+  document.getElementById("storeDelCancel").addEventListener("click", close);
+  document.getElementById("storeDelOk").addEventListener("click", function () {
+    if (!pending) return close();
+    var moved = pending.dataset.moved === "1";
+    var input = modal.querySelector("[name=transfer_name]");
+    if (moved) {
+      var name = (input && input.value || "").trim();
+      var map = {};
+      try { JSON.parse(document.getElementById("storeListData").textContent)
+        .forEach(function (t) { map[t.name] = t.id; }); } catch (err) {}
+      if (!map[name] || name === pending.dataset.name) { input.focus(); return; }
+      pending.querySelector("[name=transfer_to]").value = map[name];
+    }
+    pending.dataset.confirmed = "1";
+    close();
+    pending.submit();
+  });
+})();
+/* الـ 3 تبويبات الرئيسية لبطاقة المخزن (توجيه ٠٨/١٠): حركة · أصناف · كشف جرد */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-main]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  var key = btn.getAttribute("data-st-main");
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-main]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-mainpanel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-mainpanel") !== key;
+  });
+});
+
+/* تبويبات الأصناف داخل بطاقة المخزن: الضغط على «الحركة» يعرض حركة الصنف فقط */
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-st-sub]");
+  if (!btn) return;
+  var scope = btn.closest(".wh-store-card");
+  if (!scope) return;
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-sub]"), function (b) {
+    b.classList.toggle("active", b === btn);
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-panel]"), function (p) {
+    p.hidden = p.getAttribute("data-st-panel") !== btn.getAttribute("data-st-sub");
+  });
+});
+/* زر «إضافة مخزن جديد» يفتح ويقفل النموذج فعلًا (توجيه ٢٧/٠٩) */
 (function () {
   var t = document.getElementById("whStoreToggle");
   var f = document.getElementById("whStoreForm");
@@ -215,6 +285,17 @@
       var i = f.querySelector("[name=name]");
       if (i) i.focus();
     }
+  });
+})();
+/* 🆕 (١٢/١٠) «كافة الأصناف (كشف عام)» — فتح/إغلاق الكشف المجمّع (زي البرنامج القديم) */
+(function () {
+  var t = document.getElementById("generalToggle");
+  var r = document.getElementById("generalReport");
+  if (!t || !r || t.dataset.wired) return;
+  t.dataset.wired = "1";
+  t.addEventListener("click", function () {
+    r.hidden = !r.hidden;
+    t.setAttribute("aria-expanded", r.hidden ? "false" : "true");
   });
 })();
 </script>

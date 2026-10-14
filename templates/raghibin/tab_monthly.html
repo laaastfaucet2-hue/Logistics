@@ -1,5 +1,6 @@
 {% set mbase = '/raghibin?tab=monthly' %}
 {% set mbase = mbase + ('&sid=' + sid) if sid else mbase %}
+{% set monthly_group_label = 'الضباط' if fcat == 'officers' else 'الأفراد' %}
 
 {% if ok %}<div class="rg-note ok">✅ {{ ok }}</div>{% endif %}
 
@@ -7,63 +8,90 @@
   <div class="rg-card">
     <div class="rg-card-head">
       <b>📊 تجميع الكشف الشهري العام</b>
-      <span class="rg-dim">الراغب في اليوم = وجبة واحدة (قرار ٣٠/٠٩/٢٠٢٦) — الكشف بالإجمالي زي الصورة</span>
+      <span class="rg-dim">كل يوم رغبة = وجبة واحدة، ورقم الخلية هو ترتيب الوجبة الفعلية خلال الشهر</span>
     </div>
     {% if entities %}
     <form method="get" action="/raghibin" class="rg-addform">
       <input type="hidden" name="tab" value="monthly">
+      <input type="hidden" name="e" value="{{ entity.id if entity else '' }}">
       {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
-      <div class="fld rg-grow"><label>القطاع / الجهة</label>
-        <select name="e" onchange="this.form.submit()">
-          {% for ent in entities %}
-          <option value="{{ ent.id }}" {{ 'selected' if entity and entity.id == ent.id }}>{{ ent.name }}</option>
-          {% endfor %}
-        </select>
+      <div class="fld rg-monthly-entity-field"><label>القطاع / الجهة</label>
+        <details class="rg-entity-picker">
+          <summary aria-label="فتح قائمة الجهات">
+            <span>{{ entity.name if entity else 'اختر الجهة' }}</span>
+          </summary>
+          <div class="rg-entity-options" role="listbox" aria-label="جهات التجميع الشهري">
+            {% for ent in entities %}
+            <a class="rg-entity-option {{ 'on' if entity and entity.id == ent.id }}"
+               role="option" aria-selected="{{ 'true' if entity and entity.id == ent.id else 'false' }}"
+               data-entity-name="{{ ent.name }}"
+               href="{{ mbase }}&e={{ ent.id }}&c={{ fcat }}">{{ ent.name }}</a>
+            {% endfor %}
+          </div>
+        </details>
       </div>
       <button class="rt-btn {{ 'gold' if fcat == 'officers' }}" name="c" value="officers" type="submit">🎖 ض — الضباط</button>
       <button class="rt-btn {{ 'gold' if fcat == 'individuals' }}" name="c" value="individuals" type="submit">👥 أ — الأفراد</button>
-      <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
     </form>
     {% else %}
-    <p class="rg-dim">مفيش جهات لسه.</p>
+    <p class="rg-dim">لا توجد جهات بعد.</p>
     {% endif %}
   </div>
 
   {% if entity %}
-  <div class="rg-card">
+  <div class="rg-card rg-monthly-card">
     <div class="rg-card-head">
-      <b>كشف وجبات {{ dict(categories)[fcat] }}: {{ entity.name }} — {{ month_name }} {{ year | aindic }}</b>
+      <b>كشف وجبات {{ monthly_group_label }}: {{ entity.name | aindic }} — {{ month_name }} {{ year | aindic }}</b>
       <span class="rg-dim">{{ monthly_total_persons | aindic }} اسم · {{ monthly_total_meals | aindic }} وجبة</span>
     </div>
     {% if monthly_rows %}
-    <table class="rg-table">
-      <thead><tr><th>م</th><th>الرتبة والاسم الكامل</th><th>عدد الوجبات</th></tr></thead>
-      <tbody>
-      {% for row in monthly_rows %}
-      <tr>
-        <td>{{ loop.index | aindic }}</td>
-        <td class="rg-name">{{ row.person.rank + ' / ' if row.person.rank }}{{ row.person.full_name }}</td>
-        <td><b class="{{ 'rg-state on' if row.meals else '' }}">{{ row.meals | aindic }}</b></td>
-      </tr>
-      {% endfor %}
-      <tr class="rg-total-row">
-        <td></td>
-        <td><b>إجمالي {{ monthly_total_persons | aindic }} فرد</b></td>
-        <td><b>إجمالي الوجبات: {{ monthly_total_meals | aindic }} وجبة</b></td>
-      </tr>
-      </tbody>
-    </table>
+    <div class="rg-monthly-table-wrap" role="region" aria-label="جدول تجميع الوجبات الشهري" tabindex="0">
+      <table class="rg-table rg-monthly-table">
+        <thead>
+          <tr>
+            <th class="rg-monthly-serial" scope="col">م</th>
+            <th class="rg-monthly-name" scope="col">الرتبة / الاسم الكامل</th>
+            {% for month_day in monthly_days %}
+            <th class="rg-monthly-day" scope="col">
+              <b>{{ month_day.day | aindic }}</b>
+              <small>{{ month_day.weekday }}</small>
+            </th>
+            {% endfor %}
+            <th class="rg-monthly-total" scope="col">الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in monthly_rows %}
+          <tr>
+            <td class="rg-monthly-serial">{{ loop.index | aindic }}</td>
+            {% set person_label = (row.person.rank + ' / ' if row.person.rank else '') + row.person.full_name %}
+            <td class="rg-name rg-monthly-name">{{ person_label | aindic }}</td>
+            {% for month_day in monthly_days %}
+              {% set meal_number = row.meal_sequence.get(month_day.day) %}
+              <td class="rg-monthly-meal {{ 'has-meal' if meal_number else 'no-meal' }}">
+                {% if meal_number %}<b>{{ meal_number | aindic }}</b>{% else %}<span aria-label="لا توجد وجبة">·</span>{% endif %}
+              </td>
+            {% endfor %}
+            <td class="rg-monthly-total"><b>{{ row.meals | aindic }} وجبة</b></td>
+          </tr>
+        {% endfor %}
+          <tr class="rg-total-row rg-monthly-summary">
+            <td colspan="2"><b>إجمالي {{ monthly_group_label }}: {{ monthly_total_persons | aindic }} فرد</b></td>
+            <td colspan="{{ (monthly_days | length) + 1 }}"><b>إجمالي الوجبات: {{ monthly_total_meals | aindic }} وجبة</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     {% else %}
-    <p class="rg-dim">مفيش أسماء غير مستثناة في هذه الفئة.</p>
+    <p class="rg-dim">لا توجد أسماء غير مستثناة في هذه الفئة.</p>
     {% endif %}
   </div>
   {% endif %}
 
   <div class="rg-card rg-files">
     <b>📁 الملفات المحلية</b>
-    <span class="rg-dim">{{ section_folder }}/{{ '3. تجميع الكشف الشهري العام' }}/<الجهة>.xlsx —
-    شيت «ض — الضباط» وشيت «أ — الأفراد والصف»: م | الرتبة والاسم الكامل | عدد الوجبات +
-    «إجمالي X فرد | إجمالي الوجبات: Y وجبة» + توقيعا رئيس قسم التوقيعات/قائد القطاع،
-    وبيتبنى لحظيًا مع كل علامة يومية.</span>
+    <span class="rg-dim">{{ section_folder }}/{{ '3. تجميع الكشف الشهري العام' }}/&lt;الجهة&gt;.xlsx —
+    ورقة عمل «ضابط — الضباط» وورقة عمل «فرد — الأفراد والصف»: م | الرتبة / الاسم الكامل | أيام الشهر | الإجمالي،
+    ووصف أخير لإجمالي الأشخاص والوجبات، ويُعاد بناؤه لحظيًا مع كل علامة يومية.</span>
   </div>
 </div>

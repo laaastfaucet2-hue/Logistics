@@ -135,9 +135,9 @@ const output = path.resolve('.arena/tameedat-results');
     await page.locator('#tmDictSearch').fill('');
     await page.screenshot({ path: path.join(output, 'tameedat-dict.png'), fullPage: true });
 
-    // ============================================ التقرير الشامل: Excel حقيقي بالدباجة واللوجو
+    // ============================================ التقرير الشامل: Excel حقيقي بالدباجة والشعار
     await page.goto(base + `/tameedat/?${period}&tab=report`);
-    await page.getByText('بناء Excel بالدباجة واللوجو وتنزيله').waitFor();
+    await page.getByText('بناء Excel بالدباجة والشعار وتنزيله').waitFor();
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.locator('.tm-report-actions a').first().click(),

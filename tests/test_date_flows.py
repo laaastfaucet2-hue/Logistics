@@ -21,20 +21,20 @@ def test_legacy_iso_records_are_displayed_day_first_without_rewriting(client):
     original = recruits.get_recruit(2031,9,rid)
     page = client.get(f'/recruits/?year=2031&month=9&edit={rid}')
     assert page.status_code == 200
-    for text in ('٠٤/٠٣/٢٠٢٤','٣١/١٢/٢٠٣٣','٠١/٠٢/٢٠٣١','٠٣/٠٤/٢٠٣٢'):
+    for text in ('٢٠٢٤/٠٣/٠٤','٢٠٣٣/١٢/٣١','٢٠٣١/٠٢/٠١','٢٠٣٢/٠٤/٠٣'):
         assert text in page.text
-    assert 'value="٠٤/٠٣/٢٠٢٤"' in page.text
+    assert 'value="٢٠٢٤/٠٣/٠٤"' in page.text
     assert 'type="date"' not in page.text
     assert recruits.get_recruit(2031,9,rid) == original
     for url in ['/recruits/print/certs','/recruits/print/recruit?rid='+str(rid)]:
         report = client.get(url)
         assert report.status_code == 200
         assert '٢٠٣٣-١٢-٣١' not in report.text
-        assert '٠٤/٠٣/٢٠٢٤' in report.text or '٠١/٠٢/٢٠٣١' in report.text
+        assert '٢٠٢٤/٠٣/٠٤' in report.text or '٢٠٣١/٠٢/٠١' in report.text
 
 
 def test_new_arabic_day_first_entry_stores_iso(client):
-    data = {**row(), 'service_start':'03/04/2025', 'service_end':'31122033',
+    data = {**row(), 'service_start':'03/04/2025', 'service_end':'20331231',
             'cert_date':'٠١/٠٢/٢٠٣١','cert_expiry':'۰۳/۰۴/۲۰۳۲'}
     response = client.post('/recruits/save?year=2031&month=9',data=data)
     assert response.status_code == 302
@@ -85,17 +85,17 @@ def test_daily_and_leave_reports_use_complete_dates(client, monkeypatch):
     attendance.set_range(2031,9,rid,'إجازة',3,5,'')
     permit=client.get(f'/recruits/print/permit?year=2031&month=9&rid={rid}&from=3&to=5')
     assert permit.status_code==200
-    for text in ('٠٣/٠٩/٢٠٣١','٠٥/٠٩/٢٠٣١','٢٢/٠٩/٢٠٣١'):
+    for text in ('٢٠٣١/٠٩/٠٣','٢٠٣١/٠٩/٠٥','٢٠٣١/٠٩/٢٢'):
         assert text in permit.text
-    assert '٠٣/٠٩/٢٠٣١' in client.get('/recruits/?year=2031&month=9&tab=leaves').text
-    assert '٠٣/٠٩/٢٠٣١' in client.get('/recruits/print/day?year=2031&month=9&day=3').text
+    assert '٢٠٣١/٠٩/٠٣' in client.get('/recruits/?year=2031&month=9&tab=leaves').text
+    assert '٢٠٣١/٠٩/٠٣' in client.get('/recruits/print/day?year=2031&month=9&day=3').text
     assert client.get(f'/recruits/print/permit?year=2031&month=9&rid={rid}&from=3&to=31').status_code==404
     _, leaves=docx_recruits.rebuild_month(2031,9)
     path=docx_recruits.build_leave_permit(row(),3,5,2031,9)
     for document in (leaves,path):
         with zipfile.ZipFile(document) as archive:
             xml=archive.read('word/document.xml').decode('utf-8')
-            assert '٠٣/٠٩/٢٠٣١' in xml and '٠٥/٠٩/٢٠٣١' in xml
+            assert '٢٠٣١/٠٩/٠٣' in xml and '٢٠٣١/٠٩/٠٥' in xml
         assert Document(document).core_properties.version == docx_recruits.DATE_EXPORT_VERSION
 
 
@@ -112,17 +112,15 @@ def test_stale_monthly_word_report_is_refreshed_on_download(client):
     assert recruits.get_recruit(2031,9,rid)['service_start']=='2024-03-04'
 
 
-def test_backup_ui_uses_cairo_day_first_but_archive_ids_stay_unchanged(client):
+def test_backup_ui_moved_and_archive_ids_stay_unchanged(client):
+    # تاب النسخ الاحتياطى اتحذف (توجيه ١٧/١٠) — الروابط القديمة بتوجّه للإعدادات
     epoch=datetime(2026,9,21,22,15,tzinfo=timezone.utc).timestamp()
-    assert _time_h(epoch)=='٢٢/٠٩/٢٠٢٦ — ٠١:١٥:٠٠'
+    assert _time_h(epoch)=='٢٠٢٦/٠٩/٢٢ — ٠١:١٥:٠٠'
     result=dataguard.create_backup('manual')
     name=result['name']
     response=client.get('/backups/')
-    assert response.status_code==200 and 'التاريخ والوقت' in response.text
-    assert name in response.text  # Kept in the download/restore URL, not renamed on disk.
+    assert response.status_code==302 and 'settings' in response.headers['Location']
     assert dataguard.valid_name(name) and result['path'].exists()
-    assert 'class="date-display" dir="ltr"' in response.text
-
 
 def test_default_month_uses_cairo_date_not_server_localtime(app, monkeypatch):
     from data_access import database

@@ -68,7 +68,7 @@ def _impact_snapshot(year, month):
 
 
 def _impact_report(before, after):
-    """فرج يسرد كل اللي اتغير: سطور التفريدة وأرصدة كل مخزن — تقرير كامل بالعربي."""
+    """يعرض تقريرًا كاملًا بالعربية يوضح كل ما تغيّر في سطور التفريدة وأرصدة المخازن."""
     from core import arabic_numbers as arnum
     lines = []
     keys = sorted(set(before["taf"]) | set(after["taf"]))
@@ -90,6 +90,21 @@ def _impact_report(before, after):
     shown = lines[:10]
     extra = f" — و{arnum.to_arabic_indic(len(lines) - 10)} تغييرًا آخر" if len(lines) > 10 else ""
     return " 📦 تقرير الأثر الكامل: " + "؛ ".join(shown) + extra + "."
+
+
+def _scoped_picks(selected, scope):
+    """فلتر العرض: المجمع أو جهة واحدة باسمها؛ مع دعم روابط النطاق القديمة."""
+    if scope.startswith("entity:"):
+        key = scope[len("entity:"):]
+        return [pick for pick in selected if pick["key"] == key]
+    if scope == "main":                       # توافق مع الروابط القديمة
+        return [pick for pick in selected if not pick["is_attachment"]]
+    if scope == "att":
+        return [pick for pick in selected if pick["is_attachment"]]
+    if scope.startswith("att:"):
+        key = scope[4:]
+        return [pick for pick in selected if pick["is_attachment"] and pick["key"] == key]
+    return selected
 
 
 def _selected_picks(picks, raw):
@@ -140,24 +155,39 @@ def page():
     recruits = sum(p["recruits"] for p in selected)
     force = officers + individuals + recruits
     label = " + ".join(p["name"] for p in selected)
-    tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
-    contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
+    scope = request.args.get("scope") or "all"
+    scoped = _scoped_picks(selected, scope)   # عرض المقررات — الإذن المحفوظ دايم المجموع
+    tamween = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "tamween") if scoped else []
+    contractor = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "contractor") if scoped else []
     nxt, fiscal = dp.peek_next_number(egtime.today())
+    # رقم في البارامتر (بعد حفظ) = يبقى الرقم ظاهرًا في النموذج — والحفظ التالي يُحدّث الإذن
+    form_number = arnum.parse_int(request.args.get("number"))
+    if form_number is not None and form_number < 1:
+        form_number = None
     stock = {"tamween": stock_link.for_rows(year, month, "tamween", tamween),
              "contractor": stock_link.for_rows(year, month, "contractor", contractor)}
+    entity_names = dt.entity_names(year, month)   # قاموس الجهات — الاسم يتبعه
+    # الأرقام المستخدمة في الشهر — تنبيه فوري على الكتابة لو الرقم مكرر (توجيه ٠٨/١٠)
+    used_numbers = [{"n": p["number"], "day": p["date_from"],
+                     "label": p.get("entity_label") or ""}
+                    for p in dp.list_permits(year, month)]
     return render_template(
         "calc2/page.html",
         year=year, month=month, month_name=MONTH_NAMES[month - 1],
         day_from=day_from, day_to=day_to, issue_days=issue_days,
         picks=picks, pick_groups=pb.pick_groups(year, month, picks),
         selected=selected, selected_groups=pb.pick_groups(year, month, selected),
+        scope=scope, scoped_count=len(scoped),
         officers=officers, individuals=individuals, recruits=recruits,
-        force=force, entity_label=label,
+        force=force, entity_label=label, entity_names=entity_names,
         tamween=tamween, contractor=contractor,
         meals=MEALS, issuers=_issuers(year, month, day_from),
         stock=stock, stock_low_ratio=STOCK_LOW_RATIO,
         stock_totals={k: stock_link.totals(v) for k, v in stock.items()},
         next_number=nxt, fiscal_year=fiscal, days_in_month=last,
+        form_number=arnum.to_arabic_indic(form_number) if form_number
+                   else arnum.to_arabic_indic(nxt),
+        used_numbers=used_numbers,
         meal_on={"breakfast": True, "lunch": True, "dinner": True},
     )
 
@@ -179,9 +209,12 @@ def rows():
     records = pb.overlapping_records(year, month, day_from, day_to)
     picks = pb.entity_picks(records)
     selected = _selected_picks(picks, request.args.get("selected"))
-    tamween = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "tamween") if selected else []
-    contractor = pb.rows_for_picks(year, month, selected, day_from, day_to, issue_days, "contractor") if selected else []
-    return jsonify({"tamween": tamween, "contractor": contractor, "days_in_month": last})
+    scope = request.args.get("scope") or "all"
+    scoped = _scoped_picks(selected, scope)
+    tamween = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "tamween") if scoped else []
+    contractor = pb.rows_for_picks(year, month, scoped, day_from, day_to, issue_days, "contractor") if scoped else []
+    return jsonify({"tamween": tamween, "contractor": contractor, "days_in_month": last,
+                    "scope": scope})
 
 
 @calc2_bp.route("/stock")
@@ -226,13 +259,24 @@ def save():
     picks = pb.entity_picks(records)
     selected = _selected_picks(picks, request.form.get("selected_json"))
     if not selected:
-        return _rb(err="حط جهة واحدة على الأقل في مربع الجهات المحددة", **{"from": day_from, "to": day_to})
+        return _rb(err="اختر جهة واحدة على الأقل في مربع الجهات المحددة", **{"from": day_from, "to": day_to})
     actuals = {}
     for field, value in request.form.items():
         if field.startswith("actual_"):
             actuals[field[7:]] = arnum.parse_float(value)
+    # نطاق الجهة للمعاينة فقط؛ عند الحفظ منه نحفظ تلقائيًا مجمع كل الجهات
+    # ولا نعامل أرقام الجهة المفردة كأنها إجمالي الإذن.
+    if (request.form.get("scope") or "all") != "all":
+        actuals = {}
+        for section in ("tamween", "contractor"):
+            rows = pb.rows_for_picks(
+                year, month, selected, day_from, day_to, issue_days, section)
+            for row in rows:
+                actuals[f"{section}_{row['name']}"] = row["auto"]
     record_ids = sorted({int(p["record_id"]) for p in selected})
-    label = (request.form.get("entity_label") or " + ".join(p["name"] for p in selected)).strip()
+    label = dt.normalize_entity_name(   # الاسم يتبع قاموس الجهات (توجيه ٠٨/١٠)
+        year, month,
+        request.form.get("entity_label") or " + ".join(p["name"] for p in selected))
     dp.save_permit(year, month, {
         "number": number, "fiscal_year": fiscal,
         "date_from": day_from, "date_to": day_to, "issue_days": issue_days,
@@ -261,4 +305,7 @@ def save():
         import logging
         logging.exception("calc2 warehouses mirrors failed")
     keys = ",".join(p["key"] for p in selected)
-    return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys, "days": issue_days})
+    # الرقم المحفوظ يرجع في النموذج — إعادة الحفظ بنفس البيانات تحدّث الإذن
+    # نفسه بدل ما تكرر برقم جديد (تصحيح ١٤/١٠ «لا يحفظ الإذن»)
+    return _rb(ok=ok, **{"from": day_from, "to": day_to, "selected": keys,
+                         "days": issue_days, "number": number})

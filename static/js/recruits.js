@@ -33,6 +33,7 @@
   var COLORS = {
     "حضور": "var(--green)", "إجازة": "var(--text)", "غياب": "var(--red)",
     "مأمورية": "var(--blue)", "مستشفى": "var(--status-other)", "أخرى": "var(--text)",
+    "سجن": "var(--orange)", "محكمة": "#5eead4", "جزاء": "#f472b6",
   };
   document.querySelectorAll(".rc-status").forEach(function (sel) {
     function paint() {
@@ -71,5 +72,32 @@
     govInp.addEventListener("change", fillCities);
     govInp.addEventListener("input", fillCities);
     fillCities();
+  }
+
+  // بحث أصل القوة — بالاسم أو الرقم العسكري (أرقام عربية أو لاتينية)
+  var searchInp = document.getElementById("rcSearch");
+  if (searchInp) {
+    var ARABIC = "٠١٢٣٤٥٦٧٨٩";
+    var toWestern = function (s) {
+      return (s || "").replace(/[\u0660-\u0669]/g,
+        function (d) { return String(ARABIC.indexOf(d)); });
+    };
+    searchInp.addEventListener("input", function () {
+      var q = toWestern(searchInp.value.trim()).toLowerCase();
+      var rows = document.querySelectorAll(".table-wrap .rt-table tbody tr");
+      var shown = 0;
+      rows.forEach(function (tr) {
+        var nameEl = tr.querySelector(".rc-sname");
+        var milEl = tr.querySelector(".rc-smil");
+        var hay = toWestern(
+          (nameEl ? nameEl.textContent : "") + " " + (milEl ? milEl.textContent : "")
+        ).toLowerCase();
+        var hit = !q || hay.indexOf(q) !== -1;
+        tr.style.display = hit ? "" : "none";
+        if (hit) shown++;
+      });
+      var cnt = document.getElementById("rcSearchCount");
+      if (cnt) cnt.textContent = q ? (shown + " من " + rows.length + " نتيجة") : "";
+    });
   }
 })();

@@ -200,6 +200,42 @@ def build_leave_permit(recruit, from_day, to_day, year, month):
     return path
 
 
+def build_joint_leave_permit(recruits, from_day, to_day, year, month):
+    """تصريح إجازة مجمّع — أكثر من مجند بنفس المدة في تصريح واحد (قرار الجولة ٣٥)."""
+    today = egtime.today()
+    doc = Document()
+    doc.core_properties.version = DATE_EXPORT_VERSION
+    _header(doc, "تصريح إجازة مجمّع", year, month)
+    lines = ["صرّحت وحدة التعيينات للمجندين التاليين بإجازة اعتيادية:"]
+    if len(recruits) > 2:
+        lines[0] = "صرّحت وحدة التعيينات للمجندين التاليين ({} فردًا) بإجازة اعتيادية:".format(
+            arnum.to_arabic_indic(len(recruits)))
+    for i, r in enumerate(recruits, 1):
+        lines.append("{}. المجند / {}    رقم عسكري / {}    محافظة / {}    المدينة / {}".format(
+            arnum.to_arabic_indic(i), r["name"],
+            arnum.to_arabic_indic(r.get("mil_no") or "—"),
+            r.get("governorate") or "—", r.get("city") or "—"))
+    lines += [
+        "بإجازة اعتيادية من تاريخ {} وحتى تاريخ {} (مدة {} يومًا).".format(
+            dates.document_date(date(year, month, from_day)),
+            dates.document_date(date(year, month, to_day)),
+            arnum.to_arabic_indic(to_day - from_day + 1)),
+        "وعلى المذكورون العودة إلى وحدة التعيينات فور انتهاء الإجازة،",
+        "وقد حُرِّر لهم هذا التصريح لتقديمه لمن يهمه الأمر.",
+        "حُرِّر في {} — {}.".format(dates.document_date(today), egtime.weekday_ar(today)),
+    ]
+    for text in lines:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        _run(p, text, 13)
+    _signatures(doc, year, month)
+    path = leaves_dir(year, month) / "تصاريح" / "تصريح-مجمّع-{}-{:02d}-{:02d}.docx".format(
+        year, month, from_day)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dataguard.atomic_save(doc.save, path)
+    return path
+
+
 def month_sheets(year, month):
     """مسارات كشفي الشهر إن وُجدا (لأزرار التنزيل) — كل كشف في مجلد تويبه."""
     p1 = docs_dir(year, month) / "كشف-الحالات-{}-{:02d}.docx".format(year, month)

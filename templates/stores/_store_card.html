@@ -1,7 +1,9 @@
 {% from "partials/pack_story.html" import pack_chips %}
-{# كارت مخزن واحد — محتواه حسب التاب (توجيه ٢٧/٠٩ ليلًا):
-   «المخازن»: تابات لكل صنف — تضغط الصنف يعرض حركته هو بس بترتيب التواريخ.
-   «كشف جرد الأرصدة»: جدول واحد بآخر رصيد فقط لكل صنف بلا حركة. #}
+{# بطاقة مخزن واحد — 3 تبويبات (توجيه ٠٨/١٠) = 3 مجلدات في الملفات 1:1:
+   1) سجل حركة المخزن — كل الحركات (داخل/خارج) بترتيب التواريخ
+   2) الأصناف — كل صنف برصيده + حركته فقط + ملف إكسل مستقل
+   3) كشف جرد أرصدة المخزن — الرصيد بالتغليف (١ شكارة + ١٠ كجم) #}
+{% set sid = target.store.id or 0 %}
 <section class="panel wh-store-card">
   <div class="panel-head">
     <h3>{{ '🏬' if target.store.id else '📦' }} {{ target.store.name }}</h3>
@@ -14,77 +16,234 @@
     </span>
   </div>
 
-  {% if tab == 'mains' %}
-  {# ================= تاب المخازن: تابات الأصناف + حركة الصنف المختار ================= #}
-  {% if target['items'] %}
-  <nav class="wh-subtabs no-print" aria-label="أصناف المخزن">
-    {% for name, it in target['items'].items() %}
-    <button type="button" class="wh-subtab {{ 'active' if loop.first }}" data-st-sub="{{ name }}">{{ name }}</button>
+  <nav class="wh-subtabs no-print" aria-label="تبويبات المخزن">
+    {% for key, name, ic in store_tabs_data %}
+    <button type="button" class="wh-subtab {{ 'active' if loop.first }}" data-st-main="{{ key }}">{{ ic }} <span>{{ name }}</span></button>
     {% endfor %}
   </nav>
-  {% for name, it in target['items'].items() %}
-  <div class="wh-subpanel" data-st-panel="{{ name }}" {% if not loop.first %}hidden{% endif %}>
-    <b class="wh-taf-title">حركة «{{ name }}» في {{ target.store.name }} — بترتيب التواريخ</b>
+
+  {# ================= 1) سجل حركة المخزن ================= #}
+  <div data-st-mainpanel="moves">
+    <div class="wh-filebar no-print">
+      <a class="rt-btn dim" href="{{ url_for('stores.open_folder_store', store_id=sid, sub='movement') }}">📂 فتح مجلد «حركة المخزن»</a>
+      <a class="rt-btn dim" href="{{ url_for('stores.open_file_store', store_id=sid, sub='movement') }}">📗 فتح ملف «حركة المخزن.xlsx»</a>
+      <a class="icon-btn down" title="تنزيل «حركة المخزن.xlsx»"
+         href="{{ url_for('stores.download_store', store_id=sid, sub='movement') }}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </a>
+    </div>
+    {# 🆕 (١٢/١٠) سجل الحركة زي البرنامج القديم: الجهة/المصدر/ال مندوب + الكمية
+       بعمودين (تغليف + وحدة) + رصيد المخزن بعد كل سطر — قاعدة الألوان: وارد أخضر / منصرف أحمر #}
     <div class="wh-scroll">
-    <table class="rt-table wh-table">
-      <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الشركة المنتجة</th>
-        <th>الشركة الموردة</th><th>الكمية</th><th>التغليف</th><th>المستند</th></tr></thead>
+    <table class="rt-table wh-table mv-wide">
+      <thead><tr>
+        <th>م</th><th>التاريخ</th><th>نوع الحركة</th><th>الصنف</th>
+        <th>الشركة الموردة</th><th>الشركة المنتجة</th>
+        <th>مصروف إلى (الجهة)</th><th>مندوب الجهة</th>
+        <th>الكمية وارده (تغليف)</th><th>الكمية وارده (وحدة)</th>
+        <th>الكمية منصرف (تغليف)</th><th>الكمية منصرف (وحدة)</th>
+        <th>رصيد المخزن (بعد)</th><th>الصلاحية</th><th>المستند</th>
+      </tr></thead>
       <tbody>
-        {% for mv in it.moves %}
+        {% for mv in target.all_moves %}
         <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
           <td class="num">{{ loop.index | aindic }}</td>
-          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
-              {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
           <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
-          <td class="wh-co">{{ mv.producer or '—' }}</td>
+          <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل (إضافة)</span>
+              {% else %}<span class="wh-out">خارج (توزيع)</span>{% endif %}</td>
+          <td class="name"><b>{{ mv.item }}</b></td>
           <td class="wh-co">{{ mv.supplier or '—' }}</td>
-          <td class="num {{ 'wh-issued' if mv.dir == 'out' }}">{{ mv.qty | qty3 }} {{ it.unit }}</td>
-          <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
+          <td class="wh-co">{{ mv.producer or '—' }}</td>
+          <td>{{ mv.entity or '—' }}</td>
+          <td>{{ mv.receiver or '—' }}</td>
+          {% if mv.dir == 'in' %}
+          <td class="num"><b class="mv-in">{{ mv.pack_short or '—' }}</b></td>
+          <td class="num"><b class="mv-in">{{ mv.qty | qty3 }} {{ mv.unit }}</b></td>
+          <td class="num">—</td><td class="num">—</td>
+          {% else %}
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b class="mv-out">{{ mv.pack or '—' }}</b></td>
+          <td class="num"><b class="mv-out">{{ mv.qty | qty3 }} {{ mv.unit }}</b></td>
+          {% endif %}
+          <td class="num"><b>{% if mv.rem_after %}{{ mv.rem_after }}{% else %}{{ mv.rem_qty | qty3 }} {{ mv.unit }}{% endif %}</b></td>
+          <td>{% if mv.expiry %}<bdi dir="ltr" class="date-display">{{ mv.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
           <td>{{ mv.doc }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="empty">لا حركة على هذا الصنف في المخزن بعد</td></tr>
+        <tr><td colspan="15" class="empty">لا حركة على هذا المخزن بعد</td></tr>
         {% endfor %}
       </tbody>
+      {% if target['items'] %}
       <tfoot>
         <tr>
-          <td colspan="5">الإجماليات</td>
-          <td class="num">+{{ it.in | qty3 }} / −{{ it.out | qty3 }} {{ it.unit }}</td>
-          <td class="wh-pack-cell">{{ it.pack or '—' }}</td>
-          <td>الرصيد: <b>{{ it.balance | qty3 }}</b> {{ it.unit }}</td>
+          <th colspan="4">الإجماليات لكل صنف</th>
+          <th></th><th></th>
+          <th>داخل (تغليف)</th><th>داخل (وحدة)</th>
+          <th>خارج (تغليف)</th><th>خارج (وحدة)</th>
+          <th></th><th></th>
+          <th>رصيد المخزن (تغليف)</th><th colspan="2">رصيد المخزن (وحدة)</th>
         </tr>
+        {% for name, it in target['items'].items() %}
+        <tr>
+          <td colspan="4" class="name"><b>{{ name }}</b></td>
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b class="mv-in">{{ it.in_pack or '—' }}</b></td>
+          <td class="num"><b class="mv-in">+{{ it.in | qty3 }}</b></td>
+          <td class="num"><b class="mv-out">{{ it.out_pack or '—' }}</b></td>
+          <td class="num"><b class="mv-out">−{{ it.out | qty3 }}</b></td>
+          <td class="num">—</td><td class="num">—</td>
+          <td class="num"><b>{{ it.pack or '—' }}</b></td>
+          <td colspan="2" class="num"><b>{{ it.balance | qty3 }} {{ it.unit }}</b></td>
+        </tr>
+        {% endfor %}
       </tfoot>
+      {% endif %}
+    </table>
+    {# تبويبات فرعية لكل صنف (١٤/١٠): الإجماليات فوق، وتحت تبويب لكل صنف
+       بسطر لكل يوم نشط — داخل/خارج (تغليف) + المورد/المنتج + الرصيد التراكمي #}
+    {% if target.get('mv_items') %}
+    {% set mv_items = target['mv_items'] %}
+    <div class="wh-subtabs no-print">
+      {% for name, it in mv_items %}
+      <button type="button" class="wh-subtab" data-st-sub="mv:{{ name }}">📄 {{ name }}</button>
+      {% endfor %}
+    </div>
+    {% for name, it in mv_items %}
+    <div class="wh-subpanel" data-st-panel="mv:{{ name }}" hidden>
+      <b class="wh-taf-title">«{{ name }}» بحركة يومية تفصيلية في {{ target.store.name }} — داخل/خارج (تغليف) + الرصيد</b>
+      <div class="wh-scroll">
+      <table class="rt-table wh-table">
+        <thead><tr>
+          <th>م</th><th>اليوم</th><th>الشركة الموردة</th><th>الشركة المنتجة</th>
+          <th>داخل (تغليف)</th><th>خارج (تغليف)</th><th>الرصيد</th>
+        </tr></thead>
+        <tbody>
+          {% for d in it.days %}
+          <tr>
+            <td class="num">{{ loop.index | aindic }}</td>
+            <td><bdi dir="ltr" class="date-display">{{ d.date | datefmt }}</bdi></td>
+            <td class="wh-co">{{ d.supplier or '—' }}</td>
+            <td class="wh-co">{{ d.producer or '—' }}</td>
+            <td class="num">{% if d.in %}<b class="mv-in">+{{ d.in | qty3 }}</b> {{ it.unit }}
+              {% if d.in_pack %}<div class="wh-pack-sub">{{ d.in_pack }}</div>{% endif %}{% else %}—{% endif %}</td>
+            <td class="num">{% if d.out %}<b class="mv-out">−{{ d.out | qty3 }}</b> {{ it.unit }}
+              {% if d.out_pack %}<div class="wh-pack-sub">{{ d.out_pack }}</div>{% endif %}{% else %}—{% endif %}</td>
+            <td class="num"><b>{{ d.balance | qty3 }}</b> {{ it.unit }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    </div>
+  </div>
+
+  {# ================= 2) الأصناف ================= #}
+  <div data-st-mainpanel="items" hidden>
+    <div class="wh-filebar no-print">
+      <a class="rt-btn dim" href="{{ url_for('stores.open_folder_store', store_id=sid, sub='items') }}">📂 فتح مجلد «الأصناف»</a>
+      <span class="wh-chip dim">كل صنف له ملف إكسل باسمه داخل المجلد — من أزرار كل سطر</span>
+    </div>
+    {% if target['items'] %}
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>إجمالي داخل</th><th>إجمالي خارج</th>
+        <th>الرصيد</th><th>التغليف المتبقي</th><th>أقرب انتهاء</th>
+        <th class="no-print">إجراءات</th></tr></thead>
+      <tbody>
+        {% for name, it in target['items'].items() %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ name }}</b></td>
+          {# ١٤/١٠: المزدوجة — كل إجمالي بالوحدة وتحته بالتغليف #}
+          <td class="num"><b class="mv-in">+{{ it.in | qty3 }}</b>
+            {% if it.in_pack %}<div class="wh-pack-sub">{{ it.in_pack }}</div>{% endif %}</td>
+          <td class="num"><b class="mv-out">−{{ it.out | qty3 }}</b>
+            {% if it.out_pack %}<div class="wh-pack-sub">{{ it.out_pack }}</div>{% endif %}</td>
+          <td class="num"><b>{{ it.balance | qty3 }}</b> {{ it.unit }}</td>
+          <td class="wh-pack-cell">{{ it.pack or '—' }}</td>
+          <td>{% if it.expiry %}<bdi dir="ltr" class="date-display">{{ it.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+          <td class="ops no-print">
+            <button type="button" class="rt-btn dim" data-st-sub="{{ name }}">📄 الحركة</button>
+            <a class="icon-btn" title="فتح ملف «{{ name }}.xlsx»"
+               href="{{ url_for('stores.open_file_store', store_id=sid, sub='items', item=name) }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7l2 3h9v12H3Z"></path></svg>
+            </a>
+            <a class="icon-btn down" title="تنزيل ملف الصنف «{{ name }}.xlsx»"
+               href="{{ url_for('stores.download_store', store_id=sid, sub='items', item=name) }}">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% for name, it in target['items'].items() %}
+    <div class="wh-subpanel" data-st-panel="{{ name }}" hidden>
+      <b class="wh-taf-title">حركة «{{ name }}» في {{ target.store.name }} — بترتيب التواريخ</b>
+      <div class="wh-scroll">
+      <table class="rt-table wh-table">
+        <thead><tr><th>م</th><th>النوع</th><th>التاريخ</th><th>الكمية</th>
+          <th>التغليف</th><th>الصلاحية</th><th>المستند</th></tr></thead>
+        <tbody>
+          {% for mv in it.moves %}
+          <tr class="{{ 'wh-issue-row' if mv.dir == 'out' }}">
+            <td class="num">{{ loop.index | aindic }}</td>
+            <td>{% if mv.dir == 'in' %}<span class="wh-in">داخل</span>
+                {% else %}<span class="wh-out">خارج</span>{% endif %}</td>
+            <td><bdi dir="ltr" class="date-display">{{ mv.date | datefmt }}</bdi></td>
+            <td class="num">{{ mv.qty | qty3 }} {{ it.unit }}</td>
+            <td class="wh-pack-cell">{{ pack_chips(mv.pack) if mv.pack else '—' }}</td>
+            <td>{% if mv.expiry %}<bdi dir="ltr" class="date-display">{{ mv.expiry | datefmt }}</bdi>{% else %}—{% endif %}</td>
+            <td>{{ mv.doc }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty">لا حركة على هذا الصنف في المخزن بعد</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">لا أصناف داخل هذا المخزن بعد.</p>
+    {% endif %}
+  </div>
+
+  {# ================= 3) كشف جرد أرصدة المخزن ================= #}
+  <div data-st-mainpanel="balance" hidden>
+    <div class="wh-filebar no-print">
+      <a class="rt-btn dim" href="{{ url_for('stores.open_folder_store', store_id=sid, sub='balance') }}">📂 فتح مجلد «كشف أرصدة المخازن»</a>
+      <a class="rt-btn dim" href="{{ url_for('stores.open_file_store', store_id=sid, sub='balance') }}">📗 فتح ملف «كشف جرد أرصدة المخزن.xlsx»</a>
+      <a class="icon-btn down" title="تنزيل «كشف جرد أرصدة المخزن.xlsx»"
+         href="{{ url_for('stores.download_store', store_id=sid, sub='balance') }}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </a>
+    </div>
+    <b class="wh-taf-title">كشف جرد أرصدة المخزن كاملة — محسوب من كل الحركات (التغليف أولًا)</b>
+    <div class="wh-scroll">
+    <table class="rt-table wh-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>الرصيد بالتغليف</th>
+        <th>الكمية</th><th>الوحدة</th><th>أقرب انتهاء</th></tr></thead>
+      <tbody>
+        {% for name, qty in target.balances | dictsort %}
+        {% set _it = target['items'].get(name, {}) %}
+        <tr>
+          <td class="num">{{ loop.index | aindic }}</td>
+          <td class="name"><b>{{ name }}</b></td>
+          <td class="wh-pack-cell"><b>{{ target.pack_notes.get(name) or (qty | qty3) ~ ' ' ~ (_it.get('unit') or '') }}</b></td>
+          <td class="num"><b>{{ qty | qty3 }}</b></td>
+          <td>{{ _it.get('unit', '') or '—' }}</td>
+          <td>{% if _it.get('expiry') %}<bdi dir="ltr" class="date-display">{{ _it.get('expiry') | datefmt }}</bdi>{% else %}—{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
+        {% endfor %}
+      </tbody>
     </table>
     </div>
   </div>
-  {% endfor %}
-  {% else %}
-  <p class="empty">لا أصناف داخل هذا المخزن بعد.</p>
-  {% endif %}
-
-  {% else %}
-  {# ================= تاب كشف جرد الأرصدة: آخر رصيد فقط ================= #}
-  <b class="wh-taf-title">جرد أرصدة المخزن — آخر رصيد فقط لكل صنف (يتجدد تلقائيًا)</b>
-  <div class="wh-scroll">
-  <table class="rt-table wh-table">
-    <thead><tr><th>م</th><th>الصنف</th><th>آخر الرصيد</th><th>الوحدة</th>
-      <th>التغليف المتبقي بالضبط</th><th>أقرب انتهاء</th></tr></thead>
-    <tbody>
-      {% for item, qty in target.balances.items() %}
-      {% set _it = target['items'].get(item, {}) %}
-      <tr>
-        <td class="num">{{ loop.index | aindic }}</td>
-        <td class="name"><b>{{ item }}</b></td>
-        <td class="num"><b>{{ qty | qty3 }}</b></td>
-        <td>{{ _it.get('unit', '') or '—' }}</td>
-        <td class="wh-pack-cell">{{ target.pack_notes.get(item) or '—' }}</td>
-        <td>{% if _it.get('expiry') %}<bdi dir="ltr" class="date-display">{{ _it.get('expiry') | datefmt }}</bdi>{% else %}—{% endif %}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="empty">رصيد الصفر — لا أصناف حالية في هذا المخزن</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% endif %}
 </section>

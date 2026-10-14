@@ -179,12 +179,13 @@ def add_issue(year, month, day, item_id, qty, receiver="",
             (serial, day, item_id, qty, item["handle_unit"],
              (receiver or "").strip(), (responsible or "").strip(),
              (notes or "").strip(), stamp))
+        _prev = dw.running_balance(conn, CYCLE, item_id)
         conn.execute(
             "INSERT INTO wh_ledger (cycle,item_id,day,date_iso,kind,permit_no,label,"
             "added,issued,balance,notes,created_at)"
-            " VALUES (?,?,?,?,?,?,?,0,?,0,?,?)",
+            " VALUES (?,?,?,?,?,?,?,0,?,?,?,?)",
             (CYCLE, item_id, day, date_iso, "issue2", serial, label,
-             qty, (notes or "").strip(), stamp))
+             qty, round(_prev - float(qty or 0), 6), (notes or "").strip(), stamp))
     conn.close()
     return serial
 
@@ -210,76 +211,6 @@ def list_issues(year, month):
         "SELECT i.*, w.name AS item_name FROM tarfea_issues i"
         " LEFT JOIN wh_items w ON w.id = i.item_id ORDER BY i.day, i.id").fetchall()]
     conn.close()
-    return rows
-
-
-# ==================== ٥ مخازن — السجل اليومي المشتق ====================
-def t5_rows(year, month):
-    """سجل ٥ مخازن مشتقّ بالكامل: opener + أذون ١ مخازن + صرف ٢ مخازن —
-    القيم بالمعيار (وحدة التعامل) وليس بالتغليف (توجيه المستخدم ٢٩/٠٩)."""
-    items = {it["id"]: it for it in list_items(year, month)}
-    rows = []
-    # رصيد أول المدة
-    for it in items.values():
-        card = dw.item_card(year, month, it["id"]) or {}
-        for r in card.get("rows") or []:
-            if r.get("kind") == "opener":
-                rows.append({"day": r["day"], "permit_no": 0,
-                             "party": "رصيد أول المدة",
-                             "added": int(r["added"]) if float(r["added"] or 0).is_integer()
-                             else round(float(r["added"] or 0), 3),
-                             "issued": 0.0, "unit": it["handle_unit"],
-                             "kind": "opener", "serial": 0,
-                             "details": "افتتاحي «{}»".format(it["name"]),
-                             "responsible": "", "issue_id": 0})
-    # أذون ١ مخازن — تجميع بإذن (سطر واحد لكل إذن بالكمية الكلية بالمعيار)
-    def _n(x):
-        x = float(x or 0)
-        return int(x) if x.is_integer() else round(x, 3)
-
-    def _a(x):
-        """الرقم بأرقام عربية منسوبة للعرض في تفاصيل السجل."""
-        return fmt_qty(float(x)).rstrip("0").rstrip("٫")
-
-    groups = {}
-    for r in list_receipts(year, month):
-        g = groups.setdefault(r["serial"], {"day": r["day"], "added": 0.0,
-                                            "names": [], "units": [],
-                                            "party": "", "notes": ""})
-        g["added"] += r["qty_handle"] or 0
-        g["names"].append("{} {}".format(_a(r["qty_handle"]), r["unit"] or ""))
-        if r["unit"] and r["unit"] not in g["units"]:
-            g["units"].append(r["unit"])
-        g["party"] = r["supplier_name"] or r["producer"] or "إذن إضافة"
-        g["notes"] = r["notes"] or ""
-    for serial in sorted(groups):
-        g = groups[serial]
-        rows.append({"day": g["day"], "permit_no": serial,
-                     "party": "وارد من: " + g["party"], "added": _n(g["added"]),
-                     "issued": 0.0,
-                     "unit": g["units"][0] if len(g["units"]) == 1
-                     else "مختلط" if g["units"] else "",
-                     "kind": "wh1", "serial": serial,
-                     "details": "إذن إضافة ١ مخازن ({}): {}".format(
-                         to_arabic_indic(str(len(g["names"]))),
-                         " + ".join(g["names"])),
-                     "responsible": "", "issue_id": 0})
-    # إذون صرف ٢ مخازن
-    for i in list_issues(year, month):
-        rows.append({"day": i["day"], "permit_no": i["serial"],
-                     "party": "منصرف إلى: " + (i["receiver"] or "—"),
-                     "added": 0.0, "issued": int(i["qty"]) if float(i["qty"]).is_integer()
-                     else round(float(i["qty"]), 3),
-                     "unit": i["unit"] or (items.get(i["item_id"], {})
-                                           .get("handle_unit", "")),
-                     "kind": "wh2", "serial": i["serial"],
-                     "details": "صرف «{}»{}".format(
-                         i["item_name"] or "—",
-                         " — " + i["notes"] if i["notes"] else ""),
-                     "responsible": i["responsible"] or "",
-                     "issue_id": i["id"]})
-    rows.sort(key=lambda x: (x["day"], x["kind"] != "opener",
-                             x["permit_no"], x["kind"]))
     return rows
 
 

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — أوراق وإيصالات الصرف{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>تفاريد خط الحدود الدولى — أوراق وإيصالات الصرف</span>
+  <span class="sep">•</span><span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+{% macro line_matrix(paper) %}
+{% set items = paper.line_paper.rows %}
+<div class="dw-matrix-wrap dw-result-wrap" role="region" tabindex="0" aria-label="جدول نتيجة {{ paper.line.name }}">
+  <table class="rt-table dw-matrix dw-result-matrix">
+    <thead>
+      <tr>
+        <th class="dw-result-item-col">
+          <span class="dw-result-head-title">المادة</span>
+          <small>المعدل والمدة</small>
+        </th>
+        {% for point_paper in paper.points_papers %}
+        <th class="dw-result-value-col">
+          <span class="dw-result-head-title">{{ point_paper.point.name }}</span>
+          <small class="dw-force-tag">قوة {{ point_paper.point.force | aindic }}</small>
+        </th>
+        {% endfor %}
+        <th class="dw-result-value-col dw-result-total-head">
+          <span class="dw-result-head-title">مجمع الخط</span>
+          <small class="dw-force-tag">قوة {{ paper.line.total_force | aindic }}</small>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for index in range(items | length) %}
+      <tr>
+        <td class="dw-result-item-col">
+          <div class="dw-result-item-title">
+            <b>{{ items[index].name }}</b>
+            {% if items[index].unit %}<span class="dw-unit-tag">{{ items[index].unit }}</span>{% endif %}
+          </div>
+          <div class="dw-result-meta">
+            <span>معدل الفرد <b>{{ items[index].rate | qty3 }}</b></span>
+            <span>المدة <b>{{ items[index].days | aindic }} يوم</b></span>
+          </div>
+        </td>
+        {% for point_paper in paper.points_papers %}
+        <td class="num dw-result-value-col dw-result-qty {{ 'dw-off' if not point_paper.point.force }}">
+          <b>{{ point_paper.rows[index].total | qty3 }}</b>
+          {% if items[index].unit %}<small class="dw-qty-unit">{{ items[index].unit }}</small>{% endif %}
+        </td>
+        {% endfor %}
+        <td class="num dw-result-value-col dw-result-qty dw-result-total">
+          <b>{{ items[index].total | qty3 }}</b>
+          {% if items[index].unit %}<small class="dw-qty-unit">{{ items[index].unit }}</small>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="{{ (paper.points_papers | length) + 2 }}" class="empty">لا توجد أصناف مفعّلة.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+<div class="panel dw-gate">
+  <div class="panel-head">
+    <h3>الخط والفترة المحددان</h3>
+    <span class="panel-hint">اختيار الخط يملأ فترة نسخته · يجوز تقصير الصرف داخل حدود النسخة فقط · الطباعة والتنزيل للخط والفترة المحددين</span>
+  </div>
+
+  {% if lines %}
+  <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar dw-period-picker">
+    <input type="hidden" name="tab" value="papers">
+    <label>الخط الحالي
+      <select name="line" id="dwLineSelect">
+        {% for line in lines %}<option value="{{ line.id }}" data-from="{{ line.date_from or '' }}" data-to="{{ line.date_to or '' }}" {{ 'selected' if line.id == sel_line_id }}>{{ line.name }} — {% if line.date_from is not none %}{{ line.date_from | aindic }} إلى {{ line.date_to | aindic }}{% else %}الفترة غير محددة{% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <label>من يوم<input id="dwPeriodFrom" name="from" inputmode="numeric" value="{{ day_from | aindic }}" {% if selected_line and selected_line.date_from is not none %}min="{{ selected_line.date_from }}" max="{{ selected_line.date_to }}"{% endif %}></label>
+    <label>إلى يوم<input id="dwPeriodTo" name="to" inputmode="numeric" value="{{ day_to | aindic }}" {% if selected_line and selected_line.date_from is not none %}min="{{ selected_line.date_from }}" max="{{ selected_line.date_to }}"{% endif %}></label>
+    <span class="dw-period-count">{{ issue_days | aindic }} يوم صرف</span>
+    <button class="rt-btn gold" type="submit">عرض الفترة</button>
+  </form>
+  {% if period_error %}<div class="dw-inline-alert">{{ period_error }}</div>{% endif %}
+
+  <div class="dw-actions dw-gatebtns">
+    {% if selected_line and not period_error %}
+    <a class="rt-btn navy" href="{{ url_for('dowail.paper_view', line_id=selected_line.id, from=day_from, to=day_to) }}">عرض وطباعة الخط المحدد</a>
+    <a class="rt-btn dim" href="{{ url_for('dowail.paper_xlsx', line_id=selected_line.id, from=day_from, to=day_to) }}">تنزيل إكسل للخط المحدد</a>
+    {% endif %}
+    <button class="rt-btn green" type="button" data-dw-toggle="dw-newbox">توزيع جديد لكل الحالي</button>
+    <button class="rt-btn dim {{ 'on' if search_q }}" type="button" data-dw-toggle="dw-searchbox">بحث عن نقطة</button>
+    <button class="rt-btn gold {{ 'on' if dist_save }}" type="button" data-dw-toggle="dw-savesbox">التوزيعات المحفوظة ({{ saves | length | aindic }})</button>
+  </div>
+  {% else %}
+  <div class="dw-empty-state">لا توجد خطوط حالية. أنشئ نسخة خط من «إدارة الخطوط والنقاط».</div>
+  {% endif %}
+
+  <div id="dw-newbox" class="dw-collapse" hidden>
+    <h4 class="dw-h">توزيع جديد — مدة مستقلة لكل خط حالي</h4>
+    <p class="panel-hint">يمكن تقصير كل مدة داخل فترة نسختها. لا يُحفظ التوزيع إذا كانت فترة أي خط غير محددة.</p>
+    <form method="post" action="{{ url_for('dowail.save_tafreeda') }}">
+      <div class="dw-distribution-periods">
+      {% for line in lines %}
+        <div class="dw-distribution-line {{ 'needs-period' if line.date_from is none }}">
+          <div><b>{{ line.name }}</b><small>قوة {{ line.total_force | aindic }} · {{ line.count | aindic }} نقطة</small></div>
+          {% if line.date_from is not none %}
+          <label>من<input name="from_{{ line.id }}" inputmode="numeric" min="{{ line.date_from }}" max="{{ line.date_to }}" value="{{ line.date_from | aindic }}" required></label>
+          <label>إلى<input name="to_{{ line.id }}" inputmode="numeric" min="{{ line.date_from }}" max="{{ line.date_to }}" value="{{ line.date_to | aindic }}" required></label>
+          <span>{{ line.period_days | aindic }} يوم متاح</span>
+          {% else %}<span class="dw-inline-alert">حدد فترة هذه النسخة أولًا</span>{% endif %}
+        </div>
+      {% endfor %}
+      </div>
+      {% if lines %}<button class="rt-btn green big" type="submit">حفظ التوزيع بكل الفترات</button>{% endif %}
+    </form>
+  </div>
+
+  <div id="dw-searchbox" class="dw-collapse" {% if not search_q %}hidden{% endif %}>
+    <h4 class="dw-h">بحث في نقاط الخطوط الحالية</h4>
+    <form method="get" action="{{ url_for('dowail.page') }}" class="dw-search"><input type="hidden" name="tab" value="papers"><input name="q" value="{{ search_q }}" placeholder="اسم النقطة"><button class="rt-btn navy small" type="submit">بحث</button></form>
+    {% if search_hit %}
+      {% if search_hit.error %}<div class="dw-inline-alert">{{ search_hit.error }}</div>
+      {% else %}<div class="dw-hitbox"><p><b>{{ search_hit.point.name }}</b> — {{ search_hit.line.name }} · القوة {{ search_hit.point.force | aindic }} · الفترة {{ search_hit.date_from | aindic }}–{{ search_hit.date_to | aindic }}
+        <a class="dw-paperlink" href="{{ url_for('dowail.paper_view', line_id=search_hit.line.id, point=search_hit.point.id, from=search_hit.date_from, to=search_hit.date_to) }}">ورقة النقطة</a></p>
+        <table class="rt-table"><thead><tr><th>الصنف</th><th>المعدل الفعلي</th><th>الأيام</th><th>المخصص</th><th>الإجمالي</th></tr></thead><tbody>{% for index, row in search_hit.rows %}<tr><td>{{ row.name }}</td><td class="num">{{ row.rate | qty3 }}</td><td class="num">{{ row.days | aindic }}</td><td class="num">{{ row.custom_total | qty3 }}</td><td class="num"><b>{{ row.total | qty3 }}</b></td></tr>{% endfor %}</tbody></table>
+      </div>{% endif %}
+    {% elif search_q %}<p class="dw-nohit">لا توجد نقطة باسم «{{ search_q }}».</p>{% endif %}
+  </div>
+
+  <div id="dw-savesbox" class="dw-collapse" {% if not dist_save %}hidden{% endif %}>
+    <div class="dw-saved-head"><h4 class="dw-h">التوزيعات المحفوظة</h4>{% if dist_save %}<div><a class="rt-btn dim small" href="{{ url_for('dowail.papers_all', dist=dist_save.id) }}">طباعة المحفوظ</a><a class="rt-btn dim small" href="{{ url_for('dowail.download_all', dist=dist_save.id) }}">تنزيل المحفوظ</a></div>{% endif %}</div>
+    {% if saves %}
+    <form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar"><input type="hidden" name="tab" value="papers"><label>اختر توزيعة<select name="dist"><option value="">—</option>{% for save in saves %}<option value="{{ save.id }}" {{ 'selected' if dist_save and save.id == dist_save.id }}>{{ save.label or ('حفظ ' ~ save.id) }}</option>{% endfor %}</select></label><button class="rt-btn gold small" type="submit">فتح</button></form>
+    <div class="table-wrap"><table class="rt-table"><thead><tr><th>رقم</th><th>الفترات</th><th>وقت الحفظ</th><th>الملفات</th><th></th></tr></thead><tbody>
+    {% for save in saves %}<tr><td class="num">{{ save.id | aindic }}</td><td>{{ save.label or (save.date_from ~ '–' ~ save.date_to) }}</td><td class="dim">{{ (save.created_at or '')[:16] }}</td><td>{% for file in save.files %}<a class="dw-filelink" href="{{ url_for('dowail.save_file', save_id=save.id, filename=file) }}">{{ file.split('/')[-1] }}</a>{% endfor %}</td><td><form method="post" action="{{ url_for('dowail.save_delete', save_id=save.id) }}" onsubmit="return confirm('حذف هذه التوزيعة وملفاتها؟');"><button class="dw-mini danger" type="submit">حذف</button></form></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="panel-hint">لم يُحفظ توزيع بعد.</p>{% endif %}
+
+    {% if dist_save and dist_save.data %}
+      {% for paper in dist_save.data.papers %}<div class="dw-linecard"><div class="dw-linecard-head"><b>{{ paper.line.name }}</b><span class="dw-chip">{{ paper.date_from | aindic }}–{{ paper.date_to | aindic }} · {{ paper.issue_days | aindic }} يوم</span><span class="dw-chip">قوة {{ paper.line.total_force | aindic }}</span><a class="dw-paperlink" href="{{ url_for('dowail.paper_view', line_id=paper.line.id, dist=dist_save.id) }}">ورقة محفوظة</a></div>{{ line_matrix(paper) }}</div>{% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>نتيجة الخط المحدد</h3>{% if selected_line %}<span class="panel-hint">{{ selected_line.name }} · يوم {{ day_from | aindic }} إلى {{ day_to | aindic }} · {{ issue_days | aindic }} يوم</span>{% endif %}</div>
+  {% for paper in current_papers %}<div class="dw-linecard"><div class="dw-linecard-head"><b>{{ paper.line.name }}</b><span class="dw-chip">{{ paper.active_count | aindic }} نقطة نشطة</span><span class="dw-chip">قوة {{ paper.line.total_force | aindic }}</span><a class="dw-paperlink" href="{{ url_for('dowail.paper_view', line_id=paper.line.id, from=day_from, to=day_to) }}">عرض الورقة الرسمية</a></div>{{ line_matrix(paper) }}</div>{% else %}<div class="dw-empty-state">لا توجد نتيجة قابلة للعرض حتى تُحدد نسخة خط وفترتها.</div>{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dowail.js') }}?v={{ static_ver }}"></script>{% endblock %}

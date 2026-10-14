@@ -4,7 +4,7 @@
 
 سياق السنة/الشهر، جديل الرجوع _rb، التقويم العربي، محللات النماذج
 (التواريخ/الأعداد/الملحقات/النوع/الراغبين)، تنبيه الراغبين، مرايا الحفظ،
-ونموذج العرض _page_vars للتويبات الأربعة.
+ونموذج العرض _page_vars للتبويبات الأربعة.
 """
 
 import os
@@ -99,7 +99,7 @@ def _calendar(year, month, selected):
 
 
 def _parse_day_form(year, month):
-    """يقرأ تاريخ النموذج dd/mm/yyyy ويفرض أنه داخل الشهر النشط. يرجع اليوم أو يرمي."""
+    """يقرأ تاريخ النموذج yyyy/mm/dd (أو التراثي dd/mm/yyyy) ويفرض أنه داخل الشهر النشط. يرجع اليوم أو يرمي."""
     raw = request.form.get("day", "")
     try:
         parsed = dates.parse_date(raw)
@@ -235,6 +235,56 @@ def _after_write(year, month):
     tameedat_fs.snapshot_all(year, month)
 
 
+def _attach_day_willing(year, month, day, records):
+    """ربط بتاب الراغبين (١٠/١٠/٢٠٦): لكل تأميدة أعداد الراغبين المسجلين
+    لليوم المحدد (الجهة الأم + الملحقات) + حالة المقارنة بأعداد التأميدة."""
+    from data_access import db_raghibin as dr
+    name_to_id = {e["name"]: e["id"] for e in dt.list_entities(year, month)}
+    state_cache, persons_cache = {}, {}
+
+    def willing(eid):
+        if not eid:
+            return (0, 0)
+        if eid not in state_cache:
+            state_cache[eid] = dr.day_state(year, month, day, eid)
+            persons_cache[eid] = dr.list_persons(year, month, entity_id=eid)
+        state = state_cache[eid]
+        if not state:
+            return (0, 0)
+        off = ind = 0
+        for p in persons_cache[eid]:
+            if state.get(p["id"]):
+                if p["category"] == "officers":
+                    off += 1
+                else:
+                    ind += 1
+        return (off, ind)
+
+    for rec in records:
+        eids = [rec.get("entity_id")]
+        for a in rec.get("attachments") or []:
+            eids.append(name_to_id.get((a.get("name") or "").strip()))
+        off = ind = 0
+        for eid in eids:
+            o, i = willing(eid)
+            off += o
+            ind += i
+        tam_off = rec["officers"] + sum(a["officers"] for a in rec.get("attachments") or [])
+        tam_ind = rec["individuals"] + sum(a["individuals"] for a in rec.get("attachments") or [])
+        total_w, total_t = off + ind, tam_off + tam_ind
+        rec["willing"] = {"officers": off, "individuals": ind}
+        if total_w == 0:
+            rec["willing_cmp"] = "none"
+        elif total_w == total_t:
+            rec["willing_cmp"] = "match"
+        elif total_w < total_t:
+            rec["willing_cmp"] = "short"
+            rec["willing_diff"] = total_t - total_w
+        else:
+            rec["willing_cmp"] = "over"
+            rec["willing_diff"] = total_w - total_t
+
+
 def _page_vars(tab):
     year, month = _ctx()
     tameedat_fs.ensure_folders(year, month)
@@ -247,6 +297,8 @@ def _page_vars(tab):
     by_permit = dp.permits_by_record(year, month)
     for rec in day_records:
         rec["permits"] = by_permit.get(rec["id"], [])
+    if tab == "day":
+        _attach_day_willing(year, month, selected, day_records)
     copy_id = arnum.parse_int(request.args.get("copy"))
     edit_id = arnum.parse_int(request.args.get("edit"))
     dedit_id = arnum.parse_int(request.args.get("dedit"))

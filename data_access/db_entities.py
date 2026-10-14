@@ -34,19 +34,24 @@ def list_entities(year, month, section=None):
         items = [dict(r) for r in conn.execute(
             "SELECT * FROM entity_items WHERE entity_id=? ORDER BY serial",
             (e["id"],)).fetchall()]
-        day_map = {}
+        day_map, meal_map = {}, {}
         for d in conn.execute(
-                "SELECT eid.entity_item_id iid, eid.weekday wd, eid.qty q "
+                "SELECT eid.entity_item_id iid, eid.weekday wd, eid.meal m, eid.qty q "
                 "FROM entity_item_days eid "
                 "JOIN entity_items ei ON ei.id=eid.entity_item_id "
                 "WHERE ei.entity_id=?",
                 (e["id"],)):
-            day_map.setdefault(d["iid"], {})[d["wd"]] = d["q"]
+            if d["m"]:
+                meal_map.setdefault(d["iid"], {}).setdefault(d["wd"], {})[d["m"]] = d["q"]
+            else:
+                day_map.setdefault(d["iid"], {})[d["wd"]] = d["q"]
         for it in items:
             dq = day_map.get(it["id"], {})
-            it["day_qty"] = dq               # {اليوم: المقرر أو None}
-            it["days"] = sorted(dq.keys())
-            it["is_custom"] = bool(dq)
+            dm = meal_map.get(it["id"], {})
+            it["day_qty"] = dq               # {اليوم: المقرر (إرثي) أو None}
+            it["day_meals"] = dm             # ١٤/١٠ {اليوم: {وجبة: المقرر}}
+            it["days"] = sorted(set(dq) | set(dm))
+            it["is_custom"] = bool(dq or dm)
         e["items"] = items
     conn.close()
     return entities
@@ -139,16 +144,42 @@ def get_entity_item(year, month, item_id):
 
 
 def set_days(year, month, entity_item_id, day_qty):
-    """يستبدل تخصيص أيام الصنف: {يوم(0-6): مقرر أو None}. قاموس فاضي = صرف يومي."""
+    """يستبدل تخصيص أيام الصنف. {يوم(0-6): مقرر أو None أو {وجبة: مقرر}}.
+
+    ١٤/١٠: القيمة قد تكون ديكشنى بوجبات اليوم الثلاث (فطار/غداء/عشاء) —
+    كل وجبة مملوءة بتاخد صفها (weekday+meal) والوجبة الفارغة بتفضل
+    على القيمة العامة. رقم عادي = سلوك قديم (مجموع اليوم).
+    قاموس فاضي = صرف يومي.
+    """
     conn = months.get_db(year, month)
     conn.execute("DELETE FROM entity_item_days WHERE entity_item_id=?",
                  (entity_item_id,))
+    MEALS = ("breakfast", "lunch", "dinner")
     for wd in sorted(day_qty):
-        if 0 <= wd <= 6:
+        if not (0 <= wd <= 6):
+            continue
+        val = day_qty[wd]
+        if isinstance(val, dict):
+            inserted = 0
+            for meal in MEALS:
+                q = val.get(meal)
+                if q not in (None, ""):
+                    conn.execute(
+                        "INSERT INTO entity_item_days "
+                        "(entity_item_id, weekday, meal, qty) VALUES (?,?,?,?)",
+                        (entity_item_id, wd, meal, q))
+                    inserted += 1
+            if not inserted:
+                # اليوم محدد بس الوجات كلها على القيمة العامة — صف علامة
+                conn.execute(
+                    "INSERT INTO entity_item_days (entity_item_id, weekday, meal) "
+                    "VALUES (?,?,NULL)",
+                    (entity_item_id, wd))
+        else:
             conn.execute(
                 "INSERT INTO entity_item_days (entity_item_id, weekday, qty) "
                 "VALUES (?,?,?)",
-                (entity_item_id, wd, day_qty[wd]))
+                (entity_item_id, wd, val))
     conn.commit()
     conn.close()
 

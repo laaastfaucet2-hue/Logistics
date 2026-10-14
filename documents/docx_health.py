@@ -139,11 +139,16 @@ def field_values(year, month, report, day=None):
     والتوقيعات الفارغة ترجع للقيم الافتراضية للدباجة."""
     stored = db_health.get_fields(year, month, report)
     hdr = header_values(year, month)
+    from data_access import db_letterhead as lhdb
+    off = lhdb.get_signatures()
     vals = {}
     for key, _label, _kind, default in FIELDS[report]:
         raw = (stored.get(key) or "").strip()
         if not raw and key.startswith("sig_"):
-            raw = (hdr.get("def_" + key[4:]) or "").strip()
+            # التوقيع الفاضي = التوقيع الرسمي الموحد (يمين/شمال)
+            side = "right" if key.endswith("right_rank") or key.endswith("right_name") else "left"
+            off_key = "sig_" + side + ("_rank" if key.endswith("_rank") else "_name")
+            raw = (off.get(off_key) or "").strip()
         vals[key] = raw if raw else default
         if key in ("date_text", "day_text") and not raw:
             if report == "checkup" and day:
@@ -231,10 +236,18 @@ def _health_header(doc, year, month):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         p.add_run().add_picture(str(logo), width=Cm(2.6))
+    lh_all = lhdb.get_all(year, month)
     hdr = header_values(year, month)
+    stored = db_health.get_fields(year, month, "header")
+    if any((stored.get(k) or "").strip() for k in ("h1", "h2", "h3")):
+        lines = [hdr[k] for k in ("h1", "h2", "h3")]
+    else:
+        # الدباجة الموحدة الرسمية (١٠/١٠) — كل الملفات المحلية عليها
+        lines = [x for x in (lh_all.get(k, "") for k in
+                             ("lh_1", "lh_2", "lh_3", "lh_4")) if x] or             ["وزارة الداخلية", "قطاع الأمن المركزي", "قطاع وسط سيناء", "قسم التعيينات"]
     last = None
-    for i, key in enumerate(("h1", "h2", "h3")):
-        last = _para(doc, hdr[key], 14 if i == 0 else 12, True, NAVY)
+    for i, t in enumerate(lines):
+        last = _para(doc, t, 14 if i == 0 else 12, True, NAVY)
     _rule(last)
 
 
@@ -336,7 +349,7 @@ def build_checkup(year, month, day):
     for i, name in enumerate(ids, 1):
         _para(doc, "{}- {}".format(arnum.to_arabic_indic(i), name), 12)
     if not ids:
-        _para(doc, "(لم يُحدَّد مكتوشون لهذا اليوم بعد)", 11, False, GOLD)
+        _para(doc, "(لم يُسجَّل توقيع كشف لهذا اليوم بعد)", 11, False, GOLD)
     doc.add_paragraph("")
     _para(doc, v["tail"], 12)
     _approve(doc, v["sig_right_rank"], v["sig_right_name"],

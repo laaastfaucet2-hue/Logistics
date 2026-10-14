@@ -3,6 +3,7 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/health.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
 {% endblock %}
 {% block content %}
 <div class="ctx-strip">
@@ -10,7 +11,7 @@
   <span class="dim hl-month-chip">📅 شهر <strong>{{ month_name }} {{ year | aindic }}</strong> — ملفات منفصلة شهر بشهر</span>
 </div>
 
-<!-- التابات المربعات -->
+<!-- التبويبات المربعات -->
 <nav class="hl-tabs">
   {% for key, name, icon in tabs %}
   <a class="hl-tab {{ 'on' if tab == key }}" href="{{ url_for('health.page', tab=key) }}">
@@ -23,20 +24,20 @@
 {% if ok %}<div class="hl-flash ok">✅ {{ ok }}</div>{% endif %}
 {% if err %}<div class="hl-flash bad">⚠️ {{ err }}</div>{% endif %}
 
-<!-- ==================== تاب الدباجة والتوقيعات ==================== -->
+<!-- ==================== تبويب الدباجة والتوقيعات ==================== -->
 {% if tab == 'letter' %}
 <div class="hl-split">
   <div class="hl-form-col">
     <div class="panel">
-      <div class="panel-head"><h3>🖼️ اللوجو الرسمي (أعلى يسار الورق)</h3></div>
+      <div class="panel-head"><h3>🖼️ الشعار الرسمي (أعلى يسار الورق)</h3></div>
       <form method="post" action="{{ url_for('health.logo_upload') }}" enctype="multipart/form-data" class="hl-form">
-        <label class="hl-field"><span>صورة اللوجو (PNG / JPG — تُحفظ تلقائيًا بمقاس مضبوط)</span>
+        <label class="hl-field"><span>صورة الشعار (PNG / JPG — تُحفظ تلقائيًا بمقاس مضبوط)</span>
           <input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
         <div class="hl-actions">
-          <button class="rt-btn green" type="submit">💾 حفظ اللوجو</button>
+          <button class="rt-btn green" type="submit">💾 حفظ الشعار</button>
           {% if logo_exists %}
-          <a class="rt-btn small navy" href="{{ url_for('letterhead.logo_view') }}" target="_blank">👁️ اللوجو الحالي</a>
-          <button class="rt-btn small dim" type="submit" formaction="{{ url_for('health.logo_delete') }}">🗑️ حذف اللوجو</button>
+          <a class="rt-btn small navy" href="{{ url_for('letterhead.logo_view') }}" target="_blank">👁️ الشعار الحالي</a>
+          <button class="rt-btn small dim" type="submit" formaction="{{ url_for('health.logo_delete') }}">🗑️ حذف الشعار</button>
           {% endif %}
         </div>
       </form>
@@ -51,19 +52,19 @@
         {% endfor %}
         <div class="hl-actions">
           <button class="rt-btn green" type="submit">💾 حفظ الدباجة</button>
-          <span class="hl-hint">التوقيعات الافتراضية دي بتملأ أي توقيع فاضي في التقارير الأربعة</span>
+          <span class="hl-hint">التوقيعات الافتراضية تملأ أي توقيع فارغ في التقارير الأربعة</span>
         </div>
       </form>
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة الورق — بتتحدث مع الكتابة على طول</div>
+    <div class="hl-pv-head">👁️ معاينة الورق — تتحدّث مع الكتابة مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>
 
 {% elif tab == 'checkups' %}
-<!-- ==================== تاب الكشف الدوري ==================== -->
+<!-- ==================== تبويب الكشف الدوري ==================== -->
 <div class="panel">
   <div class="panel-head"><h3>🩺 الكشف الطبي الدوري على المجندين — أيام الشهر</h3></div>
   <form method="post" action="{{ url_for('health.save_days') }}" class="hl-days-form">
@@ -78,16 +79,16 @@
     {% for d in days %}
     <a class="hl-day-tab {{ 'on' if d == day }}"
        href="{{ url_for('health.page', tab='checkups', day=d) }}">
-      يوم {{ d | aindic }} {% if d == day %}· {{ checked_count | aindic }} مكتوش{% endif %}
+      يوم {{ d | aindic }} {% if d == day %}· تم توقيع الكشف: {{ checked_count | aindic }}{% endif %}
     </a>
     {% endfor %}
   </nav>
   <form method="post" action="{{ url_for('health.select_checkup') }}">
     <input type="hidden" name="day" value="{{ day }}">
     <div class="hl-hint row">
-      <span>اكتب أسماء المكتوشين ليوم <b>{{ day | aindic }} {{ month_name }}</b> في المربعات —
-        <b>بحث ذكي</b> بيفتّش مع الكتابة ويقترح المجندين، <b>✅ الحاضرين اليوم بيظهروا الأول</b>.
-        وتقدر تكتب اسم مش مسجل خالص (يتسجل في الكشف من غير ربط):</span>
+      <span>اكتب أسماء من تم توقيع الكشف الطبى ليوم <b>{{ day | aindic }} {{ month_name }}</b> في المربعات —
+        <b>بحث ذكي</b> يبحث مع الكتابة ويقترح المجندين، <b>✅ الحاضرين اليوم يظهرون الأول</b>.
+        ويمكنك كتابة اسم غير مسجّل أصلًا (يُسجَّل في الكشف دون ربط):</span>
       <button class="rt-btn small dim" type="button" id="hl-addbox">➕ إضافة مربع اسم</button>
     </div>
     <div id="hl-nameboxes">
@@ -101,11 +102,36 @@
       {% endfor %}
     </div>
     <div class="hl-actions">
-      <button class="rt-btn green" type="submit">💾 حفظ المكتوشين وتحديث الكشف</button>
+      <button class="rt-btn green" type="submit">💾 حفظ توقيع الكشف وتحديث الورقة</button>
       <a class="rt-btn navy" href="{{ url_for('health.docx_download', report='checkup', day=day) }}">
         ⬇️ تنزيل كشف يوم {{ day | aindic }} (وورد)</a>
     </div>
   </form>
+</div>
+
+<!-- المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر (١٠/١٠/٢٠) —
+     عند تحفظ توقيع كشف لمجند يختفي اسمه من الجدول فورًا -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>⚕️ عدم توقيع الكشف الطبى — أسماء المجندين الذين لم يوقع عليهم الكشف الطبى هذا الشهر
+      <span class="panel-hint">({{ not_checked | length | aindic }} مجند)</span></h3>
+  </div>
+  {% if not recruits_total %}
+  <span class="panel-hint">لا يوجد مجندين مسجلين لهذا الشهر بعد — سجّلهم من قسم المجندين أولًا</span>
+  {% elif not_checked %}
+  <div class="table-wrap">
+  <table class="hl-nc-table">
+    <thead><tr><th>م</th><th>اسم المجند</th></tr></thead>
+    <tbody>
+      {% for r in not_checked %}
+      <tr><td>{{ loop.index | aindic }}</td><td>{{ r.name }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <span class="panel-hint">✅ لا يوجد — تم توقيع الكشف الطبى على كل المجندين هذا الشهر</span>
+  {% endif %}
 </div>
 
 <div class="hl-split">
@@ -116,7 +142,7 @@
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة كشف يوم {{ day | aindic }} — بتتحدث مع الكتابة والاختيار على طول</div>
+    <div class="hl-pv-head">👁️ معاينة كشف يوم {{ day | aindic }} — تتحدّث مع الكتابة والاختيار مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>
@@ -176,7 +202,7 @@
     </div>
   </div>
   <div class="hl-paper-col">
-    <div class="hl-pv-head">👁️ معاينة الورق — بتتحدث مع الكتابة على طول</div>
+    <div class="hl-pv-head">👁️ معاينة الورق — تتحدّث مع الكتابة مباشرة</div>
     {% include "health_paper.html" %}
   </div>
 </div>
@@ -187,7 +213,7 @@
   <pre dir="ltr">{{ folder_path }}</pre>
   <span class="hl-hint">├── الرش والتعقيم/محضر رش وتقفيم.docx · ├── الكشف الدوري على المجندين/يوم ١ · يوم ١٥ · يوم ٣٠/كشف الدوري.docx ·
 ├── تطهير الخزانات/محضر تطهير خزانات.docx · └── فحص مياة الشرب/تقرير فحص عينة مياة الشرب.docx
-— كل تعديل من الصفحة يُحدّث ملف الفولدر فورًا، وكل شهر له فولدر ١٣-الصحة مستقل بكل ملفاته.</span>
+— كل تعديل من الصفحة يُحدّث ملف المجلد فورًا، وكل شهر له مجلد ١٣-الصحة مستقل بكل ملفاته.</span>
 </div>
 {% endblock %}
 {% block scripts %}

@@ -1,0 +1,97 @@
+{# تبويب المتابعة والملاحظات: أي مستخدم يسيب ملحوظة لأي مستخدم + ردود + حالة #}
+<div class="ctx-strip">
+  <span>🗒️ المتابعة والملاحظات</span><span class="sep">•</span>
+  <span class="dim">الإشعار يظل ظاهرًا لمن لم يُرد بعد — ويظهر للمُرسِل عند الرد عليه</span>
+  <form method="post" action="{{ url_for('settings.gate') }}" class="sg-inline-lock sg-push-lock">
+    <input type="hidden" name="sub" value="notes">
+    <input type="hidden" name="action" value="lock">
+    {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+    <button type="submit" class="rt-btn dim sg-lockbtn" title="إغلاق القسم — سيُطلب الرمز الرئيسي لفتحه مرة أخرى">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      إغلاق وحماية
+    </button>
+  </form>
+  {% if notes_ctx.unread and (notes_ctx.unread.to_me or notes_ctx.unread.for_me) %}
+  <span class="sg-unread">
+    {% if notes_ctx.unread.to_me %}<b>📥 {{ notes_ctx.unread.to_me | aindic }} ملحوظة جديدة</b>{% endif %}
+    {% if notes_ctx.unread.for_me %}<b>✅ تم الرد عليك في {{ notes_ctx.unread.for_me | aindic }}</b>{% endif %}
+  </span>
+  {% endif %}
+</div>
+
+<!-- ملحوظة جديدة -->
+<div class="panel">
+  <div class="panel-head"><h3>➕ ملحوظة جديدة</h3></div>
+  <form method="post" action="{{ url_for('settings.notes_add') }}" class="sg-newrow">
+    <label>إلى
+      <select name="to_user" required>
+        {% for u in notes_ctx.users_choices %}
+        <option value="{{ u.id }}" {{ 'disabled' if not u.is_active }}>{{ u.full_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="sg-textgrow">النص
+      <input type="text" name="text" placeholder="اكتب الملحوظة..." required>
+    </label>
+    <button type="submit" class="rt-btn navy">إرسال</button>
+  </form>
+</div>
+
+<!-- التفاصيل + الرد على ملحوظة مفتوحة -->
+{% if notes_ctx.thread %}
+{% set t = notes_ctx.thread %}
+<div class="panel sg-thread">
+  <div class="panel-head">
+    <h3>ملحوظة #{{ t.note.id }} — {{ t.note.from_name }} → {{ t.note.to_name }}</h3>
+    <span class="sg-status {{ t.note.status }}">{{ {'open': 'مفتوحة', 'replied': 'اترد عليها', 'closed': 'مقفولة'}.get(t.note.status, t.note.status) }}</span>
+  </div>
+  <div class="sg-notecard">
+    <div class="sg-who"><b>{{ t.note.from_name }}</b><small class="dim">{{ t.note.created_at }}</small></div>
+    <p>{{ t.note.text }}</p>
+  </div>
+  {% for r in t.replies %}
+  <div class="sg-notecard sg-reply">
+    <div class="sg-who"><b>{{ r.from_name if r.from_name else '' }}</b><small class="dim">{{ r.created_at }}</small></div>
+    <p>{{ r.text }}</p>
+  </div>
+  {% endfor %}
+  {% if t.note.status != 'closed' %}
+  <form method="post" action="{{ url_for('settings.notes_reply') }}" class="sg-newrow">
+    <input type="hidden" name="note_id" value="{{ t.note.id }}">
+    <label class="sg-textgrow">رد
+      <input type="text" name="text" placeholder="اكتب الرد..." required>
+    </label>
+    <button type="submit" class="rt-btn navy">حفظ الرد</button>
+  </form>
+  <form method="post" action="{{ url_for('settings.notes_close') }}"
+        onsubmit="return confirm('إغلاق الملحوظة؟ (لن يُرد عليها بعد ذلك)')">
+    <input type="hidden" name="note_id" value="{{ t.note.id }}">
+    <button type="submit" class="rt-btn dim">إغلاق الملحوظة</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- كل الملاحظات -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>📥 وصلتني / 📤 بعثتها {% if current_user.role == 'admin' %}<span class="dim small">(كل الملاحظات — admin)</span>{% endif %}</h3>
+  </div>
+  {% for n in notes_ctx.notes %}
+  <div class="sg-noteitem {{ n.status }}">
+    <div class="sg-notehead">
+      <span class="sg-dir">{{ '📥' if n.to_user == current_user.id else '📤' }}</span>
+      <b>{{ n.from_name if n.to_user == current_user.id else 'إلى: ' ~ n.to_name }}</b>
+      <small class="dim">{{ n.created_at }}</small>
+      {% if n.last_reply_at %}<small class="dim">· آخر رد {{ n.last_reply_at }}</small>{% endif %}
+      <span class="sg-status {{ n.status }}">{{ {'open': 'مفتوحة', 'replied': 'اترد عليها', 'closed': 'مقفولة'}.get(n.status, n.status) }}</span>
+    </div>
+    <p>{{ n.text }}</p>
+    <div class="sg-noteops">
+      <a class="rt-btn dim small" href="{{ url_for('settings.page', sub='notes', thread=n.id) }}">عرض والرد</a>
+    </div>
+  </div>
+  {% else %}
+  <p class="dim" style="text-align:center;padding:22px">لا توجد ملاحظات حتى الآن</p>
+  {% endfor %}
+</div>

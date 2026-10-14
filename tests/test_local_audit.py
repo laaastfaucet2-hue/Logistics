@@ -39,7 +39,7 @@ def test_default_letterhead_never_empty(app):
     assert values["lh_2"] == "قطاع الأمن المركزي"
     assert values["lh_3"] == "قطاع وسط سيناء"
     assert values["lh_4"] == "قسم التعيينات"
-    # التوقيعان الرسميان مثبّتان على مستوى المنظومة
+    # التوقيعان الرسميان على مستوى المنظومة كلها (قابلان للتعديل، وهذه قيمتهما الافتراضية)
     assert values["sig_right_rank"] == "رائد" and values["sig_right_name"] == "مصطفى نصرالله"
     assert values["sig_left_rank"] == "مقدم" and values["sig_left_name"] == "اسامة العجرودى"
 
@@ -99,7 +99,7 @@ def test_audit_catches_missing_letterhead_logo_and_signatures(app, tmp_path):
     path = _bare_book(tmp_path / "بلا دباجة.xlsx", "كشف بسيط بلا أي دباجة")
     missing = local_audit.audit_workbook(path, YEAR, MONTH)
     assert any("الدباجة" in m for m in missing)
-    assert any("اللوجو" in m for m in missing)
+    assert any("الشعار" in m for m in missing)
     assert any("التوقيع" in m for m in missing)
     assert any("الشهر" in m for m in missing)          # اسم الشهر إلزامي
 

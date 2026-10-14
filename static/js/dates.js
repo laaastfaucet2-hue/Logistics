@@ -1,4 +1,4 @@
-/* Day-first date logic. Digit alphabets/month names come from core via JSON.
+/* Year-first date logic. Digit alphabets/month names come from core via JSON.
    Date-only values are never passed to new Date(text), avoiding timezone shifts. */
 (function () {
   'use strict';
@@ -36,9 +36,11 @@
     const text = western(value);
     let match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(text);
     if (match) return checked(+match[1], +match[2], +match[3]);
+    match = /^([0-9]{4})\/([0-9]{1,2})\/([0-9]{1,2})$/.exec(text);
+    if (match) return checked(+match[1], +match[2], +match[3]);
     match = /^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})$/.exec(text);
     if (match) return checked(+match[3], +match[2], +match[1]);
-    if (/^[0-9]{8}$/.test(text)) return checked(+text.slice(4), +text.slice(2, 4), +text.slice(0, 2));
+    if (/^[0-9]{8}$/.test(text)) return checked(+text.slice(0, 4), +text.slice(4, 6), +text.slice(6, 8));
     return null;
   }
   function iso(value) {
@@ -47,7 +49,7 @@
   }
   function format(value) {
     const d = parse(value);
-    return d ? arabic(`${String(d.day).padStart(2, '0')}/${String(d.month).padStart(2, '0')}/${String(d.year).padStart(4, '0')}`) : '';
+    return d ? arabic(`${String(d.year).padStart(4, '0')}/${String(d.month).padStart(2, '0')}/${String(d.day).padStart(2, '0')}`) : '';
   }
   function today() {
     try {

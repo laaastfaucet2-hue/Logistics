@@ -70,6 +70,21 @@
   [data-theme="white"] .btn-gold:hover, [data-theme="white"] .rt-btn.gold:hover { background: #f59e0b; }
   [data-theme="white"] .bell-btn, [data-theme="white"] .asst-btn { color: #b45309; background: #ffffff; }
   [data-theme="white"] .tm-hero-lines .tm-l1, [data-theme="white"] .tm-hero-lines .tm-l2 { color: #92400e; }
+  /* أسطر قائمة المقررات: الخلفية الكحلى الثابتة كانت تترك النص الكحلى «كحلى على كحلى» */
+  [data-theme="white"] .tm-rat-row { background: #ffffff; }
+  [data-theme="white"] .tm-rat-qty { background: #fdf3d9; }
+  /* التاب النشط في الإحصائيات: في الأبيض كان أبيض على أبيض (brand-navy فتح للبتار) —
+     يبقى كحلي مميز عشان يبقى واضح */
+  [data-theme="white"] .st-subtab.on { background: #1f3a5f !important;
+    border-color: #1f3a5f !important; color: #ffffff !important; }
+  /* كروت ومناسبات: الأسطح شبه الكحلى تفتح + الكتابات الفاتحة تكحى للوضوح */
+  [data-theme="white"] .oc-item, [data-theme="white"] .oc-video,
+  [data-theme="white"] .oc-tabs, [data-theme="white"] .oc-rrow { background: #eef2f7; }
+  [data-theme="white"] .oc-tab { color: #3d4a5e; }
+  [data-theme="white"] .oc-tab:hover { color: #92400e; }
+  [data-theme="white"] .oc-item-media, [data-theme="white"] .oc-video-foot,
+  [data-theme="white"] .oc-rlabel { color: #5a6779; }
+  [data-theme="white"] .oc-rrow b { color: #16233a; }
   /* الجداول: رؤوس فاتحة وحدود واضحة */
   [data-theme="white"] .tm-table th, [data-theme="white"] .rt-table th,
   [data-theme="white"] .al-table th, [data-theme="white"] table.wh-table th {

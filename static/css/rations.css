@@ -187,21 +187,24 @@ tr.custom-on .name { color: var(--status-other); }
 
 /* ملاحظة: معيار .icon-btn انتقل إلى style.css العام (قاعدة ١٢). */
 
-/* ======== أعمدة أيام التوزيع — كل يوم وتحته كمية الفرد ======== */
-.rt-table th.dayh { min-width: 96px; text-align: center; }
-.daycell { min-width: 96px; text-align: center; }
+/* ======== أعمدة أيام التوزيع — كل يوم وتحته فطار/غداء/عشاء (١٤/١٠) ======== */
+.rt-table th.dayh { min-width: 104px; text-align: center; }
+.daycell { min-width: 104px; text-align: center; }
 .daycell .ck { accent-color: var(--status-other); width: 14px; height: 14px; cursor: pointer;
   display: block; margin: 0 auto 5px; }
-.daycell .qwrap { position: relative; display: block; width: 88px; margin: 0 auto; }
-.daycell .dq { width: 100%; padding: 6px 8px 6px 30px; border-radius: 8px; font-family: var(--font-ui);
+.daycell .mwrap { position: relative; display: block; width: 92px; margin: 0 auto; }
+.daycell .mrow { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.daycell .mlab { width: 14px; flex: none; font-size: .72rem; font-weight: 800;
+  color: var(--muted); text-align: center; }
+.daycell .dm { flex: 1; min-width: 0; padding: 4px 6px; border-radius: 7px; font-family: var(--font-ui);
   font-size: .78rem; font-weight: 500; text-align: center; color: var(--text);
   background: var(--card); border: 1px solid var(--card-border);
   outline: none; transition: all .15s; }
-.daycell .dq:focus { border-color: var(--status-other); box-shadow: 0 0 0 3px rgba(var(--other-rgb),.16); }
-.daycell .dq:disabled { opacity: .45; }
-.daycell .du { position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
-  font-size: .8125rem; font-weight: 600; color: var(--text); background: rgba(var(--gold-rgb),.15);
-  border: 1px solid rgba(var(--gold-rgb),.3); border-radius: 5px; padding: 1px 4px;
+.daycell .dm:focus { border-color: var(--status-other); box-shadow: 0 0 0 3px rgba(var(--other-rgb),.16); }
+.daycell .dm:disabled { opacity: .45; }
+.daycell .du { display: inline-block; margin-top: 2px;
+  font-size: .72rem; font-weight: 600; color: var(--text); background: rgba(var(--gold-rgb),.15);
+  border: 1px solid rgba(var(--gold-rgb),.3); border-radius: 5px; padding: 1px 5px;
   pointer-events: none; white-space: nowrap; }
 .daycell.on { background: rgba(var(--other-rgb),.05); }
 .state-pill { display: inline-block; margin-top: 5px; font-size: .8125rem; font-weight: 600;
@@ -224,7 +227,7 @@ tr.custom-on .name { color: var(--status-other); }
   .panel-head h3 { color: #0a1230 !important; font-size: 1rem !important; }
   .table-wrap { overflow: visible !important; }
   .rt-table { min-width: 0 !important; width: 100%; }
-  .rt-table th { background: #b8860b !important; color: #fff !important;
+  .rt-table th { background: #E9F1F9 !important; color: #000 !important;
     border: 1px solid #8f6b0a !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .rt-table td { color: #1a2033 !important; border: 1px solid #aab0c0 !important;

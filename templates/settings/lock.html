@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}قسم محمي • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}قسم محمي{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<header class="wh-hero">
+  <div class="wh-hero-lines">
+    <b class="wh-l1">⚙️ الإعدادات</b>
+    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · الهوية للمنظمة</b>
+  </div>
+</header>
+
+<nav class="wh-tabs no-print" aria-label="تبويبات الإعدادات">
+  {% for key, name, ic in visible_subtabs('settings', subs) %}
+  <a class="wh-tab {{ 'on' if sub == key }}" href="{{ url_for('settings.page', sub=key) }}">
+    {{ ic }} <span>{{ name }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+<div class="sg-lock">
+  <div class="sg-lock-card">
+    <svg class="sg-lock-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      <circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>
+    <h3>هذا القسم محمي</h3>
+    <p>قسم «{{ sub_name }}» حساس — أدخل الرمز الرئيسي لفتحه.
+       يدخل الرمز مرة واحدة وتفضل الأقسام المحمية مفتوحة لباقي الجلسة.</p>
+    <form method="post" action="{{ url_for('settings.gate') }}" class="sg-lock-form">
+      <input type="hidden" name="sub" value="{{ sub }}">
+      {% for k, v in keep.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <input type="password" name="password" required autofocus autocomplete="off"
+             placeholder="الرمز الرئيسي" inputmode="numeric" aria-label="الرمز الرئيسي">
+      <button type="submit" class="rt-btn navy">فتح القسم</button>
+    </form>
+    <p class="dim small sg-lock-note">الفتح يُسجَّل في سجلات المستخدمين باسم من قام به.</p>
+  </div>
+</div>
+{% endblock %}

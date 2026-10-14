@@ -43,8 +43,6 @@
   font-size: .95rem; font-weight: 500; color: var(--text); background: var(--card);
   border: 1px solid var(--field-border); outline: none; transition: all .2s; }
 .lh-sig-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(var(--gold-rgb),.14); }
-.lh-sig-form input.lh-pinned { cursor: not-allowed; color: var(--gold-light);
-  background: rgba(var(--gold-rgb),.07); border: 1px solid rgba(var(--gold-rgb),.45); font-weight: 700; }
 .lh-pin { display: inline-block; margin-inline-start: 8px; padding: 2px 10px; border-radius: 999px;
   font-size: .68rem; font-weight: 700; color: var(--gold-light);
   background: rgba(var(--gold-rgb),.12); border: 1px solid rgba(var(--gold-rgb),.4); vertical-align: middle; }
@@ -85,7 +83,7 @@
 .xl-title { text-align: center; font-weight: 900; font-size: .82rem; color: #f6d47c;
   background: #0a1230; border-radius: 8px; padding: 9px; }
 .xl-mock { width: 100%; border-collapse: collapse; direction: rtl; }
-.xl-mock th { background: #b8860b; color: #fff; font-size: .66rem; padding: 7px 4px;
+.xl-mock th { background: #E9F1F9; color: #000; font-size: .66rem; padding: 7px 4px;
   border: 1px solid #99720a; font-weight: 800; }
 .xl-mock td { border: 1px solid #d8dcea; padding: 6px 4px; text-align: center;
   font-size: .66rem; font-weight: 600; color: #334; }
@@ -113,3 +111,35 @@
   .xl-mock th { white-space: normal; }
   .lh-grid, .lh-previews { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* اختيار الملف المحلي في المعاينة الحية (١٠/١٠) */
+.lh-picker {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(184,134,11,.35);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+}
+.lh-picker-l { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: .78rem; color: var(--text); }
+.lh-picker-l select {
+  min-width: 260px; max-width: 100%; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid rgba(184,134,11,.5); background: #10151f; color: var(--text);
+  font-weight: 700;
+}
+.lh-picker .lh-hint { flex: 1 1 100%; margin: 0; }
+
+/* معاينة الشكل المتولد فعليًا (١٠/١٠): خلية إكسل خام + وورد خام */
+.xl-raw-wrap { overflow-x: auto; max-height: 62vh; overflow-y: auto; border-radius: 8px; }
+table.xl-raw { border-collapse: collapse; font-size: .68rem; direction: rtl; width: 100%; }
+.xl-raw td {
+  border: 1px solid rgba(148,163,184,.25); padding: 3px 6px; white-space: nowrap;
+  color: var(--text); background: rgba(255,255,255,.02);
+}
+.xl-raw tr:first-child td { background: rgba(184,134,11,.12); font-weight: 700; }
+.xl-raw-hint { margin-top: 8px; }
+.docx-raw { position: relative; padding-right: 64px; }
+.docx-raw-logo { position: absolute; left: 0; top: 0; width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center; font-size: .55rem; color: #8a93ad; }
+.docx-raw-logo img { max-width: 56px; max-height: 56px; object-fit: contain; }
+.docx-p { line-height: 1.9; color: var(--text); }
+.docx-p.center { text-align: center; }
+.docx-tbl { margin: 10px auto; border-collapse: collapse; font-size: .7rem; }
+.docx-tbl td { border: 1px solid rgba(148,163,184,.3); padding: 4px 14px; text-align: center; }

@@ -1,0 +1,162 @@
+/* نظام موحّد لجداول الواجهة: محاذاة الأعمدة وقابلية القراءة والتمرير. */
+.table-wrap,
+.wh-scroll,
+.rg-monthly-table-wrap,
+.hl-tanks-wrap,
+.st-fold-body,
+.ui-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--gold-border) transparent;
+}
+
+.rt-table,
+.rg-table,
+.al-table,
+.hl-nc-table,
+.hl-tanks {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.rt-table th,
+.rt-table td,
+.rg-table th,
+.rg-table td,
+.al-table th,
+.al-table td,
+.hl-nc-table th,
+.hl-nc-table td,
+.hl-tanks th,
+.hl-tanks td {
+  box-sizing: border-box;
+  vertical-align: middle;
+  text-align: start;
+  line-height: 1.55;
+}
+
+.rt-table thead th,
+.rg-table thead th,
+.al-table thead th,
+.hl-nc-table thead th,
+.hl-tanks thead th {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* تُضاف ui-col-center تلقائيًا إلى الرأس والخلايا الواقعة في العمود نفسه. */
+.rt-table .num,
+.rt-table .mid,
+.rt-table .center,
+.rg-table .num,
+.rg-table .mid,
+.al-table .num,
+.hl-nc-table .num,
+.hl-tanks .num,
+.ui-col-center {
+  text-align: center !important;
+}
+
+.ui-col-center {
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-col-actions,
+table th.ops,
+table td.ops {
+  text-align: center !important;
+  white-space: nowrap;
+}
+
+/* منع display:flex على خلية الجدول نفسها؛ فهو يخرج الرأس والقيمة من شبكة الأعمدة. */
+table th.ops,
+table td.ops,
+.wh-table td.ops {
+  display: table-cell !important;
+}
+
+table td.ops > form,
+table td.ops > a,
+table td.ops > button,
+.ui-col-actions > form,
+.ui-col-actions > a,
+.ui-col-actions > button {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 2px;
+}
+
+.rt-table td.name,
+.rt-table th.name,
+.rg-table td.name,
+.rg-table th.name {
+  text-align: start !important;
+  white-space: normal;
+}
+
+.rt-table td.num,
+.rg-table td.num,
+.al-table td.num,
+.ui-col-center {
+  unicode-bidi: plaintext;
+}
+
+.rt-table td > form,
+.rg-table td > form,
+.al-table td > form {
+  margin-block: 0;
+}
+
+.rt-table td input:not([type="checkbox"]):not([type="radio"]),
+.rt-table td select,
+.rg-table td input:not([type="checkbox"]):not([type="radio"]),
+.rg-table td select {
+  max-width: 100%;
+}
+
+.rt-table td.empty,
+.rg-table td.empty,
+.al-table td.empty,
+.hl-nc-table td.empty {
+  text-align: center !important;
+}
+
+@media (max-width: 720px) {
+  .table-wrap,
+  .wh-scroll,
+  .rg-monthly-table-wrap,
+  .hl-tanks-wrap,
+  .st-fold-body,
+  .ui-table-scroll {
+    margin-inline: -2px;
+    padding-bottom: 5px;
+  }
+
+  .rt-table th,
+  .rt-table td,
+  .rg-table th,
+  .rg-table td,
+  .al-table th,
+  .al-table td,
+  .hl-nc-table th,
+  .hl-nc-table td {
+    padding-inline: 10px;
+  }
+}
+
+@media print {
+  .table-wrap,
+  .wh-scroll,
+  .rg-monthly-table-wrap,
+  .hl-tanks-wrap,
+  .st-fold-body,
+  .ui-table-scroll {
+    overflow: visible !important;
+    max-width: none;
+  }
+}

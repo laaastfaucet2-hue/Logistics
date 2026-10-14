@@ -21,7 +21,7 @@ def render_sheet(ws):
             continue
         rows.append(r)
     if not rows:
-        return "<p class='empty'>شيت فاضي</p>"
+        return "<p class='empty'>شيت فارغ</p>"
     ncols = max(len(r) for r in rows)
     out = ["<table>"]
     for i, r in enumerate(rows):

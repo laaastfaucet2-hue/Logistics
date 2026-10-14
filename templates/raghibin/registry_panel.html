@@ -1,0 +1,115 @@
+{# السجل المعتمد للأفراد وضباط — تصميم الاسكرين شوت (١٠/١٠):
+   نموذج «إضافة عضو معتمد جديد» (الفئة: ضابط/فرد) + قائمتا الضباط والأفراد بزر حذف.
+   يحتاج: entity · sel_day · sid · fcat · registry_officers · registry_individuals ·
+   entity_count · pieces_count · officer_ranks · individual_ranks · ranks_map #}
+<div class="rg-card">
+  <div class="rg-card-head">
+    <b>👮 السجل المعتمد للأفراد وضباط: {{ entity.name }}</b>
+    <span class="rg-dim">القوة الدائمة للجهة — أي اسم يُسجل راغب من مربعات اليوم أو زر التأميدة</span>
+  </div>
+  <div class="rg-registry-meta">
+    <span class="rg-count-chip">عدد القطاعات: {{ pieces_count | aindic }}</span>
+    <span class="rg-count-chip">عدد الأفراد: {{ registry_individuals | length | aindic }}</span>
+    <span class="rg-count-chip">الإجمالي: {{ entity_count | aindic }}</span>
+  </div>
+
+  <!-- إضافة عضو جديد إلى السجل — بحث ذكي مرتبط: اختر الرتبة ← تُرشَّح الأسماء وفقًا لها -->
+  <form method="post" action="/raghibin/panel/quick_add" class="rg-regform" autocomplete="off">
+    <input type="hidden" name="e" value="{{ entity.id }}">
+    <input type="hidden" name="d" value="{{ sel_day }}">
+    {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+    <div class="rg-regform-title">➕ إضافة عضو معتمد جديد لهذا القطاع لجدول التخطيط الفعلي</div>
+    <div class="rg-regform-grid">
+      <div class="fld"><label>الفئة</label>
+        <select name="qa_cat" id="rgRegCat" class="rg-qa-cat">
+          <option value="officers" {{ 'selected' if fcat == 'officers' }}>ضابط</option>
+          <option value="individuals" {{ 'selected' if fcat == 'individuals' }}>فرد</option>
+        </select>
+      </div>
+      <div class="fld"><label>الرتبة / الدرجة العسكرية</label>
+        <select name="qa_rank" id="rgRegRank" class="rg-qa-rank">
+          {% for r in (rank_options.officers if fcat == 'officers' else rank_options.individuals) %}
+          <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fld"><label>الاسم المعتمد بشكل رسمي</label>
+        <input name="qa_name" class="rg-qa-name" data-combo="rgNameDl"
+               placeholder="مثل: مصطفى السيد عبدالحميد" autocomplete="off">
+        <datalist id="rgNameDl"></datalist>
+      </div>
+    </div>
+    <div class="rg-regform-foot">
+      <button class="rt-btn gold rg-qa-add" type="submit">➕ إضافة للسجل</button>
+    </div>
+  </form>
+  <script type="application/json" id="rgRankOptions">{{ rank_options | tojson }}</script>
+  <script type="application/json" id="rgPersonRankData">{{ registry_rank_map | tojson }}</script>
+
+  <!-- قائمة الضباط -->
+  <div class="rg-reglist">
+    <h4>قائمة الضباط المعتمدون ({{ registry_officers | length | aindic }})</h4>
+    <ul>
+      {% for p in registry_officers %}
+      <li class="{{ 'rg-excluded-row' if p.excluded }}">
+        <span class="rg-regrank">{{ p.rank or '—' }}</span>
+        <span class="rg-regname c-name ring" style="{{ color_ring('person', p.full_name) }}">{{ p.full_name }}</span>
+        {% if p.excluded %}<span class="rg-excluded-badge" title="{{ p.exclude_note or 'غير راغب' }}">⊘ مستثنى</span>{% endif %}
+        {% if p.exclude_note and not p.excluded %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}
+        <form method="post" action="/raghibin/panel/delete/{{ p.id }}" class="rg-inline">
+          {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+          <button class="rg-regdel" type="submit" title="حذف من السجل">🗑</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="rg-empty">لا يوجد ضباط مسجلين حاليًا.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- قائمة الأفراد -->
+  <div class="rg-reglist">
+    <h4>قائمة الأفراد والاصف المعتمدون ({{ registry_individuals | length | aindic }})</h4>
+    <ul>
+      {% for p in registry_individuals %}
+      <li class="{{ 'rg-excluded-row' if p.excluded }}">
+        <span class="rg-regrank">{{ p.rank or '—' }}</span>
+        <span class="rg-regname c-name ring" style="{{ color_ring('person', p.full_name) }}">{{ p.full_name }}</span>
+        {% if p.excluded %}<span class="rg-excluded-badge" title="{{ p.exclude_note or 'غير راغب' }}">⊘ مستثنى</span>{% endif %}
+        {% if p.exclude_note and not p.excluded %}<span class="rg-note-badge" title="{{ p.exclude_note }}">📝</span>{% endif %}
+        <form method="post" action="/raghibin/panel/delete/{{ p.id }}" class="rg-inline">
+          {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+          <button class="rg-regdel" type="submit" title="حذف من السجل">🗑</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="rg-empty">لا يوجد افراد او اصاف مسجلين حاليًا.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <script type="application/json" class="rg-ranks-map">{{ ranks_map | tojson }}</script>
+  <script>
+  /* الفئة: تغيير ضابط/فرد يبدل قائمة الرتب تلقائيًا (لمس محلي) */
+  (function () {
+    var catSel = document.getElementById('rgRegCat');
+    var rankSel = document.getElementById('rgRegRank');
+    if (!catSel || !rankSel) return;
+    var mapEl = document.querySelector('.rg-ranks-map');
+    var map = {};
+    try { map = JSON.parse(mapEl ? mapEl.textContent : '{}'); } catch (e) { return; }
+    catSel.addEventListener('change', function () {
+      var ranks = (catSel.value === 'individuals') ? map.individuals : map.officers;
+      if (!ranks || !ranks.length) return;
+      var prev = rankSel.value;
+      rankSel.innerHTML = '';
+      ranks.forEach(function (r) {
+        var o = document.createElement('option');
+        o.value = r; o.textContent = r;
+        if (r === prev) o.selected = true;
+        rankSel.appendChild(o);
+      });
+    });
+  })();
+  </script>
+</div>

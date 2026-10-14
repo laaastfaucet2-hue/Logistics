@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — إدارة الخطوط والنقاط{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>تفاريد خط الحدود الدولى — إدارة الخطوط والنقاط</span>
+  <span class="sep">•</span><span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>نسخ الخطوط الشهرية</h3>
+    <span class="panel-hint">كل نسخة لها فترة ونقاط وقوة مستقلة · تكرار الاسم يؤرشف الحالية ويبدأ نسخة فارغة · الفترات المتداخلة ممنوعة</span>
+  </div>
+
+  <div class="dw-mode-switch" role="navigation" aria-label="حالة نسخ الخطوط">
+    <a class="rt-btn {{ 'gold' if not show_archive else 'dim' }}" href="{{ url_for('dowail.page', tab='lines') }}">
+      الخطوط الحالية <b>{{ current_lines | length | aindic }}</b>
+    </a>
+    <a class="rt-btn {{ 'gold' if show_archive else 'dim' }}" href="{{ url_for('dowail.page', tab='lines', archive=1) }}">
+      أرشيف نسخ الخطوط <b>{{ archived_lines | length | aindic }}</b>
+    </a>
+  </div>
+
+  {% if not show_archive %}
+  <form method="post" action="{{ url_for('dowail.add_line') }}" class="dw-addrow dw-version-add">
+    <input name="name" data-combo="dwLinesList" autocomplete="off" placeholder="اسم الخط" required>
+    <label>من يوم<input name="date_from" inputmode="numeric" placeholder="١" required></label>
+    <label>إلى يوم<input name="date_to" inputmode="numeric" placeholder="{{ days_in_month | aindic }}" required></label>
+    <button class="rt-btn gold small" type="submit">إنشاء نسخة حالية</button>
+  </form>
+  <p class="panel-hint">إذا كان الاسم موجودًا حاليًا، تنتقل نسخته الحالية كاملة إلى الأرشيف وتبدأ النسخة الجديدة بلا نقاط.</p>
+  {% endif %}
+
+  <div class="dw-cols dw-version-cols">
+    <section>
+      <h4 class="dw-h">{{ 'النسخ المؤرشفة' if show_archive else 'النسخ الحالية' }}</h4>
+      {% if lines %}
+      <ul class="dw-lines dw-version-list">
+        {% for line in lines %}
+        <li class="dw-line {{ 'on' if line.id == sel_line_id }}">
+          <a href="{{ url_for('dowail.page', tab='lines', line=line.id, **({'archive': 1} if show_archive else {})) }}">
+            <b>{{ line.name }}</b>
+            <small class="dw-period-label">
+              {% if line.date_from is not none %}يوم {{ line.date_from | aindic }} — {{ line.date_to | aindic }}
+              {% else %}الفترة غير محددة{% endif %}
+            </small>
+          </a>
+          <small>{{ line.count | aindic }} نقطة · قوة {{ line.total_force | aindic }}</small>
+          <span class="dw-status {{ 'archived' if show_archive else 'current' }}">{{ 'مؤرشف' if show_archive else 'حالي' }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="dw-empty-state">{{ 'لا توجد نسخ مؤرشفة.' if show_archive else 'لا توجد خطوط حالية؛ أنشئ أول نسخة بالأعلى.' }}</div>
+      {% endif %}
+    </section>
+
+    <section>
+      {% set sel = selected_line %}
+      <h4 class="dw-h">بيانات النسخة المحددة</h4>
+      {% if sel %}
+      <div class="dw-version-card">
+        <div class="dw-version-title">
+          <div><b>{{ sel.name }}</b><small>نسخة رقم {{ sel.id | aindic }}</small></div>
+          <span class="dw-status {{ 'archived' if show_archive else 'current' }}">{{ 'مؤرشفة' if show_archive else 'حالية' }}</span>
+        </div>
+
+        <form method="post" action="{{ url_for('dowail.line_period', line_id=sel.id) }}" class="dw-period-form">
+          <input type="hidden" name="archive" value="{{ 1 if show_archive else 0 }}">
+          <label>بداية النسخة<input name="date_from" inputmode="numeric" value="{% if sel.date_from is not none %}{{ sel.date_from | aindic }}{% endif %}" placeholder="من يوم" required></label>
+          <label>نهاية النسخة<input name="date_to" inputmode="numeric" value="{% if sel.date_to is not none %}{{ sel.date_to | aindic }}{% endif %}" placeholder="إلى يوم" required></label>
+          <button class="dw-mini" type="submit">حفظ الفترة</button>
+        </form>
+        {% if sel.date_from is none %}<p class="dw-inline-alert">هذه نسخة قديمة/مسترجعة محفوظة بلا فترة. حدد فترة غير متداخلة قبل إصدار الأوراق.</p>{% endif %}
+
+        <div class="dw-version-actions">
+          {% if show_archive %}
+          <form method="post" action="{{ url_for('dowail.restore_line', line_id=sel.id) }}"
+                onsubmit="return confirm('استرجاع هذه النسخة؟ ستُنسخ نقاطها وقوتها إلى حالية جديدة بلا فترة، ويظل الأصل في الأرشيف.');">
+            <button class="rt-btn green small" type="submit">استرجاع كنسخة حالية</button>
+          </form>
+          <form method="post" action="{{ url_for('dowail.delete_line', line_id=sel.id) }}"
+                onsubmit="return confirm('تأكيد الحذف النهائي لهذه النسخة المؤرشفة ونقاطها؟ لا يمكن التراجع.');">
+            <button class="rt-btn dw-danger small" type="submit">حذف نهائي</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('dowail.archive_line', line_id=sel.id) }}"
+                onsubmit="return confirm('نقل النسخة الحالية إلى الأرشيف بنقاطها وقوتها؟');">
+            <button class="rt-btn dim small" type="submit">أرشفة النسخة</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="dw-points-head">
+        <h4 class="dw-h">نقاط هذه النسخة</h4>
+        <span>إجمالي القوة <b>{{ sel.total_force | aindic }}</b></span>
+      </div>
+      {% if sel.points %}
+      <div class="table-wrap">
+        <table class="rt-table dw-points">
+          <thead><tr><th>النقطة</th><th>المسؤول</th><th>القوة</th><th></th></tr></thead>
+          <tbody>
+          {% for point in sel.points %}
+          <tr class="{{ 'dw-off' if not point.force else '' }}">
+            <td><b>{{ point.name }}</b></td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.update_point', point_id=point.id) }}" class="dw-inline">
+                <input type="hidden" name="archive" value="{{ 1 if show_archive else 0 }}">
+                <input type="hidden" name="responsible_only" value="1">
+                <input name="responsible" value="{{ point.responsible }}" placeholder="المسؤول">
+                <button class="dw-mini" type="submit">حفظ</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.update_point', point_id=point.id) }}" class="dw-inline">
+                <input type="hidden" name="archive" value="{{ 1 if show_archive else 0 }}">
+                <input name="force" inputmode="numeric" value="{{ point.force | aindic }}">
+                <button class="dw-mini" type="submit">حفظ</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('dowail.delete_point', point_id=point.id) }}"
+                    onsubmit="return confirm('حذف هذه النقطة من النسخة المحددة؟');">
+                <input type="hidden" name="archive" value="{{ 1 if show_archive else 0 }}">
+                <button class="dw-mini danger" type="submit">حذف</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<p class="panel-hint">هذه النسخة بلا نقاط.</p>{% endif %}
+
+      <form method="post" action="{{ url_for('dowail.add_point') }}" class="dw-addrow dw-addrow-wide">
+        <input type="hidden" name="line_id" value="{{ sel.id }}">
+        <input type="hidden" name="archive" value="{{ 1 if show_archive else 0 }}">
+        <input name="name" data-combo="dwPointsList" autocomplete="off" placeholder="اسم النقطة الجديدة" required>
+        <input name="force" inputmode="numeric" placeholder="القوة" class="dw-w-narrow">
+        <button class="rt-btn gold small" type="submit">إضافة النقطة</button>
+      </form>
+      {% else %}<p class="panel-hint">اختر نسخة لعرض تفاصيلها.</p>{% endif %}
+    </section>
+  </div>
+
+  {% if line_statements %}
+  <details class="dw-archbox">
+    <summary>بيانات إكسل المسجلة مع التغييرات</summary>
+    {% for lname, stmts in line_statements.items() %}
+    <div class="dw-stmt-group"><b>{{ lname }}</b>
+      {% for day, path in stmts %}<a class="dw-filelink" href="{{ url_for('dowail.statement_file', filename=path) }}">بيان يوم {{ day | aindic }}</a>{% endfor %}
+    </div>
+    {% endfor %}
+  </details>
+  {% endif %}
+</div>
+
+<datalist id="dwLinesList">{% for name in dw_line_names %}<option value="{{ name }}">{% endfor %}</datalist>
+<datalist id="dwPointsList">{% for name in dw_point_names %}<option value="{{ name }}">{% endfor %}</datalist>
+{% endblock %}

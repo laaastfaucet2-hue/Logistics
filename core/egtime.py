@@ -58,7 +58,7 @@ def permit_fiscal_year(d=None):
 
 
 def fmt_ar(d, with_weekday=True):
-    """تاريخ يوم/شهر/سنة: ٢٢/٠٩/٢٠٢٦ — الثلاثاء."""
+    """تاريخ سنة/شهر/يوم: ٢٠٢٦/٠٩/٢٢ — الثلاثاء."""
     from core import dates
     parsed = dates.parse_date(d)
     if parsed is None:

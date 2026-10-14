@@ -20,7 +20,7 @@ from data_access import db_raghibin as dr
 
 CENTER = Alignment(horizontal="center", vertical="center", readingOrder=2)
 BORDER_COLOR = "8A97A8"
-FILL_HEAD = "132638"
+FILL_HEAD = "E9F1F9"   # ازرق خفيف (١٠/١٠/٢٠٦: الكحلى كانت بتغطي الكتابة)
 FILL_EXCLUDED = "FCE9E7"
 
 
@@ -81,7 +81,7 @@ def _title(ws, text, ncols):
 def _header(ws, headers):
     for col, name in enumerate(headers, start=1):
         cell = ws.cell(7, col, name)
-        cell.font = Font(name="Cairo", size=11, bold=True, color="FFFFFF")
+        cell.font = Font(name="Cairo", size=11, bold=True, color="000000")
         cell.fill = PatternFill("solid", fgColor=FILL_HEAD)
         cell.alignment = CENTER
         ws.column_dimensions[chr(64 + col)].width = max(12, len(name) * 2 + 6)
@@ -162,9 +162,9 @@ def write_cadres_files(year, month, entity_id, entity_name):
     """بناء ملفي القوة (ضباط/أفراد) لجهة واحدة لحظيًا — يُستدعى بعد كل تعديل."""
     ensure_folders(year, month)
     persons = dr.list_persons(year, month, entity_id=entity_id)
-    # أسماء الشيتات: الحرف أولًا ثم الاسم الكامل (توجيه ٠٦/١٠/٢٠٢٦ — مفتاح الحروف ض/أ/م)
-    for category_key, category_label in (("officers", "ض — الضباط"),
-                                         ("individuals", "أ — الأفراد والصف")):
+    # أسماء الشيتات: الكلمة أولًا ثم الاسم الكامل — بلا حروف مختصرة (توجيه ٠٨/١٠/٢٠٦)
+    for category_key, category_label in (("officers", "ضابط — الضباط"),
+                                         ("individuals", "فرد — الأفراد والصف")):
         book = Workbook()
         ws = book.active
         ws.title = category_label
@@ -182,6 +182,36 @@ def write_all_cadres(year, month):
     for entity in dt.list_entities(year, month):
         write_cadres_files(year, month, entity["id"], entity["name"])
     return cadres_dir(year, month)
+
+
+def rebuild_all(year, month):
+    """إعادة بناء كل ملفات الشهر المحلية (القواعد الذهبية: الدباجة الرسمية
+    + اللوجو + التوقيعان الرسميان) — كل الجهات × الأربعة فولدرات + ملفات
+    الأيام اللي فيها سجلات. يرجع (عدد الجهات، عدد أيام الملفات اليومية)."""
+    from data_access import db_tameedat as dt
+    from .files_daily import write_day_file
+    from .files_rosters import write_excluded_files
+    from .files_monthly import write_monthly_file
+    entities = dt.list_entities(year, month)
+    day_map = dr.active_day_entities(year, month)
+    from . import files_daily as fdd
+    days_total = 0
+    for ent in entities:
+        write_cadres_files(year, month, ent["id"], ent["name"])
+        write_excluded_files(year, month, ent["id"], ent["name"])
+        write_monthly_file(year, month, ent["id"], ent["name"])
+        # أيام الملفات اليومية: أي يوم فيه سجلات في القاعدة أو فيه فولدر
+        # موجود على القرص (يعني ملفات قديمة تتحدّث هي كمان) — حساب المسار
+        # يدويًا عشان متتعملش فولدرات جديدة (entity_dir بيبنيها)
+        day_days = set(day_map.get(ent["id"], []))
+        daily_root = tab_dir(year, month, "daily")
+        for d in range(1, 32):
+            folder = (daily_root / "يوم {}".format(arnum.to_arabic_indic(str(d)))
+                      / (ent["name"] or "").strip())
+            if d in day_days or folder.exists():
+                fdd.write_day_file(year, month, d, ent["id"], ent["name"])
+                days_total += 1
+    return len(entities), days_total
 
 
 def write_entity_files(year, month, entity_id, entity_name, day=None):

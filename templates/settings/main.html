@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}الإعدادات • منظومة التعيينات{% endblock %}
+{% block print_doc_title %}الإعدادات{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/warehouses.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v={{ static_ver }}">
+{% endblock %}
+
+{% block content %}
+<header class="wh-hero">
+  <div class="wh-hero-lines">
+    <b class="wh-l1">⚙️ الإعدادات</b>
+    <b class="wh-l2">تسجيل المستخدمين · سجلات المستخدمين · المتابعة والملاحظات · الهوية للمنظمة</b>
+  </div>
+</header>
+
+<nav class="wh-tabs no-print" aria-label="تبويبات الإعدادات">
+  {% for key, name, ic in visible_subtabs('settings', subs) %}
+  <a class="wh-tab {{ 'on' if sub == key }}" href="{{ url_for('settings.page', sub=key) }}">
+    {{ ic }} <span>{{ name }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+{% if sub in ('log', 'notes') %}
+<div class="sg-gatebar no-print">
+  <span class="dim small">القسم مفتوح في هذه الجلسة — لن يُطلب الرمز مرة أخرى حتى تغلق القسم أو تسجّل الخروج.</span>
+  <form method="post" action="{{ url_for('settings.gate') }}">
+    <input type="hidden" name="sub" value="{{ sub }}">
+    <input type="hidden" name="action" value="lock">
+    {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+    <button type="submit" class="sg-lockbtn">إغلاق وحماية</button>
+  </form>
+</div>
+{% endif %}
+
+{% if sub == 'users' %}
+  {% include "settings/tab_users.html" %}
+{% elif sub == 'log' %}
+  {% include "settings/tab_log.html" %}
+{% elif sub == 'notes' %}
+  {% include "settings/tab_notes.html" %}
+{% elif sub == 'identity' %}
+  {% include "settings/tab_identity.html" %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}صلاحية غير متاحة{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:640px;margin:60px auto;text-align:center;padding:48px 30px;">
+  <div style="font-size:3rem;line-height:1;margin-bottom:14px;">🔒</div>
+  <h2 style="margin:0 0 10px;">ليس لديك صلاحية لهذا التبويب</h2>
+  <p class="dim" style="line-height:1.9;margin:0 0 22px;">
+    الحساب الخاص بك غير مفعّل على «{{ tab }}». إذا كنت بحاجة إليه، تواصل مع مدير النظام
+    ({{ current_user.full_name if current_user.role == 'admin' else 'مصطفى' }})
+    يضيفه لك من صفحة الإعدادات.
+  </p>
+  <a class="rt-btn" href="{{ url_for('dashboard') }}&sid={{ sid }}">رجوع للرئيسية</a>
+  {% if current_user.role == 'admin' %}
+  <a class="rt-btn" href="{{ url_for('settings.page', sub='users') }}&sid={{ sid }}">إدارة الصلاحيات</a>
+  {% endif %}
+</div>
+{% endblock %}

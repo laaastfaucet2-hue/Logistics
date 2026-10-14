@@ -6,14 +6,20 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
 
+{# ١٤/١٠: مقرر اليوم = مجموع الوجبات الموزعة (إفطار+غداء+عشاء) —
+   قبلها كان ياخد الغداء بس فالتخصيص اليومي كان نص اليوم #}
 {% macro gen(it) -%}
-{%- if it.lunch not in [none, 0] -%}{{ num(it.lunch) }}
-{%- elif it.breakfast not in [none, 0] -%}{{ num(it.breakfast) }}
-{%- elif it.dinner not in [none, 0] -%}{{ num(it.dinner) }}
-{%- endif -%}
+{%- set s = (it.breakfast or 0) + (it.lunch or 0) + (it.dinner or 0) -%}
+{%- if s -%}{{ num(s) }}{%- endif -%}
+{%- endmacro %}
+
+{# ١٤/١٠ (تطوير): قيمة مربع وجبة يوم — من day_cells (معاملات اليوم الفعلية) #}
+{% macro cellval(it, di, mk) -%}
+{%- set v = (it.day_cells.get(di) or {}).get(mk) -%}
+{%- if v -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
 
 {% block content %}
@@ -22,7 +28,7 @@
   <span class="sep">•</span>
   <span>الشهر النشط:</span><span class="val">{{ month | aindic }} - {{ month_names[month-1] }}</span>
   <span class="sep">•</span>
-  <span class="dim">كل جهة بجدولها — وبتطلع شيت مستقل في ملف إكسل المتعهد 📗</span>
+  <span class="dim">كل جهة بجدولها — وتنتج ورقة عمل مستقل في ملف إكسل المتعهد 📗</span>
 </div>
 
 <div class="rt-tabs">
@@ -40,6 +46,22 @@
     </button>
   </div>
 </div>
+
+{# ١٤/١٠: تأكيد الربط بين أسماء جهات التاميدات وأسماء جهات التوزيع —
+   الحاسبة بتاخد التخصيصات بالاسم، فأي فرق = الجهة ستعمل بالمقرر العام #}
+{% if link_missing and (link_missing.in_dist or link_missing.in_tameed) %}
+<div style="margin:0 0 14px;padding:11px 15px;border-radius:11px;font-size:.9rem;font-weight:700;
+            background:rgba(245,158,11,.13);border:1px solid var(--gold-border,#f59e0b66);color:var(--gold-light,#fbbf24)">
+  ⚠️ تنبيه الربط بين التاميدات والتوزيع:
+  {% if link_missing.in_dist %}
+  جهات مسجلة في التاميدات <b>غير موجودة في التوزيع</b> (ستعمل بالمقرر العام دون تخصيصات):
+  {{ link_missing.in_dist | join('، ') }} — ضيفها هنا أو صحح الاسم.
+  {% endif %}
+  {% if link_missing.in_tameed %}
+  جهات في التوزيع <b>غير مسجلة في التاميدات</b>: {{ link_missing.in_tameed | join('، ') }}.
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- إضافة جهة -->
 <div class="panel rt-formcard">
@@ -92,7 +114,7 @@
              value="{{ ee_item.unit if ee_item and ee_item.entity_id == e.id else '' }}">
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
     </div>
-    <div class="fld"><input name="breakfast" inputmode="decimal" placeholder="فطار"
+    <div class="fld"><input name="breakfast" inputmode="decimal" placeholder="إفطار"
              value="{{ ee_item.breakfast|oval if ee_item and ee_item.entity_id == e.id else '' }}"></div>
     <div class="fld"><input name="lunch" inputmode="decimal" placeholder="غداء"
              value="{{ ee_item.lunch|oval if ee_item and ee_item.entity_id == e.id else '' }}"></div>
@@ -110,7 +132,7 @@
     <table class="rt-table">
       <thead>
         <tr>
-          <th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th>
+          <th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>إفطار</th><th>غداء</th><th>عشاء</th>
           {% for d in days %}<th class="dayh">{{ d }}</th>{% endfor %}
           <th class="ops">إجراءات</th>
         </tr>
@@ -136,16 +158,23 @@
           <td class="daycell {% if di in it.days %}on{% endif %}">
             <input type="checkbox" class="ck" name="wd_{{ di }}" form="df-{{ it.id }}"
                    aria-label="تخصيص يوم {{ days[di] }}" {% if di in it.days %}checked{% endif %}>
-            <span class="qwrap">
-              <input class="dq" name="qty_{{ di }}" form="df-{{ it.id }}" inputmode="decimal"
-                     data-gen="{{ gen(it) }}"
-                     {% if di in it.days %}
-                     value="{{ num(it.day_qty.get(di)) if it.day_qty.get(di) not in [none, 0] else gen(it) }}"
-                     {% else %}
-                     value="{% if it.is_custom %}{% else %}{{ gen(it) }}{% endif %}" disabled
-                     {% endif %} placeholder="٠">
-              {% if it.unit %}<span class="du">{{ it.unit }}</span>{% endif %}
+            {# ١٤/١٠: ثلاثة مربعات إفطار/غداء/عشاء لكل يوم — الفارغ = الوجبة العامة #}
+            <span class="mwrap">
+              {%- for mabbr, mk, mlab in (('b', 'breakfast', 'إفطار'), ('l', 'lunch', 'غداء'), ('d', 'dinner', 'عشاء')) -%}
+              <span class="mrow">
+                <span class="mlab">{{ mlab[:1] }}</span>
+                <input class="dm" name="qty_{{ di }}_{{ mabbr }}" form="df-{{ it.id }}"
+                       inputmode="decimal" placeholder="٠"
+                       title="{{ mlab }} — {{ days[di] }} (الفارغ = قيمة {{ mlab }} العامة)"
+                       {% if di in it.days %}
+                       value="{{ cellval(it, di, mk) }}"
+                       {% else %}
+                       value="{{ cellval(it, di, mk) }}" disabled
+                       {% endif %}>
+              </span>
+              {%- endfor -%}
             </span>
+            {% if it.unit %}<span class="du">{{ it.unit }}</span>{% endif %}
           </td>
           {% endfor %}
           <td class="ops">

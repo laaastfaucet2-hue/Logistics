@@ -94,8 +94,22 @@ def page(section):
     v = _page_vars(section, kind)
     if cfg["has_dist"] and request.args.get("tab") == "dist":
         v["entities"] = de.list_entities(year, month, section)
+        # ١٤/١٠: قيم عرض مربعات الوجبات الثلاث لكل يوم (إفطار/غداء/عشاء)
+        from services import ration_lines as rl
+        for e in v["entities"]:
+            for it in e.get("items") or []:
+                it["day_cells"] = rl.day_cell_values(it)
         v["ee"] = arnum.parse_int(request.args.get("ee"))
         v["ee_item"] = de.get_entity_item(year, month, v["ee"]) if v["ee"] else None
+        # ١٤/١٠: تأكيد الربط — اسم الجهة في التاميدات لازم يكون هو نفس اسمها
+        # في التوزيع (الحاسبة بتاخد التخصيصات بالاسم) — لو فيه فرق يظهر تنبيه.
+        from data_access import db_tameedat as dt
+        t_names = {" ".join((n or "").split()) for n in dt.entity_names(year, month)}
+        d_names = {" ".join((e.get("name") or "").split()) for e in v["entities"]}
+        v["link_missing"] = {
+            "in_dist": sorted(n for n in t_names - d_names if n),
+            "in_tameed": sorted(n for n in d_names - t_names if n),
+        }
         return render_template("rations_dist.html", **v)
     v["items"], v["custom"] = dr.get_items(year, month, section, kind)
     v["edit_item"] = dr.get_item(year, month, v["edit_id"]) if v["edit_id"] else None
@@ -139,8 +153,8 @@ def item_edit(section, item_id):
     old_item = dr.get_item(year, month, item_id)
     if old_item and old_item["name"] != name and dw.item_name_in_use(year, month, old_item["name"]):
         return _rb(section, kind=kind,
-                   err=f"ممنوع تغيير اسم «{old_item['name']}»: له كارت مخزلنة/حركة — "
-                       "احذف الصنف لحذفه من كل حاجة ثم أعد إضافته بالاسم الصحيح")
+                   err=f"لا يمكن تغيير اسم «{old_item['name']}»: له بطاقة مخزنية وحركة مسجلة — "
+                       "احذف الصنف من جميع البيانات، ثم أعد إضافته بالاسم الصحيح")
     unit = (request.form.get("unit") or "").strip()
     dr.update_item(year, month, item_id, name, unit,
                    arnum.parse_float(request.form.get("breakfast")),
@@ -170,7 +184,7 @@ def item_delete(section, item_id):
             except Exception:
                 logging.exception("stores snapshot after item delete failed")
         ok = (f"حُذف «{old_item['name']}» من المقرر وجداول الجهات وإذون الصرف "
-              f"والمستودعات ({arnum.to_arabic_indic(n)} كارت) — وعدل {arnum.to_arabic_indic(stripped)} إذنًا")
+              f"والمستودعات ({arnum.to_arabic_indic(n)} بطاقة) — وعُدّل {arnum.to_arabic_indic(stripped)} إذنًا")
     else:
         ok = "تم حذف الصنف وتحديث الإكسل"
     xlsx_rations.rebuild(year, month, section)
@@ -193,17 +207,17 @@ def custom_save(section, item_id):
     for d in range(7):
         for meal, _label in MEALS:
             qty = arnum.parse_float(request.form.get(f"c_{d}_{meal}", ""))
-            if qty is not None and qty > 0:          # الفاضي/صفر = لا يُصرف ذلك اليوم
+            if qty is not None and qty > 0:          # الفارغ/صفر = لا يُصرف ذلك اليوم
                 entries.append((d, meal, qty))
     dr.save_custom(year, month, item_id, entries)
     xlsx_rations.rebuild(year, month, section)
     if entries:
         ok = (f"تخصيص «{item['name']}»: يُصرف في "
               f"{arnum.to_arabic_indic(len(entries))} خانة فقط — "
-              "باقي الأيام بلا صرف. آلة 2 مخازن ستلتزم بهذه الأيام.")
+              "باقي الأيام بلا صرف. آلة ٢ مخازن ستلتزم بهذه الأيام.")
     else:
         ok = (f"«{item['name']}» عاد للصرف اليومي "
-              "من أرقام الفطار/الغداء/العشاء في كل أيام الأسبوع.")
+              "من أرقام الإفطار/الغداء/العشاء في كل أيام الأسبوع.")
     return _rb(section, kind=kind, ok=ok)
 
 
@@ -253,7 +267,7 @@ def copy_kind(section):
 
 
 # ======================================================================
-# الجهات (تاب توزيع المقررات — التموين والمتعهد، كل قسم بجهاته)
+# الجهات (تبويب توزيع المقررات — التموين والمتعهد، كل قسم بجهاته)
 # ======================================================================
 @rations_bp.route("/<section>/entities/add", methods=["POST"])
 @login_required
@@ -351,20 +365,25 @@ def eitem_delete(section, item_id):
 def eitem_days(section, item_id):
     SECTION_CFG.get(section) or abort(404)
     year, month = _ctx_month()
-    # حفظ دفعة واحدة: كل يوم محدد + مقرره الخاص (فارغ = رقم الوجبات العام)
+    # ١٤/١٠: كل يوم محدد + وجباته الثلاث (إفطار/غداء/عشاء) — الفارغ = القيمة
+    # العامة لوجبتها. يوم محدد بلا وجبات مملوءة = مقيد باليوم على قيمه العامة.
     day_qty = {}
     for d in range(7):
         if request.form.get(f"wd_{d}") is not None:
-            day_qty[d] = arnum.parse_float(request.form.get(f"qty_{d}", ""))
+            day_qty[d] = {
+                "breakfast": arnum.parse_float(request.form.get(f"qty_{d}_b", "")),
+                "lunch": arnum.parse_float(request.form.get(f"qty_{d}_l", "")),
+                "dinner": arnum.parse_float(request.form.get(f"qty_{d}_d", "")),
+            }
     de.set_days(year, month, item_id, day_qty)
     xlsx_rations.rebuild(year, month, section)
-    msg = (f"حُفظ تخصيص {arnum.to_arabic_indic(len(day_qty))} يومًا بمقرراتها ✓"
+    msg = (f"حُفظ تخصيص {arnum.to_arabic_indic(len(day_qty))} يومًا بوجباته ✓"
            if day_qty else "عاد الصنف للصرف اليومي")
     return _rb(section, tab="dist", ok=msg + " — وتحديث الإكسل")
 
 
 # ======================================================================
-# ملفات الإكسل: فتح المجلد / فتح الشيت / تنزيل
+# ملفات الإكسل: فتح المجلد / فتح ورقة العمل / تنزيل
 # ======================================================================
 def _open_path(path):
     try:

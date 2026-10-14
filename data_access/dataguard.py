@@ -48,6 +48,9 @@ def data_files():
             continue
         if "backups" in p.relative_to(DATA_DIR).parts:
             continue
+        # «الإعدادات» = مرايا مشفرة بالباستورد الملكي (مش مصدر بيانات) — خارج الفحص والحصر
+        if "الإعدادات" in p.relative_to(DATA_DIR).parts:
+            continue
         if p.name.endswith(("-wal", "-shm", ".tmp")) or ".tmp-" in p.name or ".corrupt-" in p.name:
             continue
         out.append(p)
