@@ -65,7 +65,10 @@ def page():
     # توكن sid في الرابط، أو «cookie:<id>» لو الدخول بكوكي.
     gate_key = g.sid or "cookie:%d" % g.user["id"]
     if sub in ("log", "notes") and not db.is_gate_open(gate_key, sub):
-        keep = {k: v[0] for k, v in request.args.items(multi=True) if k not in ("open", "err", "ok")}
+        # items(multi=True) يرجّع القيمة نفسها كنص؛ v[0] كان يقطع sid لأول حرف
+        # وبعد فتح البوابة يتحول الطلب إلى جلسة منتهية ويرجع لتسجيل الدخول.
+        keep = {k: v for k, v in request.args.items()
+                if k not in ("open", "err", "ok")}
         return render_template("settings/lock.html", subs=SUBS, sub=sub,
                                sub_name=dict((t[0], t[1]) for t in SUBS)[sub], keep=keep)
     ctx = {
