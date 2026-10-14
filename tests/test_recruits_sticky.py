@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-"""تثبيت الأيام والرؤوس في تاب المجندين (طلب ١٤/١٠).
+"""سلوك التمرير في تاب المجندين.
 
-المطلوب: مربع «أيام الشهر» في اليومية العامة ما ينزلش مع النزول في الصفحة،
-يخلُص مثبّت فوق تحت الشريطين — وكذلك رؤوس جداول الأيام الطويلة
-(«التتبع اليومي» في ملف المجند وجدول يومية المجندين) تفضل ظاهرة وأنت بتنزل.
+المطلوب النهائي: مربع «أيام الشهر» جزء طبيعي من الصفحة؛ عند النزول يختفي
+ولا يلاحق المستخدم أو يغطي الجدول. رؤوس الجداول الطويلة وزر الإجازة
+المجمّعة وحدهما يظلان مثبتين تحت شريطي البرنامج.
 
-الفحص هنا على العقد نفسه (CSS + القوالب + السكربت) لأن التثبيت سلوك رسم
-في المتصفح، والملفات بتتقدّم بالكاش بستاتيك فير — فبنثبّت الشكل النهائي.
+الفحص على عقد CSS + القالب + السكربت لأن التمرير سلوك رسم في المتصفح.
 """
 import re
 from pathlib import Path
@@ -23,6 +22,7 @@ def _seed_recruit():
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT / "static" / "css" / "recruits.css").read_text(encoding="utf-8")
+STICKY_JS = (ROOT / "static" / "js" / "sticky.js").read_text(encoding="utf-8")
 
 
 def _rules(selector_part):
@@ -34,32 +34,34 @@ def _rules(selector_part):
     return out
 
 
-def test_days_box_is_pinned_and_never_falls_back_to_flow():
+def test_days_box_stays_in_normal_page_flow():
     rules = _rules(".rc-daysbox")
     assert rules, "لازم قاعدة .rc-daysbox في recruits.css"
-    for _sel, body in rules:
-        if "position" in body:                       # أي قاعدة تحدد الموضع = لاصقة
-            assert "sticky" in body, f"مربع الأيام لازم يفضل لاصق: {body}"
-    pinned = "\n".join(b for _s, b in rules)
-    assert "var(--stick-top" in pinned               # الإزاحة من متغير الارتفاعات
-    assert "z-index: 30" in pinned                   # فوق المحتوى اللي بيمر تحته
-    assert "background: var(--card)" in pinned        # خلفية معتمة (مش شفافة)
+    joined = "\n".join(body for _sel, body in rules)
+    assert "position: static" in joined
+    assert "position: sticky" not in joined
+    assert "position: fixed" not in joined
+    assert "z-index: 30" not in joined
+    assert "max-height:" not in joined
 
 
 def test_sticky_headers_declared_for_long_day_tables():
     rules = _rules(".rc-stickwrap")
     assert rules, "لازم قاعدة .rc-stickwrap"
     joined = "\n".join(sel + "{" + body + "}" for sel, body in rules)
-    assert "position: sticky" in joined and "var(--stick-rows" in joined
+    assert "position: sticky" in joined and "var(--stick-top" in joined
+    assert "var(--stick-rows" not in joined            # مربع الأيام لا يزحزح الرأس
     assert "overflow-x: clip" in joined               # بلا scroll container يقتل اللزق
 
 
-def test_journal_page_uses_pin_classes_and_loads_sticky_script(client, app):
+def test_journal_page_uses_days_and_header_classes_and_loads_sticky_script(client, app):
     _seed_recruit()
     page = client.get("/recruits?tab=journal").data.decode("utf-8")
     assert 'class="panel rc-daysbox"' in page
     assert "rc-stickwrap" in page                     # جدول اليومية
-    assert "js/sticky.js" in page                     # قياس الشريطين
+    assert "js/sticky.js" in page                     # قياس الشريطين للرؤوس فقط
+    assert 'querySelector(".rc-daysbox")' not in STICKY_JS
+    assert "--stick-rows" not in STICKY_JS
 
 
 def test_file_daily_table_wrapper_is_scroll_free_on_wide_screens(client, app):

@@ -1,7 +1,7 @@
-/* تثبيت مربع الأيام ورؤوس الجداول تحت الشريطين (طلب ١٤/١٠).
-   بنقيس الارتفاع الحقيقي لشريط النافذة + الشريط العلوي (بيتغيروا مع المقاس
-   ووضع سطح المكتب) ونحطهم في متغير CSS واحد --stick-top تستخدمه كل العناصر
-   اللاصقة — من غير شبكة ولا مكتبات. */
+/* تثبيت رؤوس الجداول وزر الإجازة المجمّعة تحت الشريطين فقط.
+   مربع «أيام الشهر» جزء عادي من الصفحة: لا يدخل في القياس ولا يثبت عند التمرير.
+   نقيس الارتفاع الحقيقي لشريط النافذة + الشريط العلوي لأنه يتغير مع المقاس
+   ووضع سطح المكتب، ثم نضعه في --stick-top للعناصر اللاصقة المقصودة. */
 (function () {
   "use strict";
   var root = document.documentElement;
@@ -11,11 +11,6 @@
     var top = document.querySelector(".topbar");
     var h = (win ? win.offsetHeight : 0) + (top ? top.offsetHeight : 0);
     root.style.setProperty("--stick-top", (h + 6) + "px");
-    /* في العمود الواحد مربع الأيام بيبقى فوق الجدول، فنزحزح رأس الجدول تحته
-       بقدر ارتفاعه — في العمودين (شاشة واسعة) الزحزحة = صفر. */
-    var box = document.querySelector(".rc-daysbox");
-    var narrow = window.matchMedia("(max-width: 1100px)").matches;
-    root.style.setProperty("--stick-rows", (box && narrow ? box.offsetHeight + 8 : 0) + "px");
   }
 
   function watch(el) {
@@ -29,7 +24,6 @@
     window.addEventListener("orientationchange", measure);
     watch(document.querySelector(".windowbar"));
     watch(document.querySelector(".topbar"));
-    watch(document.querySelector(".rc-daysbox"));
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
   }
 

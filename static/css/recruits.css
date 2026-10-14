@@ -25,11 +25,8 @@
 }
 
 /* ======== مربع الأيام (مدموج — مش مربعات كبيرة) ========
-   مثبّت فوق وهو بتنزل في الصفحة (طلب ١٤/١٠): يفضل ظاهر تحت الشريطين في كل
-   المقاسات — الخلفية معتمة + z-index ليكون المحتوى بيمر تحته ومش فوقه. */
-.rc-daysbox { position: sticky; top: var(--stick-top, calc(var(--window-h) + 96px));
-  z-index: 30; background: var(--card); box-shadow: 0 10px 26px rgba(0, 0, 0, .22);
-  max-height: calc(100vh - var(--stick-top, 134px) - 14px); overflow-y: auto; }
+   جزء عادي من الصفحة: ينزل ويختفي مع المحتوى عند التمرير ولا يلاحق الجدول. */
+.rc-daysbox { position: static; }
 .rc-daysbox .panel-head { margin-bottom: 12px; }
 .rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .rc-daybox { position: relative; display: grid; place-items: center; min-height: 32px; padding: 3px 0; border-radius: 8px;
@@ -99,7 +96,7 @@
    clip على الشاشات الواسعة (بلا scroll container) — وتحت ٧٨٠px نرجّع التمرير. */
 .table-wrap.rc-stickwrap { overflow-x: clip; overflow-y: visible; }
 .rc-stickwrap > table > thead th { position: sticky;
-  top: calc(var(--stick-top, calc(var(--window-h) + 96px)) + var(--stick-rows, 0px)); z-index: 6;
+  top: var(--stick-top, calc(var(--window-h) + 96px)); z-index: 6;
   background-color: var(--card);
   background-image: linear-gradient(rgba(var(--gold-rgb), .08), rgba(var(--gold-rgb), .08));
   box-shadow: 0 6px 14px rgba(0, 0, 0, .16); }
