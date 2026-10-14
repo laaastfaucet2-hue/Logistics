@@ -357,6 +357,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
         sup = get_supplier(year, month, supplier_id)
         supplier_name = sup["name"] if sup else ""
     parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or []) if q and float(q) > 0]
+    parts = default_store_parts(cycle, qty_handle, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty_handle - sum(q for _s, _n, q in parts), 6)
         if abs(diff) > 0.000001:
@@ -498,6 +499,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
         raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
     parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
              if q and float(q) > 0]
+    parts = default_store_parts(cycle, qty, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty - sum(q for _s, _n, q in parts), 6)
         if abs(diff) > 0.000001:
@@ -574,6 +576,7 @@ def update_opener(year, month, cycle, item_id, qty, day,
         raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
     parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
              if q and float(q) > 0]
+    parts = default_store_parts(cycle, qty, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty - sum(q for _s, _n, q in parts), 6)
         if abs(diff) > 0.000001:
@@ -920,7 +923,8 @@ def delete_receipt(year, month, cycle, serial):
 # (قاعدة الملف ≤1000 سطر — نفس نمط db_pack)
 from data_access.db_warehouses_stores import (  # noqa: E402,F401
     UNASSIGNED, NO_EXPIRY, receipt_groups, user_notes, _batch_pool,
-    _rem_label, tafreeda_rows, stores_report, stores_general_report)
+    _rem_label, tafreeda_rows, stores_report, stores_general_report,
+    default_store_parts, assign_unassigned)
 
 # إعادة تصدير — دوال التغليف عاشت في db_pack (قاعدة الملف ≤1000 سطر)
 from data_access.db_pack import card_pack_rows, collect_pack_kinds  # noqa: E402,F401

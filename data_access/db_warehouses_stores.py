@@ -556,3 +556,66 @@ def stores_general_report(year, month):
         })
     out.sort(key=lambda r: (-r["balance"], r["name"]))
     return out
+
+
+# ========== «مخزن 1»: مفيش «غير موزع» (قرار المستخدم ١٤/١٠) ==========
+# أي كمية من غير توزيع — أو على مخزن مش في السجل — بتدخل على «مخزن 1» = أول مخزن في
+# سجل المخازن. دورتا الإمداد والمتعهد بس (الترفية ليها مخزنها الخاص)، ولو السجل
+# فاضي الكمية بتستنى لحد ما يتضاف أول مخزن.
+STORE_CYCLES = ("supply", "contractor")
+
+
+def default_store_parts(cycle, qty, parts):
+    """توزيع إذن/رصيد أول مدة قبل الحفظ: الفاضي أو المخزن المجهول ⇒ «مخزن 1»."""
+    from data_access import db_stores
+    if cycle not in STORE_CYCLES:
+        return parts
+    stores = db_stores.list_stores()
+    if not stores:
+        return parts
+    first, known = stores[0], {s["id"] for s in stores}
+    if not parts:
+        qty = float(qty or 0)
+        return [(first["id"], first["name"], qty)] if qty > 0 else parts
+    return [(sid, name, q) if sid in known else (first["id"], first["name"], q)
+            for sid, name, q in parts]
+
+
+def assign_unassigned():
+    """ينقل أي كمية غير موزعة في كل الشهور إلى «مخزن 1» — يرجّع عدد السطور اللي اتعدلت."""
+    import logging
+    from data_access import db_stores
+    from data_access import db_warehouses as _dw
+    stores = db_stores.list_stores()
+    if not stores:
+        return 0
+    first = (stores[0]["id"], stores[0]["name"])
+    ids = tuple(s["id"] for s in stores)
+    known = f"store_id IS NOT NULL AND store_id IN ({','.join('?' * len(ids))})"
+    cycles = "('supply','contractor')"
+    changed = 0
+    for _y, _m, conn in _dw._iter_month_conns():
+        with conn:
+            changed += conn.execute(
+                "INSERT INTO wh_receipt_stores (receipt_id,store_id,store_name,qty)"
+                f" SELECT id,?,?,qty_handle FROM wh_receipts WHERE cycle IN {cycles}"
+                " AND qty_handle>0 AND id NOT IN (SELECT receipt_id FROM wh_receipt_stores)",
+                first).rowcount
+            changed += conn.execute(
+                f"UPDATE wh_receipt_stores SET store_id=?, store_name=? WHERE NOT ({known})"
+                f" AND receipt_id IN (SELECT id FROM wh_receipts WHERE cycle IN {cycles})",
+                first + ids).rowcount
+            changed += conn.execute(
+                "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
+                " SELECT l.cycle,l.item_id,?,?,l.added FROM wh_ledger l WHERE l.kind='opener'"
+                f" AND l.cycle IN {cycles} AND l.added>0 AND NOT EXISTS (SELECT 1 FROM"
+                " wh_opener_stores o WHERE o.cycle=l.cycle AND o.item_id=l.item_id)",
+                first).rowcount
+            changed += conn.execute(
+                f"UPDATE wh_opener_stores SET store_id=?, store_name=? WHERE cycle IN {cycles}"
+                f" AND NOT ({known})", first + ids).rowcount
+    if changed:
+        months.bust_cache()
+        logging.getLogger(__name__).info("assigned %s unassigned store rows to «%s»",
+                                         changed, first[1])
+    return changed

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""🚨 التنبيهات وغير الموزع — كل ما يحتاج تصرفًا، مرتب بالأهمية.
+"""🚨 التنبيهات — كل ما يحتاج تصرفًا، مرتب بالأهمية.
 
-المصادر: الدفعات الباقية (منتهية/خطر/بدون تاريخ) · الرصيد غير الموزع · عجز الصرف
-· تغطية أقل من ٧ أيام · بيانات مخازن ناقصة — والسنوي يضيف فروق الترحيل بين الشهور.
+المصادر: الدفعات الباقية (منتهية/خطر/بدون تاريخ) · عجز الصرف · تغطية أقل من ٧ أيام
+· بيانات مخازن ناقصة — والسنوي يضيف فروق الترحيل بين الشهور.
+(مفيش «غير موزع» — قرار ١٤/١٠: أي كمية من غير توزيع بقت على «مخزن 1».)
 """
-from ..calc import (EPS, LEVEL_CLASS, cell, cover_class, d, days_left, level, month_name, n,
-                    norm, q, table)
+from ..calc import cell, cover_class, d, days_left, level, month_name, n, norm, q, table
 
 REGISTRY_FIELDS = (("location", "المكان"), ("capacity_m2", "المساحة"), ("fans", "المراوح"),
                    ("extractors", "الشفاطات"), ("equipment", "التجهيزات"))
@@ -42,9 +42,6 @@ def collect(ctx):
                           f"{q(s['issued']) or n(0)} {s['unit']}".strip(),
                           "مراجعة الإذن", "bad", 1))
     for (sid, item, unit), e in ctx.keys().items():
-        if not sid and e["closing"] > EPS:
-            out.append(_alert("رصيد غير موزع", e["store"], item,
-                              f"{q(e['closing'])} {unit}".strip(), "توزيعه على مخزن", "warn", 2))
         cover = ctx.cover_store((sid, item, unit))
         if sid and cover_class(cover) == "bad":
             out.append(_alert("تغطية أقل من ٧ أيام", e["store"], item,
@@ -83,8 +80,7 @@ def build(ctx):
     cards = [card(kind, n(count), "", _kind_class(items, kind)) for kind, count in counts.items()]
     if not cards:
         cards = [card("التنبيهات", n(0), "", "good", "✓")]
-    tables = [_unassigned(ctx),
-              table("alerts", "التنبيهات",
+    tables = [table("alerts", "التنبيهات",
                     ["نوع التنبيه", "المخزن", "الصنف", "التفاصيل", "المطلوب عمله"],
                     [norm([cell(a["kind"], a["cls"]), cell(a["store"], "", "store"),
                            cell(a["item"], "", "item"), a["details"], a["action"]])
@@ -99,19 +95,6 @@ def _kind_class(items, kind):
         if a["kind"] == kind:
             return a["cls"]
     return ""
-
-
-def _unassigned(ctx):
-    ref = ctx.ref()
-    rows = []
-    entries = sorted(((k, e) for k, e in ctx.keys().items() if not k[0] and e["closing"] > EPS),
-                     key=lambda kv: kv[0][1])
-    for i, ((_sid, item, unit), e) in enumerate(entries, start=1):
-        near = ctx.nearest_expiry(sid=0, item=item, unit=unit)
-        rows.append(norm([n(i), cell(item, "b", "item"), unit, cell(q(e["closing"]), "b"),
-                          cell(d(near), LEVEL_CLASS[level(near, ref)] if near else "", "date")]))
-    return table("unassigned", "غير موزع", ["م", "الصنف", "الوحدة", "الرصيد", "أقرب صلاحية"],
-                 rows)
 
 
 def _carries(ctx):

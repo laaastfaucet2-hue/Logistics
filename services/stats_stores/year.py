@@ -72,8 +72,6 @@ def metrics(facts):
         "with_balance": {(k[1], k[2]) for k, e in keys.items() if e["balance"] > EPS},
         "stores_with_balance": {k[0] for k, e in keys.items()
                                 if e["balance"] > EPS and k[0] != F.UNASSIGNED_ID},
-        "unassigned": {(k[1], k[2]) for k, e in keys.items()
-                       if e["balance"] > EPS and k[0] == F.UNASSIGNED_ID},
         "bal_units": bal_units, "in_units": in_units, "out_units": out_units,
         "expired": levels.count("expired"), "danger": levels.count("danger"),
         "near": levels.count("near"), "no_date": levels.count("none"),
@@ -84,7 +82,7 @@ def empty_metrics():
     """مؤشرات فترة بلا بيانات — أصفار (لا None على الشاشة)."""
     return {"receipts": 0, "permits": 0, "out_lines": 0, "in_lines": 0, "entities": set(),
             "moving": set(), "with_balance": set(), "stores_with_balance": set(),
-            "unassigned": set(), "bal_units": {}, "in_units": {}, "out_units": {},
+            "bal_units": {}, "in_units": {}, "out_units": {},
             "expired": 0, "danger": 0, "near": 0, "no_date": 0, "per_month": {}}
 
 
@@ -155,7 +153,7 @@ def key_store_name(yf, sid):
     for target in yf.get("targets") or []:
         if target["id"] == sid:
             return target["name"]
-    return F.unassigned_name() if sid == F.UNASSIGNED_ID else ""
+    return ""
 
 
 def busiest_month(entry):
@@ -184,7 +182,7 @@ def year_metrics(yf):
         for name in ("in_units", "out_units"):
             for unit, value in cur[name].items():
                 total[name][unit] = round(total[name].get(unit, 0.0) + value, 6)
-    for name in ("with_balance", "stores_with_balance", "unassigned", "bal_units",
+    for name in ("with_balance", "stores_with_balance", "bal_units",
                  "expired", "danger", "near", "no_date"):
         total[name] = last[name]
     total["per_month"] = per

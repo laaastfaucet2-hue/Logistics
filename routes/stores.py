@@ -187,14 +187,14 @@ def page():
                       for e in report["stores"]]
         raw = arnum.parse_int(request.args.get("store"))
         pool = {e["store"]["id"]: e for e in report["stores"]}
-        if raw == 0 or (raw is None and not store_tabs):
-            store_sel, target = 0, report["unassigned"]
-        elif raw in pool:
+        # مفيش تبويب «غير موزع» (١٤/١٠): أي كمية من غير توزيع بقت على «مخزن 1»
+        if raw in pool:
             store_sel, target = raw, pool[raw]
-        else:
+        elif store_tabs:
             target = report["stores"][0]
             store_sel = target["store"]["id"]
-        target = _enrich(target)
+        if target:
+            target = _enrich(target)
     # 🆕 (١٢/١٠) «كافة الأصناف (كشف عام)» — كشف مجمّع بكل المخازن (زي البرنامج القديم)
     general = dw.stores_general_report(year, month)
     return render_template(
@@ -228,6 +228,8 @@ def save():
         message = f"عُدّلت مواصفات مخزن «{name.strip()}» — وتسجيلها في البيانات المحلية"
     else:
         db_stores.add_store(name, location, capacity, fans, extractors, equipment, notes)
+        # أول مخزن في السجل = «مخزن 1»: أي كمية مستنية من غير توزيع تدخل عليه (١٤/١٠)
+        dw.assign_unassigned()
         # توجيه ٠٨/١٠: أول ما المخزن يتعمل مجلده يتعمل (3 مجلدات داخله)
         sf.create_store_folder(year, month, name.strip())
         message = f"أُضيف مخزن «{name.strip()}» بمواصفاته ومجلده المحلي — وتسجيلها في البيانات المحلية"
@@ -306,9 +308,7 @@ _STORE_SUBS = {"movement": sf.SUB_MOVEMENT, "items": sf.SUB_ITEMS,
 
 
 def _store_name_or_404(store_id):
-    if store_id <= 0:
-        return dw.UNASSIGNED   # «غير موزع على مخازن» — نفس اسم المجلد
-    store = db_stores.get_store(store_id)
+    store = db_stores.get_store(store_id) if store_id > 0 else None
     if not store:
         abort(404)
     return store["name"]

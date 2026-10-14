@@ -58,14 +58,12 @@
 
 <!-- تبويبات المخازن: تبويب لكل مخزن — في تبويب «المخازن» و«حركة وكشف الأرصدة» معًا:
      يفتح حركته وجرد أرصدته وكل صنف داخله بالتفصيل (توجيه ٢٧/٠٩) -->
-{% if store_tabs or stores %}
+{% if store_tabs %}
 <nav class="wh-subtabs no-print" aria-label="تبويبات كل مخزن">
   {% for st in store_tabs %}
   <a class="wh-tab {{ 'on' if store_sel == st.id }}"
      href="{{ url_for('stores.page', tab=tab, store=st.id) }}">🏬 <span>{{ st.name }}</span></a>
   {% endfor %}
-  <a class="wh-tab {{ 'on' if store_sel == 0 }}"
-     href="{{ url_for('stores.page', tab=tab, store=0) }}">📦 <span>غير موزع</span></a>
 </nav>
 {% endif %}
 

@@ -63,9 +63,7 @@ def parse_filters(args, stores=None):
     raw_cycle = (args.get("f_cycle") or "").strip()
     item = (args.get("f_item") or "").strip()
     store = None
-    if raw_store == F.unassigned_name():
-        store = F.UNASSIGNED_ID
-    elif raw_store:
+    if raw_store:
         store = next((s["id"] for s in stores if s["name"] == raw_store), None)
     cycle = F.CYCLE_BY_NAME.get(raw_cycle)
     return {"store": store, "cycle": cycle, "item": item,
@@ -141,7 +139,7 @@ def page_context(year, month, scope, sub, args, background=True, today=None):
         "path_text": files.path_text(sub, file_month),
         "status": files.status(sub, year, file_month, busy=busy),
         "busy": busy,
-        "options": {"stores": [s["name"] for s in stores] + [F.unassigned_name()],
+        "options": {"stores": [s["name"] for s in stores],
                     "cycles": list(CYCLE_OPTIONS),
                     "items": _item_options(year, month, scope, today)},
         "has_data": ctx.has_data(),

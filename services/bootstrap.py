@@ -31,3 +31,8 @@ def initialize():
     for year in storage.list_years():
         bootstrap_year_files(year)
     dataguard.auto_backup("boot", min_minutes=720)
+    try:  # مفيش «غير موزع» (١٤/١٠): أي كمية من غير مخزن تدخل على «مخزن 1» — بعد النسخة
+        from data_access import db_warehouses_stores as dws
+        dws.assign_unassigned()
+    except Exception:      # noqa: BLE001 — التشغيل لا يسقط بسببها
+        logging.exception("assigning unassigned store quantities failed at boot")

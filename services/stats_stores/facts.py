@@ -10,7 +10,8 @@
     batches    الدفعات بالباقي الفعلي (إذون الإضافة + رصيد أول المدة)
     shortfalls عجز الصرف: المطلوب في الإذن أكثر من المصروف فعلًا
     packs      الرصيد بالتغليف لكل (مخزن، صنف) — من حالة العبوات نفسها
-    stores     سجل المخازن بمواصفاته · targets المخازن + «غير موزع»
+    stores     سجل المخازن بمواصفاته · targets المخازن (مفيش «غير موزع» — قرار ١٤/١٠:
+               أي كمية من غير مخزن معروف محسوبة على «مخزن 1» = أول مخزن في السجل)
 
 يُحفظ مؤقتًا في الذاكرة ببصمة قاعدة الشهر + سجل المخازن (في system.db) + تاريخ المرجع.
 """
@@ -24,16 +25,18 @@ from core import egtime
 CYCLES = (("supply", "الإمداد"), ("contractor", "المتعهد"))
 CYCLE_NAMES = dict(CYCLES)
 CYCLE_BY_NAME = {name: key for key, name in CYCLES}
-UNASSIGNED_ID = 0
+UNASSIGNED_ID = 0          # «من غير مخزن» — بس لو سجل المخازن فاضي خالص
 
 _CACHE = {}
 _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 64
 
 
-def unassigned_name():
-    from data_access.db_warehouses_stores import UNASSIGNED
-    return UNASSIGNED
+def _store_of(sid, known, first):
+    """المخزن المحسوب عليه السطر: المسجل كما هو، وأي مخزن مجهول ⇒ «مخزن 1»."""
+    if sid in known:
+        return sid, known[sid]
+    return first or (UNASSIGNED_ID, "")
 
 
 # ---------------------------------------------------------------- التواريخ
@@ -122,13 +125,11 @@ def clear_cache():
 
 
 def _empty(year, month, stores, ref, elapsed):
-    unassigned = unassigned_name()
     return {
         "year": year, "month": month, "ref": ref, "elapsed": elapsed,
         "days": egtime.days_in_month(year, month),
         "stores": stores,
-        "targets": [{"id": s["id"], "name": s["name"]} for s in stores]
-        + [{"id": UNASSIGNED_ID, "name": unassigned}],
+        "targets": [{"id": s["id"], "name": s["name"]} for s in stores],
         "lines": [], "batches": [], "shortfalls": [], "packs": {},
         "has_data": False, "filtered": False,
     }
@@ -140,12 +141,11 @@ def _build(year, month, stores, ref, elapsed):
         return facts
     from data_access import db_warehouses_stores as dws
     known = {s["id"]: s["name"] for s in stores}
+    first = (stores[0]["id"], stores[0]["name"]) if stores else None
     report = dws.stores_report(year, month)
     lines, packs = facts["lines"], facts["packs"]
     for target in report["stores"] + [report["unassigned"]]:
-        sid = target["store"].get("id")
-        sid = sid if sid in known else UNASSIGNED_ID
-        name = known.get(sid) or unassigned_name()
+        sid, name = _store_of(target["store"].get("id"), known, first)
         for row in target["inn"]:
             serial = int(row.get("serial") or 0)
             lines.append(_line("in", sid, name, row, serial=serial, opener=not serial,
@@ -156,7 +156,7 @@ def _build(year, month, stores, ref, elapsed):
         for item, label in (target.get("pack_notes") or {}).items():
             if label:
                 packs[(sid, item)] = label
-    facts["batches"] = _batches(year, month, known)
+    facts["batches"] = _batches(year, month, known, first)
     facts["shortfalls"] = _shortfalls(year, month)
     facts["has_data"] = bool(lines)
     return facts
@@ -175,7 +175,7 @@ def _line(direction, sid, store, row, serial=0, opener=False, permit=0, entity="
     }
 
 
-def _batches(year, month, known):
+def _batches(year, month, known, first):
     """الدفعات بالباقي الفعلي بعد التفريدة — مع بيانات إذن الإضافة (المورد/الإنتاج)."""
     from data_access import db_warehouses as dw
     from data_access import db_warehouses_stores as dws
@@ -185,10 +185,10 @@ def _batches(year, month, known):
         for rec in dw.list_receipts(year, month, cycle):
             meta.setdefault((rec["serial"], rec["item_id"]), rec)
         for batch in dws.remaining_batches(year, month, cycle):
-            sid = batch["store_id"] if batch["store_id"] in known else UNASSIGNED_ID
+            sid, name = _store_of(batch["store_id"], known, first)
             rec = meta.get((batch["serial"], batch["item_id"]), {}) if batch["serial"] else {}
             out.append({
-                "store_id": sid, "store": known.get(sid) or unassigned_name(),
+                "store_id": sid, "store": name,
                 "cycle": cycle, "item": batch["item"], "unit": batch["unit"] or "",
                 "qty": batch["qty"], "remaining": batch["remaining"],
                 "expiry": batch["expiry"], "serial": batch["serial"],

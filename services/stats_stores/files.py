@@ -22,11 +22,11 @@ from core.config import SECTIONS, month_folder
 from data_access import dataguard, storage
 
 from . import facts as F
-from .subtabs import SUBTAB_MAP, file_name, folder_name, period_text
+from .subtabs import LEGACY_FOLDERS, SUBTAB_MAP, file_name, folder_name, period_text
 
 ROOT_NAME = "المخازن والثلاجات"
 STATE_NAME = ".stats_stores_state.json"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2          # ٢: اتشال «غير موزع» من الجداول (١٤/١٠) ⇒ كل الملفات تتكتب تاني
 HEAD_FILL = "BDD7EE"
 FOOT_FILL = "FFF2CC"
 _BAD_SHEET = re.compile(r"[\[\]:*?/\\]")
@@ -68,7 +68,17 @@ def ensure_folders(year, month=None, keys=None):
     from . import visible_keys
     for key in keys or visible_keys():
         tab_dir(key, year, month).mkdir(parents=True, exist_ok=True)
+    remove_legacy(year, month)
     return root(year, month)
+
+
+def remove_legacy(year, month=None):
+    """يمسح مجلدات التبويبات اللي اتغير اسمها (ملف مفتوح في Excel يتمسح في المرة الجاية)."""
+    import shutil
+    for name in LEGACY_FOLDERS:
+        old = root(year, month) / name
+        if old.is_dir():
+            shutil.rmtree(old, ignore_errors=True)
 
 
 def state_path(year, month=None):

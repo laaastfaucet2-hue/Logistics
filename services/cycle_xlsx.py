@@ -788,7 +788,8 @@ def build_store_folders(base, rep, units, year=2026, month=9):
                 pass
 
     live = {"سجل المخازن"}
-    for target in rep["stores"] + [rep["unassigned"]]:
+    # مجلد لكل مخزن بس — مفيش «غير موزع على مخازن» (١٤/١٠)، ومجلده القديم بيتمسح تحت
+    for target in rep["stores"]:
         _store_book(target, target["store"]["name"])
         live.add(_safe_file(target["store"]["name"]))
     # 🧹 فولدرات مخازن اتبسمت أو اتحذفت — الفولدر بيتبسم مع اسم المخزن

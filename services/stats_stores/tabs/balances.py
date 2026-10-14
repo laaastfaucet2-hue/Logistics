@@ -20,11 +20,7 @@ def build(ctx):
     view = {"cards": _year_cards(ctx) if ctx.yearly else _month_cards(ctx), "tables": []}
     view["tables"].append(_total(ctx))
     for target in ctx.targets():
-        if target["id"]:
-            view["tables"].append(_store(ctx, target, f"store_{target['id']}", target["name"]))
-    for target in ctx.targets():
-        if not target["id"]:
-            view["tables"].append(_store(ctx, target, "unassigned", "غير موزع"))
+        view["tables"].append(_store(ctx, target, f"store_{target['id']}", target["name"]))
     if ctx.yearly:
         view["tables"].append(_month_end(ctx))
     return view
@@ -54,16 +50,12 @@ def _month_cards(ctx):
     keys = ctx.keys()
     covers = [cover_class(ctx.cover_store(k)) for k in keys]
     warn = covers.count("warn") + covers.count("bad")
-    unassigned = sum(1 for k, e in keys.items() if not k[0] and e["closing"] > EPS)
-    has_unassigned = any(not k[0] for k in keys)
     return [
-        card("مخازن وثلاجات", n(len(ctx.stores())), "+ غير موزع" if has_unassigned else "",
-             "", "🏬"),
+        card("مخازن وثلاجات", n(len(ctx.stores())), "", "", "🏬"),
         card("أصناف بالرصيد", n(badge(ctx)), "", "", "📦"),
         _unit_card("الرصيد حسب الوحدة", _totals(ctx, "closing"), "⚖️"),
         card("تغطية أقل من ١٤ يوم", n(warn), f"منها أقل من ٧: {n(covers.count('bad'))}",
              "bad" if covers.count("bad") else "warn" if warn else "good", "📉"),
-        card("صنف برصيد غير موزع", n(unassigned), "", "warn" if unassigned else "good", "⚠️"),
     ]
 
 

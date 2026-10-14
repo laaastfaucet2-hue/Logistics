@@ -16,10 +16,12 @@ SUBTABS = (
     {"key": "consumption", "no": 5, "icon": "📉", "name": "الاستهلاك والتغطية"},
     {"key": "entities", "no": 6, "icon": "🏢", "name": "الجهات المستلمة"},
     {"key": "registry", "no": 7, "icon": "🏬", "name": "المخازن والتجهيزات"},
-    {"key": "alerts", "no": 8, "icon": "🚨", "name": "التنبيهات وغير الموزع"},
+    {"key": "alerts", "no": 8, "icon": "🚨", "name": "التنبيهات"},
     {"key": "compare", "no": 9, "icon": "📈", "name": "المقارنة والاتجاه"},
 )
 SUBTAB_MAP = {t["key"]: t for t in SUBTABS}
+# مجلدات تبويبات اتغير اسمها وبتتمسح لو لسه موجودة (١٤/١٠: اتشال «غير الموزع»)
+LEGACY_FOLDERS = ("8. التنبيهات وغير الموزع",)
 DEFAULT_SUB = "summary"
 
 

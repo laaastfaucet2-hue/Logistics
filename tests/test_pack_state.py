@@ -129,10 +129,11 @@ def test_pack_state_fefo_single_source(client):
     assert "ملح" not in tgt["pack_notes"], tgt["pack_notes"]
     out_m = [r for r in tgt["out"] if r["item"] == "ملح"]
     assert out_m[0]["rem_qty"] == 97.0 and out_m[0]["rem_after"] == "", out_m[0]
-    # دقيق (رصيد أول المدة بلا توزيع) → الهدف «غير موزع» بحالة التعبئة نفسها
-    una = rep["unassigned"]
-    in_d = [r for r in una["inn"] if r["item"] == "دقيق"]
-    out_d = [r for r in una["out"] if r["item"] == "دقيق"]
+    # دقيق (رصيد أول المدة بلا توزيع) → «مخزن 1» (أول مخزن — مفيش «غير موزع» ١٤/١٠)
+    # بحالة التعبئة نفسها
+    assert not rep["unassigned"]["inn"] and not rep["unassigned"]["out"]
+    in_d = [r for r in tgt["inn"] if r["item"] == "دقيق"]
+    out_d = [r for r in tgt["out"] if r["item"] == "دقيق"]
     assert in_d[0]["rem_after"] == "٢ شكارة + ٢٠ كجم سائب", in_d[0]["rem_after"]
     assert out_d[0]["rem_after"] == "١ شكارة كاملة + شكارة مفتوحة (١٠ كجم)", out_d[0]["rem_after"]
-    assert una["pack_notes"].get("دقيق") == "١ شكارة كاملة + شكارة مفتوحة (١٠ كجم)", una["pack_notes"]
+    assert tgt["pack_notes"].get("دقيق") == "١ شكارة كاملة + شكارة مفتوحة (١٠ كجم)", tgt["pack_notes"]

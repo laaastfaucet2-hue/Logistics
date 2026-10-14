@@ -126,18 +126,20 @@ def test_registry_shows_specs_movement_and_missing_data(app):
     assert cards["بلا حركة"] == "١" and cards["بيانات ناقصة"] == "١"
 
 
-# ---------------------------------------------------------------- 🚨 التنبيهات وغير الموزع
-def test_alerts_cover_unassigned_shortfall_expiry_and_carry_over(app):
+# ---------------------------------------------------------------- 🚨 التنبيهات
+def test_alerts_cover_shortfall_expiry_and_carry_over_without_unassigned(app):
     sid = seed_basic()
     dr.add_item(YEAR, MONTH, "tamween", "summer", "عدس", "كجم", 0, 0, 0)
     dw.add_receipt(YEAR, MONTH, "supply", 4, "عدس", 10, "كجم", exp_iso="2031-09-10",
-                   date_iso="2031-09-04", receipt_no=3)              # غير موزع ومنتهية
+                   date_iso="2031-09-04", receipt_no=3)    # من غير توزيع ⇒ «مخزن 1» ومنتهية
     _permit(MONTH, 2, 6, 500)                                        # أرز: المطلوب أكثر من المتاح
     view = ss.build_view("alerts", YEAR, MONTH, "month", today=TODAY)
-    kinds = {r[0]["t"] for r in _table(view, "alerts")["rows"]}
-    assert {"صلاحية منتهية", "رصيد غير موزع", "عجز في الصرف", "بيانات مخزن ناقصة"} <= kinds
-    unassigned = _table(view, "unassigned")
-    assert unassigned["rows"][0][1]["t"] == "عدس"
+    rows = _table(view, "alerts")["rows"]
+    kinds = {r[0]["t"] for r in rows}
+    assert {"صلاحية منتهية", "عجز في الصرف", "بيانات مخزن ناقصة"} <= kinds
+    assert "رصيد غير موزع" not in kinds and [t["key"] for t in view["tables"]] == ["alerts"]
+    expired = next(r for r in rows if r[0]["t"] == "صلاحية منتهية")
+    assert expired[1]["t"] == STORE and expired[2]["t"] == "عدس"
     # السنوي: أغسطس بلا بيانات وسبتمبر بأول مدة مختلف عن آخر الشهر السابق ⇒ فرق ترحيل
     dr.add_item(YEAR, 10, "tamween", "summer", "أرز", "كجم", 0, 0, 0)
     dw.add_opener(YEAR, 10, "supply", "أرز", 15, 1, handle_unit_hint="كجم",

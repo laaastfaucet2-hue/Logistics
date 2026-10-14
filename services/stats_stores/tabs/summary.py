@@ -37,8 +37,6 @@ def _cards(ctx, cur):
         card("منتهية / خطر", n(risky), f"منتهية: {n(cur['expired'])}",
              "bad" if risky else "good", "⏳"),
         card("تغطية أقل من ٧ أيام", n(bad_cover), "", "bad" if bad_cover else "good", "📉"),
-        card("غير موزع", n(len(cur["unassigned"])), "",
-             "warn" if cur["unassigned"] else "good", "⚠️"),
     ]
 
 
@@ -66,7 +64,6 @@ def indicator_list(ctx, periods):
                         [m[name].get(unit, 0.0) if m else None for m in periods], qz, False))
     out.append(("دفعات منتهية", [value(m, "expired") for m in periods], n, True))
     out.append(("دفعات خطر (٣٠ يوم)", [value(m, "danger") for m in periods], n, True))
-    out.append(("أصناف غير موزعة", [size(m, "unassigned") for m in periods], n, True))
     return out
 
 
