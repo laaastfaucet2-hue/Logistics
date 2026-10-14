@@ -149,7 +149,15 @@ chk("بدون نوع تأميدة → نوع القاموس بالعربي", "ن
 
 print("\n=== ④ قائمة الجهة من التأميدات = جهات اليوم فقط ===")
 eid_day = dt.add_entity(Y, M, "بوابة تأميدة اليوم", "حربية")
-dt.add_record(Y, M, 22, dt.get_entity(Y, M, eid_day), 1, 1, 0)
+eid_att = dt.add_entity(Y, M, "ملحقة لها راغبين", "شرطية")
+eid_rec_only = dt.add_entity(Y, M, "ملحقة مجندين فقط", "شرطية")
+dt.add_record(Y, M, 22, dt.get_entity(Y, M, eid_day), 1, 1, 0,
+              attachments=[
+                  {"name": "ملحقة لها راغبين", "entity_type": "شرطية",
+                   "officers": 2, "individuals": 3, "recruits": 0},
+                  {"name": "ملحقة مجندين فقط", "entity_type": "شرطية",
+                   "officers": 0, "individuals": 0, "recruits": 5},
+              ])
 eid_other = dt.add_entity(Y, M, "مخزن يوم آخر", "شرطية")
 dt.add_record(Y, M, 23, dt.get_entity(Y, M, eid_other), 1, 0, 0)
 eid_dict = dt.add_entity(Y, M, "جهة في القاموس فقط", "شرطية")
@@ -159,10 +167,33 @@ scoped_url = ("/raghibin/panel?en=" + quote(ENT) + "&d=22&c=officers"
 scoped = c.get(scoped_url).get_data(as_text=True)
 chk("جهة مسودة الفورم موجودة في القائمة", f'value="{ENT}"' in scoped)
 chk("جهة لها تأميدة في نفس اليوم موجودة", 'value="بوابة تأميدة اليوم"' in scoped)
+chk("جهة ملحقة لها ضباط/أفراد موجودة", 'value="ملحقة لها راغبين"' in scoped)
+chk("جهة ملحقة مجندين فقط غير موجودة", 'value="ملحقة مجندين فقط"' not in scoped)
 chk("جهة يوم آخر غير موجودة", 'value="مخزن يوم آخر"' not in scoped)
 chk("جهة القاموس بلا تأميدة غير موجودة", 'value="جهة في القاموس فقط"' not in scoped)
 chk("سياق التأميدات محفوظ عند تغيير الجهة",
     'name="origin" value="tameedat"' in scoped and "origin=tameedat" in scoped)
+chk("اسم اليوم والتاريخ الكامل ظاهر بدل «ضبط اليوم»",
+    "يوم <b>الاثنين</b>" in scoped and "٢٢/٠٩/٢٠٣١" in scoped
+    and "ضبط اليوم" not in scoped)
+saved_att = c.get("/raghibin/panel?en=" + quote("ملحقة لها راغبين")
+                  + "&d=22&c=officers&origin=tameedat&draft_en=" + quote(ENT)
+                  + "&sid=" + token).get_data(as_text=True)
+chk("الملحقة المحفوظة تأخذ مربعات ضباطها هي",
+    saved_att.count('name="ranks"') == 2, saved_att.count('name="ranks"'))
+draft_payload = json.dumps([{"n": "الورشة التجريبية", "t": "شرطية", "o": 4, "i": 3}],
+                           ensure_ascii=False)
+draft_att_url = ("/raghibin/panel?en=" + quote(ENT)
+                 + "&d=22&c=officers&origin=tameedat&draft_en=" + quote(ENT)
+                 + "&o=3&i=2&draft_atts=" + quote(draft_payload) + "&sid=" + token)
+draft_att_list = c.get(draft_att_url).get_data(as_text=True)
+chk("ملحقة الفورم غير المحفوظة تظهر فورًا", 'value="الورشة التجريبية"' in draft_att_list)
+draft_att_selected = c.get(draft_att_url.replace("en=" + quote(ENT),
+                                                  "en=" + quote("الورشة التجريبية"), 1)).get_data(as_text=True)
+chk("ملحقة الفورم تأخذ عدّاداتها ونوعها هي",
+    draft_att_selected.count('name="ranks"') == 4
+    and "نوع الجهة: شرطية معتمدة" in draft_att_selected,
+    draft_att_selected.count('name="ranks"'))
 draft_only = c.get("/raghibin/panel?en=" + quote("الورشة التجريبية")
                    + "&d=22&c=officers&origin=tameedat&draft_en="
                    + quote("الورشة التجريبية") + "&sid=" + token).get_data(as_text=True)
@@ -183,7 +214,7 @@ chk("قائمة الجهة المفتوحة عالية التباين في فا�
 print("\n=== ③ تحميل ستايل الراغبين في صفحات التأميدات ===")
 pg = c.get("/tameedat?tab=day").get_data(as_text=True)
 chk("raghibin.css محمّل في اليومية", "css/raghibin.css" in pg)
-chk("STATIC_VER = 227", "?v=227" in pg)
+chk("STATIC_VER = 229", "?v=229" in pg)
 chk("الديالوج فيه شرح فرعي", "tm-rgdialog-sub" in pg)
 chk("حقل نوع التأميدة ممرر من الزر", "type_choice" in pg)
 chk("زر فتح الراغبين موجود", 'id="tmRagNamesBtn"' in pg)

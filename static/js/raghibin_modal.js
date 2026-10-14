@@ -558,6 +558,26 @@
           et = other && other.value.trim() ? other.value.trim() : "أخرى";
         }
         if (et) url += "&et=" + encodeURIComponent(et);
+
+        /* الجهات الملحقة في الفورم الحالي: تظهر في قائمة الراغبين فورًا حتى
+           قبل حفظ التعديل، لكن فقط إن كان لها ضباط أو أفراد. */
+        var draftAtts = [];
+        Array.prototype.forEach.call(form.querySelectorAll(".tm-att"), function (row) {
+          function attVal(name) {
+            var input = row.querySelector('[name="' + name + '"]');
+            return input ? input.value.trim() : "";
+          }
+          var attName = attVal("att_name");
+          var attOfficers = parseArabicInt(attVal("att_officers")) || 0;
+          var attIndividuals = parseArabicInt(attVal("att_individuals")) || 0;
+          if (attName && (attOfficers || attIndividuals)) {
+            draftAtts.push({ n: attName, t: attVal("att_type") || et,
+                             o: attOfficers, i: attIndividuals });
+          }
+        });
+        if (draftAtts.length) {
+          url += "&draft_atts=" + encodeURIComponent(JSON.stringify(draftAtts));
+        }
       }
       if (sid) url += "&sid=" + encodeURIComponent(sid);
       openRagDialog(url);

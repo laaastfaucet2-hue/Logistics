@@ -16,6 +16,7 @@ const FRAG1 = `
   <form method="get" action="/raghibin/modal" class="rg-entity-form">
     <input type="hidden" name="d" value="22"><input type="hidden" name="c" value="officers">
     <input type="hidden" name="origin" value="tameedat"><input type="hidden" name="draft_en" value="صالة الترفية">
+    <input type="hidden" name="draft_atts" value='[{"n":"الورشة","t":"حربية","o":4,"i":3}]'>
     <select class="rg-entity-select" name="en"><option value="صالة الترفية">صالة الترفية</option><option value="الورشة">الورشة</option></select>
   </form>
   <div class="rg-slotsbox"><span class="rg-filled-count">٠</span>
@@ -53,6 +54,10 @@ const dom = new JSDOM(`<!DOCTYPE html><html dir="rtl"><body>
     <input id="tmEntity" value="صالة الترفية"><input id="tmDayFrom" value="٢٢">
     <input name="officers" value="٢"><input name="individuals" value="٠">
     <input type="radio" name="type_choice" value="شرطية" checked>
+    <div class="tm-att">
+      <input name="att_name" value="الورشة"><input name="att_type" value="حربية">
+      <input name="att_officers" value="٤"><input name="att_individuals" value="٣">
+    </div>
     <button type="button" id="tmRagNamesBtn">تسجيل أسماء</button>
   </form>
   <dialog id="tmRagDialog"><div class="tm-rgdialog-head"><span class="tm-rgdialog-sub"></span>
@@ -112,6 +117,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   chk("جهة مسودة التأميدة متمررة حتى تظهر قبل حفظها",
       decodeURIComponent(calls[0].url).indexOf("draft_en=صالة الترفية") !== -1,
       decodeURIComponent(calls[0].url));
+  const firstUrl = new win.URL(calls[0].url, win.location.href);
+  const draftAtts = JSON.parse(firstUrl.searchParams.get("draft_atts") || "[]");
+  chk("الجهة الملحقة ذات الضباط/الأفراد متمررة بعداداتها ونوعها",
+      draftAtts.length === 1 && draftAtts[0].n === "الورشة"
+      && draftAtts[0].t === "حربية" && draftAtts[0].o === 4 && draftAtts[0].i === 3,
+      JSON.stringify(draftAtts));
 
   console.log("=== تغيير الجهة من القائمة المنسدلة ===");
   const picker = body.querySelector(".rg-entity-select");
@@ -125,8 +136,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   chk("اسم الجهة المختارة اتبعت بدل [object FormData]",
       switchedReadable.indexOf("en=الورشة") !== -1
       && switched.url.indexOf("%5Bobject%20FormData%5D") === -1, switchedReadable);
-  chk("تصفية تأميدات اليوم محفوظة بعد تغيير الجهة",
-      switched.url.indexOf("origin=tameedat") !== -1, switched.url);
+  chk("تصفية اليوم وبيانات الملحقات محفوظة بعد تغيير الجهة",
+      switched.url.indexOf("origin=tameedat") !== -1
+      && switched.url.indexOf("draft_atts=") !== -1, switched.url);
 
   console.log("=== الحفظ من المودال (رد السيرفر = تحويل لصفحة التاميدات) ===");
   const form = body.querySelector("form[data-ragboxes]");

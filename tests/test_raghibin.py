@@ -222,7 +222,7 @@ def test_panel_fragment(app, client):
     assert "ابراهيم ناجى عطا الله" not in body     # المستثنى لا يظهر في القائمة
     assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
     assert "حفظ وأعتماد التجهيزات" in body
-    assert "ضبط اليوم" in body
+    assert "يوم <b>الاثنين</b>" in body and "٢٢/٠٩/٢٠٣١" in body
     assert 'checked>' in body                      # محمد محمود مشيك (راغب اليوم)
     # بدون تأميدة: لا مربعات مع رسالة إرشادية
     r2 = client.get(f"/raghibin/panel?en={name}&d=5&c=officers")

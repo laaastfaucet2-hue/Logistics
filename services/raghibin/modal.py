@@ -6,6 +6,9 @@
 التأميدات نفسها (جذري ضد رسم صفحة الدخول داخل المودال: المحتوى موجود
 في الصفحة من أول تحميل، والجلب مجرد تحديث اختياري فوقه).
 """
+from datetime import date
+
+from core import arabic_numbers as arnum, egtime
 from core.config import MONTH_NAMES
 from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
@@ -26,9 +29,13 @@ def build(year, month, entity, day, cat, sid="", draft_totals=None,
         person["willing_today"] = state.get(person["id"])
     from routes.raghibin.context import _slots_vars
     variables = _slots_vars(year, month, entity, day, draft_totals=draft_totals)
+    selected_date = date(int(year), int(month), int(day))
     variables.update({
         "fcat": cat, "entity": entity, "sel_day": day,
         "year": year, "month": month,
+        "selected_weekday": egtime.weekday_ar(selected_date),
+        "selected_date_dmy": arnum.to_arabic_indic(
+            f"{selected_date.day:02d}/{selected_date.month:02d}/{selected_date.year:04d}"),
         "force_persons": persons,
         "entity_names": (dt.entity_names(year, month) if entity_names is None
                          else list(entity_names)),

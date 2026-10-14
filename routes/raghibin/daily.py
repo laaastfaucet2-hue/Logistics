@@ -35,7 +35,7 @@ from .context import (_category, _ctx, _draft_totals, _entity_or_back, _rb,
 
 # سياق فتح الكشف من فورم التأميدة: يظل محفوظًا عند تبديل الجهة/الفئة أو الحفظ.
 # origin يمنع تقييد قائمة الجهات في صفحة الراغبين العادية.
-_MODAL_CONTEXT_KEYS = ("et", "origin", "draft_en", "o", "i")
+_MODAL_CONTEXT_KEYS = ("et", "origin", "draft_en", "draft_atts", "o", "i")
 
 
 def _modal_context_values():
@@ -61,6 +61,37 @@ def _from_tameedat():
     return (request.values.get("origin") or "").strip() == "tameedat"
 
 
+def _draft_attachments():
+    """ملحقات فورم التأميدة المفتوح التي لها ضباط/أفراد (من غير حفظ مبكر)."""
+    raw = (request.values.get("draft_atts") or "").strip()
+    if not raw:
+        return []
+    try:
+        payload = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(payload, list):
+        return []
+
+    def count(value):
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+
+    out = []
+    for item in payload[:50]:
+        if not isinstance(item, dict):
+            continue
+        name = " ".join(str(item.get("n") or "").split())[:200]
+        officers, individuals = count(item.get("o")), count(item.get("i"))
+        if name and (officers or individuals):
+            out.append({"name": name,
+                        "entity_type": " ".join(str(item.get("t") or "").split())[:60],
+                        "officers": officers, "individuals": individuals})
+    return out
+
+
 def _tameedat_day_entity_names(year, month, day):
     """جهات تأميدات اليوم فقط + جهة الفورم الحالية ولو كانت تأميدتها مسودة.
 
@@ -78,8 +109,19 @@ def _tameedat_day_entity_names(year, month, day):
     draft_entity = dt.find_entity_by_name(year, month, draft_name) if draft_name else None
     if draft_entity:
         add(draft_entity["name"])
+    # الملحقات الظاهرة حاليًا في الفورم تدخل فورًا حتى قبل حفظ تعديل التأميدة،
+    # بشرط أن تكون جهة معروفة ولها ضباط أو أفراد (المجندون خارج كشف الراغبين).
+    for attachment in _draft_attachments():
+        attached_entity = dt.find_entity_by_name(year, month, attachment["name"])
+        if attached_entity:
+            add(attached_entity["name"])
     for record in dt.records_for_day(year, month, day, "all", ""):
         add(record.get("entity_name"))
+        for attachment in record.get("attachments") or []:
+            if attachment.get("officers", 0) or attachment.get("individuals", 0):
+                attached_entity = dt.find_entity_by_name(year, month, attachment.get("name"))
+                if attached_entity:
+                    add(attached_entity["name"])
     return names
 
 
@@ -96,24 +138,40 @@ def _modal_entity_and_names(year, month, day):
 
 
 def _draft_totals_for(entity):
-    """عدّادات المسودة تخص جهة الفورم فقط، لا أي جهة أخرى نختارها من القائمة."""
-    totals = _draft_totals(request)
-    draft_name = " ".join((request.values.get("draft_en") or "").split())
-    if (totals and draft_name
-            and (not entity or " ".join(entity.get("name", "").split()) != draft_name)):
+    """عدّادات المسودة للجهة الرئيسية أو للملحقة المختارة من نفس الفورم."""
+    if not entity:
         return None
-    return totals
-
-
-def _entity_type_label(entity):
-    """نوع الجهة: نوع مسودة التأميدة لجهتها، وإلا نوع قاموس الجهة بالعربي."""
-    form_type = (request.values.get("et") or "").strip()
+    entity_name = " ".join((entity.get("name") or "").split())
     draft_name = " ".join((request.values.get("draft_en") or "").split())
+    if entity_name == draft_name:
+        return _draft_totals(request)
+    for attachment in _draft_attachments():
+        if entity_name == attachment["name"]:
+            return {"officers": attachment["officers"],
+                    "individuals": attachment["individuals"]}
+    return None
+
+
+def _entity_type_label(entity, year=None, month=None, day=None):
+    """نوع الجهة من مسودة/سجل التأميدة نفسه، ثم قاموس الجهة كحل أخير."""
     entity_name = " ".join(((entity or {}).get("name") or "").split())
-    if draft_name and entity_name != draft_name:
-        form_type = ""
-    if form_type:
-        return form_type
+    draft_name = " ".join((request.values.get("draft_en") or "").split())
+    if entity_name and entity_name == draft_name:
+        form_type = (request.values.get("et") or "").strip()
+        if form_type:
+            return form_type
+    for attachment in _draft_attachments():
+        if entity_name == attachment["name"] and attachment["entity_type"]:
+            return attachment["entity_type"]
+    if _from_tameedat() and year and month and day and entity_name:
+        for record in dt.records_for_day(year, month, day, "all", ""):
+            if " ".join((record.get("entity_name") or "").split()) == entity_name:
+                raw = (record.get("entity_type") or "").strip()
+                return ENTITY_TYPE_AR.get(raw.lower(), raw or "غير محدد")
+            for attachment in record.get("attachments") or []:
+                if " ".join((attachment.get("name") or "").split()) == entity_name:
+                    raw = (attachment.get("entity_type") or record.get("entity_type") or "").strip()
+                    return ENTITY_TYPE_AR.get(raw.lower(), raw or "غير محدد")
     raw = ((entity or {}).get("entity_type") or "").strip()
     return ENTITY_TYPE_AR.get(raw.lower(), raw or "غير محدد")
 
@@ -134,7 +192,7 @@ def modal_page():
                                draft_totals=_draft_totals_for(entity),
                                entity_names=entity_names)
     variables["modal_context"] = _modal_context_values()
-    variables["entity_type_label"] = _entity_type_label(entity)
+    variables["entity_type_label"] = _entity_type_label(entity, year, month, day)
     # الرجوع بعد الحفظ: من تاب الراغبين يرجع للراحبين (back=raghibin) —
     # ومن التأميدات يفضل في التاميدات (الافتراضي tameedat)
     variables["back"] = request.args.get("back", "tameedat")
@@ -221,7 +279,7 @@ def _modal_fragment(year, month, entity, day, cat, draft_totals=None,
     variables["warn"] = request.values.get("warn", "")
     variables["err"] = request.values.get("err", "")
     variables["modal_context"] = _modal_context_values()
-    variables["entity_type_label"] = _entity_type_label(entity)
+    variables["entity_type_label"] = _entity_type_label(entity, year, month, day)
     return render_template("raghibin/modal_body.html", **variables)
 
 

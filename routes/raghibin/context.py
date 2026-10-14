@@ -126,14 +126,21 @@ def _monthly_vars(year, month, entity, category):
 
 
 def _tameed_day_totals(year, month, entity_id, selected):
-    """أعداد تأميدة اليوم المحدد للجهة (حسب مداها من-إلى) أو None."""
+    """أعداد الجهة في تأميدات اليوم، سواء رئيسية أو ملحقة، أو None."""
+    entity = dt.get_entity(year, month, entity_id) if entity_id else None
+    entity_name = " ".join(((entity or {}).get("name") or "").split())
     officers_total = individuals_total = 0
     for rec in dt.records_for_day(year, month, selected, "all", ""):
-        if rec.get("entity_id") != entity_id:
+        if not rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
             continue
-        if rec["day"] <= selected <= (rec.get("day_to") or rec["day"]):
+        if rec.get("entity_id") == entity_id:
             officers_total += rec["officers"]
             individuals_total += rec["individuals"]
+        for attachment in rec.get("attachments") or []:
+            attached_name = " ".join((attachment.get("name") or "").split())
+            if entity_name and attached_name == entity_name:
+                officers_total += attachment.get("officers", 0)
+                individuals_total += attachment.get("individuals", 0)
     if officers_total or individuals_total:
         return {"officers": officers_total, "individuals": individuals_total}
     return None

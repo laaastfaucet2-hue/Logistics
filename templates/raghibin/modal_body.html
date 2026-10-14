@@ -2,7 +2,7 @@
    كل الأزرار نماذج ولينكات تصفح عادي بـ sid — بلا أي جلب خفي.
    يحتاج: entity · sel_day · fcat · slots · force · force_persons ·
    officer_ranks · individual_ranks · ranks_map · entity_names · sid ·
-   categories · approval · scan_img_url · ok · err #}
+   selected_weekday · selected_date_dmy · categories · approval · scan_img_url · ok · err #}
 {% set dlist = 'rgForceOfficers' if fcat == 'officers' else 'rgForceIndividuals' %}
 {% set group = slots[fcat] %}
 {% set app = approval if approval else {'rank': '', 'name': '', 'status': 'موثقة'} %}
@@ -36,7 +36,9 @@
 
   {% if entity %}
   <!-- السجل المعتمد اتنقل لتاب «الجهات والكوادر» بس (توجيه ١٣/١٠) — صفحة الكشف للتسجيل اليومى فقط -->
-  <div class="rg-day-inline">ضبط اليوم: <b>{{ sel_day | aindic }}</b></div>
+  <div class="rg-day-inline">يوم <b>{{ selected_weekday }}</b>
+    <bdi dir="ltr" class="date-display">{{ selected_date_dmy }}</bdi>
+  </div>
 
   <!-- تويبات الفئتين — تصفح عادي -->
   <div class="rg-ctabs">
