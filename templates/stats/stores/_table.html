@@ -1,0 +1,31 @@
+{# جدول واحد من جداول التبويب — نفس العنوان والأعمدة والصفوف المكتوبة في ورقة الإكسل.
+   يُستدعى والمتغير t = {title, head, rows, foot}. الخلية الفارغة «—» (قاعدة ١١). #}
+{% macro ss_cell(c) -%}
+{%- if c.t is none or c.t == '' -%}—
+{%- elif c.c in ('ok', 'warn', 'bad') -%}<span class="st-exp {{ c.c }}">{% if c.k == 'date' %}<bdi dir="ltr">{{ c.t }}</bdi>{% else %}{{ c.t }}{% endif %}</span>
+{%- elif c.k == 'date' -%}<bdi dir="ltr">{{ c.t }}</bdi>
+{%- elif c.k == 'item' -%}{% set ic = color('item', c.t) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ c.t }}</b>
+{%- elif c.k == 'entity' -%}{% for nm in split_entities(c.t) %}{% set ec = color('entity', nm) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ nm }}</span>{% else %}<b>{{ nm }}</b>{% endif %}{% endfor %}
+{%- elif c.k == 'store' or c.c == 'b' -%}<b>{{ c.t }}</b>
+{%- else -%}{{ c.t }}
+{%- endif -%}
+{%- endmacro %}
+<div class="table-wrap">
+<table class="rt-table rc-print-table st-table ss-table" data-sheet="{{ t.title }}">
+  <thead><tr>{% for h in t.head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for row in t.rows %}
+    <tr>{% for c in row %}<td class="{{ c.c if c.c not in ('ok', 'warn', 'bad', 'b') else '' }}">{{ ss_cell(c) }}</td>{% endfor %}</tr>
+    {% else %}
+    <tr><td class="ss-none" colspan="{{ t.head | length }}">لا توجد بيانات</td></tr>
+    {% endfor %}
+  </tbody>
+  {% if t.foot %}
+  <tfoot>
+    {% for row in t.foot %}
+    <tr>{% for c in row %}<td>{{ c.t }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </tfoot>
+  {% endif %}
+</table>
+</div>

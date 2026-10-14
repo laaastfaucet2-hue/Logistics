@@ -1,0 +1,74 @@
+{# 🏬 هيدر ثابت: العنوان · شهري/سنوي · التبويبات التسعة بأرقامها · الفلاتر · شريط الملفات #}
+<div class="panel ss-head no-print" id="ssHead">
+  <div class="ss-head-row">
+    <div class="ss-title">
+      <span class="ss-title-ico" aria-hidden="true">🏬</span>
+      <div>
+        <h3>{{ ss.title }}</h3>
+        {% if ss.sub_line %}<small>{{ ss.sub_line }}</small>{% endif %}
+      </div>
+    </div>
+    <div class="st-seg">
+      <a class="st-seg-btn {{ 'on' if ss.scope == 'month' }}"
+         href="{{ url_for('stats.page', **dict(ss.keep, scope='month')) }}">📅 شهري</a>
+      <a class="st-seg-btn {{ 'on' if ss.scope == 'year' }}"
+         href="{{ url_for('stats.page', **dict(ss.keep, scope='year')) }}">📆 سنوي</a>
+    </div>
+  </div>
+
+  <nav class="ss-tabs" aria-label="تبويبات المخازن والثلاجات">
+    {% for t in ss.tabs %}
+    <a class="ss-tab {{ 'on' if t.key == ss.sub }}" href="{{ url_for('stats.page', **dict(ss.keep, sub=t.key)) }}">
+      <span class="ss-tab-ico" aria-hidden="true">{{ t.icon }}</span>
+      <span class="ss-tab-name">{{ t.name }}</span>
+      {% if t.badge %}<i class="ss-badge {{ t.badge_cls }}">{{ t.badge | aindic }}</i>{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <form method="get" action="{{ url_for('stats.page') }}" class="ss-filters">
+    <input type="hidden" name="sid" value="{{ g.sid or '' }}">
+    <input type="hidden" name="cycle" value="supply">
+    <input type="hidden" name="tab" value="stores">
+    <input type="hidden" name="sub" value="{{ ss.sub }}">
+    <input type="hidden" name="scope" value="{{ ss.scope }}">
+    <label>المخزن
+      <input type="text" name="f_store" data-combo="ssStores" value="{{ ss.filters.f_store }}"
+             placeholder="الكل" autocomplete="off">
+    </label>
+    <label>الدورة
+      <input type="text" name="f_cycle" data-combo="ssCycles" value="{{ ss.filters.f_cycle }}"
+             placeholder="الكل" autocomplete="off">
+    </label>
+    <label>الصنف
+      <input type="text" name="f_item" data-combo="ssItems" value="{{ ss.filters.f_item }}"
+             placeholder="الكل" autocomplete="off">
+    </label>
+    <datalist id="ssStores">{% for x in ss.options.stores %}<option value="{{ x }}">{% endfor %}</datalist>
+    <datalist id="ssCycles">{% for x in ss.options.cycles %}<option value="{{ x }}">{% endfor %}</datalist>
+    <datalist id="ssItems">{% for x in ss.options['items'] %}<option value="{{ x }}">{% endfor %}</datalist>
+    <button type="submit" class="rt-btn navy">تطبيق</button>
+    {% if ss.flt.active %}
+    <a class="st-reset" href="{{ url_for('stats.page', cycle='supply', tab='stores', sub=ss.sub, scope=ss.scope) }}">✕ مسح</a>
+    {% endif %}
+  </form>
+
+  <div class="ss-files">
+    <a class="rt-btn dim" href="{{ url_for('stats_stores.open_folder', sub=ss.sub, scope=ss.scope) }}">📂 فتح مجلد «{{ ss.folder_name }}»</a>
+    <a class="rt-btn dim" href="{{ url_for('stats_stores.open_file', sub=ss.sub, scope=ss.scope) }}">📗 فتح ملف «{{ ss.file_name }}»</a>
+    <a class="icon-btn down" href="{{ url_for('stats_stores.download', sub=ss.sub, scope=ss.scope) }}"
+       title="تنزيل «{{ ss.file_name }}»">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    </a>
+    {% include "partials/print_btn.html" %}
+    <form method="post" action="{{ url_for('stats_stores.refresh', sub=ss.sub, scope=ss.scope, **ss.filters_set) }}" class="ss-inline">
+      <button class="icon-btn sync" type="submit" title="تحديث الملفات">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+      </button>
+    </form>
+    <span class="ss-status {{ ss.status.state }}" id="ssStatus" aria-live="polite"
+          data-state="{{ ss.status.state }}"
+          data-url="{{ url_for('stats_stores.status', sub=ss.sub, scope=ss.scope) }}">{{ ss.status.text }}</span>
+    <span class="ss-path">{{ ss.path_text }}</span>
+  </div>
+</div>

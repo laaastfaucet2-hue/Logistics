@@ -21,7 +21,7 @@
     </p>
     {% for key, part in report.sections.items() %}
     <div class="ft-bar">
-      <span class="ft-where">📂 <b>{{ 'التاميدات' if key == 'tameedat' else 'قسم الراغبين' }}</b>
+      <span class="ft-where">📂 <b>{{ (titles or {}).get(key) or ('التاميدات' if key == 'tameedat' else 'قسم الراغبين') }}</b>
         — فُحص {{ part.checked | aindic }} · سليم {{ part.ok | aindic }} ·
         ناقص {{ part.problems | aindic }}</span>
     </div>

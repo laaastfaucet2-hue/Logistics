@@ -81,6 +81,19 @@ def section_files_path(year, month, section_index):
             / section_folder(section_index, SECTIONS[section_index - 1]["name"]))
 
 
+YEARLY_FOLDER = "00-السنوي"
+
+
+def yearly_path(year):
+    """مجلد ملفات السنة كاملة جنب مجلدات الشهور: database/<السنة>/00-السنوي."""
+    return year_path(year) / YEARLY_FOLDER
+
+
+def yearly_section_path(year, section_index):
+    """مجلد قسم داخل مجلد السنة — بنفس أسماء وترتيب أقسام الشهر (09-الاحصائيات …)."""
+    return yearly_path(year) / section_folder(section_index, SECTIONS[section_index - 1]["name"])
+
+
 def ensure_initialized(current_year):
     """عند أول تشغيل يُنشئ مجلد البيانات والسنة الحالية افتراضيًا."""
     DATA_DIR.mkdir(exist_ok=True)

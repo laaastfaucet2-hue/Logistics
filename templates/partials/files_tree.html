@@ -1,12 +1,15 @@
 {# 📁 حصر الملفات المحلية للقسم — شجرة تُفتح وتُغلق وتتحدث لحظيًا (توجيه ٠٦/١٠/٢٠٢٦).
-   يُستدعى بـ: {% set ft_section = 'tameedat' %} ثم include. #}
+   يُستدعى بـ: {% set ft_section = 'tameedat' %} ثم include.
+   اختياري: ft_scope = 'year' (ملفات 00-السنوي) · ft_note = false (بلا فقرة الشرح). #}
+{% set ft_titles = {'tameedat': 'التاميدات', 'raghibin': 'قسم الراغبين', 'stats_stores': 'إحصائيات المخازن والثلاجات'} %}
+{% set ft_scope_q = '&scope=year' if ft_scope is defined and ft_scope == 'year' else '' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/files-tree.css') }}?v={{ static_ver }}">
 <section class="ft-zone" id="ftZone"
-         data-tree="{{ url_for('files_tree.tree') }}?section={{ ft_section }}&v={{ static_ver }}{% if sid %}&sid={{ sid }}{% endif %}"
+         data-tree="{{ url_for('files_tree.tree') }}?section={{ ft_section }}{{ ft_scope_q }}&v={{ static_ver }}{% if sid %}&sid={{ sid }}{% endif %}"
          data-fresh="25">
   <button type="button" class="ft-head" id="ftToggle" aria-expanded="false" aria-controls="ftBody">
     <span class="ft-caret" aria-hidden="true">▾</span>
-    <b>📁 الملفات المحلية على جهازك — {{ 'التاميدات' if ft_section == 'tameedat' else 'قسم الراغبين' }}</b>
+    <b>📁 الملفات المحلية على جهازك — {{ ft_titles.get(ft_section, ft_section) }}{% if ft_scope_q %} (السنوي){% endif %}</b>
     <span class="ft-chips" id="ftChips">
       <i class="ft-chip dim">جارٍ الحصر الآن…</i>
     </span>
@@ -20,9 +23,10 @@
       <button type="button" class="ft-refresh" id="ftRefresh">🔄 تحديث الآن</button>
       <a class="ft-refresh ft-audit" href="{{ url_for('files_tree.audit_page') }}?section={{ ft_section }}{% if sid %}&sid={{ sid }}{% endif %}"
          title="القواعد الذهبية: الدباجة + الشعار + التوقيعان على كل ملف محلي">
-        🛡️ الفحص الذكي ({{ ft_section == 'tameedat' and 'التاميدات' or 'الراغبين' }})</a>
+        🛡️ الفحص الذكي ({{ {'tameedat': 'التاميدات', 'raghibin': 'الراغبين'}.get(ft_section, ft_titles.get(ft_section, ft_section)) }})</a>
     </div>
     <div class="ft-tree" id="ftTree" aria-live="polite"></div>
+    {% if ft_note is not defined or ft_note %}
     <p class="ft-note">
       <b>🛡️ الفحص الذكي:</b> زر «الفحص الذكي» يراجع كل ملف محلي على القرص بالقواعد الذهبية —
       الدباجة الرسمية · الشعار · التوقيعان · اسم الشهر — ويُظهر أي ملف ناقص فورًا.<br>
@@ -31,6 +35,7 @@
       الملفات المتأثرة <b>في نفس اللحظة</b>، وإذا كان الملف مفتوحًا في Excel ولم يُقفل بعد:
       البرنامج يحتفظ بالتحديث وينزّله فور إغلاق الملف (live-sync) فلا يضيع أي تغيير.
     </p>
+    {% endif %}
   </div>
 </section>
 <script src="{{ url_for('static', filename='js/files-tree.js') }}?v={{ static_ver }}"></script>

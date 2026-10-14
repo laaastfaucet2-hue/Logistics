@@ -232,6 +232,35 @@ def tafreeda_rows(year, month, cycle):
 
 
 @months.memo
+def remaining_batches(year, month, cycle):
+    """دفعات الدورة بالباقي الفعلي بعد التفريدة — نفس المحرك (الأقرب صلاحية أولًا).
+
+    الباقي = كمية الدفعة − ما سحبته التفريدة منها فعلًا: دفعتان ١٠٠ + ١٠٠ وصرف ١٢٠
+    ⇒ الأولى صفر والثانية ٨٠. مصدر الصلاحيات وأقرب صلاحية في الإحصائيات.
+    """
+    taken = {}
+    for row in tafreeda_rows(year, month, cycle):
+        key = (row["item"], row["store_id"], row["receipt_serial"], row["expiry"] or "")
+        taken[key] = round(taken.get(key, 0.0) + float(row["qty"] or 0), 6)
+    out = []
+    for batch in _batch_pool(year, month, cycle):
+        expiry = "" if batch["expiry"] == NO_EXPIRY else (batch["expiry"] or "")
+        key = (batch["item"]["name"], batch["store_id"], batch["serial"], expiry)
+        used = min(taken.get(key, 0.0), batch["qty"])
+        if used > 0:
+            taken[key] = round(taken[key] - used, 6)
+        out.append({
+            "item": batch["item"]["name"], "item_id": batch["item"]["id"],
+            "unit": batch["item"]["handle_unit"], "store_id": batch["store_id"],
+            "store_name": batch["store_name"], "serial": batch["serial"],
+            "expiry": expiry, "qty": batch["qty"],
+            "remaining": round(batch["qty"] - used, 6),
+            "producer": batch.get("producer") or "", "order": batch["order"],
+        })
+    return out
+
+
+@months.memo
 def fefo_actual_map(year, month, cycle):
     """المنصرف الفعلي (FEFO) لكل (permit_no, item) — نفس ما استهلكه المخزن
     الفيزيائي من كل إذن. يُستخدم في دفتر ٣ مخازن عشان الدفتر يسجل الأفعال

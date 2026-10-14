@@ -305,8 +305,8 @@ def register(app):
         if not endpoint.startswith(("recruits.", "letterhead.", "rations.", "tameedat.",
                                     "calc2.", "calc2_free.", "warehouses.", "stores.",
                                     "dowail.", "tarfea.", "occasions.", "backups.",
-                                    "health.", "stats.", "raghibin.", "month_copy.",
-                                    "inv6.")):
+                                    "health.", "stats.", "stats_stores.", "raghibin.",
+                                    "month_copy.", "inv6.")):
             return
         user = getattr(g, "user", None) or session.get("user")
         if user:

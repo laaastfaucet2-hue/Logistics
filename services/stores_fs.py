@@ -27,8 +27,10 @@ BALANCE_FILE = "كشف جرد أرصدة المخزن.xlsx"
 MAIN_FOLDER = "سجل المخازن"
 MAIN_FILE = "سجل المخازن.xlsx"
 
-STATS_FILE = "إحصائيات المخازن.xlsx"
-TAB_FILES = {"mains": MAIN_FILE, "stats": STATS_FILE}
+# ملف «إحصائيات المخازن.xlsx» القديم اتشال (قرار ٣ في خطة إحصائيات المخازن): محتواه بقى
+# جوه تبويبات «09-الاحصائيات/المخازن والثلاجات/» الشهرية والسنوية (services/stats_stores)
+LEGACY_STATS_FILE = "إحصائيات المخازن.xlsx"
+TAB_FILES = {"mains": MAIN_FILE}
 
 
 def _safe_name(title):
@@ -129,32 +131,19 @@ def snapshot(year, month):
         from services import cycle_xlsx
         cycle_xlsx.build_store_folders(base_dir(year, month), rep, units,
                                        year, month)
-        stats_snapshot(year, month)
+        remove_legacy_stats(year, month)
     except Exception:
         logging.exception("stores snapshot failed")
 
 
-def stats_snapshot(year, month):
-    """مرايا تاب الإحصائيات — بالمخزن + شهادات الصلاحية + توب ٥ (بلا جداول جديدة)."""
-    from services import stats_sections as ssec
-    try:
-        st = ssec.stores_stats(year, month)
-        path = file_path(year, month, "stats")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        _save_xlsx(path, [
-            ("بالمخزن", ["المخزن", "الأصناف", "الداخل", "الخارج", "إجمالي الرصيد"],
-             [(r["name"], r["items"], r["inn"], r["out"], r["total"]) for r in st["rows"]]
-             + [(st["unassigned"]["name"], st["unassigned"]["items"],
-                 st["unassigned"]["inn"], st["unassigned"]["out"], st["unassigned"]["total"])]),
-            ("شهادات الصلاحية", ["الحالة", "عدد الدفعات المضافة"],
-             [("سليم (أكثر من ٩٠ يوم)", st["expiring"]["ok"]),
-              ("قرب الصلاحية (٣٠–٩٠ يوم)", st["expiring"]["warn"]),
-              ("خطر (أقل من ٣٠ يوم)", st["expiring"]["bad"])]),
-            ("أعلى ٥ أصناف استهلاكًا", ["الصنف", "المنصرف (FEFO)"],
-             [(k, v) for k, v in st["top5"]]),
-        ], year, month)
-    except Exception:
-        logging.exception("stores stats snapshot failed")
+def remove_legacy_stats(year, month):
+    """يمسح ملف «إحصائيات المخازن.xlsx» القديم من فولدر القسم لو لسه موجود."""
+    old = base_dir(year, month) / LEGACY_STATS_FILE
+    if old.exists():
+        try:
+            old.unlink()
+        except OSError:
+            logging.warning("legacy stores stats file is locked: %s", old)
 
 
 def ensure_folders(year, month):
@@ -164,7 +153,7 @@ def ensure_folders(year, month):
     file_path(year, month, "mains")
     # 🧹 هيكل ١٠/٠٧ القديم: الملف الجذري الموحد + فولدر «حركة وكشف الأرصدة»
     for old in ("حركة وكشف أرصدة المخازن.xlsx",
-                "حركة المخازن.xlsx", "حركة المخازن تغليف.xlsx"):
+                "حركة المخازن.xlsx", "حركة المخازن تغليف.xlsx", LEGACY_STATS_FILE):
         oldp = base / old
         if oldp.exists():
             try:

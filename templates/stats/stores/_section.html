@@ -1,0 +1,16 @@
+{# جدول بعنوانه: لوحة ثابتة، أو مطوية (t.fold) تُفتح كلها تلقائيًا عند الطباعة #}
+{% if t.fold %}
+<details class="panel st-fold ss-fold"{% if ss_open %} open{% endif %}>
+  <summary class="st-fold-head">
+    <h3>{{ t.title }}</h3>
+    {% if t.badge %}<span class="ss-chip {{ t.badge_cls }}">{{ t.badge }}</span>{% endif %}
+    <span class="st-fold-ico" aria-hidden="true">▾</span>
+  </summary>
+  <div class="st-fold-body">{% include "stats/stores/_table.html" %}</div>
+</details>
+{% else %}
+<section class="panel ss-sec">
+  <h3 class="ss-sec-title">{{ t.title }}{% if t.rows %} <span class="panel-count">{{ t.rows | length | aindic }}</span>{% endif %}</h3>
+  {% include "stats/stores/_table.html" %}
+</section>
+{% endif %}

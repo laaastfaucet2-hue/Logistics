@@ -1,0 +1,5 @@
+{# 🗃️ أرصدة المخازن — الإجمالي ثم مخزن مخزن (المخزن الأول مفتوح) ثم غير موزع #}
+{% include "stats/stores/_cards.html" %}
+{% for table in ss.view.tables %}
+{% with t = table, ss_open = (loop.index <= 2 or ss.flt.active) %}{% include "stats/stores/_section.html" %}{% endwith %}
+{% endfor %}

@@ -1,0 +1,5 @@
+{# ⏳ الصلاحيات — ملخص الحالات ثم الدفعات اللي فيها رصيد فعلًا (الأقرب صلاحية أولًا) #}
+{% include "stats/stores/_cards.html" %}
+{% for table in ss.view.tables %}
+{% with t = table, ss_open = true %}{% include "stats/stores/_section.html" %}{% endwith %}
+{% endfor %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}الإحصائيات والتتبع — {{ cycle_name }} • منظومة التعيينات{% endblock %}
-{% block print_doc_title %}الإحصائيات والتتبع — {{ cycle_name }}{% endblock %}
+{% block print_doc_title %}{% if ss %}{{ ss.print_title }}{% else %}الإحصائيات والتتبع — {{ cycle_name }}{% endif %}{% endblock %}
+{% block body_class %}{% if ss and ss.wide %}ss-print-wide{% endif %}{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
@@ -12,7 +13,7 @@
   <input type="hidden" name="scope" value="{{ scope }}">
 
   <!-- الترويسة: النطاق + الدورة + الطباعة -->
-  <div class="panel st-head">
+  <div class="panel st-head{{ ' no-print' if st_tab == 'stores' }}">
     <div class="st-head-row">
       <div class="st-title">
         <span class="st-title-ico">{{ cycle_icon }}</span>
@@ -25,15 +26,18 @@
         </div>
       </div>
       <div class="st-head-actions">
+        {% set seg_keep = ss.keep if ss else {'cycle': cycle, 'tab': st_tab if st_tab == 'track' else None} %}
         <div class="st-seg">
           <a class="st-seg-btn {{ 'on' if scope == 'month' else '' }}"
-             href="{{ url_for('stats.page', cycle=cycle, scope='month') }}">📅 شهر</a>
+             href="{{ url_for('stats.page', **dict(seg_keep, scope='month')) }}">📅 شهر</a>
           <a class="st-seg-btn {{ 'on' if scope == 'year' else '' }}"
-             href="{{ url_for('stats.page', cycle=cycle, scope='year') }}">📆 سنة</a>
+             href="{{ url_for('stats.page', **dict(seg_keep, scope='year')) }}">📆 سنة</a>
         </div>
+        {% if not ss %}
         <a class="rt-btn navy" href="{{ url_for('stats.print_view', cycle=cycle, scope=scope, tab=st_tab,
               f_item=filters.item, f_supplier=filters.supplier, f_producer=filters.producer, f_entity=filters.entity) }}">
           🖨️ طباعة رسمية</a>
+        {% endif %}
       </div>
     </div>
 
@@ -272,6 +276,8 @@
 </details>
 
 {% endif %}
+{% elif ss %}
+{% include "stats/stores/_page.html" %}
 {% else %}
 <!-- ============ تبويب قسم: {{ section.icon }} {{ section.title }} ============ -->
 <div class="panel st-sec">
@@ -330,56 +336,6 @@
   <div class="hl-empty dim">لا توجد بيانات لهذا القسم في الفترة</div>
   {% endif %}
 
-  {# جرد المخازن الحي — لكل مخزن #}
-  {% if section.key == 'stores' and section.inventory %}
-  <div class="st-inv">
-    {% for store in section.inventory %}
-    <details class="panel st-fold st-inv-store">
-      <summary class="st-fold-head">
-        <h3 class="st-fold-title">🏬 {{ store.name }} <span class="panel-count">{{ store.items | aindic }} صنف · إجمالى الرصيد {{ store.total | qty }}</span></h3>
-        <span class="st-fold-ico">▾</span>
-      </summary>
-      <div class="st-fold-body">
-      {% if store.rows %}
-      <table class="rt-table rc-print-table st-table">
-        <thead>
-          <tr><th>الصنف</th><th class="num">الرصيد</th><th>دخل (التاريخ + اليوم)</th>
-              <th>صرفها (الجهات)</th><th>أقرب صلاحية متبقية</th><th>متوقع ينتهي</th></tr>
-        </thead>
-        <tbody>
-          {% for r in store.rows %}
-          <tr>
-            <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}<b>{{ r.item }}</b> <span class="dim">{{ r.unit }}</span></td>
-            <td class="num"><b>{{ r.balance | qty }}</b></td>
-            <td>{{ r.in_label }}</td>
-            <td>
-              {% for e in r.issuers %}
-              <span class="ent-chip inv-chip" style="--ec:{{ color('entity', e) }}">{{ e }}</span>
-              {% endfor %}
-              {% if r.issuers_more %}<span class="dim">+ {{ r.issuers_more | aindic }}</span>{% endif %}
-              {% if not r.issuers %}<span class="dim">لا يوجد صرف بعد</span>{% endif %}
-            </td>
-            <td>
-              {% if r.exp %}
-              <span class="st-exp {{ r.badge }}">{{ r.exp }}{% if r.exp_days is not none %}<small> ({{ r.exp_days | aindic }} يوم)</small>{% endif %}</span>
-              {% else %}<span class="dim">—</span>{% endif %}
-            </td>
-            <td>{{ r.out_est or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div class="hl-empty dim">لا توجد أصناف في هذا المخزن</div>
-      {% endif %}
-      </div>
-    </details>
-    {% endfor %}
-    {% if section.inventory_unassigned %}
-    <span class="panel-hint">⚠️ في {{ section.inventory_unassigned | aindic }} صنف برصيد غير موزع على مخازن (في «غير موزع» بقسم المخازن)</span>
-    {% endif %}
-  </div>
-  {% endif %}
 </div>
 {% endif %}
 {% endblock %}

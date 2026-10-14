@@ -375,24 +375,7 @@ def section_detail(cycle, year, month, key):
                 cell(BADGE_TEXT[h["water"]["badge"]], h["water"]["badge"]),
             ]],
         })
-    elif key == "stores":
-        st = ssec.stores_stats(year, month)
-        exp = st["expiring"]
-        inv = ssec.stores_inventory(year, month)
-        base.update({
-            "hint": "حركة وكشف أرصدة — بالدورتين معًا (إمداد + متعهد) · جرد حي لكل مخزن",
-            "cards": [
-                C("مخازن", arnum.to_arabic_indic(st["stores_count"])),
-                C("دفعات قريبة/متأخرة", arnum.to_arabic_indic(exp["warn"] + exp["bad"]),
-                  "{} خطرة".format(arnum.to_arabic_indic(exp["bad"])),
-                  "bad" if exp["bad"] else "warn" if exp["warn"] else "good"),
-                C("أصناف بالجرد", arnum.to_arabic_indic(sum(r["items"] for r in st["rows"]))),
-            ],
-            "head": ["الأعلى استهلاكًا", "الكمية المنصرفة"],
-            "rows": [[cell(name, "", "item"), cell(arnum.to_arabic_indic(qty))] for name, qty in st["top5"][:3]],
-            "inventory": inv["stores"],
-            "inventory_unassigned": inv["unassigned_items"],
-        })
+    # «المخازن والثلاجات» له تبويباته الفرعية التسعة: services/stats_stores
     elif key == "tameedat":
         tm = ssec.tameedat_stats(year, month)
         tot = tm["totals"]
