@@ -1,10 +1,9 @@
 /* ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md */
-/* 🏬 إحصائيات المخازن والثلاجات — هيدر ثابت + ٩ تبويبات فرعية + شريط الملفات.
+/* 🏬 إحصائيات المخازن والثلاجات — هيدر أول الصفحة + ٩ تبويبات فرعية + شريط الملفات.
    ألوان الهوية من theme.css فقط (slate + amber) — أخضر سليم · برتقالي تحذير · أحمر خطر. */
 
-/* ===== الهيدر الثابت ===== */
-.ss-head { position: sticky; top: var(--stick-top, calc(var(--window-h) + 86px)); z-index: 30;
-  padding: 12px 16px; margin: 0 0 14px; border: 1.5px solid rgba(var(--gold-rgb), .45);
+/* ===== الهيدر: في أول الصفحة ومش بينزل مع النزول (طلب المستخدم ١٤/١٠) ===== */
+.ss-head { padding: 12px 16px; margin: 0 0 14px; border: 1.5px solid rgba(var(--gold-rgb), .45);
   box-shadow: 0 12px 26px rgba(0, 0, 0, .28); }
 .ss-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
   flex-wrap: wrap; }
@@ -66,12 +65,9 @@
   border: 1.5px dashed rgba(var(--gold-rgb), .55); color: var(--brand-gold); }
 .ss-print-only { display: none; }
 
-/* ===== الشاشات الصغيرة: الهيدر غير ثابت والتبويبات تتحرك بالعرض ===== */
+/* ===== الشاشات الصغيرة: التبويبات تتحرك بالعرض ===== */
 @media (max-width: 1100px) {
   .ss-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-}
-@media (max-width: 900px), (max-height: 640px) {
-  .ss-head { position: static; }
 }
 @media (max-width: 640px) {
   .ss-tabs { display: flex; overflow-x: auto; padding-top: 8px; }

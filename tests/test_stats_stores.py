@@ -167,6 +167,15 @@ def test_scope_switch_keeps_the_same_subtab(client):
     assert yearly and all("sub=balances" in h for h in yearly)
 
 
+def test_header_stays_at_the_top_of_the_page_while_scrolling():
+    """طلب المستخدم ١٤/١٠: الهيدر ميفضلش نازل معاه وهو بينزل في الصفحة."""
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / "static" / "css" / "stats_stores.css"
+           ).read_text(encoding="utf-8")
+    rules = re.findall(r"\.ss-head\s*\{([^}]*)\}", css)
+    assert rules and not any("sticky" in r or "fixed" in r for r in rules)
+
+
 def test_wide_tab_prints_landscape_with_letterhead_and_signatures_together(client):
     """جدول أكثر من ١٠ أعمدة ⇒ الورق كله بالعرض (صفحة مسماة على body فلا ينفصل التوقيعان)."""
     seed_basic()
