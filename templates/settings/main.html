@@ -29,7 +29,8 @@
   <form method="post" action="{{ url_for('settings.gate') }}">
     <input type="hidden" name="sub" value="{{ sub }}">
     <input type="hidden" name="action" value="lock">
-    <button type="submit" class="sg-lockbtn">قفل القسم</button>
+    {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
+    <button type="submit" class="sg-lockbtn">إغلاق وحماية</button>
   </form>
 </div>
 {% endif %}

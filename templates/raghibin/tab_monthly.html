@@ -13,17 +13,25 @@
     {% if entities %}
     <form method="get" action="/raghibin" class="rg-addform">
       <input type="hidden" name="tab" value="monthly">
+      <input type="hidden" name="e" value="{{ entity.id if entity else '' }}">
       {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
-      <div class="fld rg-grow"><label>القطاع / الجهة</label>
-        <select name="e" onchange="this.form.submit()">
-          {% for ent in entities %}
-          <option value="{{ ent.id }}" {{ 'selected' if entity and entity.id == ent.id }}>{{ ent.name }}</option>
-          {% endfor %}
-        </select>
+      <div class="fld rg-monthly-entity-field"><label>القطاع / الجهة</label>
+        <details class="rg-entity-picker">
+          <summary aria-label="فتح قائمة الجهات">
+            <span>{{ entity.name if entity else 'اختر الجهة' }}</span>
+          </summary>
+          <div class="rg-entity-options" role="listbox" aria-label="جهات التجميع الشهري">
+            {% for ent in entities %}
+            <a class="rg-entity-option {{ 'on' if entity and entity.id == ent.id }}"
+               role="option" aria-selected="{{ 'true' if entity and entity.id == ent.id else 'false' }}"
+               data-entity-name="{{ ent.name }}"
+               href="{{ mbase }}&e={{ ent.id }}&c={{ fcat }}">{{ ent.name }}</a>
+            {% endfor %}
+          </div>
+        </details>
       </div>
       <button class="rt-btn {{ 'gold' if fcat == 'officers' }}" name="c" value="officers" type="submit">🎖 ض — الضباط</button>
       <button class="rt-btn {{ 'gold' if fcat == 'individuals' }}" name="c" value="individuals" type="submit">👥 أ — الأفراد</button>
-      <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
     </form>
     {% else %}
     <p class="rg-dim">لا توجد جهات بعد.</p>

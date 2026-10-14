@@ -148,7 +148,9 @@ tr.sg-off td { opacity: .55; }
   background: var(--surface-soft); border: 1px solid var(--card-border); color: inherit; }
 .sg-lock-form input[type="password"]:focus { outline: none; border-color: var(--brand-gold); }
 .sg-lock-note { margin-top: 18px; font-size: .78rem !important; }
-.ctx-strip .sg-lockbtn { margin-inline-start: auto; }
+.sg-inline-lock { display: inline-flex; margin: 0; }
+.ctx-strip .sg-inline-lock.sg-push-lock { margin-inline-start: auto; }
+.sg-inline-lock button { white-space: nowrap; }
 
 /* ===== لوحة العمل النشطة (تعديل/صلاحيات) — أعلى الصفحة وبارزة (توجيه ١١/١٠) ===== */
 .sg-workpanel {

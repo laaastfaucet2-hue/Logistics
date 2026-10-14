@@ -16,21 +16,27 @@
   <!-- من التأميدات: جهات تأميدات اليوم فقط؛ من قسم الراغبين: قاموس الشهر -->
   <div class="rg-entity-box">
     <div class="rg-entity-cap">الجهة المختارة للراغبين</div>
-    <form method="get" action="/raghibin/modal" class="rg-entity-form">
-      <input type="hidden" name="d" value="{{ sel_day }}">
-      <input type="hidden" name="c" value="{{ fcat }}">
-      {% for key, value in mctx.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
-      {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
-      <select class="rg-entity-select" name="en" aria-label="الجهة المختارة للراغبين"
-              onchange="this.form.submit()">
-        {% for n in entity_names %}
-        <option value="{{ n }}" {{ 'selected' if entity and entity.name == n }}>{{ n }}</option>
-        {% else %}
-        <option value="" selected disabled>لا توجد جهات تأميدات في هذا اليوم</option>
-        {% endfor %}
-      </select>
-      <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
-    </form>
+    <div class="rg-entity-form">
+      {% if entity_names %}
+      <details class="rg-entity-picker">
+        <summary aria-label="فتح قائمة الجهات">
+          <span>{{ entity.name if entity else 'اختر الجهة' }}</span>
+        </summary>
+        <div class="rg-entity-options" role="listbox" aria-label="جهات الراغبين المتاحة">
+          {% for n in entity_names %}
+          <a class="rg-entity-option {{ 'on' if entity and entity.name == n }}"
+             role="option" aria-selected="{{ 'true' if entity and entity.name == n else 'false' }}"
+             data-entity-name="{{ n }}"
+             href="/raghibin/modal?c={{ fcat | urlencode }}&d={{ sel_day }}&en={{ n | urlencode }}{% for key, value in mctx.items() %}&{{ key }}={{ value | urlencode }}{% endfor %}{{ '&sid=' + (sid | urlencode) if sid }}">
+            {{ n }}
+          </a>
+          {% endfor %}
+        </div>
+      </details>
+      {% else %}
+      <div class="rg-entity-empty">لا توجد جهات تأميدات في هذا اليوم</div>
+      {% endif %}
+    </div>
     {% if entity %}<span class="rg-type-chip">✓ نوع الجهة: {{ entity_type_label | default(entity.entity_type) }} معتمدة</span>{% endif %}
   </div>
 

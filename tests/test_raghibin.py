@@ -184,8 +184,9 @@ def test_modal_full_page_no_fetch(app, client):
     assert "كشف وتسجيل أسماء الضباط والأفراد الراغبين" in body
     assert body.count('name="names"') == 10
     assert "رجوع إلى صفحة التأميدات" in body
-    assert "/raghibin/panel/quick_add" in body          # فورم POST عادي
-    assert 'action="/raghibin/modal"' in body           # منسدلة GET عادية
+    assert "/raghibin/panel/quick_add" not in body      # إضافة القوة من تاب الكوادر فقط
+    assert 'class="rg-entity-picker"' in body           # قائمة جهات مخصصة واضحة وصغيرة
+    assert 'data-entity-name="' + name + '"' in body
     assert "rg-force-toggle" in body                    # التشيك (لمس محلي)
     assert 'value="محمد محمود"' in body                 # الراغب معبأ في مربعه
     # صفحة التأميدات: الزرار + السكريبت الجديد — ولا أثر للمودال القديم
@@ -212,17 +213,18 @@ def test_panel_fragment(app, client):
     assert body.count('name="names"') == 10       # ١٠ مربعات حسب التأميدة
     assert 'value="tameedat"' in body and 'value="tamida"' in body
     assert "الجهة المختارة للراغبين" in body       # المنسدلة
-    assert 'class="rg-entity-select"' in body
-    assert "الاسم رباعي" in body                   # تسمية الاسم رباعي
-    assert "جهة شرطية معتمدة" in body
-    assert "ضابط — الضباط المسجلون" in body and "فرد — الأفراد والصفة" in body
+    assert 'class="rg-entity-picker"' in body
+    assert 'class="rg-entity-options"' in body
+    assert "اكتب اسم الضابط" in body               # تسمية مربع الاسم واضحة
+    assert "نوع الجهة: شرطية معتمدة" in body
+    assert "👮 ضابط (" in body and "👥 فرد (" in body
     assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
     assert "<details" in body and "قائمة قوة الضباط المعتمدة" in body  # قابلة للطي
     assert "rg-force-del" not in body              # بدون زر الحذف (من الكوادر فقط)
     assert "/raghibin/modal?c=individuals" in body  # تابات الفئات تصفح عادي
     assert "ابراهيم ناجى عطا الله" not in body     # المستثنى لا يظهر في القائمة
     assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
-    assert "حفظ وأعتماد التجهيزات" in body
+    assert '<button class="rt-btn gold" type="submit">حفظ</button>' in body
     assert "يوم <b>الاثنين</b>" in body and "٢٢/٠٩/٢٠٣١" in body
     assert 'checked>' in body                      # محمد محمود مشيك (راغب اليوم)
     # بدون تأميدة: لا مربعات مع رسالة إرشادية
@@ -361,6 +363,8 @@ def test_monthly_tab_and_file(app, client):
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert "rg-monthly-table" in body and "رائد / محمد محمود" in body
+    assert 'class="rg-entity-picker"' in body
+    assert f'data-entity-name="{name}"' in body
     day_headers = re.findall(
         r'<th class="rg-monthly-day"[^>]*>\s*<b>([^<]+)</b>\s*<small>([^<]+)</small>',
         body,

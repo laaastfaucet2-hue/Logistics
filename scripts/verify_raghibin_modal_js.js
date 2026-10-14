@@ -13,12 +13,14 @@ function chk(label, cond, extra) {
 
 const FRAG1 = `
 <div class="rg-modal-form">
-  <form method="get" action="/raghibin/modal" class="rg-entity-form">
-    <input type="hidden" name="d" value="22"><input type="hidden" name="c" value="officers">
-    <input type="hidden" name="origin" value="tameedat"><input type="hidden" name="draft_en" value="صالة الترفية">
-    <input type="hidden" name="draft_atts" value='[{"n":"الورشة","t":"حربية","o":4,"i":3}]'>
-    <select class="rg-entity-select" name="en"><option value="صالة الترفية">صالة الترفية</option><option value="الورشة">الورشة</option></select>
-  </form>
+  <div class="rg-entity-form">
+    <details class="rg-entity-picker"><summary>صالة الترفية</summary>
+      <div class="rg-entity-options">
+        <a class="rg-entity-option on" data-entity-name="صالة الترفية" href="/raghibin/modal?c=officers&d=22&en=%D8%B5%D8%A7%D9%84%D8%A9%20%D8%A7%D9%84%D8%AA%D8%B1%D9%81%D9%8A%D8%A9&origin=tameedat&draft_en=%D8%B5%D8%A7%D9%84%D8%A9%20%D8%A7%D9%84%D8%AA%D8%B1%D9%81%D9%8A%D8%A9&draft_atts=%5B%7B%22n%22%3A%22%D8%A7%D9%84%D9%88%D8%B1%D8%B4%D8%A9%22%2C%22t%22%3A%22%D8%AD%D8%B1%D8%A8%D9%8A%D8%A9%22%2C%22o%22%3A4%2C%22i%22%3A3%7D%5D">صالة الترفية</a>
+        <a class="rg-entity-option" data-entity-name="الورشة" href="/raghibin/modal?c=officers&d=22&en=%D8%A7%D9%84%D9%88%D8%B1%D8%B4%D8%A9&origin=tameedat&draft_en=%D8%B5%D8%A7%D9%84%D8%A9%20%D8%A7%D9%84%D8%AA%D8%B1%D9%81%D9%8A%D8%A9&draft_atts=%5B%7B%22n%22%3A%22%D8%A7%D9%84%D9%88%D8%B1%D8%B4%D8%A9%22%2C%22t%22%3A%22%D8%AD%D8%B1%D8%A8%D9%8A%D8%A9%22%2C%22o%22%3A4%2C%22i%22%3A3%7D%5D">الورشة</a>
+      </div>
+    </details>
+  </div>
   <div class="rg-slotsbox"><span class="rg-filled-count">٠</span>
   <form method="post" action="/raghibin/daily/save" data-ragboxes>
     <input type="hidden" name="e" value="21"><input type="hidden" name="d" value="22">
@@ -125,9 +127,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       JSON.stringify(draftAtts));
 
   console.log("=== تغيير الجهة من القائمة المنسدلة ===");
-  const picker = body.querySelector(".rg-entity-select");
-  picker.value = "الورشة";
-  picker.form.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true }));
+  const picker = body.querySelector('[data-entity-name="الورشة"]');
+  picker.dispatchEvent(new win.MouseEvent("click", { bubbles: true, cancelable: true }));
   await sleep(30);
   const switched = calls[calls.length - 1];
   const switchedReadable = decodeURIComponent(switched.url);
