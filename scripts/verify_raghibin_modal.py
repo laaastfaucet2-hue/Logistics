@@ -214,7 +214,7 @@ chk("قائمة الجهة المفتوحة عالية التباين في فا�
 print("\n=== ③ تحميل ستايل الراغبين في صفحات التأميدات ===")
 pg = c.get("/tameedat?tab=day").get_data(as_text=True)
 chk("raghibin.css محمّل في اليومية", "css/raghibin.css" in pg)
-chk("STATIC_VER = 229", "?v=229" in pg)
+chk("STATIC_VER = 230", "?v=230" in pg)
 chk("الديالوج فيه شرح فرعي", "tm-rgdialog-sub" in pg)
 chk("حقل نوع التأميدة ممرر من الزر", "type_choice" in pg)
 chk("زر فتح الراغبين موجود", 'id="tmRagNamesBtn"' in pg)

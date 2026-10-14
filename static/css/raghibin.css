@@ -51,6 +51,36 @@
 .rg-daybtns button.on-w { background: #16a34a; border-color: #16a34a; color: #fff; }
 .rg-daybtns button.on-n { background: #dc2626; border-color: #dc2626; color: #fff; }
 .rg-total-row td { background: rgba(245, 158, 11, .12); font-size: 1rem; }
+/* تجميع الكشف الشهري: أيام الشهر بعناوين من سطرين وتسلسل الوجبات الفعلية */
+.rg-monthly-table-wrap { width: 100%; max-width: 100%; overflow-x: auto;
+  border: 1px solid var(--card-border); border-radius: 12px;
+  scrollbar-color: var(--gold-border) transparent; }
+.rg-monthly-table { width: max-content; min-width: 100%; font-size: .78rem;
+  border-collapse: separate; border-spacing: 0; }
+.rg-monthly-table th, .rg-monthly-table td { box-sizing: border-box;
+  border-inline-start: 1px solid var(--card-border); }
+.rg-monthly-table th:first-child, .rg-monthly-table td:first-child {
+  border-inline-start: 0; }
+.rg-monthly-table th { padding: 6px 4px; vertical-align: middle; white-space: nowrap; }
+.rg-monthly-table td { height: 42px; padding: 5px 4px; }
+.rg-monthly-table .rg-monthly-serial { width: 42px; min-width: 42px; max-width: 42px;
+  position: sticky; right: 0; z-index: 2; background: var(--card); }
+.rg-monthly-table .rg-monthly-name { width: 245px; min-width: 245px; max-width: 245px;
+  position: sticky; right: 42px; z-index: 2; background: var(--card);
+  text-align: right; padding-inline: 10px; white-space: normal; }
+.rg-monthly-table thead .rg-monthly-serial,
+.rg-monthly-table thead .rg-monthly-name { z-index: 4;
+  background: var(--brand-gold, #f59e0b22); }
+.rg-monthly-table .rg-monthly-day { width: 48px; min-width: 48px; max-width: 48px; }
+.rg-monthly-day b { display: block; font-size: .9rem; line-height: 1.1; }
+.rg-monthly-day small { display: block; margin-top: 4px; color: var(--muted);
+  font-size: .6rem; line-height: 1; font-weight: 700; }
+.rg-monthly-table .rg-monthly-total { width: 94px; min-width: 94px;
+  white-space: nowrap; }
+.rg-monthly-meal.has-meal b { color: #16a34a; font-size: .9rem; }
+.rg-monthly-meal.no-meal { color: var(--muted); opacity: .7; font-size: 1rem; }
+.rg-monthly-table tbody tr:not(.rg-total-row):hover td { background: rgba(245, 158, 11, .06); }
+.rg-monthly-summary td { height: auto; padding: 10px; white-space: nowrap; }
 .rg-note-badge { display: inline-block; max-width: 220px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
   padding: 2px 9px; border-radius: 8px; font-size: .82rem; font-weight: 700;

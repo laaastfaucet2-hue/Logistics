@@ -523,10 +523,10 @@ def day_willing_counts(year, month, entity_id=None):
     return out
 
 
-def month_meals(year, month, entity_id=None, category=None):
-    """عدد وجبات الشهر لكل عضو (راغب اليوم = وجبة): {person_id: count}."""
+def month_meal_days(year, month, entity_id=None, category=None):
+    """أيام الوجبات الفعلية لكل عضو: {person_id: [day, ...]} مرتبة تصاعديًا."""
     conn = _conn(year, month)
-    sql = ("SELECT d.person_id, COUNT(*) AS meals FROM ragh_daily d "
+    sql = ("SELECT d.person_id, d.day FROM ragh_daily d "
            "JOIN ragh_persons p ON p.id = d.person_id "
            "WHERE d.willing = 1")
     params = []
@@ -536,10 +536,18 @@ def month_meals(year, month, entity_id=None, category=None):
     if category in CATEGORY_KEYS:
         sql += " AND p.category = ?"
         params.append(category)
-    sql += " GROUP BY d.person_id"
-    out = {row["person_id"]: row["meals"] for row in conn.execute(sql, params)}
+    sql += " ORDER BY d.person_id, d.day"
+    out = {}
+    for row in conn.execute(sql, params):
+        out.setdefault(row["person_id"], []).append(int(row["day"]))
     conn.close()
     return out
+
+
+def month_meals(year, month, entity_id=None, category=None):
+    """عدد وجبات الشهر لكل عضو (راغب اليوم = وجبة): {person_id: count}."""
+    return {person_id: len(days) for person_id, days in
+            month_meal_days(year, month, entity_id, category).items()}
 
 
 def copy_force(year, month, target_year, target_month, entity_ids=None):

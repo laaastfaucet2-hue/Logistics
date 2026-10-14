@@ -113,12 +113,25 @@ def _excluded_vars(year, month, entity, query):
 
 
 def _monthly_vars(year, month, entity, category):
-    """متغيرات تاب «تجميع الكشف العام»: وجبات الشهر (وجبة/يوم) بالفئة المختارة."""
-    meals = dr.month_meals(year, month, entity["id"], category) if entity else {}
-    persons = dr.list_persons(year, month, entity_id=entity["id"], category=category,
+    """متغيرات التجميع العام: أيام الشهر وتسلسل الوجبات الفعلية لكل شخص."""
+    entity_id = entity["id"] if entity else None
+    meal_days = dr.month_meal_days(year, month, entity_id, category) if entity else {}
+    persons = dr.list_persons(year, month, entity_id=entity_id, category=category,
                               excluded=False) if entity else []
-    rows = [{"person": p, "meals": meals.get(p["id"], 0)} for p in persons]
+    rows = []
+    for person in persons:
+        days = meal_days.get(person["id"], [])
+        rows.append({
+            "person": person,
+            "meals": len(days),
+            "meal_sequence": {day: index for index, day in enumerate(days, 1)},
+        })
+    monthly_days = [
+        {"day": day, "weekday": egtime.weekday_ar(date(year, month, day))}
+        for day in range(1, egtime.days_in_month(year, month) + 1)
+    ]
     return {
+        "monthly_days": monthly_days,
         "monthly_rows": rows,
         "monthly_total_persons": len(rows),
         "monthly_total_meals": sum(r["meals"] for r in rows),
