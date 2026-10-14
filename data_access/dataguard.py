@@ -20,6 +20,8 @@ from core.paths import DATA_DIR
 BACKUP_DIR = DATA_DIR / "backups"
 KEEP_N = 40                       # أقصى عدد نسخ محفوظة قبل التدوير
 _LOCK = threading.Lock()
+# «الإعدادات» = مرايا مشفرة بالباستورد الملكي (ليست حزم ZIP ولا مصدر بيانات)
+MIRRORS_DIR = "الإعدادات"
 _NAME_RE = re.compile(r"^backup_\d{4}-\d{2}-\d{2}_\d{6}(_\d+)?_[a-z-]+\.zip$")
 
 REASON_LABELS = {
@@ -49,7 +51,7 @@ def data_files():
         if "backups" in p.relative_to(DATA_DIR).parts:
             continue
         # «الإعدادات» = مرايا مشفرة بالباستورد الملكي (مش مصدر بيانات) — خارج الفحص والحصر
-        if "الإعدادات" in p.relative_to(DATA_DIR).parts:
+        if MIRRORS_DIR in p.relative_to(DATA_DIR).parts:
             continue
         if p.name.endswith(("-wal", "-shm", ".tmp")) or ".tmp-" in p.name or ".corrupt-" in p.name:
             continue

@@ -86,6 +86,23 @@ def test_backup_and_first_install_import_preserve_source(app,tmp_path):
         import_database(source,dest)
 
 
+def test_first_install_import_keeps_encrypted_mirrors_and_skips_office_locks(app,tmp_path):
+    from openpyxl import Workbook
+    from services.settings_fs import _save_encrypted,_load_decrypted
+    source=storage.DATA_DIR
+    mirror=source/dataguard.MIRRORS_DIR/'المستخدمون'/'مصطفى.xlsx'
+    _save_encrypted(Workbook(),mirror)
+    assert not zipfile.is_zipfile(mirror)
+    lock=source/'2031'/'~$ملف مفتوح.xlsx'
+    lock.parent.mkdir(parents=True,exist_ok=True)
+    lock.write_bytes(b'\0'*165)
+    dest=tmp_path/'installed'/'database'
+    assert import_database(source,dest)>0
+    copied=dest/mirror.relative_to(source)
+    assert copied.read_bytes()==mirror.read_bytes() and _load_decrypted(copied) is not None
+    assert not (dest/lock.relative_to(source)).exists()
+
+
 def test_zip_traversal_rejected(app):
     f=io.BytesIO()
     with zipfile.ZipFile(f,'w') as z:
