@@ -147,10 +147,43 @@ wb = r_w.get_data(as_text=True)
 chk("بدون نوع تأميدة → نوع القاموس بالعربي", "نوع الجهة: ورشة معتمدة" in wb,
     [ln for ln in wb.splitlines() if "نوع الجهة" in ln][:1])
 
+print("\n=== ④ قائمة الجهة من التأميدات = جهات اليوم فقط ===")
+eid_day = dt.add_entity(Y, M, "بوابة تأميدة اليوم", "حربية")
+dt.add_record(Y, M, 22, dt.get_entity(Y, M, eid_day), 1, 1, 0)
+eid_other = dt.add_entity(Y, M, "مخزن يوم آخر", "شرطية")
+dt.add_record(Y, M, 23, dt.get_entity(Y, M, eid_other), 1, 0, 0)
+eid_dict = dt.add_entity(Y, M, "جهة في القاموس فقط", "شرطية")
+scoped_url = ("/raghibin/panel?en=" + quote(ENT) + "&d=22&c=officers"
+              + "&origin=tameedat&draft_en=" + quote(ENT) + "&et=" + quote("شرطية")
+              + "&o=3&i=2&sid=" + token)
+scoped = c.get(scoped_url).get_data(as_text=True)
+chk("جهة مسودة الفورم موجودة في القائمة", f'value="{ENT}"' in scoped)
+chk("جهة لها تأميدة في نفس اليوم موجودة", 'value="بوابة تأميدة اليوم"' in scoped)
+chk("جهة يوم آخر غير موجودة", 'value="مخزن يوم آخر"' not in scoped)
+chk("جهة القاموس بلا تأميدة غير موجودة", 'value="جهة في القاموس فقط"' not in scoped)
+chk("سياق التأميدات محفوظ عند تغيير الجهة",
+    'name="origin" value="tameedat"' in scoped and "origin=tameedat" in scoped)
+draft_only = c.get("/raghibin/panel?en=" + quote("الورشة التجريبية")
+                   + "&d=22&c=officers&origin=tameedat&draft_en="
+                   + quote("الورشة التجريبية") + "&sid=" + token).get_data(as_text=True)
+chk("جهة الفورم غير المحفوظة كتأميدة تظهر مؤقتًا", 'value="الورشة التجريبية"' in draft_only)
+normal = c.get("/raghibin/panel?en=" + quote(ENT)
+               + "&d=22&c=officers&sid=" + token).get_data(as_text=True)
+chk("الفتح العادي من الراغبين يظل يعرض كل القاموس", 'value="جهة في القاموس فقط"' in normal)
+selected_other = c.get("/raghibin/panel?en=" + quote("بوابة تأميدة اليوم")
+                       + "&d=22&c=officers&origin=tameedat&draft_en=" + quote(ENT)
+                       + "&et=" + quote("شرطية") + "&sid=" + token).get_data(as_text=True)
+chk("نوع مسودة الفورم لا ينتقل لجهة أخرى من القائمة",
+    "نوع الجهة: حربية معتمدة" in selected_other)
+css = pathlib.Path("static/css/raghibin.css").read_text(encoding="utf-8")
+chk("قائمة الجهة المفتوحة عالية التباين في فايرفوكس/ويندوز",
+    ".rg-entity-select { color-scheme: light; }" in css
+    and ".rg-entity-select option" in css and "background: #fff" in css)
+
 print("\n=== ③ تحميل ستايل الراغبين في صفحات التأميدات ===")
 pg = c.get("/tameedat?tab=day").get_data(as_text=True)
 chk("raghibin.css محمّل في اليومية", "css/raghibin.css" in pg)
-chk("STATIC_VER = 226", "?v=226" in pg)
+chk("STATIC_VER = 227", "?v=227" in pg)
 chk("الديالوج فيه شرح فرعي", "tm-rgdialog-sub" in pg)
 chk("حقل نوع التأميدة ممرر من الزر", "type_choice" in pg)
 chk("زر فتح الراغبين موجود", 'id="tmRagNamesBtn"' in pg)

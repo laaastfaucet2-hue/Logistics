@@ -11,10 +11,13 @@ from data_access import db_raghibin as dr
 from data_access import db_tameedat as dt
 
 
-def build(year, month, entity, day, cat, sid="", draft_totals=None):
+def build(year, month, entity, day, cat, sid="", draft_totals=None,
+          entity_names=None):
     """متغيرات قالب raghibin/modal_body.html لجهة/يوم/فئة.
-    draft_totals (١٤/١٠): عدّادات فورم التأميدة غير المحفوظ — المربعات
-    بتتبعها لو مفيش تأميدة محفوظة لليوم."""
+
+    ``entity_names=None`` = كل قاموس الشهر (فتح عادي من قسم الراغبين)، أما
+    القائمة الممررة — حتى لو فارغة — فهي جهات تأميدات اليوم عند الفتح منها.
+    """
     state = dr.day_state(year, month, day, entity["id"]) if entity else {}
     # قائمة القوة في المودال = غير المستثنين فقط (إدارتهم من «الجهات والكوادر»)
     persons = dr.list_persons(year, month, entity_id=entity["id"], category=cat,
@@ -27,7 +30,8 @@ def build(year, month, entity, day, cat, sid="", draft_totals=None):
         "fcat": cat, "entity": entity, "sel_day": day,
         "year": year, "month": month,
         "force_persons": persons,
-        "entity_names": dt.entity_names(year, month),
+        "entity_names": (dt.entity_names(year, month) if entity_names is None
+                         else list(entity_names)),
         "categories": dr.CATEGORIES,
         "officer_ranks": dr.RANKS["officers"],
         "individual_ranks": dr.RANKS["individuals"],

@@ -13,6 +13,11 @@ function chk(label, cond, extra) {
 
 const FRAG1 = `
 <div class="rg-modal-form">
+  <form method="get" action="/raghibin/modal" class="rg-entity-form">
+    <input type="hidden" name="d" value="22"><input type="hidden" name="c" value="officers">
+    <input type="hidden" name="origin" value="tameedat"><input type="hidden" name="draft_en" value="صالة الترفية">
+    <select class="rg-entity-select" name="en"><option value="صالة الترفية">صالة الترفية</option><option value="الورشة">الورشة</option></select>
+  </form>
   <div class="rg-slotsbox"><span class="rg-filled-count">٠</span>
   <form method="post" action="/raghibin/daily/save" data-ragboxes>
     <input type="hidden" name="e" value="21"><input type="hidden" name="d" value="22">
@@ -102,6 +107,26 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       calls[0].url.indexOf("en=") !== -1 && calls[0].url.indexOf("d=22") !== -1, calls[0].url);
   chk("نوع التأميدة (شرطية) متمرر من الفورم",
       decodeURIComponent(calls[0].url).indexOf("et=شرطية") !== -1, decodeURIComponent(calls[0].url));
+  chk("مصدر الفتح متمرر لتصفية جهات تأميدات اليوم",
+      calls[0].url.indexOf("origin=tameedat") !== -1, calls[0].url);
+  chk("جهة مسودة التأميدة متمررة حتى تظهر قبل حفظها",
+      decodeURIComponent(calls[0].url).indexOf("draft_en=صالة الترفية") !== -1,
+      decodeURIComponent(calls[0].url));
+
+  console.log("=== تغيير الجهة من القائمة المنسدلة ===");
+  const picker = body.querySelector(".rg-entity-select");
+  picker.value = "الورشة";
+  picker.form.dispatchEvent(new win.Event("submit", { bubbles: true, cancelable: true }));
+  await sleep(30);
+  const switched = calls[calls.length - 1];
+  const switchedReadable = decodeURIComponent(switched.url);
+  chk("تغيير الجهة يطلب جزء المودال لا صفحة كاملة",
+      switched.url.indexOf("/raghibin/panel") !== -1, switched.url);
+  chk("اسم الجهة المختارة اتبعت بدل [object FormData]",
+      switchedReadable.indexOf("en=الورشة") !== -1
+      && switched.url.indexOf("%5Bobject%20FormData%5D") === -1, switchedReadable);
+  chk("تصفية تأميدات اليوم محفوظة بعد تغيير الجهة",
+      switched.url.indexOf("origin=tameedat") !== -1, switched.url);
 
   console.log("=== الحفظ من المودال (رد السيرفر = تحويل لصفحة التاميدات) ===");
   const form = body.querySelector("form[data-ragboxes]");
@@ -120,7 +145,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const after = calls[calls.length - 1];
   chk("الجزء اتعاد تحميله بنفس الجهة/اليوم",
       after.url.indexOf("/raghibin/panel") !== -1 && after.url.indexOf("d=22") !== -1
-      && after.url.indexOf("c=officers") !== -1, after.url);
+      && after.url.indexOf("c=officers") !== -1
+      && decodeURIComponent(after.url).indexOf("en=الورشة") !== -1, after.url);
   const readable = decodeURIComponent(after.url.replace(/\+/g, " "));
   chk("الرسالة اتمررت للجزء", readable.indexOf("تم تسجيل") !== -1, readable.slice(0, 170));
 

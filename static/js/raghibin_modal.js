@@ -455,7 +455,15 @@
          فعلًا. دلوقتي بنتبع التحويل ونقرا الصفحة النهائية ونستخرج الجزء. */
       var opts = { credentials: "same-origin", method: method };
       if (method === "GET") {
-        action += (action.indexOf("?") === -1 ? "?" : "&") + fd.toString();
+        var query = [];
+        fd.forEach(function (value, key) {
+          query.push(encodeURIComponent(key) + "=" + encodeURIComponent(String(value)));
+        });
+        action += (action.indexOf("?") === -1 ? "?" : "&") + query.join("&");
+        /* تغيير جهة القائمة داخل الديالوج: نطلب الجزء مباشرة ونحدّث رابط
+           الرجوع، وإلا الحفظ التالي كان يرجع للجهة القديمة. */
+        action = toPanelUrl(action);
+        ragPanelUrl = withCtx(action);
       } else {
         opts.body = fd;
       }
@@ -522,8 +530,11 @@
       }
       var day = parseArabicInt(dayField ? dayField.value : "") || 1;
       var sid = urlParam("sid");
+      /* origin=tameedat يقصر قائمة الجهة على تأميدات اليوم فقط؛ draft_en
+         يضيف جهة الفورم الحالية للقائمة حتى قبل حفظ تأميدتها. */
       var url = "/raghibin/panel?c=officers&d=" + day +
-                "&en=" + encodeURIComponent(entity);
+                "&en=" + encodeURIComponent(entity) +
+                "&origin=tameedat&draft_en=" + encodeURIComponent(entity);
       /* السنة/الشهر من الصفحة الحالية — المودال لازم يفتح بنفس سياق التاميدة */
       var y = urlParam("year"), m = urlParam("month");
       if (y) url += "&year=" + encodeURIComponent(y);

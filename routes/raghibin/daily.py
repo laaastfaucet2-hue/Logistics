@@ -33,12 +33,21 @@ from .context import (_category, _ctx, _draft_totals, _entity_or_back, _rb,
                       _selected_day, _selected_entity)
 
 
+# سياق فتح الكشف من فورم التأميدة: يظل محفوظًا عند تبديل الجهة/الفئة أو الحفظ.
+# origin يمنع تقييد قائمة الجهات في صفحة الراغبين العادية.
+_MODAL_CONTEXT_KEYS = ("et", "origin", "draft_en", "o", "i")
+
+
+def _modal_context_values():
+    return {key: (request.values.get(key) or "").strip()
+            for key in _MODAL_CONTEXT_KEYS if (request.values.get(key) or "").strip()}
+
+
 def _modal_page_url(entity, day, cat, sid=""):
-    """رابط صفحة كشف الراغبين الكاملة (تصفح عادي — sid في الرابط)."""
+    """رابط صفحة كشف الراغبين الكاملة مع سياق فورم التأميدة إن وُجد."""
     url = f"/raghibin/modal?c={cat}&d={day}&en={quote(entity['name'])}"
-    et = (request.values.get("et") or "").strip()   # ١٤/١٠: نوع التأميدة يكمل للصفحة الكاملة
-    if et:
-        url += f"&et={quote(et)}"
+    for key, value in _modal_context_values().items():
+        url += f"&{key}={quote(value)}"
     return url + (f"&sid={quote(sid)}" if sid else "")
 
 
@@ -47,10 +56,62 @@ ENTITY_TYPE_AR = {"salon": "صالة", "workshop": "ورشة", "gate": "بواب
                   "store": "مخزن", "hall": "صالة", "office": "مكتب"}
 
 
+def _from_tameedat():
+    """هل الكشف مفتوح من زر التسجيل داخل فورم التأميدة؟"""
+    return (request.values.get("origin") or "").strip() == "tameedat"
+
+
+def _tameedat_day_entity_names(year, month, day):
+    """جهات تأميدات اليوم فقط + جهة الفورم الحالية ولو كانت تأميدتها مسودة.
+
+    لا نضيف اسمًا حرًا غير موجود في قاموس الشهر؛ تسجيل القوة يحتاج معرّف جهة
+    محفوظًا، كما أن حفظ التأميدة هو المسؤول الوحيد عن إنشاء الجهات الجديدة.
+    """
+    names = []
+
+    def add(name):
+        clean = " ".join((name or "").split())
+        if clean and clean not in names:
+            names.append(clean)
+
+    draft_name = " ".join((request.values.get("draft_en") or "").split())
+    draft_entity = dt.find_entity_by_name(year, month, draft_name) if draft_name else None
+    if draft_entity:
+        add(draft_entity["name"])
+    for record in dt.records_for_day(year, month, day, "all", ""):
+        add(record.get("entity_name"))
+    return names
+
+
+def _modal_entity_and_names(year, month, day):
+    """الجهة والقائمة المناسبة: قاموس الشهر عاديًا، وتأميدات اليوم داخل التأميدات."""
+    entity = _selected_entity(year, month, by_name=True)
+    if not _from_tameedat():
+        return entity, None
+    names = _tameedat_day_entity_names(year, month, day)
+    if entity and entity.get("name") in names:
+        return entity, names
+    entity = dt.find_entity_by_name(year, month, names[0]) if names else None
+    return entity, names
+
+
+def _draft_totals_for(entity):
+    """عدّادات المسودة تخص جهة الفورم فقط، لا أي جهة أخرى نختارها من القائمة."""
+    totals = _draft_totals(request)
+    draft_name = " ".join((request.values.get("draft_en") or "").split())
+    if (totals and draft_name
+            and (not entity or " ".join(entity.get("name", "").split()) != draft_name)):
+        return None
+    return totals
+
+
 def _entity_type_label(entity):
-    """نوع الجهة المعروض: نوع التأميدة المختار في فورم اليومية (شرطية/حربية)
-    ولو مش ممرر → ترجمة نوع القاموس للعربي."""
+    """نوع الجهة: نوع مسودة التأميدة لجهتها، وإلا نوع قاموس الجهة بالعربي."""
     form_type = (request.values.get("et") or "").strip()
+    draft_name = " ".join((request.values.get("draft_en") or "").split())
+    entity_name = " ".join(((entity or {}).get("name") or "").split())
+    if draft_name and entity_name != draft_name:
+        form_type = ""
     if form_type:
         return form_type
     raw = ((entity or {}).get("entity_type") or "").strip()
@@ -63,14 +124,17 @@ def modal_page():
     """صفحة «كشف وتسجيل أسماء الضباط والأفراد الراغبين» الكاملة."""
     from flask import url_for
     year, month = _ctx()
-    entity = _selected_entity(year, month, by_name=True)
     day = _selected_day(year, month)
+    entity, entity_names = _modal_entity_and_names(year, month, day)
     cat = _category()
     sid = request.values.get("sid", "")
-    # ١٤/١٠: عدّادات فورم التأميدة (o/i) — المربعات تتبع الرقم المكتوب
-    # حتى لو التأميدة غير محفوظة (تفتح من زر «تسجيل أسماء» في التاميدات).
+    # عدّادات فورم التأميدة تخص جهة المسودة فقط؛ وقائمة origin=tameedat
+    # تقتصر على جهات تأميدات اليوم المفتوح.
     variables = rg_modal.build(year, month, entity, day, cat, sid=sid,
-                               draft_totals=_draft_totals(request))
+                               draft_totals=_draft_totals_for(entity),
+                               entity_names=entity_names)
+    variables["modal_context"] = _modal_context_values()
+    variables["entity_type_label"] = _entity_type_label(entity)
     # الرجوع بعد الحفظ: من تاب الراغبين يرجع للراحبين (back=raghibin) —
     # ومن التأميدات يفضل في التاميدات (الافتراضي tameedat)
     variables["back"] = request.args.get("back", "tameedat")
@@ -98,10 +162,11 @@ def panel():
     """جزء المودال — نفس محتوى الصفحة الكاملة بدون هيكل الصفحة.
     ١٤/١٠: المودال المنبثق من فورم التاميدة بيجيب الجزء ده بـ fetch."""
     year, month = _ctx()
-    entity = _selected_entity(year, month, by_name=True)
     day = _selected_day(year, month)
+    entity, entity_names = _modal_entity_and_names(year, month, day)
     return _modal_fragment(year, month, entity, day, _category(),
-                           draft_totals=_draft_totals(request))
+                           draft_totals=_draft_totals_for(entity),
+                           entity_names=entity_names)
 
 
 @raghibin_bp.route("/panel/quick_add", methods=["POST"])
@@ -144,15 +209,18 @@ def panel_delete(person_id):
                                     _category(), request.form.get("sid", "")))
 
 
-def _modal_fragment(year, month, entity, day, cat, draft_totals=None):
+def _modal_fragment(year, month, entity, day, cat, draft_totals=None,
+                    entity_names=None):
     """جزء المودال — عبر الخدمة المشتركة (نفس محتوى الصفحة الكاملة)."""
     variables = rg_modal.build(year, month, entity, day, cat,
                                sid=request.values.get("sid", ""),
-                               draft_totals=draft_totals)
-    # ١٤/١٠: المودال المنبثق بيحضر الجزء بـ fetch — رسائل الحفظ توصل هنا
+                               draft_totals=draft_totals,
+                               entity_names=entity_names)
+    # المودال المنبثق بيحضر الجزء بـ fetch — رسائل الحفظ وسياق التأميدة يصلان هنا
     variables["ok"] = request.values.get("ok", "")
     variables["warn"] = request.values.get("warn", "")
     variables["err"] = request.values.get("err", "")
+    variables["modal_context"] = _modal_context_values()
     variables["entity_type_label"] = _entity_type_label(entity)
     return render_template("raghibin/modal_body.html", **variables)
 

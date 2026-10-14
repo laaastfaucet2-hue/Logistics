@@ -6,24 +6,27 @@
 {% set dlist = 'rgForceOfficers' if fcat == 'officers' else 'rgForceIndividuals' %}
 {% set group = slots[fcat] %}
 {% set app = approval if approval else {'rank': '', 'name': '', 'status': 'موثقة'} %}
+{% set mctx = modal_context | default({}) %}
 <div class="rg-modal-form">
 
   {% if ok %}<div class="rg-note ok">✅ {{ ok }}</div>{% endif %}
   {% if warn %}<div class="rg-note warn">⚠️ {{ warn }}</div>{% endif %}
   {% if err %}<div class="rg-note err">⛔ {{ err }}</div>{% endif %}
 
-  <!-- الجهة المختارة للراغبين — قائمة منسدلة بكل جهات القاموس والملحقات -->
+  <!-- من التأميدات: جهات تأميدات اليوم فقط؛ من قسم الراغبين: قاموس الشهر -->
   <div class="rg-entity-box">
     <div class="rg-entity-cap">الجهة المختارة للراغبين</div>
     <form method="get" action="/raghibin/modal" class="rg-entity-form">
       <input type="hidden" name="d" value="{{ sel_day }}">
       <input type="hidden" name="c" value="{{ fcat }}">
-      {% if request.values.get('et') %}<input type="hidden" name="et" value="{{ request.values.get('et') }}">{% endif %}
+      {% for key, value in mctx.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
       {% if sid %}<input type="hidden" name="sid" value="{{ sid }}">{% endif %}
       <select class="rg-entity-select" name="en" aria-label="الجهة المختارة للراغبين"
               onchange="this.form.submit()">
         {% for n in entity_names %}
         <option value="{{ n }}" {{ 'selected' if entity and entity.name == n }}>{{ n }}</option>
+        {% else %}
+        <option value="" selected disabled>لا توجد جهات تأميدات في هذا اليوم</option>
         {% endfor %}
       </select>
       <noscript><button class="rt-btn" type="submit">عرض</button></noscript>
@@ -38,11 +41,11 @@
   <!-- تويبات الفئتين — تصفح عادي -->
   <div class="rg-ctabs">
     <a class="rg-ctab {{ 'on' if fcat == 'officers' }}"
-       href="/raghibin/modal?c=officers&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
+       href="/raghibin/modal?c=officers&d={{ sel_day }}&en={{ entity.name | urlencode }}{% for key, value in mctx.items() %}&{{ key }}={{ value | urlencode }}{% endfor %}{{ '&sid=' + (sid | urlencode) if sid }}">
       👮 ضابط ({{ force['officers'] | length | aindic }})
     </a>
     <a class="rg-ctab {{ 'on' if fcat == 'individuals' }}"
-       href="/raghibin/modal?c=individuals&d={{ sel_day }}&en={{ entity.name | urlencode }}{{ '&sid=' + (sid | urlencode) if sid }}">
+       href="/raghibin/modal?c=individuals&d={{ sel_day }}&en={{ entity.name | urlencode }}{% for key, value in mctx.items() %}&{{ key }}={{ value | urlencode }}{% endfor %}{{ '&sid=' + (sid | urlencode) if sid }}">
       👥 فرد ({{ force['individuals'] | length | aindic }})
     </a>
   </div>

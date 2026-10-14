@@ -111,19 +111,19 @@
   background-size: 15px 15px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237dd3fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
     linear-gradient(180deg, #17334f 0%, #0f2439 100%);
-  /* ١٤/١٠: القائمة المنبثقة بقت تُرسم بالوضع الداكن — كانت على ويندوز
-     تطلع فاتحة والنص الفاتح فيها مش مقروء («مش باين منها حاجة») */
-  color-scheme: dark;
 }
+.rg-qa-cat, .rg-qa-rank { color-scheme: dark; }
+/* فايرفوكس/ويندوز كان يأخذ خلفية option الداكنة العامة من tameedat.css
+   ولا يرسم لون النص معها، فتفتح قائمة الجهة كصندوق فارغ. نخلي الجزء الأصلي
+   المنفتح فاتحًا عالي التباين، بينما جسم select المقفول يظل كحليًا كما هو. */
+.rg-entity-select { color-scheme: light; }
+.rg-entity-select option { background: #fff !important; color: #111827 !important; }
 .rg-entity-select:hover, .rg-qa-cat:hover, .rg-qa-rank:hover, .rg-force-search:hover {
   border-color: rgba(96, 165, 250, .8);
 }
 .rg-entity-select:focus, .rg-qa-cat:focus, .rg-qa-rank:focus, .rg-force-search:focus {
   border-color: #60a5fa; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, .25);
 }
-/* ١٤/١٠: اتشال تلوين option — المتصفح بيرسم القائمة المنبثقة بألوان
-   النظام ومش بيحترم background/color، فالتلوين القديم كان بيخلي النص
-   فاتح على خلفية فاتحة. الوضع الداكن عبر color-scheme فوق بدل كده. */
 .rg-force-search { max-width: 330px; }
 .rg-force-search::placeholder { color: #9db8d8; font-weight: 600; }
 /* قائمة القوة القابلة للطي */
