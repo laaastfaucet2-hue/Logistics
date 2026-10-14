@@ -74,6 +74,13 @@ def register(app):
                 }
                 remember = request.form.get("remember")
                 token = db.create_session(user["id"], hours=(24 * 30 if remember else 12))
+                from data_access import db_users
+                db_users.log_activity(user["id"], "login")
+                try:
+                    from services import settings_fs
+                    settings_fs.sync_log_file(user)
+                except Exception:      # noqa: BLE001 — المرايا لا تسقط الدخول
+                    pass
                 flash(f"مرحباً {user['full_name']} 👋", "success")
                 return redirect(url_for("dashboard", sid=token))
             flash("اسم المستخدم أو كلمة المرور غير صحيحة", "error")
@@ -83,8 +90,21 @@ def register(app):
     @app.route("/logout")
     def logout():
         token = request.args.get("sid") or request.form.get("sid")
+        user = db.get_session_user(token) if token else None
         if token:
-            db.delete_session(token)
+            db.delete_session(token)   # بيُمسح معها فتح البوابات المحمية
+        else:
+            u = session.get("user")
+            if u and u.get("id"):
+                db.clear_gate("cookie:%d" % u["id"])
+        if user:
+            from data_access import db_users
+            db_users.log_activity(user["id"], "logout")
+            try:
+                from services import settings_fs
+                settings_fs.sync_log_file(user)
+            except Exception:      # noqa: BLE001
+                pass
         session.pop("user", None)
         flash("تم تسجيل الخروج بنجاح", "success")
         return redirect(url_for("login"))
@@ -112,6 +132,7 @@ def register(app):
     @app.route("/sections/<key>")
     @login_required
     def section_page(key):
+        from core import tabs_registry as tr
         if key in RATION_SECTION_REDIRECTS:
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("rations.page",
@@ -119,9 +140,15 @@ def register(app):
         if key == "letterhead":
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("letterhead.page", **params))
-        if key == "backups":
+        if key in ("backups", "settings"):
+            # «الإعدادات» (اتحولت منها «النسخ الاحتياطى والحماية» — توجيه ١٠/١٠)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
-            return redirect(url_for("backups.page", **params))
+            sub = "backups" if key == "backups" else "users"
+            if key == "settings":
+                # مستخدم بصلاحيات جزئية → أول تويب مسموح عنده
+                sub = tr.first_allowed_sub(g.user, "settings") or sub
+            params["sub"] = sub
+            return redirect(url_for("settings.page", **params))
         if key in ("mojandeen", "recruits"):
             # قسم «المجندين» في القائمة = صفحة المجندين الحقيقية (صفحة واحدة لا صفحتين)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
@@ -129,6 +156,9 @@ def register(app):
         if key == "tameedat":
             # قسم «التاميدات» في القائمة = صفحة التاميدات الحقيقية
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            sub = tr.first_allowed_sub(g.user, "tameedat")
+            if sub:
+                params["tab"] = sub
             return redirect(url_for("tameedat.page", **params))
         if key == "calc2":
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
@@ -137,13 +167,25 @@ def register(app):
             # صفحة «التوثيق والمناسبات» — دائمة لا تتبع الشهر (توجيه ٠٦/١٠/٢٠٢٦)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("occasions.page", **params))
+        if key == "inv6":
+            # «6 مخازن (جرد الأصناف)» — فرع داخل «مستودعات وسجلات» (توجيه ١٠/١٠)
+            params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            params["sub"] = "inv6"
+            return redirect(url_for("warehouses.page", **params))
         if key == "cold_stores":
             # قسم «المخازن والثلاجات» = صفحة المخازن الموحدة (سجل + حركة وكشف أرصدة)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("stores.page", **params))
+        if key == "statistics":
+            # قسم «٠٩ الإحصائيات» = التاب الرئيسي: ٣ دورات منفصلة × شهر/سنة × ٤ فلاتر ذكية
+            params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            return redirect(url_for("stats.page", **params))
         if key == "warehouses_records":
             # قسم «مستودعات وسجلات» = صفحة الدورة المخزنية الحقيقية (سجل الإمداد / سجل المتعهد)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            sub = tr.first_allowed_sub(g.user, "warehouses_records")
+            if sub:
+                params["sub"] = sub
             return redirect(url_for("warehouses.page", **params))
         if key == "health":
             # قسم «الصحة» = صفحة الصحة الحقيقية (رش/كشف دوري/خزانات/مياه)
@@ -152,9 +194,12 @@ def register(app):
         if key == "tarfea":
             # قسم «الترفية» = الدورة المستقلة (أصناف/١/٢/٣/٥ مخازن)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
+            sub = tr.first_allowed_sub(g.user, "tarfea")
+            if sub:
+                params["sub"] = sub
             return redirect(url_for("tarfea.page", **params))
         if key == "raghebeen":
-            # قسم «الراغبين» = صفحة الراغبين الحقيقية (٤ تابات — ج١ ٣٠/٠٩/٢٠٢٦)
+            # قسم «الراغبين» = صفحة الراغبين الحقيقية (٤ تبويبات — ج١ ٣٠/٠٩/٢٠٢٦)
             params = {"sid": request.args["sid"]} if request.args.get("sid") else {}
             return redirect(url_for("raghibin.page", **params))
         section = SECTION_MAP.get(key) or EXTRA_MAP.get(key)

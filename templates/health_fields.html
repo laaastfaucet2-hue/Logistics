@@ -1,4 +1,4 @@
-{# نموذج نصوص تقرير — يُضمَّن مع تفعيل report وfield_rows (يُستخدم في تاب الكشف) #}
+{# نموذج نصوص تقرير — يُضمَّن مع تفعيل report وfield_rows (يُستخدم في تبويب الكشف) #}
 <form method="post" action="{{ url_for('health.save_fields', report=report) }}" class="hl-form">
   <input type="hidden" name="day" value="{{ day }}">
   {% for key, label, kind, val in field_rows %}

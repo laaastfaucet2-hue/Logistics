@@ -4,6 +4,7 @@ from core import egtime
 from data_access import db_rations as dr, db_entities as de, db_tameedat as dt
 from data_access import db_permits as dp, db_tameed_rations as snap
 from services import ration_lines as rl, permit_build as pb
+from routes.calc2 import _scoped_picks
 
 YEAR, MONTH = 2031, 9
 
@@ -77,6 +78,9 @@ def test_entity_picks_are_separate_no_combined(app):
     assert "يوم" in groups[0]["label"]
     assert len(groups[0]["tameedat"]) == 1
     assert [p["kind"] for p in groups[0]["tameedat"][0]["picks"]] == ["رئيسية", "ملحقة"]
+    assert _scoped_picks(picks, "all") == picks
+    assert _scoped_picks(picks, "entity:" + picks[0]["key"]) == [picks[0]]
+    assert _scoped_picks(picks, "entity:" + picks[1]["key"]) == [picks[1]]
 
 
 def test_issue_clipped_to_tameedah_days_not_permit_window(app):
@@ -108,8 +112,8 @@ def test_tameedah_shows_permit_made_after_save(client, app):
     eid = dt.add_entity(YEAR, MONTH, "قطاع وسط سيناء", "شرطية")
     rec_id = dt.add_record(YEAR, MONTH, 1, dt.get_entity(YEAR, MONTH, eid), 10, 10, 10, "", [])
     page = client.get("/tameedat/?tab=day&day=2031-09-01").text
-    assert "عمل إذن صرف ٢ مخازن" in page
-    assert "تم عمل إذن ٢ مخازن" not in page
+    assert "إنشاء إذن صرف ٢ مخازن" in page
+    assert "تم إنشاء إذن ٢ مخازن" not in page
     dp.save_permit(YEAR, MONTH, {
         "number": 1, "fiscal_year": 2031, "date_from": 1, "date_to": 1, "issue_days": 1,
         "mode": "combined", "entity_label": "قطاع وسط سيناء",
@@ -117,7 +121,7 @@ def test_tameedah_shows_permit_made_after_save(client, app):
         "record_ids": [rec_id], "actuals": {},
     })
     page = client.get("/tameedat/?tab=day&day=2031-09-01").text
-    assert "تم عمل إذن ٢ مخازن" in page
+    assert "تم إنشاء إذن ٢ مخازن" in page
 
 
 def test_rows_endpoint_fills_meals_when_entity_selected(client, app):
@@ -150,4 +154,4 @@ def test_pages_render(client):
     assert "المقررات والتخصيص التفاعلي للمتعهد والتموين للجهة الحالية" in day.text
     assert "تسجيل أسماء الضباط والأفراد الراغبين للجهة الحالية" in day.text
     assert "tmRationsModal" in day.text
-    assert "قيد التطوير" in day.text
+    assert "قيد التطوير" not in day.text  # المودال الأصفر اتشال (١٠-أ) — الحوار الوحيد هو #tmRagDialog

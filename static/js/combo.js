@@ -64,7 +64,7 @@
           d.className = "combo-item" + (v === q && q ? " sel" : "");
           d.textContent = v;
           d.addEventListener("mousedown", function (e) {
-            e.preventDefault();           // قبل blur — عشان القيمة تتحط الأول
+            e.preventDefault();           // قبل blur — لكي تُسجّل القيمة أولًا
             input.value = v;
             close();
             input.dispatchEvent(new Event("change", {bubbles:true}));

@@ -60,7 +60,7 @@
       var em = document.createElement("span");
       em.className = "c2-box-empty";
       em.id = "c2Empty";
-      em.textContent = "المربع فاضي — اختر جهة من قائمة التأميدات بالأعلى";
+      em.textContent = "المربع فارغ — اختر جهة من قائمة التأميدات بالأعلى";
       box.appendChild(em);
     } else {
       tms.forEach(function (tm) {
@@ -116,6 +116,7 @@
     if (lab) lab.value = names.join(" + ");
     if (f) f.textContent = ar(off + ind + rec);
     if (cnt) cnt.textContent = "(" + ar(keys.length) + ")";
+    syncScopeOptions(keys);
     markList(keys);
     loadRows(keys);
   }
@@ -126,12 +127,12 @@
   }
   function mealCell(it) {
     var html = "<div class=\"c2-pp\">" +
-      "<div class=\"c2-meal\"><span>فطار</span><b>" + qty3(it.breakfast) + "</b></div>" +
+      "<div class=\"c2-meal\"><span>إفطار</span><b>" + qty3(it.breakfast) + "</b></div>" +
       "<div class=\"c2-meal\"><span>غداء</span><b>" + qty3(it.lunch) + "</b></div>" +
       "<div class=\"c2-meal\"><span>عشاء</span><b>" + qty3(it.dinner) + "</b></div>";
     if (it.customized) {
       html += "<div class=\"c2-pp-cus\"><em>مخصص من التأميدة</em>" +
-        "<div class=\"c2-meal\"><span>فطار</span><b>" + qty3(it.custom_breakfast) + "</b></div>" +
+        "<div class=\"c2-meal\"><span>إفطار</span><b>" + qty3(it.custom_breakfast) + "</b></div>" +
         "<div class=\"c2-meal\"><span>غداء</span><b>" + qty3(it.custom_lunch) + "</b></div>" +
         "<div class=\"c2-meal\"><span>عشاء</span><b>" + qty3(it.custom_dinner) + "</b></div></div>";
     }
@@ -162,6 +163,28 @@
     });
   }
   var rowsUrl = (document.currentScript && document.currentScript.getAttribute("data-rows")) || "/calc2/rows";
+  var scopeEl = document.getElementById("c2Scope");
+  function syncScopeOptions(keys) {
+    if (!scopeEl) return;
+    var current = scopeEl.value || "all";
+    var valid = {all: true};
+    scopeEl.innerHTML = "";
+    var all = document.createElement("option");
+    all.value = "all";
+    all.textContent = "مجمع — كل الجهات المحددة";
+    scopeEl.appendChild(all);
+    keys.forEach(function (key) {
+      var pick = byKey[key];
+      if (!pick) return;
+      var value = "entity:" + pick.key;
+      var option = document.createElement("option");
+      option.value = value;
+      option.textContent = pick.name + (pick.is_attachment ? " — جهة ملحقة" : " — جهة رئيسية");
+      scopeEl.appendChild(option);
+      valid[value] = true;
+    });
+    scopeEl.value = valid[current] ? current : "all";
+  }
   function loadRows(keys) {
     var fromEl = document.querySelector("[name=date_from]");
     var toEl = document.querySelector("[name=date_to]");
@@ -170,6 +193,7 @@
       "from=" + encodeURIComponent(fromEl ? fromEl.value : "") +
       "&to=" + encodeURIComponent(toEl ? toEl.value : "") +
       "&days=" + encodeURIComponent(daysEl ? daysEl.value : "") +
+      "&scope=" + encodeURIComponent(scopeEl ? scopeEl.value : "all") +
       "&selected=" + encodeURIComponent(JSON.stringify(keys || []));
     fetch(url, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
@@ -261,4 +285,33 @@
     });
   }
   renderBox(chosen());
+
+  /* تنبيه فوري على رقم إذن مكرر — على الكتابة (توجيه ٠٨/١٠) */
+  var numInput = document.getElementById("c2NumberInput");
+  var dupWarn = document.getElementById("c2DupWarn");
+  if (numInput && dupWarn) {
+    var usedMap = {};
+    try {
+      JSON.parse(document.getElementById("c2UsedNumbers").textContent || "[]")
+        .forEach(function (u) { usedMap[String(u.n)] = u; });
+    } catch (e) { usedMap = {}; }
+    function dupCheck() {
+      var latin = numInput.value.replace(/[٠-٩]/g, function (d) {
+        return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));
+      });
+      var n = parseInt(latin, 10);
+      var u = (!numInput.value.trim() || isNaN(n)) ? null : usedMap[String(n)];
+      if (!u) { dupWarn.hidden = true; return; }
+      dupWarn.textContent = "⚠️ رقم الإذن هذا مستخدم بالفعل (يوم " + ar(u.day) +
+        (u.label ? " — " + u.label : "") + ") — الحفظ بهيستبدل الإذن القديم";
+      dupWarn.hidden = false;
+    }
+    numInput.addEventListener("input", dupCheck);
+    dupCheck();
+  }
+
+  /* عرض المقررات: المجمع أو كل جهة باسمها — إعادة تحميل الجدول فورًا */
+  if (scopeEl) {
+    scopeEl.addEventListener("change", function () { loadRows(chosen()); });
+  }
 })();

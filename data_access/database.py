@@ -119,6 +119,13 @@ CREATE TABLE IF NOT EXISTS shared_vocab (
     parent TEXT NOT NULL DEFAULT '',
     UNIQUE(kind, value, parent)
 );
+
+CREATE TABLE IF NOT EXISTS settings_gate (
+    token TEXT NOT NULL,
+    sub TEXT NOT NULL,
+    opened_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (token, sub)
+);
 """
 
 
@@ -192,6 +199,51 @@ def delete_session(token):
         return
     conn = get_conn()
     conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.execute("DELETE FROM settings_gate WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+# ======================================================================
+# بوابة الأقسام المحمية (settings/log + settings/notes) — فتح مرة واحدة
+# لكل جلسة (قرار المستخدم ١٤/١٠): المفتاح = توكن الجلسة أو «cookie:<id>»
+# لجلسات الكوكيز.
+# ======================================================================
+def set_gate_open(token, sub):
+    """يسجل أن القسم مفتوح لهذه الجلسة."""
+    if not token:
+        return
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO settings_gate (token, sub, opened_at) VALUES (?,?,datetime('now','localtime')) "
+        "ON CONFLICT(token, sub) DO UPDATE SET opened_at = datetime('now','localtime')",
+        (token, sub),
+    )
+    conn.commit()
+    conn.close()
+
+
+def is_gate_open(token, sub):
+    """هل القسم مفتوح بالفعل في جلسة التوكن دي؟"""
+    if not token:
+        return False
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM settings_gate WHERE token = ? AND sub = ?", (token, sub)
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def clear_gate(token, sub=None):
+    """يقفل قسم محدد (أو كل الأقسام) لجلسة التوكن."""
+    if not token:
+        return
+    conn = get_conn()
+    if sub:
+        conn.execute("DELETE FROM settings_gate WHERE token = ? AND sub = ?", (token, sub))
+    else:
+        conn.execute("DELETE FROM settings_gate WHERE token = ?", (token,))
     conn.commit()
     conn.close()
 

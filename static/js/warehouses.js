@@ -14,6 +14,38 @@
 
   var ITEMS = json("whItemsData");           // {name: {unit, base, factor, id}}
   var UNIT_BASE = json("whUnitBaseData");    // {unit: [base, factor]}
+
+  /* مطابقة أسماء ذكية (توجيه ١٠/١٠): همزات الألف + «ال» المبدئية + المسافات —
+     «الزيت الطهي» = «زيت طهي». بلا مطابقة على أسماء مختلفة: الصنف الجديد
+     يُولَّد بوحدة المعيار الداخلي المحددة بدل الافتراضي الصامت */
+  function normName(t) {
+    t = String(t || "").trim().replace(/\s+/g, " ");
+    t = t.split("أ").join("ا").split("إ").join("ا").split("آ").join("ا");
+    t = t.replace(/(^|\s)ال/g, "$1").trim();
+    return t;
+  }
+  function matchItem(name) {
+    name = String(name || "").trim();
+    if (!name) return null;
+    if (ITEMS[name]) return ITEMS[name];
+    var n = normName(name);
+    if (!n) return null;
+    for (var k in ITEMS) {
+      if (Object.prototype.hasOwnProperty.call(ITEMS, k) && normName(k) === n) return ITEMS[k];
+    }
+    return null;
+  }
+  function matchItemKey(name) {
+    name = String(name || "").trim();
+    if (!name) return "";
+    if (ITEMS[name]) return name;
+    var n = normName(name);
+    if (!n) return "";
+    for (var k in ITEMS) {
+      if (Object.prototype.hasOwnProperty.call(ITEMS, k) && normName(k) === n) return k;
+    }
+    return "";
+  }
   var CTX = json("whContext");               // {year, month, days_in_month}
   var AR = "٠١٢٣٤٥٦٧٨٩";
   var SPLIT_REFRESH = [];   // يجب أن يُعرَّف قبل wirePackaging — استدعاء refresh المباشر يستخدمه
@@ -37,7 +69,7 @@
     var row = UNIT_BASE[key];
     return row ? { base: row[0], factor: row[1] } : { base: key, factor: 1 };
   }
-  /* التصنيف الرسمي (توجيه ٢٧/٠٩): الوزن والحجم بس هوما اللي بيتحولوا —
+  /* التصنيف الرسمي (توجيه ٢٧/٠٩): الوزن والحجم فقط هما اللذان يتحولان —
      كجم/جم/جرام/طن → كجم، ولتر/مل → لتر. أي معيار تاني بيُعدّ بالعدد زي ما هو. */
   function isMeasureUnit(u) {
     var b = baseOf(u).base;
@@ -47,13 +79,12 @@
     return isMeasureUnit(u) ? "وزن/حجم — الحسبة بالكيلو أو اللتر" : "بيُعدّ بالعدد";
   }
 
-  /* رسّام العبوات: أيقونة SVG لكل عبوة/وحدة — الشاشة الحية بترسم بيها (توجيه ٢٧/٠٩) */
+  /* رسّام العبوات: أيقونة SVG لكل عبوة/وحدة — الشاشة الحية ترسم بها (توجيه ٢٧/٠٩) */
   var ICON_RULES = [["كجم", "weight"], ["جرام", "weight"], ["جم", "weight"], ["طن", "weight"],
     ["كرتون", "carton"], ["ارتون", "carton"], ["شكار", "sack"], ["شيكار", "sack"], ["بلت", "pallet"],
-    ["جركن", "jerrycan"], ["برميل", "barrel"], ["زجاج", "bottle"], ["لتر", "bottle"],
-    ["مل", "bottle"], ["كيس", "bag"], ["شنط", "bag"], ["صيني", "tray"], ["طبق", "tray"],
-    ["كوب", "cup"], ["ربط", "bundle"], ["فتل", "bundle"], ["باكت", "packet"],
-    ["علب", "box"], ["عبو", "box"]];
+    ["جركن", "jerrycan"], ["برميل", "barrel"], ["زجاج", "bottle"], ["لتر", "bottle"], ["مل", "bottle"],
+    ["كيس", "bag"], ["شنط", "bag"], ["صيني", "tray"], ["طبق", "tray"], ["كوب", "cup"],
+    ["ربط", "bundle"], ["فتل", "bundle"], ["باكت", "packet"], ["علب", "box"], ["عبو", "box"]];
   var ICON_PATHS = {
     carton: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
     box: '<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M4 12h16M12 7v13"/>',
@@ -70,7 +101,7 @@
     weight: '<path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 7l7 13H5z"/>'
   };
   /* صور العبوات الحقيقية (ستايل أيزومتريك معتمد من المستخدم) + SVG احتياطي
-     لأي مفتاح مش موجود له صورة بعد — الشاشة الحية بترسم بيها (توجيه ٢٧/٠٩) */
+     لأي مفتاح لا توجد له صورة بعد — الشاشة الحية ترسم بها (توجيه ٢٧/٠٩) */
   var PACK_IMG = ["carton", "weight", "pouch", "bottle", "jerrycan",
     "barrel", "bag", "tray", "cup", "bundle"];
   var IMG_ALIAS = { packet: "pouch", box: "can" };
@@ -89,23 +120,25 @@
       ICON_PATHS[key] + "</svg>";
   }
 
-  /* فتح/قفل نماذج الزر الأمبر + فورمات رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
+  /* فتح/قفل نماذج الزر الأمبر + نماذج رصيد أول المدة (توجيه ٢٦/٠٩: قائمة تفتح وتقفل) */
   [["whSupplierToggle", "whSupplierForm"], ["whWh1Toggle", "whWh1Form"],
-   ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"]].forEach(function (pair) {
+   ["whOpenerToggle", "whOpenerForm"], ["whOpenerNewToggle", "whOpenerNewForm"],
+   ["whOpenerEditToggle", "whOpenerEditForm"]].forEach(function (pair) {
     var btn = document.getElementById(pair[0]);
     var form = document.getElementById(pair[1]);
     if (!btn || !form) return;
     var lbl = btn.querySelector(".wh-newbtn-label");
     var plus = btn.querySelector(".wh-newbtn-plus");
     var closedTxt = lbl ? lbl.textContent : "";
+    var closedPlus = plus ? plus.textContent : "＋";
     btn.addEventListener("click", function () {
       var open = form.hidden;
       form.hidden = !open;
       form.classList.toggle("wh-open", open);
       btn.setAttribute("aria-expanded", open ? "true" : "false");
-      /* الزر الأمبر يوضح حالته: لما الفورم يفتح يبقى «قفل… ✕» — وزرار الحفظ آخر الفورم جواه */
+      /* الزر الأمبر يوضح حالته: لما النموذج يفتح يبقى «قفل… ✕» — وزر الحفظ آخر النموذج داخله */
       if (lbl) lbl.textContent = open ? ("قفل " + closedTxt) : closedTxt;
-      if (plus) plus.textContent = open ? "✕" : "＋";
+      if (plus) plus.textContent = open ? "✕" : closedPlus;
       if (open) {
         var first = form.querySelector("input:not([type=hidden])");
         if (first) first.focus();
@@ -143,25 +176,31 @@
     var convHint = card.querySelector(".js-conv-hint");
     function currentUnit() {
       if (!itemInput) return "";
-      var info = ITEMS[itemInput.value.trim()];
+      var info = matchItem(itemInput.value.trim());
       return info ? info.unit : (unitInput ? unitInput.value : "");
     }
     function refreshConv() {
       if (!convHint) return;
+      /* تلميح المطابقة الذكية (توجيه ١٠/١٠): الاسم مكتوب شبه مطابق ⇒ نوري
+         الاسم المسجل في القاموس بدل الصمت والافتراض */
+      var iname = itemInput ? itemInput.value.trim() : "";
+      var ikey = matchItemKey(iname);
+      var inote = (iname && ikey && ikey !== iname)
+        ? "الاسم المسجل في القاموس: «" + ikey + "» · " : "";
       var unit = currentUnit();
       var qty = qtyInput ? toNum(qtyInput.value) : null;
-      if (!unit) { convHint.textContent = ""; return; }
+      if (!unit) { convHint.textContent = inote; return; }
       var meta = baseOf(unit);
-      if (qty === null) { convHint.textContent = "التعامل بوحدة: " + unit; return; }
+      if (qty === null) { convHint.textContent = inote + "التعامل بوحدة: " + unit; return; }
       if (meta.base && meta.base !== unit) {
-        convHint.textContent = fmt(qty) + " " + unit + " = " + fmt(qty * meta.factor) + " " + meta.base;
+        convHint.textContent = inote + fmt(qty) + " " + unit + " = " + fmt(qty * meta.factor) + " " + meta.base;
       } else {
-        convHint.textContent = fmt(qty) + " " + unit + " — وحدة القاعدة هي نفسها";
+        convHint.textContent = inote + fmt(qty) + " " + unit + " — وحدة القاعدة هي نفسها";
       }
     }
     if (itemInput && unitInput) {
       itemInput.addEventListener("change", function () {
-        var info = ITEMS[itemInput.value.trim()];
+        var info = matchItem(itemInput.value.trim());
         if (info && info.unit) { unitInput.value = info.unit; unitInput.disabled = true; }
         else { unitInput.disabled = false; }
         refreshConv();
@@ -179,7 +218,7 @@
     wirePackaging(card, null);
     Array.prototype.forEach.call(card.querySelectorAll(".js-split-box"), wireSplitBox);
     wireShelfCard(card);
-    /* حذف الصنف بتفويض الأحداث على الحاوية — يشتغل دايمًا حتى لو فشل ربط الكارت */
+    /* حذف الصنف بتفويض الأحداث على الحاوية — يشتغل دائمًا حتى لو فشل ربط الكارت */
   }
   function renumberLines() {
     Array.prototype.forEach.call(document.querySelectorAll("#whItemLines .wh-item-card"),
@@ -257,6 +296,8 @@
 
   /* التغليف والحساب التلقائي: عدد العبوات × سعة العبوة + سائب = الكمية */
   var STORES = json("whStoresData");
+  /* المخزن الثابت لدورة الترفية — يتحدد تلقائيًا في توزيع الكميات (توجيه ٠٨/١٠) */
+  var TARFEA_STORE = "مخزن الترفية";
   function storeIdByName(name) {
     for (var i = 0; i < STORES.length; i++) {
       if (STORES[i].name === name) return STORES[i].id;
@@ -279,6 +320,7 @@
     var innerRow = root.querySelector(".js-inner-row");
     var innerCountEl = root.querySelector(sfx("pack_inner_count"));
     var innerCapEl = root.querySelector(sfx("pack_inner_capacity"));
+    var innerUnitEl = root.querySelector(sfx("pack_inner_unit"));
     var innerSum = root.querySelector(".js-inner-sum");
     var looseEl = root.querySelector(sfx("pack_loose"));
     var looseUnitEl = root.querySelector(sfx("pack_loose_unit"));
@@ -321,7 +363,7 @@
       } else {
         set(".js-inner-count-lbl", "كم علبة في العبوة؟");
       }
-      set(".js-inner-cap-lbl", inner ? (im ? "وزن " + inner + " الواحد" : "وزن ال" + inner + " الواحد") : "وزن العلبة الواحدة");
+      set(".js-inner-cap-lbl", inner ? (im ? "سعة/وزن " + inner + " الواحد" : "سعة/وزن ال" + inner + " الواحد") : "سعة/وزن المعيار الواحد");
       set(".js-cap-lbl", kind ? "وزن " + (km ? kind : kDef) + " الواحدة كاملة؟" : "وزن العبوة الواحدة كاملة؟");
     }
     dynLabels();
@@ -341,7 +383,9 @@
         var txt = k + " " + (sp.capacity ? "× " + Number(sp.capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 }) : "");
         if (sp.inner_count) {
           txt += " بداخلها " + Number(sp.inner_count).toLocaleString("ar-EG", { maximumFractionDigits: 3 })
-            + (sp.inner_kind ? " " + sp.inner_kind : "");
+            + (sp.inner_kind ? " " + sp.inner_kind : "")
+            + (sp.inner_capacity ? " × " + Number(sp.inner_capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 }) : "")
+            + (sp.inner_unit ? " " + sp.inner_unit : "");
         }
         var chip = document.createElement("button");
         chip.type = "button";
@@ -354,6 +398,7 @@
           if (innerKindEl) innerKindEl.value = sp.inner_kind || "";
           if (innerCountEl && sp.inner_count) innerCountEl.value = Number(sp.inner_count).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
           if (innerCapEl && sp.inner_capacity) innerCapEl.value = Number(sp.inner_capacity).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+          if (innerUnitEl && sp.inner_unit) innerUnitEl.value = sp.inner_unit;
           dynLabels(); reveal(); refresh();
         });
         presetsBox.appendChild(chip);
@@ -363,7 +408,7 @@
       try { renderPresets(); } catch (err) {}
     }
 
-    /* الكشف التدريجي: كل إجابة تفتح السؤال اللي بعدها — والسائب خلف زراره */
+    /* الكشف التدريجي: كل إجابة تفتح السؤال التالي — والسائب خلف زره */
     var countCell = root.querySelector(".js-count-cell");
     var innerCountCell = root.querySelector(".js-innercount-cell");
     var innerCapCell = root.querySelector(".js-innercap-cell");
@@ -372,7 +417,7 @@
     var eqTotal = root.querySelector(".js-eq-total");
     var tvEl = root.querySelector(".js-tv");
 
-    /* 📺 الشاشة الحية: كل معلومة بتكتبها تترسم فورًا — مثل أدوات التغليف المحترفة */
+    /* 📺 الشاشة الحية: كل معلومة تكتبها تظهر فورًا — مثل أدوات التغليف المحترفة */
     function brandLines() {
       var form = root.closest ? root.closest("form") : null;
       var sup = form ? (form.querySelector('[name="supplier_name"]') || {}) : {};
@@ -427,8 +472,8 @@
     function reveal() {
       if (countCell) countCell.hidden = !kindEl.value.trim();
       if (innerCountCell) innerCountCell.hidden = !innerKindEl.value.trim();
-      /* وزن المعيار الواحد ظاهر دايمًا (توجيه ٢٨/٠٩): المستخدم محتاجه خاصًة للسائب بالعلب —
-         كان بيختفي مع الكشف التدريجي فمش بيلاقي مكان يحدد وزن العلبة */
+      /* وزن المعيار الواحد ظاهر دائمًا (توجيه ٢٨/٠٩): المستخدم محتاجه خاصًة للسائب بالعلب —
+         كان يختفي مع الكشف التدريجي فلا يجد موضعًا لتحديد وزن العلبة */
       if (innerCapCell) innerCapCell.hidden = false;
       if (looseRow) looseRow.hidden = !looseToggle ? !!((looseEl && looseEl.value)) : !(looseRow.dataset.on === "1" || (looseEl && looseEl.value));
       if (looseToggle) looseToggle.hidden = !(looseRow && looseRow.hidden) && !!(looseEl && looseEl.value);
@@ -449,15 +494,14 @@
     }
 
     /* الصنف: من حقل النموذج نفسه، أو اسم كارت الصنف (data-item-name)، أو حقل ١ مخازن */
+    function currentName() {
+      if (root.dataset && root.dataset.itemName) return root.dataset.itemName;
+      if (localItem) return localItem.value.trim();
+      var altItem = root.querySelector(".js-item-name");
+      return altItem ? altItem.value.trim() : "";
+    }
     function currentInfo() {
-      var name = "";
-      if (root.dataset && root.dataset.itemName) name = root.dataset.itemName;
-      else if (localItem) name = localItem.value.trim();
-      else {
-        var altItem = root.querySelector(".js-item-name");
-        if (altItem) name = altItem.value.trim();
-      }
-      return name ? (ITEMS[name] || null) : null;
+      return matchItem(currentName());
     }
 
     function isReal() {
@@ -493,11 +537,14 @@
       var loose = toNum(looseEl ? looseEl.value : null) || 0;
       var lu = (looseUnitEl && looseUnitEl.value.trim()) || "";
       var looseBoxes = lu.indexOf("علب") === 0;
+      var iu = innerUnitEl ? innerUnitEl.value.trim() : "";
       var info = currentInfo();
       var unit = info ? info.unit : "";
-      /* وحدة الوزن: كجم/لتر من أساس الصنف نفسه — عمرها ما وحدة العدّ (كارتونة/شكارة)
-         «وزن العبوة هو المرجع»: العبوة بوزن ⇒ الحسبة والسجل بالوزن (توجيه ٢٧/٠٩) */
-      var wUnit = (info && info.base) ? info.base
+      /* وحدة الوزن: وحدة المعيار الداخلي المحددة هي الحاكم الأول (توجيه ١٠/١٠:
+         «١٠ كرتونة × ١٢ زجاجة × ٢ لتر = ٢٤٠ لتر») — وبعدها أساس الصنف —
+         وعمرها ما وحدة العدّ (كارتونة/شكارة) */
+      var wUnit = (iu && isMeasureUnit(iu)) ? iu
+        : (info && info.base) ? info.base
         : (isMeasureUnit(iw) ? baseOf(iw).base : "كجم");
 
       /* حاصل العلب + الفرق: الكرتونة كام مقابل عدد العلب × وزن العلبة */
@@ -514,7 +561,7 @@
           if (Math.abs(d) > 0.001) {
             diffEl.textContent = "⚠️ في فرق: العبوة " + fmt(cap) + " " + wUnit +
               " والعلب " + fmt(ic) + " × " + fmt(ica) + " = " + fmt(sub) + " " + wUnit +
-              " — الفرق " + fmt(Math.abs(d)) + " " + wUnit + " — صحّح اللي متأكد منه";
+              " — الفرق " + fmt(Math.abs(d)) + " " + wUnit + " — صحّح القيمة التي تأكدت منها";
             diffEl.classList.add("bad");
           } else {
             diffEl.textContent = "✓ العلب مطابقة لوزن العبوة (" + fmt(sub) + " " + wUnit + ")";
@@ -589,7 +636,7 @@
       drawTV(total, unitCount, total > 0 ? wUnit
         : (unitCount > 0 ? (isMeasureUnit(iw) ? iw : word) : word),
         wUnit, cap, ica);
-      /* وحدة التعامل بتتبني على ناتج التغليف: وزن ⇒ كجم/لتر، عدّ ⇒ المعيار نفسه —
+      /* وحدة التعامل تُبنى على ناتج التغليف: وزن ⇒ كجم/لتر، عدّ ⇒ المعيار نفسه —
          وخانة وحدة التعامل قراءة بس وقتها (توجيه ٢٧/٠٩) */
       var unitInput = root.querySelector(".js-unit");
       if (unitInput) {
@@ -621,7 +668,7 @@
       }
     }
 
-    [kindEl, countEl, capEl, innerKindEl, innerCountEl, innerCapEl, looseEl, looseUnitEl]
+    [kindEl, countEl, capEl, innerKindEl, innerCountEl, innerCapEl, innerUnitEl, looseEl, looseUnitEl]
       .forEach(function (el) {
         if (!el) return;
         el.addEventListener("input", function () { reveal(); refresh(); });
@@ -668,6 +715,9 @@
             innerCapEl.value = remembered.inner_capacity.toLocaleString("ar-EG",
               { maximumFractionDigits: 3 });
           }
+          if (innerUnitEl && !innerUnitEl.value && remembered.inner_unit) {
+            innerUnitEl.value = remembered.inner_unit;
+          }
           if (innerKindEl && !innerKindEl.value && remembered.inner_kind) {
             innerKindEl.value = remembered.inner_kind;
             dynLabels();
@@ -681,7 +731,11 @@
     refresh();
   }
 
-  wirePackaging(document, null);   /* احتياط للنماذج القديمة — الكروت تُربط في wireLineCard */
+  /* نماذج رصيد أول المدة (تسجيل/جديد/تعديل): كل نموذج يرتبط بمعادلته هو —
+     لكي يعطي «data-item-name» على النموذج نفسه يعطي بيانات الصنف الصحيح (توجيه ٠٨/١٠) */
+  Array.prototype.forEach.call(document.querySelectorAll("form.wh-opener"), function (f) {
+    if (f.querySelector('[name="pack_kind"]')) wirePackaging(f, null);
+  });
 
   /* توزيع الكمية على المخازن — صناديق متعددة (١ مخازن + رصيد أول المدة) بكومبو متمثّم */
 
@@ -719,7 +773,7 @@
     }
     SPLIT_REFRESH.push(refresh);
 
-    function addRow() {
+    function addRow(preName, preQty) {
       var row = document.createElement("div");
       row.className = "wh-split-row";
       row.innerHTML =
@@ -729,6 +783,9 @@
         '<button type="button" class="icon-btn del js-split-del" title="إزالة المخزن">' +
         '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
       rows.appendChild(row);
+      if (preName) row.querySelector('[name="' + prefix + 'store_name"]').value = preName;
+      if (preName) row.querySelector('[name="' + prefix + 'store_id"]').value = storeIdByName(preName) || "";
+      if (preQty) row.querySelector('[name="' + prefix + 'store_qty"]').value = preQty;
       if (window.LogisticsCombo) window.LogisticsCombo.enhance(row);
       row.querySelector('[name="' + prefix + 'store_name"]').addEventListener("change", function () {
         row.querySelector('[name="' + prefix + 'store_id"]').value = storeIdByName(this.value) || "";
@@ -743,7 +800,20 @@
     }
 
     add.addEventListener("click", addRow);
-    if (box.dataset.autoRow === "1" && !rows.children.length) addRow();
+    /* دورة الترفية: المخزن الوحيد «مخزن الترفية» — يتحدد مباشرةً من أول سطر (توجيه ٠٨/١٠) */
+    var ctxCycle = "";
+    var ctxEl = document.getElementById("whContext");
+    try {
+      if (ctxEl) ctxCycle = (JSON.parse(ctxEl.textContent) || {}).cycle || "";
+    } catch (e) {}
+    var defStore = ctxCycle === "tarfea" ? TARFEA_STORE : "";
+    if (box.dataset.autoRow === "1" && !rows.children.length) addRow(defStore);
+    var preRows = box.dataset.preRows;
+    if (preRows) {
+      try {
+        JSON.parse(preRows).forEach(function (sp) { addRow(sp.name, sp.qty); });
+      } catch (e) {}
+    }
     refresh();
   }
 
@@ -798,16 +868,16 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll("form"), wireShelf);
 
-  /* ============ وضع تعديل إذن ١ مخازن: تعبئة الفورم ببياناته (توجيه ٢٧/٠٩ —
-     إصلاح ٢٨/٠٩: البلوك كان في آخر الملف جوه IIFE روابط التأميدات و«return»
-     المبكرة كان بيقفزه + متغيراتة بره نطاقه ⇒ التعبئة ما كانت بتشتغل أبدًا.
-     نُقل جوه النطاق ده ليرى fmt/AR/SPLIT_REFRESH/addLineBtn/lineBox) ============ */
+  /* ============ وضع تعديل إذن ١ مخازن: تعبئة النموذج ببياناته (توجيه ٢٧/٠٩ —
+     إصلاح ٢٨/٠٩: البلوك كان في آخر الملف داخل IIFE روابط التأميدات و«return»
+     المغدًا كان يتجاوزه + متغيراتة خارج نطاقه ⇒ التعبئة لم تكن تعمل مطلقًا.
+     نُقل داخل النطاق ده ليرى fmt/AR/SPLIT_REFRESH/addLineBtn/lineBox) ============ */
   var editData = document.getElementById("whEditData");
   if (editData && addLineBtn && lineBox) {
     var editLines = [];
     try { editLines = JSON.parse(editData.textContent || "[]"); }
     catch (err) { if (window.console && console.warn) console.warn("داتا التعديل:", err); }
-    lineBox.innerHTML = "";   /* الكارت الفاضي التلقائي يتشال — الكروت تُبنى من الداتا */
+    lineBox.innerHTML = "";   /* الكارت الفارغ التلقائي يتشال — الكروت تُبنى من الداتا */
     Array.prototype.forEach.call(editLines, function () { addLineBtn.click(); });
     function dmy(iso) {
       var p = String(iso || "").split("-");
@@ -826,11 +896,13 @@
         set("item_name", ln.item_name);
         set("handle_unit", ln.handle_unit);
         set("qty", ln.qty ? fmt(ln.qty) : "");
+        set("producer", ln.producer);
         set("pack_kind", ln.pack_kind);
         set("pack_count", ln.pack_count ? fmt(ln.pack_count) : "");
         set("pack_inner_kind", ln.pack_inner_kind);
         set("pack_inner_count", ln.pack_inner_count ? fmt(ln.pack_inner_count) : "");
         set("pack_inner_capacity", ln.pack_inner_capacity ? fmt(ln.pack_inner_capacity) : "");
+        set("pack_inner_unit", ln.pack_inner_unit);
         set("pack_capacity", ln.pack_capacity ? fmt(ln.pack_capacity) : "");
         set("pack_loose", ln.pack_loose ? fmt(ln.pack_loose) : "");
         set("pack_loose_unit", ln.pack_loose_unit);
@@ -864,85 +936,4 @@
         if (qtyEl && SPLIT_REFRESH) SPLIT_REFRESH.forEach(function (f) { f(); });
       });
   }
-})();
-
-/* نوافذ التفاريد المنبثقة: فتح من أي سطر/زر، وإغلاق بزر أو Esc أو الضغط بالخارج */
-document.addEventListener("click", function (ev) {
-    var openBtn = ev.target.closest("[data-taf-open]");
-    if (openBtn) {
-      var dlg = document.getElementById(openBtn.getAttribute("data-taf-open"));
-      if (dlg && dlg.showModal) { dlg.showModal(); }
-      return;
-    }
-    var closeBtn = ev.target.closest("[data-taf-close]");
-    if (closeBtn) {
-      var d2 = document.getElementById(closeBtn.getAttribute("data-taf-close"));
-      if (d2 && d2.close) d2.close();
-      return;
-    }
-    if (ev.target instanceof HTMLDialogElement) ev.target.close();  /* ضغط بالخارج */
-  });
-
-/* تابات الأصناف داخل كارت المخزن (تاب المخازن): تاب لكل صنف — الضغط يعرض حركته فقط (توجيه ٢٧/٠٩ ليلًا) */
-document.addEventListener("click", function (ev) {
-  var btn = ev.target.closest("[data-st-sub]");
-  if (!btn) return;
-  var scope = btn.closest(".wh-store-card");
-  if (!scope) return;
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-sub]"), function (b) {
-    b.classList.toggle("active", b === btn);
-  });
-  Array.prototype.forEach.call(scope.querySelectorAll("[data-st-panel]"), function (p) {
-    p.hidden = p.getAttribute("data-st-panel") !== btn.getAttribute("data-st-sub");
-  });
-});
-
-/* التابات الفرعية (٢ و٣ مخازن): تبديل بلا إعادة تحميل */
-document.addEventListener("click", function (ev) {
-  var btn = ev.target.closest("[data-wh2sub],[data-wh3sub]");
-  if (!btn) return;
-  var scope = btn.closest(".panel");
-  if (!scope) return;
-  var sub = btn.hasAttribute("data-wh2sub") ? "data-wh2sub" : "data-wh3sub";
-  var pan = btn.hasAttribute("data-wh2sub") ? "data-wh2panel" : "data-wh3panel";
-  Array.prototype.forEach.call(scope.querySelectorAll("[" + sub + "]"), function (b) {
-    b.classList.toggle("active", b === btn);
-  });
-  Array.prototype.forEach.call(scope.querySelectorAll("[" + pan + "]"), function (p) {
-    p.hidden = p.getAttribute(pan) !== btn.getAttribute(sub);
-  });
-});
-
-/* من التاميدات: «عرض الإذن» يفتح ٢ مخازن على «سجلات ٢ مخازن» عند إذنها مباشرة (توجيه ٢٧/٠٩) */
-(function () {
-  try {
-    var q = new URLSearchParams(window.location.search);
-    var sub2 = q.get("wh2sub"), no = q.get("wh2permit");
-    if (!sub2 && !no) return;
-    if (sub2) {
-      var btn = document.querySelector('[data-wh2sub="' + sub2 + '"]');
-      if (btn) btn.click();
-    }
-    if (no) {
-      var row = document.querySelector('[data-taf-open="sijDialog-' + no + '"]');
-      if (row) row.click();
-    }
-  } catch (err) {}
-})();
-
-(function () {
-  /* ============ كارت الصنف على الموبايل: الضغط على صنف ينزل على الكارت على طول
-  (القائمة فوقه والكارت تحتها — من غيرها يبان «الجدول مختفي» وهو تحت) ============ */
-  try {
-    var q3 = new URLSearchParams(window.location.search);
-    if (q3.get("item")) {
-      var cardEl = document.getElementById("whCard");
-      if (cardEl && cardEl.scrollIntoView) {
-        window.setTimeout(function () {
-          cardEl.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 150);
-      }
-    }
-  } catch (err) {}
-
 })();

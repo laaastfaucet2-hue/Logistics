@@ -306,6 +306,11 @@ input, select, textarea {
   color: var(--gold-light); font-size: .85rem; text-decoration: none; font-weight: 600; }
 .tm-openbtn:hover { border-color: var(--brand-orange); color: var(--brand-orange);
   background: rgba(245, 158, 11, .1); }
+/* زر ثانوي (ملف الشهر الكامل بجوار ملف اليوم) — أهدأ ولا ينافس الأزرار الأساسية */
+.tm-openbtn.dim { background: transparent; border-style: solid; border-color: var(--line, rgba(148,163,184,.35));
+  color: var(--muted); font-weight: 500; padding: 9px 12px; font-size: .8rem; }
+.tm-openbtn.dim:hover { color: var(--brand-orange); border-color: var(--brand-orange);
+  background: rgba(245, 158, 11, .07); }
 
 .tm-cell.issued { box-shadow: inset 0 0 0 2px #22c55e; }
 .tm-cell.issued::after { content: ""; position: absolute; left: 5px; bottom: 5px;
@@ -351,11 +356,6 @@ input, select, textarea {
 .tm-rat-qty { padding: 8px; border-radius: 9px; border: 1px solid var(--gold-border);
   background: var(--surface-gold); color: var(--text); text-align: center; font-weight: 800; }
 .tm-rat-save { width: 100%; justify-content: center; padding: 12px 18px; font-weight: 800; }
-.tm-soon-card { width: min(520px, 96vw); padding-top: 0; border-color: var(--brand-gold); }
-.tm-soon-body { text-align: center; padding: 18px 8px 8px; }
-.tm-soon-badge { display: inline-flex; margin-bottom: 12px; padding: 6px 14px; border-radius: 999px;
-  background: var(--brand-gold); color: var(--on-gold); font-weight: 800; }
-.tm-soon-body p { color: var(--text); font-weight: 600; line-height: 1.7; margin: 0; }
 
 .tm-bigacts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 16px; }
 .tm-bigact { display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -369,7 +369,40 @@ input, select, textarea {
   box-shadow: 0 8px 22px rgba(245, 158, 11, .38); }
 .tm-bigact.teal { background: #134e4a; color: #ecfdf5; border: 1px solid #2dd4bf; }
 @media (max-width: 820px) { .tm-bigacts, .tm-rat-combos { grid-template-columns: 1fr; } }
-/* شارة مفتاح الحروف ض/أ/م في ترويسة القسم (توجيه ٠٦/١٠/٢٠٢٦) */
+/* شارة ترويسة القسم (تسميات فئات القوة) — بلا مفتاح حروف من ٠٨/١٠/٢٠٦ */
 .tm-chip.legend { color: var(--gold-light); border-color: var(--gold-border);
   background: rgba(var(--gold-rgb),.08); letter-spacing: .3px; }
 .sh-legend { font-style: normal; color: var(--gold-light); font-size: .78rem; }
+
+/* «تجاهل» = مسح فعلي: hidden لازم يفوز على display:block */
+.tm-hint.warn[hidden] { display: none; }
+
+/* عمود «الراغبين» في جدول تأميدات اليوم — ربط بقسم الراغبين (١٠/١٠/٢٠) */
+.tm-rg-count { font-weight: 800; }
+.tm-rg-chip { display: inline-block; margin-inline-start: 6px; padding: 2px 8px;
+  border-radius: 8px; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+.tm-rg-chip.ok { background: rgba(34, 197, 94, .16); color: #4ade80; }
+.tm-rg-chip.warn { background: rgba(245, 158, 11, .16); color: #fbbf24; }
+.tm-rg-chip.over { background: rgba(239, 68, 68, .16); color: #f87171; }
+
+/* ١٤/١٠: مودال الراغبين المنبثق فوق فورم التأميدة (شكل احترافي) */
+.tm-rgdialog { width: min(1060px, 94vw); max-height: 88vh; padding: 0; margin: auto;
+  border-radius: 16px; background: var(--panel-bg, #101828);
+  color: var(--text-main, #e5e7eb);
+  border: 1px solid var(--panel-border, #2a3550);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .55); overflow: hidden; }
+.tm-rgdialog::backdrop { background: rgba(2, 6, 23, .76); backdrop-filter: blur(3px); }
+.tm-rgdialog[open] { display: flex; flex-direction: column; }
+.tm-rgdialog-head { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--panel-border, #2a3550);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0)); }
+.tm-rgdialog-head b { font-size: 1.05rem; display: block; }
+.tm-rgdialog-sub { display: block; margin-top: 4px; font-size: .82rem; opacity: .72; }
+.tm-rgdialog-body { overflow-y: auto; padding: 16px 18px 22px; overscroll-behavior: contain; }
+/* على الموبايل: النافذة تاخد الشاشة كلها تقريبًا */
+@media (max-width: 760px) {
+  .tm-rgdialog { width: 96vw; max-height: 92vh; border-radius: 12px; }
+  .tm-rgdialog-head { padding: 12px 14px; }
+  .tm-rgdialog-head b { font-size: .98rem; }
+  .tm-rgdialog-body { padding: 12px 12px 18px; }
+}

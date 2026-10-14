@@ -10,7 +10,7 @@
       {% if not wh1_edit %}hidden{% endif %} data-autopen>
   <input type="hidden" name="cycle" value="{{ cycle_key }}">
   {% if wh1_edit %}
-  <div class="wh-edit-banner">✏️ أنت ب تعدّل إذن إضافة رقم <b>{{ wh1_edit.serial | aindic }}</b> — الرقم ثابت، وحفظ التعديل يعيد احتساب الأرصدة والكروت والدفاتر
+  <div class="wh-edit-banner">✏️ أنت تعدّل إذن إضافة رقم <b>{{ wh1_edit.serial | aindic }}</b> — الرقم ثابت، وحفظ التعديل يعيد احتساب الأرصدة والبطاقات والدفاتر
     <a class="rt-btn dim" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1') }}">إلغاء التعديل</a></div>
   <h3 class="wh-form-title">✏️ تعديل إذن إضافة رقم {{ wh1_edit.serial | aindic }} — ١ مخازن</h3>
   {% else %}
@@ -22,8 +22,8 @@
   <fieldset class="wh-fs">
     <legend>📋 بيانات الإذن</legend>
     <div class="wh-grid">
-      <label class="wh-f">رقم الإذن <small>(فاضي = يكمّل التسلسل)</small>
-        <input name="receipt_no" inputmode="numeric" autocomplete="off" placeholder="مثال: ١" value="{{ wh1_edit.serial | aindic if wh1_edit else '' }}" {% if wh1_edit %}readonly title="رقم الإذن ثابت في وضع التعديل"{% endif %}></label>
+      <label class="wh-f">رقم الإذن <small>(الرقم الخارجي المكتوب على ورقة الإذن — مطلوب)</small>
+        <input name="receipt_no" inputmode="numeric" autocomplete="off" required placeholder="مثال: ١" value="{{ wh1_edit.serial | aindic if wh1_edit else '' }}" {% if wh1_edit %}readonly title="رقم الإذن ثابت في وضع التعديل"{% endif %}></label>
       <label class="wh-f">يوم الإذن (داخل الشهر النشط)
         <input name="day" inputmode="numeric" value="{{ (wh1_edit.day if wh1_edit else default_day) | aindic }}" min="١" max="{{ days_in_month | aindic }}">
         <span class="wh-hintline wh-day-hint"></span></label>
@@ -36,9 +36,9 @@
     </div>
   </fieldset>
 
-  <!-- مربع ٢: الأصناف — كارت لكل صنف -->
+  <!-- مربع ٢: الأصناف — بطاقة لكل صنف -->
   <fieldset class="wh-fs">
-    <legend>📦 الأصناف — كل صنف في كارت مستقل</legend>
+    <legend>📦 الأصناف — كل صنف في بطاقة مستقلة</legend>
     {% if wh1_edit %}<script type="application/json" id="whEditData">{{ wh1_edit.lines | wh1edit_json }}</script>{% endif %}
     <div id="whItemLines"></div>
     <button type="button" class="rt-btn gold wh-add-line" id="whAddLine">
@@ -46,10 +46,10 @@
   </fieldset>
 
   <div class="wh-form-actions no-print">
-    <button class="rt-btn gold" type="submit">{% if wh1_edit %}💾 حفظ التعديل — رقم {{ wh1_edit.serial | aindic }} لا يتغير{% else %}💾 حفظ الإذن وفتح كروت الأصناف في ٣ مخازن{% endif %}</button>
+    <button class="rt-btn gold" type="submit">{% if wh1_edit %}💾 حفظ التعديل — رقم {{ wh1_edit.serial | aindic }} لا يتغير{% else %}💾 حفظ الإذن وفتح بطاقات الأصناف في ٣ مخازن{% endif %}</button>
   </div>
 
-  <!-- قالب كارت الصنف: __IDX__ يُستبدل برقم الكارت -->
+  <!-- قالب بطاقة الصنف: __IDX__ يُستبدل برقم البطاقة -->
   <template id="whLineTpl">
     <div class="wh-item-card" data-line="__IDX__" data-line-prefix="l__IDX___">
       <div class="wh-item-card-head">
@@ -66,7 +66,8 @@
       <div class="wh-grid">
         <label class="wh-f">الكمية الإجمالية <small>(تتحسب تلقائيًا من التغليف — أو اكتبها بنفسك)</small>
           <input name="l__IDX___qty" class="js-line-qty" inputmode="decimal" autocomplete="off"></label>
-        <div class="wh-f wh-f-hint"></div>
+        <label class="wh-f">الشركة المنتجة للصنف <small>(فارغ = شركة منتج الإذن)</small>
+          <input class="js-line-producer" name="l__IDX___producer" data-combo="whProducersList" autocomplete="off" placeholder="اسم الشركة المنتجة"></label>
         <div class="wh-f wh-f-hint"></div>
       </div>
       <fieldset class="wh-pack wh-f-wide">
@@ -76,7 +77,7 @@
         <div class="wh-tv js-tv" aria-live="polite"></div>
         <div class="wh-presets js-pack-presets" hidden></div>
 
-        <!-- معادلة التغليف: صناديق كبيرة بأسئلة تحتها — كل إجابة تفتح اللي بعدها -->
+        <!-- معادلة التغليف: صناديق كبيرة بأسئلة تحتها — كل إجابة تفتح السؤال التالي -->
         <div class="wh-eq">
           <div class="wh-eq-cell">
             <span class="wh-eq-lbl">نوع العبوة</span>
@@ -92,7 +93,7 @@
             <span class="wh-hintline js-inner-mode-hint"></span>
           </div>
           <div class="wh-eq-cell js-innercount-cell" hidden>
-            <span class="wh-eq-lbl js-inner-count-lbl">جواها كام؟</span>
+            <span class="wh-eq-lbl js-inner-count-lbl">كم بداخلها؟</span>
             <input name="l__IDX___pack_inner_count" class="js-pack-inner-count" inputmode="decimal" autocomplete="off" placeholder="٢٧">
           </div>
           <div class="wh-eq-total js-eq-total">—</div>
@@ -100,9 +101,10 @@
 
         <!-- الوزن الاختياري: وزن المعيار (يحوّل العدّ لكجم) أو وزن العبوة نفسها -->
         <div class="wh-pack-row wh-pack-weights">
-          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وزن المعيار الواحد</span> <small>(يحوّل العدّ لكجم)</small>
-            <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off"></label>
-          <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (لو زنتها بنفسك)</span> <small>(اختياري)</small>
+          <label class="wh-f js-innercap-cell" hidden><span class="js-inner-cap-lbl">وحدة المعيار الواحد</span> <small>(وحته هي وحدة الإجمالي)</small>
+            <input name="l__IDX___pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢">
+            <input name="l__IDX___pack_inner_unit" class="js-pack-inner-unit" data-combo="whInnerUnitsList" autocomplete="off" placeholder="لتر، كجم..."></label>
+          <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (إذا وزنتها بنفسك)</span> <small>(اختياري)</small>
             <input name="l__IDX___pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off"></label>
         </div>
 
@@ -119,7 +121,7 @@
         <div class="wh-pack-diff js-pack-diff"></div>
       </fieldset>
       <div class="wh-grid">
-        <label class="wh-f">تاريخ الإنتاج <small>(يوم/شهر/سنة)</small>
+        <label class="wh-f">تاريخ الإنتاج <small>(سنة/شهر/يوم)</small>
           <input name="l__IDX___prod_date" class="js-prod-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
         <label class="wh-f">تاريخ الصلاحية
           <input name="l__IDX___exp_date" class="js-exp-date" autocomplete="off" placeholder="٠٠/٠٠/٠٠٠٠"></label>
@@ -153,7 +155,7 @@
         <td>{{ g.supplier_name or '—' }}</td>
         <td class="no-print wh-row-actions">
           <button type="button" class="rt-btn dim" data-taf-open="wh1Dialog-{{ g.serial }}">📄 عرض الإذن</button>
-          <a class="rt-btn gold" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1', wh1edit=g.serial) }}" title="تعديل الإذن بنفس الفورم">✏️ تعديل</a></td>
+          <a class="rt-btn gold" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1', wh1edit=g.serial) }}" title="تعديل الإذن بنفس النموذج">✏️ تعديل</a></td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="empty">لا إذون إضافة بعد هذا الشهر — أضف أول إذن من الزر الأمبر فوق ➕</td></tr>
@@ -182,7 +184,7 @@
         <tr>
           <td class="num">{{ loop.index | aindic }}</td>
           <td class="name"><b>{{ r.item_name }}</b></td>
-          <td class="num"><b>{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
+          <td class="num"><b class="mv-in">{{ r.qty_handle | qty3 }}</b> {{ r.unit }}{% if r.qty_base %} — يعادل {{ r.qty_base | qty3 }} {{ r.base_unit }}{% endif %}</td>
           <td>{{ r.unit or '—' }}</td>
           <td class="wh-pack-cell">{{ pack_chips(r.pack_label) }}</td>
           <td>{% for st in r.stores %}{{ st.store_name }} ({{ st.qty | qty3 }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>

@@ -1,0 +1,13 @@
+{# تبويبات تفاريد خط الحدود الدولى الفرعية #}
+{% set dw_args = {} %}
+{% for key in ('from', 'to', 'line', 'dist') %}{% if request.args.get(key) %}{% set _ = dw_args.update({key: request.args.get(key)}) %}{% endif %}{% endfor %}
+{% set papers_args = {} %}{% set _ = papers_args.update(dw_args) %}{% set _ = papers_args.update({'tab': 'papers'}) %}
+{% set totals_args = {} %}{% set _ = totals_args.update(dw_args) %}{% set _ = totals_args.update({'tab': 'totals'}) %}
+{% set lines_args = {} %}{% set _ = lines_args.update({'tab': 'lines'}) %}
+{% set rates_args = {} %}{% set _ = rates_args.update({'tab': 'rates'}) %}
+<nav class="c2-tabs dw-subtabs" aria-label="أقسام تفاريد خط الحدود الدولى">
+  <a class="c2-sub {{ 'on' if tab == 'papers' }}" href="{{ url_for('dowail.page', **papers_args) }}">أوراق وإيصالات الصرف</a>
+  <a class="c2-sub {{ 'on' if tab == 'totals' }}" href="{{ url_for('dowail.page', **totals_args) }}">إجمالي خطوط التوزيع</a>
+  <a class="c2-sub {{ 'on' if tab == 'lines' }}" href="{{ url_for('dowail.page', **lines_args) }}">إدارة الخطوط والنقاط</a>
+  <a class="c2-sub {{ 'on' if tab == 'rates' }}" href="{{ url_for('dowail.page', **rates_args) }}">تعديل معدلات الأصناف</a>
+</nav>

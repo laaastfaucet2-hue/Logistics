@@ -51,6 +51,7 @@ def test_daily_one_meal_per_day(app):
     drg.set_daily(YEAR, MONTH, pid, 22, True, source="tamida")   # upsert لا يكرر
     drg.set_daily(YEAR, MONTH, pid, 23, True)
     assert drg.month_meals(YEAR, MONTH)[pid] == 2                # وجبة لكل يوم
+    assert drg.month_meal_days(YEAR, MONTH)[pid] == [22, 23]     # الأيام مرتبة للتجميع
     assert drg.day_state(YEAR, MONTH, 22, eid) == {pid: True}
 
 
@@ -80,7 +81,7 @@ def test_cadres_files_official_and_states(app):
     ind_path = folder / f"{name} (أفراد).xlsx"
     assert off_path.exists() and ind_path.exists()
     ws = load_workbook(off_path).active
-    assert ws.title == "ض — الضباط"
+    assert ws.title == "ضابط — الضباط"
     assert ws.cell(6, 1).value.startswith("الجهات والكوادر المعتمدة")
     names = [ws.cell(r, 3).value for r in range(8, 10)]
     assert "محمد محمود" in names and "ابراهيم ناجى عطا الله" in names
@@ -92,7 +93,7 @@ def test_cadres_files_official_and_states(app):
     total_row = 8 + 2   # صفان بيانات + صف الإجمالي في الصف العاشر
     assert "الإجمالي" in str(ws.cell(total_row, 1).value)
     ws_i = load_workbook(ind_path).active
-    assert ws_i.title == "أ — الأفراد والصف"
+    assert ws_i.title == "فرد — الأفراد والصف"
     assert ws_i.cell(8, 3).value == "أحمد محمد صابر"
 
 
@@ -112,10 +113,10 @@ def test_daily_save_flow_clear_and_set(app, client):
     # الشجرة الجديدة: فولدر لكل يوم ⇒ فولدر لكل جهة ⇒ ملفان (ض + أ)
     folder = day_dir(YEAR, MONTH, 22) / name
     assert folder.is_dir()
-    off_path, ind_path = folder / "ض — الضباط.xlsx", folder / "أ — الأفراد والصف.xlsx"
+    off_path, ind_path = folder / "ضابط — الضباط.xlsx", folder / "فرد — الأفراد والصف.xlsx"
     assert off_path.exists() and ind_path.exists()
     ws = load_workbook(off_path).active
-    assert ws.title == "ض — الضباط"
+    assert ws.title == "ضابط — الضباط"
     assert "الرغبين في وجبة الطعام" in str(ws.cell(6, 1).value) or \
         "الراغبين في وجبة الطعام" in str(ws.cell(6, 1).value)
     marks = {ws.cell(r, 3).value: ws.cell(r, 4).value for r in range(9, 11)}
@@ -123,7 +124,7 @@ def test_daily_save_flow_clear_and_set(app, client):
     assert marks["ابراهيم ناجى عطا الله"] == "⊘ غير راغب"
     assert "الإجمالي: ١ راغبون من أصل ٢" in str(ws.cell(11, 1).value)
     ws_i = load_workbook(ind_path).active
-    assert ws_i.title == "أ — الأفراد والصف"
+    assert ws_i.title == "فرد — الأفراد والصف"
     assert ws_i.cell(9, 3).value == "أحمد محمد صابر"      # الفرد في ملفه المستقل
     assert ws_i.cell(9, 4).value == "✗ لا"
     # حفظ جديد بدون محمد محمود → تُلغى رغبته (clear-and-set) والمستثنى يتجاهل دايمًا
@@ -183,8 +184,9 @@ def test_modal_full_page_no_fetch(app, client):
     assert "كشف وتسجيل أسماء الضباط والأفراد الراغبين" in body
     assert body.count('name="names"') == 10
     assert "رجوع إلى صفحة التأميدات" in body
-    assert "/raghibin/panel/quick_add" in body          # فورم POST عادي
-    assert 'action="/raghibin/modal"' in body           # منسدلة GET عادية
+    assert "/raghibin/panel/quick_add" not in body      # إضافة القوة من تاب الكوادر فقط
+    assert 'class="rg-entity-picker"' in body           # قائمة جهات مخصصة واضحة وصغيرة
+    assert 'data-entity-name="' + name + '"' in body
     assert "rg-force-toggle" in body                    # التشيك (لمس محلي)
     assert 'value="محمد محمود"' in body                 # الراغب معبأ في مربعه
     # صفحة التأميدات: الزرار + السكريبت الجديد — ولا أثر للمودال القديم
@@ -211,18 +213,19 @@ def test_panel_fragment(app, client):
     assert body.count('name="names"') == 10       # ١٠ مربعات حسب التأميدة
     assert 'value="tameedat"' in body and 'value="tamida"' in body
     assert "الجهة المختارة للراغبين" in body       # المنسدلة
-    assert 'class="rg-entity-select"' in body
-    assert "الاسم رباعي" in body                   # تسمية الاسم رباعي
-    assert "جهة شرطية معتمدة" in body
-    assert "ض — الضباط المسجلون" in body and "أ — الأفراد والصفة" in body
+    assert 'class="rg-entity-picker"' in body
+    assert 'class="rg-entity-options"' in body
+    assert "اكتب اسم الضابط" in body               # تسمية مربع الاسم واضحة
+    assert "نوع الجهة: شرطية معتمدة" in body
+    assert "👮 ضابط (" in body and "👥 فرد (" in body
     assert 'class="rg-force-toggle"' in body       # قائمة القوة بتشيكات
     assert "<details" in body and "قائمة قوة الضباط المعتمدة" in body  # قابلة للطي
     assert "rg-force-del" not in body              # بدون زر الحذف (من الكوادر فقط)
     assert "/raghibin/modal?c=individuals" in body  # تابات الفئات تصفح عادي
     assert "ابراهيم ناجى عطا الله" not in body     # المستثنى لا يظهر في القائمة
     assert "قسمة الأسماء في كشوفات التجهيز اليومية" in body
-    assert "حفظ وأعتماد التجهيزات" in body
-    assert "ضبط اليوم" in body
+    assert '<button class="rt-btn gold" type="submit">حفظ</button>' in body
+    assert "يوم <b>الاثنين</b>" in body and "٢٢/٠٩/٢٠٣١" in body
     assert 'checked>' in body                      # محمد محمود مشيك (راغب اليوم)
     # بدون تأميدة: لا مربعات مع رسالة إرشادية
     r2 = client.get(f"/raghibin/panel?en={name}&d=5&c=officers")
@@ -276,7 +279,10 @@ def test_daily_page_calendar_folders_and_mismatch(app, client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "عدم تطابق يوم ٢٢" in body                     # ١٠ تأميدة مقابل ٢ راغبين
-    assert "ض ٢/١٠" in body and "أ ٠/١٠" in body             # عداد المربعات بالحروف
+    plain = __import__("re").sub(r"<[^>]+>", " ", body)
+    # المربعات حسب القوة المعتمدة المتاحة: ضابطان، ولا أفراد مسجلون في القوة.
+    assert __import__("re").search(r"ضابط\s+٢/٢", plain)
+    assert __import__("re").search(r"فرد\s+٠/٠", plain)
     root = rfs.tab_dir(YEAR, MONTH, "daily")
     assert (root / "يوم ١").exists() and (root / "يوم ٣٠").exists()   # فولدرات الشهر كاملة
 
@@ -322,29 +328,71 @@ def test_excluded_tab_and_files(app, client):
 
 
 def test_monthly_tab_and_file(app, client):
+    """الجدول الشهري يعرض الأيام وتسلسل الوجبات الفعلية لا رقم التاريخ."""
+    import re
     eid, name = _entity()
     p1, _ = drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
     p2, _ = drg.add_person(YEAR, MONTH, eid, "officers", "مصطفى عبدالحميد", "نقيب")
     p3, _ = drg.add_person(YEAR, MONTH, eid, "officers", "ابراهيم ناجى عطا الله", "رائد")
+    p4, _ = drg.add_person(YEAR, MONTH, eid, "individuals", "أحمد محمد صابر", "فرد (1)")
     drg.set_excluded(YEAR, MONTH, p3, True, "هلاكات")
-    drg.set_daily(YEAR, MONTH, p1, 22, True)
-    drg.set_daily(YEAR, MONTH, p1, 23, True)
-    drg.set_daily(YEAR, MONTH, p2, 22, True)
+    drg.set_daily(YEAR, MONTH, p1, 2, True)
+    drg.set_daily(YEAR, MONTH, p1, 4, True)         # يوم ٣ متخطى: يوم ٤ = الوجبة ٢
+    drg.set_daily(YEAR, MONTH, p2, 2, True)
+    drg.set_daily(YEAR, MONTH, p4, 3, True)
     path = mfs.write_monthly_file(YEAR, MONTH, eid, name)
     book = load_workbook(path)
-    assert book.sheetnames == ["ض — الضباط", "أ — الأفراد والصف"]
-    ws = book["ض — الضباط"]
-    assert ws.cell(8, 2).value == "رائد / محمد محمود" and ws.cell(8, 3).value == "٢"
-    assert ws.cell(9, 3).value == "١"                       # نقيب / مصطفى — وجبة
-    names = [ws.cell(r, 2).value for r in range(8, 11)]     # المستثنى خارج الكشف
-    assert all("ابراهيم" not in str(n) for n in names)
-    assert "إجمالي ٢ فرد | إجمالي الوجبات: ٣ وجبة" in str(ws.cell(10, 1).value)
-    r = client.get(f"/raghibin?tab=monthly&e={eid}&c=officers")
-    assert r.status_code == 200
-    body = r.get_data(as_text=True)
-    assert "رائد / محمد محمود" in body
+    assert book.sheetnames == ["ضابط — الضباط", "فرد — الأفراد والصف"]
+    ws = book["ضابط — الضباط"]
+    day_2_col, day_3_col, day_4_col, total_col = 4, 5, 6, 33
+    assert ws.cell(7, day_2_col).value == "٢\nالثلاثاء"
+    assert ws.cell(8, 2).value == "رائد / محمد محمود"
+    assert ws.cell(8, day_2_col).value == "١"
+    assert ws.cell(8, day_3_col).value == "·"
+    assert ws.cell(8, day_4_col).value == "٢"
+    assert ws.cell(8, total_col).value == "٢ وجبة"
+    assert ws.cell(9, day_2_col).value == "١"               # مصطفى — وجبة واحدة
+    assert ws.cell(9, total_col).value == "١ وجبة"
+    names = [ws.cell(row, 2).value for row in range(8, 11)]  # المستثنى خارج الكشف
+    assert all("ابراهيم" not in str(person_name) for person_name in names)
+    assert ws.cell(10, 1).value == "إجمالي الضباط: ٢ فرد"
+    assert ws.cell(10, 3).value == "إجمالي الوجبات: ٣ وجبة"
+    individuals_ws = book["فرد — الأفراد والصف"]
+    assert individuals_ws.cell(8, 2).value == "فرد (١) / أحمد محمد صابر"
+    assert individuals_ws.cell(8, 5).value == "١"            # يوم ٣
+    assert individuals_ws.cell(9, 1).value == "إجمالي الأفراد: ١ فرد"
+
+    response = client.get(f"/raghibin?tab=monthly&e={eid}&c=officers")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "rg-monthly-table" in body and "رائد / محمد محمود" in body
+    assert 'class="rg-entity-picker"' in body
+    assert f'data-entity-name="{name}"' in body
+    day_headers = re.findall(
+        r'<th class="rg-monthly-day"[^>]*>\s*<b>([^<]+)</b>\s*<small>([^<]+)</small>',
+        body,
+    )
+    assert len(day_headers) == 30
+    assert day_headers[1] == ("٢", "الثلاثاء")
+    assert all(not any(char.isascii() and char.isdigit() for char in number)
+               for number, _weekday in day_headers)
+    mohamed_row = body[body.index("رائد / محمد محمود"):].split("</tr>", 1)[0]
+    meal_cells = re.findall(
+        r'<td class="rg-monthly-meal ([^"]+)">\s*(?:<b>([^<]+)</b>|<span[^>]*>([^<]+)</span>)',
+        mohamed_row,
+    )
+    meal_values = [number or empty for _state, number, empty in meal_cells]
+    assert len(meal_values) == 30
+    assert meal_values[1:4] == ["١", "·", "٢"]
+    assert "إجمالي الضباط: ٢ فرد" in body
     assert "إجمالي الوجبات: ٣ وجبة" in body
-    assert "ض — الضباط" in body and "أ — الأفراد" in body
+    individuals_body = client.get(
+        f"/raghibin?tab=monthly&e={eid}&c=individuals"
+    ).get_data(as_text=True)
+    assert "فرد (١) / أحمد محمد صابر" in individuals_body
+    assert "فرد (1) / أحمد محمد صابر" not in individuals_body
+    assert "إجمالي الأفراد: ١ فرد" in individuals_body
+    assert "إجمالي الوجبات: ١ وجبة" in individuals_body
 
 
 def test_monthly_rebuilds_on_save(app, client):
@@ -352,9 +400,10 @@ def test_monthly_rebuilds_on_save(app, client):
     drg.add_person(YEAR, MONTH, eid, "officers", "محمد محمود", "رائد")
     client.post("/raghibin/daily/save", data={
         "e": eid, "d": 5, "cat": "officers", "names": ["محمد محمود"]})
-    ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["ض — الضباط"]
-    assert ws.cell(8, 3).value == "١"
-    assert "إجمالي الوجبات: ١ وجبة" in str(ws.cell(9, 1).value)
+    ws = load_workbook(mfs.tab_dir(YEAR, MONTH, "monthly") / f"{name}.xlsx")["ضابط — الضباط"]
+    assert ws.cell(8, 7).value == "١"              # عمود يوم ٥
+    assert ws.cell(8, 33).value == "١ وجبة"        # عمود الإجمالي بعد ٣٠ يومًا
+    assert ws.cell(9, 3).value == "إجمالي الوجبات: ١ وجبة"
 
 
 def test_rag_check_range_warning_excess_only(app, client):
@@ -433,7 +482,7 @@ def test_no_double_dropdown_and_daily_tabs(app, client):
     cadres = client.get(f"/raghibin?tab=cadres&e={eid}").get_data(as_text=True)
     assert 'list="' not in cadres
     daily = client.get(f"/raghibin?tab=daily&e={eid}&d=22").get_data(as_text=True)
-    assert "rg-cat-tabs" in daily and "👮 ض" in daily and "👥 أ" in daily   # مفتاح الحروف
+    assert "rg-cat-tabs" in daily and "👮 ضابط" in daily and "👥 فرد" in daily
     assert "الاسم رباعي" in cadres
 
 
@@ -467,7 +516,7 @@ def test_page_and_section_redirect(client):
     r = client.get("/raghibin?tab=cadres")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    for name in ("الراغبين (يومي)", "عدم الراغبين", "تجميع الكشف العام",
+    for name in ("الراغبين (يومي)", "عدم الراغبين", "تجميع الكشف الشهري العام",
                  "الجهات والكوادر المعتمدة"):
         assert name in body
     r2 = client.get("/sections/raghebeen")

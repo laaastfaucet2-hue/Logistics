@@ -1,0 +1,68 @@
+{# ٥ مخازن (صادر المخزن التقصيلى — توزيع 5 مخازن) — سجل تلقائي 100% (توجيه ١١/١٠):
+   يتكوّن من ١ مخازن (إذون الإضافة) + ٢ مخازن (إذون الصرف) — نفس حركات دفتر ٣ مخازن.
+   القواعد الذهبية: كل رقم إذن مسجل · رصيد أول المدة ممنوع نهائياً (نبدأ من الإذونات). #}
+<div class="panel wh-wh5">
+  <div class="panel-head">
+    <h3>📋 ٥ مخازن — دفتر حركة صادر ووارد المخزن التقصيلى (توزيع 5 مخازن)</h3>
+    <span class="panel-hint">سجل تلقائي من ١ مخازن (إذون الإضافة) + ٢ مخازن (إذون الصرف) — كل رقم إذن مسجل، ودون رصيد أول المدة</span>
+  </div>
+  <div class="wh5-stats no-print">
+    <span class="wh-chip gold">إجمالي الحركات المسجلة: <b>{{ wh5.count | aindic }} حركة</b></span>
+    <span class="wh-chip dim">إجمالي المضاف بالدفتر (+): <b>{{ wh5.total_added | qty3 }}</b></span>
+    <span class="wh-chip dim">إجمالي المنصرف بالدفتر (−): <b>{{ wh5.total_issued | qty3 }}</b></span>
+    <span class="wh-chip dim">آخر حركة مسجلة: <b><bdi dir="ltr">{{ wh5.last | datefmt }}</bdi></b></span>
+  </div>
+  <div class="wh-scroll">
+  <table class="rt-table wh-table wh5-table">
+    <thead>
+      <tr>
+        <th class="num">م</th><th>التاريخ</th><th class="num">رقم الإذن</th>
+        <th>الجهة</th><th>المصدر</th><th>مصروف إلى</th>
+        <th class="num">قيمة الأصناف المضافة</th><th class="num">قيمة الأصناف المنصرفة</th>
+        <th>البيان والملحوظات والتفاصيل</th><th>المسؤول والمراقب</th>
+        <th class="no-print">إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in wh5.rows %}
+      <tr class="{{ 'wh-issue-row' if r.kind == 'issue2' }}">
+        <td class="num dim">{{ loop.index | aindic }}</td>
+        <td><bdi dir="ltr">{{ r.date_iso | datefmt }}</bdi></td>
+        <td class="num"><b>{{ r.permit_no | aindic }}{% if r.fiscal %} / {{ r.fiscal | aindic }}{% endif %}</b></td>
+        <td class="name">{{ r.party or '—' }}</td>
+        <td>{{ r.source or '—' }}</td>
+        <td class="name">{{ r.issued_to or '—' }}</td>
+        <td class="num"><b class="mv-in">{{ (r.added | qty3) if r.added else '—' }}</b></td>
+        <td class="num"><b class="mv-out">{{ (r.issued | qty3) if r.issued else '—' }}</b></td>
+        <td class="wh5-details">{{ r.details }}</td>
+        <td>{{ r.responsible or '—' }}</td>
+        <td class="no-print">
+          {% if r.kind == 'add1' %}
+          <a class="rt-btn small dim" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh1', wh1edit=r.permit_no) }}"
+             title="تعديل إذن الإضافة رقم {{ r.permit_no | aindic }}">✏️</a>
+          {% else %}
+          <a class="rt-btn small dim" href="{{ url_for('warehouses.page', cycle=cycle_key, sub='wh2') }}"
+             title="عرض إذن الصرف رقم {{ r.permit_no | aindic }} في دفتر ٢ مخازن">📄 عرض الإذن</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="11" class="empty">
+          لا توجد حركات مسجلة لهذا الشهر بعد — أول إذن إضافة من ١ مخازن أو إذن صرف من ٢ مخازن يظهر هنا تلقائيًا
+          (السجل يبدأ من الإذونات مباشرةً — لا يُسجّل رصيد أول المدة أبدًا).
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="wh5-grand">
+        <td colspan="6"><b>الإجمالي العام لحركات الشهر (كم / ورود):</b></td>
+        <td class="num"><b class="mv-in">{{ wh5.total_added | qty3 }}</b></td>
+        <td class="num"><b class="mv-out">{{ wh5.total_issued | qty3 }}</b></td>
+        <td class="num" colspan="2">الحركات: {{ wh5.count | aindic }}</td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+</div>

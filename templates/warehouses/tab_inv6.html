@@ -1,0 +1,210 @@
+{# «6 مخازن (جرد الأصناف)» — فرع داخل مستودعات وسجلات — مطابق لملف التصميم المعتمد (1-9-2026.xlsx) #}
+<div class="inv6-wrap">
+  <div class="panel inv6-panel">
+    <div class="panel-head inv6-head">
+      <div>
+        <h3>6 مخازن (جرد الأصناف)</h3>
+        <p class="dim">محضر جرد الأصناف — حدد يوم الجرد فيجيب كل أصناف دفتر ٣ مخازن
+        (الإمداد + المتعهد) برصيد ختام اليوم بعد إضافات ١ مخازن ومنصرف ٢ مخازن،
+        بوحدة الصنف في دفتر ٣ مخازن. «تطبيق الجرد» يحفظ اليوم ويطبع ورقة عمل الإكسل في:
+        06-مستودعات وسجلات / 6-مخازن / يوم <span id="inv6DayWord">{{ inv6.day | aindic }}</span>.</p>
+      </div>
+      <form method="get" action="{{ url_for('warehouses.page', cycle=cycle_key, sub='inv6') }}"
+            class="inv6-daybar no-print" id="inv6DayForm"
+            data-day-url="{{ url_for('inv6.day_json') }}">
+        <label class="inv6-lab" for="inv6DaySel">يوم الجرد:</label>
+        <select id="inv6DaySel" name="day">
+          {% for d in range(1, inv6.days_in + 1) %}
+          <option value="{{ d }}" {{ 'selected' if d == inv6.day }}>{{ 'يوم ' ~ (d | aindic) }}{% if d in inv6.saved_days %} ✓{% endif %}</option>
+          {% endfor %}
+        </select>
+        <noscript><button type="submit" class="rt-btn dim">عرض اليوم</button></noscript>
+      </form>
+    </div>
+
+    <div class="inv6-actions no-print">
+      {# توجيه ١٥/١٠: لا يوجد أصناف في الشهر → الزر مقفول (الرسالة داخل الورقة) #}
+      <button type="submit" form="inv6ApplyForm" class="rt-btn gold" id="inv6ApplyBtn"
+              {% if not inv6.rows %}disabled title="لا توجد أصناف في دفتر ٣ مخازن لهذا الشهر — سجّل «إذن إضافة» من تبويب «١ مخازن» أولًا"{% endif %}>تطبيق الجرد وحفظ ملف الإكسل</button>
+      <button type="button" class="rt-btn danger" id="inv6DelBtn"
+              {% if not inv6.has_saved %}hidden{% endif %}
+              onclick="document.getElementById('inv6DelForm').submit()">حذف جرد اليوم <span id="inv6DelDay">{{ inv6.day | aindic }}</span></button>
+      <a class="rt-btn" id="inv6DlLink" href="{{ url_for('inv6.download', day=inv6.day) }}">تحميل نسخة Excel</a>
+      <a class="rt-btn" id="inv6DirLink" href="{{ url_for('inv6.open', day=inv6.day, what='dir') }}">فتح مجلد اليوم</a>
+      <a class="rt-btn" id="inv6FileLink" href="{{ url_for('inv6.open', day=inv6.day, what='file') }}"
+         {% if not inv6.file_exists %}hidden{% endif %}>فتح ملف Excel</a>
+      <span class="dim small">الملف: <bdi dir="ltr" id="inv6FileRel">{{ inv6.file_rel }}</bdi></span>
+    </div>
+
+    {# ================= الورقة (شكل الدفتر المعتمد) ================= #}
+    {# ١٤/١٠: الورقة في partial لوحدها — الصفحة بتجيبها بـ fetch عند تغيير يوم الجرد #}
+    <div id="inv6PaperWrap">{% include "warehouses/_inv6_paper.html" %}</div>
+
+    {# ١٤/١٠: النموذج موجود دائمًا (مخفي مع الزر) — اليوم بيتغير مع تغيير يوم الجرد #}
+    <form id="inv6DelForm" method="post" action="{{ url_for('inv6.delete') }}"
+          {% if not inv6.has_saved %}hidden{% endif %}>
+      <input type="hidden" name="day" value="{{ inv6.day }}">
+    </form>
+  </div>
+</div>
+
+<script>
+/* القيمه + الزيادة/العجز بتتحسب لحظي زي ما في ملف الإكسل (0.###) */
+(function () {
+  var AR = "٠١٢٣٤٥٦٧٨٩";
+  function num(v) {
+    v = String(v == null ? "" : v).trim().replace(/,/g, "");
+    var out = "";
+    for (var i = 0; i < v.length; i++) {
+      var ix = AR.indexOf(v[i]);
+      out += ix >= 0 ? String(ix) : v[i];
+    }
+    var n = parseFloat(out);
+    return isFinite(n) ? n : 0;
+  }
+  function f(x) {
+    x = Math.round(x * 1000) / 1000;
+    if (!x) return "";
+    return x.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")
+      .replace(/\./g, "٫").replace(/[0-9]/g, function (d) { return AR[d]; });
+  }
+  /* ربط صفوف الجرد — يتنادى عند التحميل وبعد أي تحديث لليوم (١٤/١٠) */
+  window.inv6BindRows = function (root) {
+    (root || document).querySelectorAll("tr.iv-row").forEach(function (tr) {
+      if (tr.getAttribute("data-iv-bound") === "1") return;
+      tr.setAttribute("data-iv-bound", "1");
+      var cEl = tr.querySelector("input[name$='_counted']");
+      var pEl = tr.querySelector("input[name$='_price']");
+      var valEl = tr.querySelector(".iv-val");
+      var incEl = tr.querySelector(".iv-inc");
+      var decEl = tr.querySelector(".iv-dec");
+      if (!cEl || !valEl) return;
+      var book = num(tr.getAttribute("data-book"));
+      function upd() {
+        var c = num(cEl.value);
+        var p = pEl ? num(pEl.value) : 0;
+        valEl.textContent = (c && p) ? f(c * p) : "";
+        var d = Math.round((c - book) * 1000) / 1000;
+        if (incEl) incEl.textContent = d > 0 ? f(d) : "لا يوجد";
+        if (decEl) decEl.textContent = d < 0 ? f(-d) : "لا يوجد";
+      }
+      cEl.addEventListener("input", upd);
+      if (pEl) pEl.addEventListener("input", upd);
+    });
+    /* قوائم البحث الذكي (الجهة/الرتبة/الاسم) للصفوف الجديدة */
+    if (window.LogisticsCombo) window.LogisticsCombo.enhance(root || document);
+  };
+  window.inv6BindRows(document);
+})();
+
+/* ============ يوم الجرد بلا خروج من الصفحة (توجيه ١٤/١٠) ============
+   تغيير اليوم يجيب الورقة كاملة من /inv6/day ويستبدلها في مكانها،
+   مع تحديث روابط الملف وزر الحذف وعلامة ✓ في قائمة الأيام. */
+(function () {
+  var sel = document.getElementById("inv6DaySel");
+  var wrap = document.getElementById("inv6PaperWrap");
+  var form = document.getElementById("inv6DayForm");
+  if (!sel || !wrap || !form) return;
+  var base = form.getAttribute("data-day-url") || "/inv6/day";
+  var sid = new URLSearchParams(location.search).get("sid");
+  function el(id) { return document.getElementById(id); }
+  function pathOf(id) {                       /* مسار الرابط الأصلي بلا استعلام */
+    var a = el(id);
+    return a ? a.getAttribute("href").split("?")[0] : "";
+  }
+  var DL_PATH = pathOf("inv6DlLink"), DIR_PATH = pathOf("inv6DirLink"),
+      FILE_PATH = pathOf("inv6FileLink");
+  function setHref(id, url) {
+    var a = el(id);
+    if (a) { a.setAttribute("href", url); a.hidden = false; }
+  }
+  /* زر «تطبيق الجرد»: مقفول طول ما الورقة الحالية مفيهاش أصناف (توجيه ١٥/١٠) */
+  function rowsCount() { return wrap.querySelectorAll("tr.iv-row").length; }
+  function syncApply() {
+    var btn = el("inv6ApplyBtn");
+    var n = rowsCount();
+    if (btn) {
+      btn.disabled = !n;
+      if (n) btn.removeAttribute("title");
+      else btn.setAttribute("title", "لا توجد أصناف في دفتر ٣ مخازن لهذا الشهر — سجّل «إذن إضافة» من تبويب «١ مخازن» أولًا");
+    }
+    var note = wrap.querySelector("#inv6NoItems");
+    if (note) note.hidden = !!n;
+  }
+  /* حماية إضافية: حتى إذا اتضغط Enter والقيم فارغة — لا يوجد خروج من الصفحة */
+  wrap.addEventListener("submit", function (ev) {
+    if (!ev.target || ev.target.id !== "inv6ApplyForm" || rowsCount()) return;
+    ev.preventDefault();
+    var note = wrap.querySelector("#inv6NoItems");
+    if (note) { note.hidden = false; note.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  }, true);
+  function refresh(d) {
+    wrap.innerHTML = d.paper;
+    if (window.inv6BindRows) window.inv6BindRows(wrap);
+    /* الشبكة الآمنة (١٥/١٠): إذا الورقة الجديدة جت دون رمز الجلسة لأي سبب،
+       نلزقه من بيانات الصفحة — منع خروج المستخدم لشاشة الدخول عند التطبيق. */
+    var sidVal = document.body.dataset.sid;
+    var form = wrap.querySelector("form");
+    if (sidVal && form && !form.querySelector('[name="sid"]')) {
+      var inp = document.createElement("input");
+      inp.type = "hidden"; inp.name = "sid"; inp.value = sidVal;
+      form.appendChild(inp);
+    }
+    syncApply();
+    var w = el("inv6DayWord"); if (w) w.textContent = d.day_label;
+    var dd = el("inv6DelDay"); if (dd) dd.textContent = d.day_label;
+    var del = el("inv6DelBtn");
+    if (del) {
+      del.hidden = !d.has_saved;
+      var delForm = el("inv6DelForm");
+      if (delForm) { delForm.hidden = !d.has_saved;
+                     var di = delForm.querySelector("input[name='day']");
+                     if (di) di.value = d.day; }
+    }
+    var q = "?day=" + encodeURIComponent(d.day) + (sid ? "&sid=" + encodeURIComponent(sid) : "");
+    setHref("inv6DlLink", DL_PATH + q);
+    setHref("inv6DirLink", DIR_PATH + q + "&what=dir");
+    var fl = el("inv6FileLink");
+    if (fl) { fl.setAttribute("href", FILE_PATH + q + "&what=file");
+              fl.hidden = !d.file_exists; }
+    var fr = el("inv6FileRel"); if (fr) fr.textContent = d.file_rel;
+    /* ✓ على الأيام التي تم فيها الجرد */
+    var saved = (d.saved_days || []).map(String);
+    Array.prototype.forEach.call(sel.options, function (o) {
+      var mark = " ✓";
+      var label = o.textContent.replace(/\s*✓\s*$/, "");
+      o.textContent = label + (saved.indexOf(o.value) >= 0 ? mark : "");
+    });
+  }
+  function loadDay(day) {
+    var url = base + "?day=" + encodeURIComponent(day) + (sid ? "&sid=" + encodeURIComponent(sid) : "");
+    sel.disabled = true;
+    wrap.setAttribute("aria-busy", "true");
+    fetch(url, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j || !res.j.ok) {
+          window.alert((res.j && res.j.err) || "تعذّر تحميل يوم الجرد — حاول مرة أخرى");
+          sel.value = sel.getAttribute("data-current") || sel.value;
+          return;
+        }
+        refresh(res.j);
+        sel.setAttribute("data-current", String(res.j.day));
+        var usp = new URLSearchParams(location.search);
+        usp.set("day", String(res.j.day));
+        history.replaceState(null, "", location.pathname + "?" + usp.toString() + location.hash);
+      })
+      .catch(function () {
+        window.alert("تعذّر تحميل يوم الجرد — راجع الاتصال وحاول مرة أخرى");
+      })
+      .then(function () { sel.disabled = false; wrap.removeAttribute("aria-busy"); });
+  }
+  sel.setAttribute("data-current", sel.value);
+  sel.addEventListener("change", function () { loadDay(sel.value); });
+  syncApply();                         // حالة الزر عند التحميل الأول
+})();
+</script>
+
+<datalist id="ivSectorsList">{% for x in inv6.iv_sectors %}<option value="{{ x }}">{% endfor %}</datalist>
+<datalist id="ivRanksList">{% for x in inv6.iv_ranks %}<option value="{{ x }}">{% endfor %}</datalist>
+<datalist id="ivNamesList">{% for x in inv6.iv_names %}<option value="{{ x }}">{% endfor %}</datalist>

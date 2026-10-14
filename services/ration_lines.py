@@ -22,12 +22,12 @@ MEAL_KEYS = ("breakfast", "lunch", "dinner")
 
 
 def meal_parts(item):
-    """مقرر الفطار/الغداء/العشاء حتى لو صفر."""
+    """مقرر الإفطار/الغداء/العشاء حتى لو صفر."""
     return {key: _positive(item.get(key)) for key in MEAL_KEYS}
 
 
 def meal_sum(item):
-    """مجموع فطار + غداء + عشاء إن وُجد كلٌّ منها."""
+    """مجموع إفطار + غداء + عشاء إن وُجد كلٌّ منها."""
     return sum(meal_parts(item).values())
 
 
@@ -55,23 +55,73 @@ def applied_meals(orig, over):
     return {"breakfast": qty, "lunch": 0.0, "dinner": 0.0}, True
 
 
-def daily_qty(item, weekday):
-    """مقرر الفرد لهذا اليوم من الأسبوع (0=سبت). بلا صرف = ٠."""
-    if item.get("is_custom"):
-        if weekday not in item.get("days", []):
-            return 0.0
-        qty = item.get("day_qty", {}).get(weekday)
-        if qty not in (None, ""):
-            return _positive(qty)
-        return meal_sum(item)
+def _spread_qty(qty, meals):
+    """مجموع اليوم (سلوك قديم) → توزيعه على الوجبات العامة بنسبتها."""
+    q = _positive(qty)
+    total = sum(meals.values())
+    if total > 0:
+        return {key: q * meals[key] / total for key in MEAL_KEYS}
+    return {"breakfast": q, "lunch": 0.0, "dinner": 0.0}
+
+
+def daily_meals(item, weekday):
+    """مقرر الفرد لهذا اليوم بوجباته {إفطار، غداء، عشاء} — بلا صرف = كلها ٠.
+
+    - صنف بأيام محددة (تخصيص الجهة) = يُصرف في أيامه فقط:
+      * لو ليومها وجبات مخصصة (day_meals) → هي اللي بتتصرف.
+      * لو رقم واحد قديم (day_qty) → بيتوزع على الوجبات العامة.
+      * لو مفيش حاجة → الوجبات العامة.
+    - صنف بمخصص أيام (custom من المقرر) = مجموع مخصصاته للأيام بتتوزع.
+    - غير ذلك = القاعدة اليومية (إفطار+غداء+عشاء).
+    """
+    meals = meal_parts(item)
+    if item.get("days"):
+        if weekday not in item["days"]:
+            return {key: 0.0 for key in MEAL_KEYS}
+        dm = (item.get("day_meals") or {}).get(weekday) or {}
+        if dm:
+            return {
+                key: (_positive(dm[key]) if dm.get(key) not in (None, "")
+                      else meals[key])
+                for key in MEAL_KEYS
+            }
+        qty = (item.get("day_qty") or {}).get(weekday)
+        if qty in (None, ""):
+            return dict(meals)
+        return _spread_qty(qty, meals)
     custom = item.get("custom") or []
     if custom:
         total = 0.0
         for entry in custom:
             if int(entry.get("weekday", -1)) == weekday:
                 total += _positive(entry.get("qty"))
-        return total
-    return meal_sum(item)
+        if total <= 0:
+            return {key: 0.0 for key in MEAL_KEYS}
+        return _spread_qty(total, meals) if sum(meals.values()) > 0 \
+            else {"breakfast": total, "lunch": 0.0, "dinner": 0.0}
+    return dict(meals)
+
+
+def daily_qty(item, weekday):
+    """مقرر الفرد لهذا اليوم (مجموع الوجبات) — بلا صرف = ٠."""
+    return sum(daily_meals(item, weekday).values())
+
+
+def day_cell_values(item):
+    """قيم عرض مربعات اليوم الثلاثة {0-6: {breakfast,lunch,dinner}} — ١٤/١٠.
+
+    كل خلية = الوجبة الفعلية ليومها (المخصصة، أو الموزعة من رقم قديم،
+    أو القيمة العامة). None/0 = المربع يظهر فاضي (يعني «على القيمة العامة»).
+    """
+    meals = meal_parts(item)
+    out = {}
+    for wd in range(7):
+        if item.get("days") and wd in item["days"]:
+            cell = daily_meals(item, wd)
+            out[wd] = {k: (v or None) for k, v in cell.items()}
+        else:
+            out[wd] = {k: (meals[k] or None) for k in MEAL_KEYS}
+    return out
 
 
 def items_for_entity(year, month, entity_name, section):
@@ -101,18 +151,18 @@ def build_lines(year, month, entity_name, section, day_from, day_to, overrides=N
         weekday = egtime.weekday_sat0(when)
         for item in items:
             name = item.get("name") or ""
-            base = daily_qty(item, weekday)
+            base_meals = daily_meals(item, weekday)   # ١٤/١٠: وجبات اليوم الفعلية
+            base = sum(base_meals.values())
             key = f"{name}|{day}"
             over = overrides.get(key) or {}
             qty = over["qty"] if "qty" in over else base
             on = over["on"] if "on" in over else (base > 0)
-            orig = meal_parts(item)
-            used, customized = applied_meals(orig, over if over else None)
+            used, customized = applied_meals(base_meals, over if over else None)
             lines.append({
                 "name": name, "unit": item.get("unit") or "",
                 "day": day, "weekday": DAYS[weekday],
                 "qty": _positive(qty) if on else 0.0, "on": bool(on),
-                "base": base, "orig": orig, "used": used,
+                "base": base, "orig": base_meals, "used": used,
                 "customized": customized,
             })
     return lines

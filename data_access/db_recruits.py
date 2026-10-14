@@ -172,7 +172,7 @@ def delete_recruit(year, month, rid):
 
 # ==================== حالة الشهادة الصحية والخدمة ====================
 def cert_state(recruit, today):
-    """ok | soon(<=٣٠ يوم) | expired | none"""
+    """ok | soon(<=١٤ يوم = أسبوعين — قرار المستخدم) | expired | none"""
     if not recruit.get("has_cert") or not recruit.get("cert_expiry"):
         return "none"
     try:
@@ -184,7 +184,7 @@ def cert_state(recruit, today):
         return "none"
     if delta < 0:
         return "expired"
-    return "soon" if delta <= 30 else "ok"
+    return "soon" if delta <= 14 else "ok"
 
 
 def days_to_discharge(recruit, today):

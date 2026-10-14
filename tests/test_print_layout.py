@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PRINT_PAGES = [
     "/dashboard", "/rations/tamween", "/rations/contractor?tab=dist", "/letterhead/",
     "/recruits/", "/recruits/?tab=journal", "/recruits/?tab=present", "/recruits/?tab=leaves",
-    "/recruits/?tab=absent", "/recruits/?tab=other", "/recruits/?tab=stats", "/backups/",
+    "/recruits/?tab=absent", "/recruits/?tab=other", "/recruits/?tab=stats", "/settings/?sub=backups",
     "/tameedat/", "/tameedat/?tab=momoda", "/tameedat/?tab=dict", "/tameedat/?tab=report",
     "/calc2/",
 ]

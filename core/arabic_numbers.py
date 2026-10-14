@@ -1,5 +1,19 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+
+
+def round3(value):
+    """قاعدة التقريب الموحدة (توجيه ١٠/١٠): ثلاثة خانات بعد العلامة، والرقم
+    الرابع ٥ أو أكبر → يتقرب لأعلى — على كل كميات المتعهد والإمداد.
+
+    10.9685 → 10.969   ·   10.9682 → 10.968   ·   10.968 → 10.968
+    مبني على Decimal (نصف-أعلى حقيقي) مش round() ببايثون (بنكري-راندينج)."""
+    try:
+        d = Decimal(str(float(value)))
+    except (TypeError, ValueError, InvalidOperation):
+        return 0.0
+    return float(d.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP))
 """محرك الأرقام العربية — النواة الأولى.
 
 الأساس المعتمد في كل المنظومة:
@@ -52,17 +66,36 @@ def parse_float(text, default=None):
 
 
 def fmt_qty(value):
-    """قاعدة العرض الموحدة للكميات: ثلاثة أرقام عشرية دائمًا بالعربية المشرقية.
+    """قاعدة العرض الموحدة للكميات: ثلاثة أرقام عشرية دائمًا بالعربية المشرقية،
+    والتقريب نصف-أعلى (قاعدة ١٠/١٠): 10.9685 → «١٠٫٩٦٩».
 
     0.12 → «٠٫١٢٠»   |   75 → «٧٥٫٠٠٠»   |   None/فاضي → «»
     """
     if value is None or value == "":
         return ""
     try:
-        f = float(to_western(value))
-    except (TypeError, ValueError):
+        d = Decimal(str(float(to_western(value))))
+    except (TypeError, ValueError, InvalidOperation):
         return str(value)
-    return to_arabic_indic(f"{f:.3f}").replace(".", "٫")
+    q = d.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+    return to_arabic_indic(format(q, "f")).replace(".", "٫")
+
+
+def fmt_qty_exact(value):
+    """القيمة المدخلة بالظبط — بلا أي تقريب (توجيه ١٠/١٠ للمقررات:
+    كمون 0.00025 يظهر «٠٫٠٠٢٥» مش «٠٫٠٠»). الأصفار الزائدة آخر الكسر تتنضف:
+    0.01 → «٠٫٠١»   |   2 → «٢»   |   None/فاضي → «»
+    """
+    if value is None or value == "":
+        return ""
+    try:
+        d = Decimal(str(float(to_western(value))))
+    except (TypeError, ValueError, InvalidOperation):
+        return str(value)
+    if d == 0:
+        return ""
+    q = d.normalize()
+    return to_arabic_indic(format(q, "f")).replace(".", "٫")
 
 
 def fmt_qty_trim(value):

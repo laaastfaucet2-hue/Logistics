@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 if os.environ.get("LOGISTICS_SEED_DEMO") != "1":
     print("مرفوض: هذا السكربت لبذر بيانات تجريبية في معاينة معزولة فقط.")
-    print("شغّله هكذا لو أنت متأكد:  LOGISTICS_SEED_DEMO=1 python scripts/seed_preview_demo.py")
+    print("شغّله هكذا إذا كنت متأكدًا:  LOGISTICS_SEED_DEMO=1 python scripts/seed_preview_demo.py")
     raise SystemExit(1)
 
 from core.paths import DATA_DIR  # noqa: E402
@@ -59,6 +59,7 @@ RECORDS = [
      [("الحماية المدنية بوسط سيناء", "شرطية", 2, 6, 0)]),
     (5, "قطاع الشهيد أشرف جاد", 8, 22, 6, "مدة زمنية أسبوع", 9,
      [("مستشفى سيناء العام", "مدنية", 1, 4, 0)]),
+    (7, "إدارة مرور وسط سيناء", 4, 14, 3, "تأميدة يوم ٧ — يظهر بها ملف اليوم", None, []),
     (8, "كتيبة الأمن المركزي ٢١٤", 6, 30, 12, "", None, []),
     (12, "قسم شرطة الحسنة", 7, 20, 0, "أعداد أكبر من أرقام الراغبين — تنبيه", None, []),
     (15, "قسم شرطة نخل", 5, 20, 4, "", None, []),
@@ -74,8 +75,8 @@ TAMWEEN_ITEMS = [
     ("مكرونة", "كجم", 0.100, 0.150, 0.100),
     ("سكر", "كجم", 0.020, 0.030, 0.020),
     ("زيت طعام", "لتر", 0.010, 0.015, 0.010),
-    ("شاي", "جم", 5, 5, 5),
-    ("ملح طعام", "جم", 5, 8, 5),
+    ("شاي", "كجم", 0.005, 0.005, 0.005),
+    ("ملح طعام", "كجم", 0.005, 0.008, 0.005),
     ("فول مدمس", "علبة", 0, 1, 0),
     ("صلصة", "علبة", 0, 1, 0),
 ]
@@ -253,14 +254,16 @@ def _seed_rations(year, month):
         for name, _, _, _, _ in ENTITIES:
             count, _kind = de.add_entity(year, month, section, name)
             added += 1 if count else 0
-        # تخصيص أيام لصنفين: يظهران يومين محددين فقط (٢ = الاثنين، ٤ = الأربعاء)
+        # تخصيص أيام لصنفين: يظهران يومين محددين فقط (٢ = الاثنين، ٤ = الأربعاء).
+        # ١٤/١٠: مقرر اليوم = مجموع الوجبات (قبلها كان ياخد العشاء/الغداء بس).
         entities = de.list_entities(year, month, section)
         for entity in entities:
             for item in entity["items"]:
                 key = item["name"].strip()
                 if key in ("دواجن", "فول مدمس"):
-                    de.set_days(year, month, item["id"], {2: item["dinner"] or 0.200,
-                                                          4: item["dinner"] or 0.200})
+                    q = (item["breakfast"] or 0) + (item["lunch"] or 0) \
+                        + (item["dinner"] or 0)
+                    de.set_days(year, month, item["id"], {2: q, 4: q})
         print(f"✅ {section}: {len(items)} صنفًا و{added} جهة مسحوبة من المقرر الصيفي")
 
 

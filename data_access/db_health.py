@@ -117,6 +117,17 @@ def set_day_entries(year, month, day, entries):
     conn.close()
 
 
+def recruit_checkup_days(year, month, recruit_id):
+    """أيام تم كشف المجند الدوري فيها في شهر (للتتبع في ملف المجند)."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute(
+        "SELECT day FROM health_checkups WHERE recruit_id=? ORDER BY day",
+        (int(recruit_id or 0),)).fetchall()
+    conn.close()
+    return [r["day"] for r in rows]
+
+
 def month_checkup_ids(year, month):
     """كل ids مجند اتم كشفه في الشهر (مصدر إحصائية «لم يُكشفوا»)."""
     conn = months.get_db(year, month)

@@ -1,0 +1,110 @@
+{# ورقة إذن واحدة (مجمعة أو نقطة) — مشتركة بين ورقة الخط وطباعة الكل #}
+{% macro official_sig(label, rank, name, extra_class='') %}
+<div class="dw-paper-sig {{ extra_class }}">
+  <span class="dw-sig-label">{{ label }}</span>
+  <bdi>{{ rank or '........................' }}</bdi>
+  <bdi>{{ name or '........................' }}</bdi>
+</div>
+{% endmacro %}
+
+{% macro paper_doc(doc, line, lh, has_logo, today_iso, from_iso, to_iso, days, sigs={}) %}
+<article class="panel dw-paper" dir="rtl">
+  <header class="dw-paper-head">
+    <div class="dw-paper-lh">
+      {% for item in lh %}<div class="dw-lh-{{ loop.index }}">{{ item }}</div>{% endfor %}
+    </div>
+    <div class="dw-paper-logo-wrap">
+      {% if has_logo %}
+      <img class="dw-logo" src="{{ url_for('letterhead.logo_view') }}" alt="الشعار الرسمي">
+      {% else %}
+      <img class="dw-logo" src="{{ url_for('static', filename='img/mark.svg') }}" alt="شعار المنظومة">
+      {% endif %}
+    </div>
+    <div class="dw-paper-date">التاريخ: <bdi dir="ltr">{{ today_iso | datefmt }}</bdi></div>
+  </header>
+
+  <h1 class="dw-paper-title">
+    {% if doc.kind == 'line' %}إذن صرف بون تعيينات مجمع{% else %}إذن صرف بون تعيينات نقطة{% endif %}
+  </h1>
+
+  <section class="dw-paper-intro">
+    {% if doc.kind == 'line' %}
+    <div>الجهة الطالبة: <b>نقاط {{ line.name }}</b></div>
+    <div>نوع المستند: <b>مستند إجمالي عام</b></div>
+    {% else %}
+    <div>النقطة الطالبة: <b>نقطة «{{ doc.point.name }}»</b></div>
+    <div>نوع المستند: <b>طلب صرف تعيينات</b></div>
+    {% endif %}
+  </section>
+
+  <section class="dw-paper-meta">
+    {% if doc.kind == 'line' %}
+    <div><span>اسم القطاع الجغرافي:</span><b>{{ line.name }} مجمع</b></div>
+    <div><span>النقاط الممثلة بالصرف:</span><b>عدد {{ line.count | aindic }} نقطة</b></div>
+    <div><span>إجمالي القوة العسكرية للخط:</span><b>{{ line.total_force | aindic }} فرد / يوم</b></div>
+    {% else %}
+    <div><span>نوع الخدمة:</span><b>نقطة حدودية</b></div>
+    <div><span>الخط الجغرافي:</span><b>{{ line.name }}</b></div>
+    <div><span>قوة النقطة:</span><b>{{ doc.point.force | aindic }} فرد / يوم</b></div>
+    {% endif %}
+    <div class="dw-meta-period"><span>فترة بون الصرف والتحميل:</span>
+      <b>عن الفترة من <bdi dir="ltr">{{ from_iso | datefmt }}</bdi>
+        إلى <bdi dir="ltr">{{ to_iso | datefmt }}</bdi>
+        ({{ days | aindic }} أيام)</b></div>
+  </section>
+
+  {% if doc.kind == 'point' %}
+  <div class="dw-receiver-line">اسم المندوب المستلم: <span>............................................................</span></div>
+  {% endif %}
+
+  <table class="dw-paper-table">
+    <thead>
+      <tr>
+        <th>م</th>
+        <th>اسم الصنف والمادة الغذائية</th>
+        <th>الوحدة</th>
+        <th>المعدل اليومي للفرد</th>
+        <th>أيام الصرف</th>
+        <th>{% if doc.kind == 'line' %}إجمالي الحصة المجمعة للخط{% else %}إجمالي حصة النقطة{% endif %}</th>
+        <th>ملاحظات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in doc.rows %}
+      <tr>
+        <td class="num">{{ loop.index | aindic }}</td>
+        <td><b>{{ row.name }}</b></td>
+        <td>{{ row.unit or '—' }}</td>
+        <td class="num">{{ row.rate | qty3 }}</td>
+        <td class="num">{{ row.days | aindic }}</td>
+        <td class="num"><b>{{ row.total | qty3 }}</b></td>
+        <td></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">لا توجد أصناف مفعّلة — فعّل معدلات من «تعديل معدلات الأصناف».</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if doc.kind == 'line' %}
+  <p class="dw-paper-note">هذا الكشف يمثل إجمالي أذونات ومطالب التعيينات المصروفة لكافة نقاط {{ line.name }} دفعة واحدة مجمعة للتحميل.</p>
+  {% endif %}
+
+  {% if doc.kind == 'line' %}
+  <footer class="dw-paper-sigs dw-paper-sigs-two">
+    {{ official_sig('أمين العهدة (المُسلِّم)', sigs.sig_right_rank, sigs.sig_right_name) }}
+    {{ official_sig('الاعتماد', sigs.sig_left_rank, sigs.sig_left_name) }}
+  </footer>
+  {% else %}
+  <footer class="dw-paper-sigs dw-paper-sigs-three">
+    {{ official_sig('أمين العهدة (المُسلِّم)', sigs.sig_right_rank, sigs.sig_right_name) }}
+    {{ official_sig('الاعتماد', sigs.sig_left_rank, sigs.sig_left_name) }}
+    <div class="dw-paper-sig">
+      <span class="dw-sig-label">المندوب المستلم (المُستَلِم)</span>
+      <bdi>......................................</bdi>
+      <bdi>......................................</bdi>
+    </div>
+  </footer>
+  {% endif %}
+</article>
+{% endmacro %}

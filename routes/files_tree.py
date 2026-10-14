@@ -33,7 +33,7 @@ def tree():
 @files_tree_bp.route("/audit")
 @login_required
 def audit():
-    """الفحص الذكي 🛡️ — الدباجة واللوجو والتوقيعان على كل ملفات الشهر المحلية.
+    """الفحص الذكي 🛡️ — الدباجة والشعار والتوقيعان على كل ملفات الشهر المحلية.
 
     GET /files/audit?section=tameedat|raghibin|both  ⇒ تقرير كامل (قراءة فقط).
     """

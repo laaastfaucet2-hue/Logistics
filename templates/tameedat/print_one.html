@@ -43,7 +43,7 @@
 
   <table class="rt-table rc-print-table tm-print-table">
     <thead>
-      <tr><th>م</th><th>الجهة</th><th title="ضباط">ض</th><th title="أفراد">أ</th><th title="مجندين">م</th><th>الإجمالي</th></tr>
+      <tr><th>م</th><th>الجهة</th><th>ضابط</th><th>فرد</th><th>مجندين</th><th>الإجمالي</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -81,13 +81,13 @@
   <div class="tm-rations ro">
     <b>المقرر النشط لمقررات المتعهد ({{ {'summer':'صيفي','winter':'شتوي','ramadan':'رمضان'}[ration_kind] }}) — للاسترشاد بهذه التأميدة فقط:</b>
     <table>
-      <thead><tr><th>الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th></tr></thead>
+      <thead><tr><th>الصنف</th><th>الوحدة</th><th>إفطار</th><th>غداء</th><th>عشاء</th></tr></thead>
       <tbody>
         {% for it in ration_items %}
         <tr><td>{{ it.name }}</td><td>{{ it.unit or '—' }}</td>
-            <td class="num">{{ it.breakfast | qty3 if it.breakfast else '—' }}</td>
-            <td class="num">{{ it.lunch | qty3 if it.lunch else '—' }}</td>
-            <td class="num">{{ it.dinner | qty3 if it.dinner else '—' }}</td></tr>
+            <td class="num">{{ it.breakfast | qtyx if it.breakfast else '—' }}</td>
+            <td class="num">{{ it.lunch | qtyx if it.lunch else '—' }}</td>
+            <td class="num">{{ it.dinner | qtyx if it.dinner else '—' }}</td></tr>
         {% else %}
         <tr><td colspan="5" style="text-align:center">لا مقرر مفعّل في مقررات المتعهد هذا الشهر</td></tr>
         {% endfor %}

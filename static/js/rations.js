@@ -56,7 +56,7 @@
   // تأكيد إعادة السحب من المقرر النشط
   document.querySelectorAll("form.js-resync").forEach(function (f) {
     f.addEventListener("submit", function (e) {
-      if (!confirm("🔄 هيتم مسح أصناف الجهة الحالية وإعادة سحبها من المقرر النشط — متابعة؟")) {
+      if (!confirm("🔄 ستُمسح أصناف الجهة الحالية وتُسحب مجددًا من المقرر النشط — هل تريد المتابعة؟")) {
         e.preventDefault();
       }
     });

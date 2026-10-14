@@ -315,25 +315,69 @@ class PackLedger:
         if rem > 0:
             self.loose += rem
 
+    def total(self):
+        """إجمالي الرصيد القابل للصرف (سائب + باقي مفتوحة + كاملة × سعتها)."""
+        t = self.loose + self.rest
+        if self.capacity > 0:
+            t += self.full * self.capacity
+        return round(t, 6)
+
     def take(self, q):
+        """يسحب الكمية: السائب أولًا ثم الباقي المفتوح ثم يفتح كاملة (٢٧/٠٩).
+        يرجع تفكيك السحبة {loose, from_rest, opened_packs, pack_qty, deficit}
+        — العارضين بيبنيوا «المنصرف (تغليف)» منه (مصدر واحد — ١٤/١٠)."""
         q = float(q or 0)
+        res = {"loose": 0.0, "from_rest": 0.0, "opened_packs": 0.0,
+               "pack_qty": 0.0, "deficit": 0.0}
         t = min(q, self.loose)
         self.loose = round(self.loose - t, 6)
         q = round(q - t, 6)
+        res["loose"] = round(t, 6)
         if q > 0 and self.rest > 0:
             t = min(q, self.rest)
             self.rest = round(self.rest - t, 6)
             q = round(q - t, 6)
+            res["from_rest"] = round(t, 6)
         while q > 0 and self.full >= 1 and self.capacity > 0:
             self.full -= 1
+            res["opened_packs"] += 1
             if self.capacity >= q:
                 self.rest = round(self.capacity - q, 6)
+                res["pack_qty"] = round(res["pack_qty"] + q, 6)
                 q = 0
             else:
+                res["pack_qty"] = round(res["pack_qty"] + self.capacity, 6)
                 q = round(q - self.capacity, 6)
         if q > 0:
             # صرف من غير تغطية — لا يضيع: يتسجل كرصيد سالب بالتغليف (توجيه ٢٨/٠٩)
             self.deficit = round(self.deficit + q, 6)
+            res["deficit"] = round(q, 6)
+        return res
+
+    def issued_label(self, res):
+        """تسمية سحبة take() بالتغليف — نفس لغة label() (١٤/١٠ مصدر واحد)."""
+        parts = []
+        loose_tot = round(res.get("loose", 0.0) + res.get("from_rest", 0.0), 6)
+        if loose_tot > 0:
+            parts.append(f"{arnum.fmt_qty_trim(loose_tot)} {self.unit} سائب")
+        if res.get("opened_packs"):
+            n = res["opened_packs"]
+            if res.get("pack_qty") and self.capacity and \
+                    abs(res["pack_qty"] - n * self.capacity) < 0.000001:
+                # صرف عبوات كاملة مظبوطة
+                parts.append(f"{arnum.to_arabic_indic(f'{n:g}')} {self.kind} كامل"
+                             if self.kind not in _FEM_KINDS
+                             else f"{arnum.to_arabic_indic(f'{n:g}')} {self.kind} كاملة")
+            else:
+                # فُتحت عبوة وبقي فيها → «عبوة مفتوحة (X وحدة)»
+                rest_opened = round(res.get("pack_qty", 0.0) - (self.capacity or 0) *
+                                    max(0.0, n - 1), 6)
+                if self.kind:
+                    parts.append(f"{_open_pack(self.kind)} "
+                                 f"({arnum.fmt_qty_trim(rest_opened)} {self.unit})")
+        if res.get("deficit") and res["deficit"] > 0:
+            parts.append(f"سالب {arnum.fmt_qty_trim(res['deficit'])} {self.unit}")
+        return " + ".join(parts) if parts else ""
 
     def label(self):
         if self.deficit > 0.000001:

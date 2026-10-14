@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}المجندين — {{ {'present':'الحضور','leaves':'الإجازات','absent':'الغياب','other':'أخرى'}[tab] }} • منظومة التعيينات{% endblock %}
 {% block print_doc_title %}{% if tab == 'present' %}حضور يوم {{ period_text(year, month, day) }} — {{ month_name }} {{ year | aindic }}{% elif tab == 'leaves' %}إجازات شهر {{ month_name }} {{ year | aindic }}{% elif tab == 'absent' %}سجل الغياب — {{ month_name }} {{ year | aindic }}{% else %}حالات أخرى — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
@@ -21,6 +22,16 @@
 
 {% if tab == 'present' %}
 <!-- ==================== الحضور ==================== -->
+<!-- زر ثابت (يمشي معاك وانت بتنزل): إجازة مجمّعة بتصريح + تسجيل في اليومية (توجيه ١٤/١٠) -->
+<div class="rc-quickbar">
+  <button type="button" class="rt-btn gold" id="rcJointBtn">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    إجازة مجمّعة + تصريح
+  </button>
+  <span class="panel-hint">اختر الحاضرين اليوم (أو أي مجند) → تصريح بتاريخ اليوم + تسجيل تلقائي في اليومية.
+    ونزول «غدًا» يظل التذكير في اليومية حتى تضغط «سجّلهم في اليومية».</span>
+</div>
+
 <div class="panel">
   <div class="panel-head">
     <h3>✅ حاضرو يوم {{ period_text(year, month, day) }} <span class="panel-hint">{{ rows | length | aindic }} من {{ recruits | length | aindic }}</span></h3>
@@ -31,23 +42,43 @@
       </a>
     </div>
   </div>
-  <div class="rc-stat-chips">
-    {% for st, n in counts.items() %}<span class="rc-chip st-{{ st }}">{{ st }} <b>{{ n | aindic }}</b></span>{% endfor %}
-  </div>
   {% if rows %}
-  <div class="table-wrap"><table class="rt-table"><thead><tr><th>م</th><th>المجند</th><th>الرقم العسكري</th></tr></thead>
-    <tbody>{% for r, st in rows %}<tr><td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ r.mil_no | aindic }}</td></tr>{% endfor %}</tbody>
+  <div class="table-wrap"><table class="rt-table"><thead><tr><th class="num">م</th><th>المجند</th><th class="num">الرقم العسكري</th>
+    <th class="num" title="بداية فترة الحضور المتواصلة">حضور من</th><th class="num">المدة</th><th class="num" title="آخر فترة إجازة قبل بداية الحضور">آخر إجازة</th></tr></thead>
+    <tbody>{% for r, st in rows %}{% set run = runs.get(r.id) %}{% set ll = last_leave.get(r.id) %}<tr>
+      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ r.mil_no | aindic }}</td>
+      <td class="num">{{ period_text(year, month, run[0]) if run else '—' }}</td>
+      <td class="num">{{ (run[1] | aindic) ~ ' يومًا' if run else '—' }}</td>
+      <td class="num">{{ period_text(year, month, ll) if ll else '—' }}</td>
+    </tr>{% endfor %}</tbody>
   </table></div>
-  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا حضور مسجل لهذا اليوم.</p>{% endif %}
+  {% else %}<p class="panel-hint" style="text-align:center;padding:18px 0">لا حضور مسجل لهذا اليوم — سجّل اليومية الأول ثم ارجع هنا.</p>{% endif %}
 </div>
+
+{% include "recruits/_joint_leave.html" %}
 
 {% elif tab == 'leaves' %}
 <!-- ==================== الإجازات ==================== -->
 {% if upcoming %}
-<div class="rc-banner warn">🛎️ <b>كشف الإجازات المرتقّب (خلال يومين):</b>
-  {% for rid, rs in upcoming.items() %}{% for f, t in rs %}
-    <span class="rc-chip st-إجازة">{{ by_id[rid].name }} — يبدأ يوم {{ period_text(year, month, f) }}</span>
-  {% endfor %}{% endfor %}
+<div class="rc-banner warn">🛎️ <b>الإجازات المرتقبة (تبدأ خلال يومين):</b>
+  {% for f, u in upcoming.items() %}
+    <span class="rc-chip st-إجازة">{{ u.names }} — {{ 'نازل' if u.n == 1 else 'نازلون' }} إجازة يوم {{ period_text(year, month, f) }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+{% if leaving_soon %}
+<div class="panel">
+  <div class="panel-head"><h3>⏳ إجازات تنتهي خلال ٧ أيام <span class="panel-hint">الذين يعودون قريبًا</span></h3></div>
+  <div class="table-wrap"><table class="rt-table">
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">من</th><th class="num">إلى</th><th class="num">تنتهي</th><th class="num">يعود</th></tr></thead>
+    <tbody>{% for r, f, t in leaving_soon %}{% set left = t - info.real_day %}<tr>
+      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td>
+      <td class="num">{{ period_text(year, month, f) }}</td>
+      <td class="num">{{ period_text(year, month, t) }}</td>
+      <td class="num">{{ 'اليوم' if left == 0 else ('غدًا' if left == 1 else 'بعد ' ~ (left | aindic) ~ ' أيام') }}</td>
+      <td class="num">{{ period_text(year, month, t + 1) if t < eom else 'الشهر المقبل' }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
 </div>
 {% endif %}
 <div class="panel">
@@ -66,20 +97,50 @@
   </div>
   {% if ranges %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>من — إلى</th><th>المدة</th><th>إجراءات</th></tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">من — إلى</th><th class="num">المدة</th>
+      <th>الحالة</th><th class="num" title="مدة الإجازة من بدايتها حتى اليوم">حتى اليوم</th><th class="num">معاد الحضور</th><th title="أيام الحضور بعد الرجوع">بعد الحضور</th><th>إجراءات</th></tr></thead>
     <tbody>
       {% set ns = namespace(i=1) %}
+      {% set rd = info.real_day %}
       {% for rid, rs in ranges.items() %}{% for f, t in rs %}
+      {% set state = '' if not rd else ('لم تبدأ' if f > rd else ('انتهت' if t < rd else 'مستمرة')) %}
+      {% set cut = row_cut.get((rid, f, t)) %}
       <tr>
         <td class="num">{{ ns.i | aindic }}</td>{% set ns.i = ns.i + 1 %}
         <td>{{ person(by_id[rid], badges) }}</td>
         <td class="num">{{ period_text(year, month, f) }} — {{ period_text(year, month, t) }}</td>
-        <td class="num">{{ (t - f + 1) | aindic }} يومًا</td>
+        <td class="num">{{ (t - f + 1) | aindic }} يومًا
+          {% if (f, t) in permits.get(rid, []) %}<span class="rc-permit-badge" title="تصريح الإجازة صدر عن هذه المدة">✓ تصريح</span>{% endif %}</td>
+        <td>{% if state %}<span class="rc-chip {{ {'مستمرة':'st-إجازة','انتهت':'st-حضور','لم تبدأ':'st-أخرى'}[state] }}">{{ state }}</span>{% endif %}
+          {% if cut %}<span class="rc-chip st-حضور" title="تم قطع الإجازة قبل نهاية مدها">🔪 قطع — يرجع {{ period_text(year, month, cut.eff_day) }}{% if cut.hospital %} (مستشفى){% endif %}</span>{% endif %}</td>
+        <td class="num">{% if state == 'مستمرة' %}{{ (rd - f + 1) | aindic }} يومًا{% else %}—{% endif %}</td>
+        <td class="num">{% if cut %}{{ period_text(year, month, cut.eff_day) }}{% elif t < eom %}{{ period_text(year, month, t + 1) }}{% else %}الشهر المقبل{% endif %}</td>
+        <td class="num">{% if state == 'انتهت' %}{{ (rd - t) | aindic }} يومًا{% else %}—{% endif %}</td>
         <td class="ops">
           <a class="icon-btn print" title="تصريح إجازة (طباعة+وورد)" target="_blank"
              href="{{ url_for('recruits.print_doc', what='permit') }}&rid={{ rid }}&from={{ f }}&to={{ t }}">
             <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           </a>
+          {% if cut is none %}
+          {% if state == 'مستمرة' %}
+          <form method="post" action="{{ url_for('recruits.leaves_cut') }}" class="inline-f"
+                onsubmit="return confirm('🔪 قطع إجازة {{ by_id[rid].name }} فورًا؟ (ستُسجّل حالة «حضور» من غدٍ حتى نهاية المدة، وتكتب ساعة عودته في يومية اليوم)')">
+            <input type="hidden" name="rid" value="{{ rid }}"><input type="hidden" name="from" value="{{ f }}"><input type="hidden" name="to" value="{{ t }}"><input type="hidden" name="mode" value="now">
+            <button type="submit" class="rc-mini-btn">🔪 قطع فورًا</button>
+          </form>
+          <form method="post" action="{{ url_for('recruits.leaves_cut') }}" class="inline-f"
+                onsubmit="return confirm('🔪 قطع إجازة {{ by_id[rid].name }} غدًا؟ (اليومية ستذكّرك غدًا بزرين: «حاضر في اليومية» / «سجّله في المستشفى»)')">
+            <input type="hidden" name="rid" value="{{ rid }}"><input type="hidden" name="from" value="{{ f }}"><input type="hidden" name="to" value="{{ t }}"><input type="hidden" name="mode" value="tomorrow">
+            <button type="submit" class="rc-mini-btn">🔪 قطع غدا</button>
+          </form>
+          {% elif state == 'لم تبدأ' %}
+          <form method="post" action="{{ url_for('recruits.leaves_cancel') }}" class="inline-f"
+                onsubmit="return confirm('🚫 إلغاء إجازة {{ by_id[rid].name }} ({{ period_text(year, month, f) }}–{{ period_text(year, month, t) }})؟ ستصبح هذه الأيام مفتوحة في اليومية')">
+            <input type="hidden" name="rid" value="{{ rid }}"><input type="hidden" name="from" value="{{ f }}"><input type="hidden" name="to" value="{{ t }}">
+            <button type="submit" class="rc-mini-btn">🚫 إلغاء</button>
+          </form>
+          {% endif %}
+          {% endif %}
         </td>
       </tr>
       {% endfor %}{% endfor %}
@@ -98,11 +159,14 @@
 <div class="panel">
   <div class="panel-head"><h3>🚫 سجل الغياب — شهر {{ month_name }}</h3>
     <div class="rt-actions">{% include "partials/print_btn.html" %}</div></div>
-  {% if rows %}
+  {% if episodes %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
-    <tbody>{% for r, d in rows %}<tr>
-      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td><td class="num">{{ period_text(year, month, d) }}</td>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">غياب من</th><th class="num">إلى</th><th class="num">المدة</th><th>إجراءات</th></tr></thead>
+    <tbody>{% for r, f, t in episodes %}{% set ongoing = info.real_day and t >= info.real_day %}<tr>
+      <td class="num">{{ loop.index | aindic }}</td><td>{{ person(r, badges) }}</td>
+      <td class="num">{{ period_text(year, month, f) }}</td>
+      <td class="num">{% if ongoing %}<span class="rc-chip st-غياب">مستمرة</span>{% else %}{{ period_text(year, month, t) }}{% endif %}</td>
+      <td class="num">{{ ((info.real_day - f + 1) if ongoing else (t - f + 1)) | aindic }} يومًا</td>
       <td class="ops"><a class="icon-btn print" title="كشف حالة المجند" target="_blank"
         href="{{ url_for('recruits.print_doc', what='recruit') }}&rid={{ r.id }}">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a></td>
@@ -114,11 +178,43 @@
 {% else %}
 <!-- ==================== أخرى ==================== -->
 {% for title, items in groups %}
+{% if title == 'مستشفى' %}
+<!-- لوحة المستشفى: يوم بيوم + الحالة الصحية + ملاحظة -->
 <div class="panel">
-  <div class="panel-head"><h3>{{ {'مأمورية':'🧭','مستشفى':'🏥','أخرى':'➕'}[title] }} {{ title }} <span class="panel-hint">{{ items | length | aindic }}</span></h3></div>
+  <div class="panel-head"><h3>🏥 المستشفى <span class="panel-hint">{{ items | length | aindic }} يومًا — تُسجّل الحالة الصحية يومًا بيوم</span></h3></div>
+  {% if items %}
+  <form method="post" action="{{ url_for('recruits.other_save_hospital') }}">
+    <div class="table-wrap"><table class="rt-table">
+      <thead><tr><th class="num">م</th><th>المجند</th><th class="num">التاريخ</th><th>الحالة الصحية</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+      {% set ns = namespace(i=1) %}
+      {% for rid, days in hospital.items() %}{% for d, cond, note in days %}{% if by_id.get(rid) %}
+      <tr>
+        <td class="num">{{ ns.i | aindic }}</td>{% set ns.i = ns.i + 1 %}
+        <td>{{ person(by_id[rid], badges) }}</td>
+        <td class="num">{{ period_text(year, month, d) }}
+          {% if d in hospital_locked %}<span class="rc-chip st-أخرى" title="اليومية مثبتة ومقفولة — افتحها الأول">🔒</span>{% endif %}</td>
+        <td><input name="hc_cond" value="{{ cond }}" {% if d in hospital_locked %}disabled{% endif %} placeholder="حمّى / كسر / التهاب / …"></td>
+        <td><input name="hc_note" value="{{ note }}" {% if d in hospital_locked %}disabled{% endif %} placeholder="…"></td>
+        <input type="hidden" name="hc_rid" value="{{ rid }}">
+        <input type="hidden" name="hc_day" value="{{ d }}">
+      </tr>
+      {% endif %}{% endfor %}{% endfor %}
+      </tbody>
+    </table></div>
+    <button class="rt-btn navy" type="submit" style="margin-top:10px">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      حفظ الحالة الصحية والملاحظات
+    </button>
+  </form>
+  {% else %}<p class="panel-hint" style="text-align:center;padding:14px 0">لا توجد سجلات — إذا عاد مجند من الإجازة مريضًا، فسجّل حالته «مستشفى» في يومية العودة.</p>{% endif %}
+</div>
+{% else %}
+<div class="panel">
+  <div class="panel-head"><h3>{{ {'مأمورية':'🧭','أخرى':'➕'}[title] }} {{ title }} <span class="panel-hint">{{ items | length | aindic }}</span></h3></div>
   {% if items %}
   <div class="table-wrap"><table class="rt-table">
-    <thead><tr><th>م</th><th>المجند</th><th>التاريخ</th>{% if title == 'أخرى' %}<th>الملاحظة</th>{% endif %}</tr></thead>
+    <thead><tr><th class="num">م</th><th>المجند</th><th class="num">التاريخ</th>{% if title == 'أخرى' %}<th>الملاحظة</th>{% endif %}</tr></thead>
     <tbody>{% for item in items %}<tr>
       <td class="num">{{ loop.index | aindic }}</td><td>{{ person(item[0], badges) }}</td>
       <td class="num">{{ period_text(year, month, item[1]) }}</td>{% if title == 'أخرى' %}<td>{{ item[2] or '—' }}</td>{% endif %}
@@ -126,6 +222,11 @@
   </table></div>
   {% else %}<p class="panel-hint" style="text-align:center;padding:14px 0">لا سجلات.</p>{% endif %}
 </div>
+{% endif %}
 {% endfor %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/recruits_joint.js') }}?v={{ static_ver }}"></script>
 {% endblock %}

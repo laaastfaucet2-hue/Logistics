@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — معدلات الأصناف{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip">
+  <span>تفاريد خط الحدود الدولى — معدلات الأصناف</span>
+  <span class="sep">•</span><span class="dim">{{ month_name }} {{ year | aindic }}</span>
+  {% include "partials/print_btn.html" %}
+</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>المعدل الفعلي اليومي للفرد</h3>
+    <span class="panel-hint">المعدل الفعلي = المقرر المرجعي + الإضافة اليدوية · تخصيص التاريخ يضاف إلى الأسبوعي أو يحل محله حسب اختيارك</span>
+  </div>
+
+  <form method="post" action="{{ url_for('dowail.rates_add') }}" class="dw-rate-add-form">
+    <div class="dw-smart-pick dw-smart-item">
+      <label for="dwNewItem">اسم الصنف — بحث ذكي</label>
+      <div class="dw-smart-control">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input id="dwNewItem" name="name" data-combo="dwItemsList" autocomplete="off"
+               aria-autocomplete="list" placeholder="ابحث باسم الصنف أو اكتب صنفًا جديدًا" required>
+      </div>
+      <small>تظهر أصناف التموين والمتعهد، ويمكن كتابة صنف جديد.</small>
+    </div>
+    <div class="dw-smart-pick dw-smart-unit">
+      <label for="dwNewUnit">الوحدة — بحث ذكي</label>
+      <div class="dw-smart-control">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 4v6M11 4v3M15 4v6M19 4v3M4 17h16M7 14v6M11 17v3M15 14v6M19 17v3"/></svg>
+        <input id="dwNewUnit" name="unit" data-combo="dwUnitsList" autocomplete="off"
+               aria-autocomplete="list" placeholder="ابحث أو اختر وحدة القياس">
+      </div>
+      <small>{{ dw_units | length | aindic }} وحدة جاهزة، وأي وحدة جديدة تُحفظ.</small>
+    </div>
+    <label class="dw-rate-add-field">الإضافة اليدوية
+      <input name="rate" inputmode="decimal" placeholder="٠٫٠٠٠">
+    </label>
+    <label class="dw-rate-add-field">القسم
+      <select name="section"><option value="tamween">تمويني</option><option value="contractor">متعهد</option></select>
+    </label>
+    <button class="rt-btn gold small" type="submit">إضافة الصنف</button>
+  </form>
+
+  {% macro rates_section(title, items, section) %}
+  <h4 class="dw-h">{{ title }}</h4>
+  {% if items %}
+  <div class="table-wrap">
+    <table class="rt-table dw-rates dw-rates-v2">
+      <thead><tr>
+        <th>م</th><th>الصنف</th><th>المقرر المرجعي</th><th>الإضافة اليدوية</th>
+        <th>المعدل الفعلي</th><th>تخصيص الأيام</th><th>الحالة</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for item in items %}
+      <tr class="{{ '' if item.enabled else 'dw-off' }}">
+        <td class="num">{{ item.serial | aindic }}</td>
+        <td class="name"><b>{{ item.name }}</b>{% if item.unit %}<small>{{ item.unit }}</small>{% endif %}
+          {% if item.is_extra %}<span class="dw-extra">يدوي</span>{% endif %}</td>
+        <td class="num dw-rate-reference">{{ item.reference_rate | qty3 }}</td>
+        <td>
+          {% if item.rate_id %}
+          <form method="post" action="{{ url_for('dowail.rates_update', rate_id=item.rate_id) }}" class="dw-inline">
+            <input name="rate" inputmode="decimal" value="{{ item.manual_rate | qty3 }}" class="dw-w-narrow" aria-label="الإضافة اليدوية">
+            <input type="hidden" name="unit" value="{{ item.unit }}">
+            <button class="dw-mini" type="submit">حفظ</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('dowail.rates_add') }}" class="dw-inline">
+            <input type="hidden" name="section" value="{{ section }}"><input type="hidden" name="name" value="{{ item.name }}"><input type="hidden" name="unit" value="{{ item.unit }}">
+            <input name="rate" inputmode="decimal" value="٠" class="dw-w-narrow" aria-label="الإضافة اليدوية">
+            <button class="dw-mini" type="submit">حفظ وتفعيل</button>
+          </form>
+          {% endif %}
+        </td>
+        <td class="num dw-rate-effective"><b>{{ item.effective_rate | qty3 }}</b><small>مرجعي + يدوي</small></td>
+        <td>
+          {% if item.custom %}<div class="c2-custom-chips">{% for chip in item.custom %}<span class="c2-custom-chip">{{ chip.label }} — {{ chip.qty | qty3 }}</span>{% endfor %}</div>{% else %}<span class="dim">لا يوجد</span>{% endif %}
+          <button type="button" class="dw-calendar-btn custom-btn"
+                  data-id="{{ item.rate_id or 0 }}" data-name="{{ item.name }}"
+                  data-section="{{ section }}" data-unit="{{ item.unit }}" data-extra="{{ 1 if item.is_extra else 0 }}"
+                  data-weekly='{{ item.weekly_entries | tojson }}' data-dates='{{ item.date_entries | tojson }}'
+                  title="تخصيص أسبوعي أو بتاريخ فعلي" aria-label="تخصيص أيام {{ item.name }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+            <span>تخصيص</span>
+          </button>
+        </td>
+        <td>
+          {% if item.rate_id %}
+          <form method="post" action="{{ url_for('dowail.rates_toggle', rate_id=item.rate_id) }}"><button class="dw-mini {{ 'on' if item.enabled }}" type="submit">{{ 'مفعّل' if item.enabled else 'غير مفعّل' }}</button></form>
+          {% else %}<span class="dim">غير محفوظ</span>{% endif %}
+        </td>
+        <td>
+          {% if item.rate_id %}<form method="post" action="{{ url_for('dowail.rates_delete', rate_id=item.rate_id) }}" onsubmit="return confirm('حذف الإعداد اليدوي والتخصيص لهذا الصنف؟');"><button class="dw-mini danger" type="submit">حذف الإعداد</button></form>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="panel-hint">لا توجد أصناف في هذا القسم.</p>{% endif %}
+  {% endmacro %}
+
+  {{ rates_section('أصناف المقررات التموينية', rates_view.tamween, 'tamween') }}
+  {{ rates_section('أصناف المتعهد', rates_view.contractor, 'contractor') }}
+
+  {% if rate_statements %}
+  <details class="dw-archbox"><summary>بيانات إكسل المسجلة للمعدلات</summary>
+    <div class="dw-stmt-group">{% for day, path in rate_statements %}<a class="dw-filelink" href="{{ url_for('dowail.statement_file', filename=path) }}">بيان يوم {{ day | aindic }}</a>{% endfor %}</div>
+  </details>
+  {% endif %}
+</div>
+
+<div class="modal" id="customModal" aria-hidden="true">
+  <div class="modal-box dw-custom-modal">
+    <div class="modal-head">
+      <h3 class="dw-modal-title"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg> تخصيص: <span id="customItemName"></span></h3>
+      <button class="modal-x" type="button" id="customClose" aria-label="إغلاق">×</button>
+    </div>
+    <form method="post" id="customForm" autocomplete="off" data-template="{{ url_for('dowail.custom_save', rate_id=0) }}">
+      <input type="hidden" name="section" id="customSection"><input type="hidden" name="item_name" id="customName">
+      <input type="hidden" name="item_unit" id="customUnit"><input type="hidden" name="is_extra" id="customExtra">
+
+      <section class="dw-custom-block">
+        <h4>التخصيص الأسبوعي</h4>
+        <p class="modal-hint">يتكرر حسب يوم الأسبوع والوجبة. الكمية تخص فردًا واحدًا.</p>
+        <div class="table-wrap"><table class="grid-days">
+          <thead><tr><th>اليوم</th>{% for meal, label in meals %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for weekday in range(7) %}<tr><td class="dname">{{ days[weekday] }}</td>{% for meal, label in meals %}<td><input name="c_{{ weekday }}_{{ meal }}" inputmode="decimal" placeholder="٠"></td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+      </section>
+
+      <section class="dw-custom-block">
+        <div class="dw-custom-block-head"><div><h4>تخصيص بتاريخ فعلي</h4><p class="modal-hint">لكل تاريخ اختر: إضافة إلى الأسبوعي، أو بديلًا له في ذلك التاريخ.</p></div>
+          <button class="dw-mini" type="button" id="addDateCustom">إضافة تاريخ</button></div>
+        <div id="dateCustomRows" class="dw-date-custom-rows"></div>
+        <template id="dateCustomTemplate">
+          <div class="dw-date-custom-row">
+            <label>يوم<input name="date_day" inputmode="numeric" min="1" max="{{ days_in_month }}" placeholder="١"></label>
+            <label>الوجبة<select name="date_meal">{% for meal, label in meals %}<option value="{{ meal }}">{{ label }}</option>{% endfor %}</select></label>
+            <label>الكمية<input name="date_qty" inputmode="decimal" placeholder="٠"></label>
+            <label>طريقة التطبيق<select name="date_mode"><option value="add">إضافة إلى الأسبوعي</option><option value="replace">بديل للأسبوعي</option></select></label>
+            <button class="dw-mini danger js-remove-date" type="button">إزالة</button>
+          </div>
+        </template>
+      </section>
+
+      <div class="modal-foot"><button class="rt-btn gold" type="submit">حفظ التخصيص</button><button class="rt-btn dim" type="button" id="customCancel">إلغاء</button></div>
+    </form>
+  </div>
+</div>
+
+<datalist id="dwItemsList">{% for name in dw_item_names %}<option value="{{ name }}">{% endfor %}</datalist>
+<datalist id="dwUnitsList">{% for unit in dw_units %}<option value="{{ unit }}">{% endfor %}</datalist>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dowail.js') }}?v={{ static_ver }}"></script>{% endblock %}

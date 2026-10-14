@@ -3,7 +3,7 @@
 """ملفات دورة «الترفية» المحلية — database/<سنة>/<شهر>/11-الترفية/:
 
 الأصناف/ · ١ مخازن إذون الإضافة/ · ٢ مخازن إذون الصرف/ · ٣ مخازن دفتر الأصناف/
-· ٥ مخازن السجل اليومي/ — كل تاب ملف Excel مرآة يتحدث ذرّيًا بعد كل حفظ
+· ٥ مخازن/ (صادر المخزن التقصيلى — نفس تصميم الدورتين) — كل تاب ملف Excel مرآة
 (نفس نمط مستودعات وسجلات — توجيه ٢٩/٠٩).
 """
 from core import arabic_numbers as arnum
@@ -19,14 +19,17 @@ SUB_FOLDERS = {
     "wh1": "١ مخازن إذون الإضافة",
     "wh2": "٢ مخازن",
     "wh3": "٣ مخازن دفتر الأصناف",
-    "wh5": "٥ مخازن السجل اليومي",
+    "wh5": "٥ مخازن",
+    # تاب «مخزن الترفية» — كان ناقص من هنا فـ file/open-file كانوا بيلقوا KeyError (500)
+    "store": dt.STORE_NAME,
 }
 TAB_XLSX = {
     "items": "كشف الأصناف.xlsx",
     "wh1": "إذون إضافة ١ مخازن ترفية.xlsx",
     "wh2": "٢ مخازن مجمع.xlsx",
     "wh3": "دفتر ٣ مخازن ترفية.xlsx",
-    "wh5": "سجل ٥ مخازن.xlsx",
+    "wh5": "دفتر حركة صادر ووارد المخزن (5 مخازن).xlsx",
+    "store": "حركة المخزن.xlsx",
 }
 
 
@@ -61,6 +64,10 @@ def ensure_folders(year, month):
     old = base_dir(year, month) / "٢ مخازن إذون الصرف"
     if old.is_dir():
         shutil.rmtree(old, ignore_errors=True)
+    # توحيد ٥ مخازن (توجيه ١١/١٠): اسم الفولدر/الملف بقى زي الإمداد والمتعهد
+    old5 = base_dir(year, month) / "٥ مخازن السجل اليومي"
+    if old5.is_dir():
+        shutil.rmtree(old5, ignore_errors=True)
     for sub in SUB_FOLDERS:
         sub_dir(year, month, sub)
     return base_dir(year, month)
@@ -85,6 +92,22 @@ def _wday(day, year, month):
     return wf._wday(day, year, month)
 
 
+def _tw_rate_map(year, month):
+    """معدلات المقررات التموينية النشطة — المصدر الذي تتبعه جداول معدلات
+    الأصناف في الترفية (توجيه ٠٨/١٠/٢٠٢)."""
+    from data_access import db_rations as dr
+    from services import free_build as fb
+    out = {}
+    # بلا تفعيل صريح = الصيفي الافتراضي (نفس قاعدة بقية الأقسام)
+    kind = dr.get_activation(year, month, "tamween") or "summer"
+    if kind:
+        for it in dr.get_items(year, month, "tamween", kind)[0]:
+            name = " ".join(str(it.get("name") or "").split())
+            if name:
+                out[name] = fb.seed_rate(it)
+    return out
+
+
 def snapshot(year, month):
     """يعيد كتابة مرايا الترفية الخمسة بعد أي حفظ — محليًا وذرّيًا."""
     ensure_folders(year, month)
@@ -92,12 +115,16 @@ def snapshot(year, month):
     receipts = dt.list_receipts(year, month)
     issues = dt.list_issues(year, month)
     names = {it["id"]: it["name"] for it in items}
+    rate_map = _tw_rate_map(year, month)
 
     # ---------- الأصناف ----------
     _save_xlsx(file_path(year, month, "items"), [(
         "كشف أصناف الترفية",
-        ["م", "اسم الصنف", "وحدة التعامل", "وحدة القاعدة", "عليه حركة"],
-        [(idx, it["name"], it["handle_unit"], it["base_unit"],
+        ["م", "اسم الصنف", "وحدة التعامل", "معدل التموينية", "وحدة القاعدة", "عليه حركة"],
+        [(idx, it["name"], it["handle_unit"],
+          arnum.fmt_qty(rate_map[" ".join(it["name"].split())])
+          if " ".join(it["name"].split()) in rate_map else "—",
+          it["base_unit"],
           "نعم" if dw.item_has_movement(year, month, dt.CYCLE, it["id"]) else "لا")
          for idx, it in enumerate(items, 1)])])
 
@@ -152,27 +179,17 @@ def snapshot(year, month):
          "منصرف", "الرصيد", "التغليف", "ملاحظات"],
         wh3_rows)])
 
-    # ---------- ٥ مخازن ----------
-    t5 = dt.t5_rows(year, month)
-    _save_xlsx(file_path(year, month, "wh5"), [(
-        "سجل ٥ مخازن اليومي",
-        ["م", "التاريخ", "رقم الإذن", "وارد من / منصرف إلى",
-         "قيمة الأصناف المضافة", "قيمة الأصناف المنصرفة",
-         "البيان والملحوظات والتفاصيل", "المسؤول عن الصرف"],
-        [(idx, _d(r["day"], year, month),
-          r["permit_no"] or "رصيد", r["party"],
-          "{} {}".format(arnum.fmt_qty(r["added"]), r["unit"] or "").strip()
-          if r["added"] else "—",
-          "{} {}".format(arnum.fmt_qty(r["issued"]), r["unit"] or "").strip()
-          if r["issued"] else "—",
-          r["details"], r["responsible"] or "—")
-         for idx, r in enumerate(t5, 1)])])
+    # ---------- ٥ مخازن (صادر المخزن التقصيلى) — نفس تصميم الدورتين ----------
+    # (توجيه ١١/١٠: الترفية مثل الإمداد والمتعهد بالضبط — ملف واحد بتصميم المرجع)
+    from services import wh5_xlsx
+    wh5_xlsx.snapshot_tarfea(year, month)
 
     try:   # فولدرات الأيام والتفاريد وشيتات التغليف (توجيه ٢٨/٠٩ مساءً)
         from services import cycle_xlsx
         cycle_xlsx.build_tarfea(year, month)
         cycle_xlsx.build_tarfea_store(base_dir(year, month),
-                                      dt.store_report(year, month))
+                                      dt.store_report(year, month),
+                                      year, month)
     except Exception:
         import logging
         logging.exception("tarfea cycle structure failed")

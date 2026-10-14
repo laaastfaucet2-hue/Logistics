@@ -1,7 +1,7 @@
 """Initialize local data; never seed operational/test data."""
 import logging
 from core import egtime
-from data_access import database as db, storage, months, dataguard
+from data_access import database as db, storage, months, dataguard, db_users
 from documents import xlsx_rations
 
 
@@ -20,6 +20,12 @@ def initialize():
     for event in dataguard.startup_guard():
         logging.getLogger(__name__).warning(event)
     db.init_db()
+    db_users.init_users()
+    try:  # ملفات «الإعدادات» المحلية — كل حساب يضمن ملف بياناته وسجله
+        from services import settings_fs
+        settings_fs.sync_all_user_files()
+    except Exception:      # noqa: BLE001 — المرايا لا تسقط التشغيل
+        logging.exception("settings user-file mirror failed at boot")
     storage.ensure_initialized(egtime.today().year)
     storage.sync_section_folders()
     for year in storage.list_years():

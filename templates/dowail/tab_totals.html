@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}تفاريد خط الحدود الدولى — إجمالي خطوط التوزيع{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calc2.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dowail.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip"><span>تفاريد خط الحدود الدولى — إجمالي خطوط التوزيع</span><span class="sep">•</span><span class="dim">{{ month_name }} {{ year | aindic }}</span>{% include "partials/print_btn.html" %}</div>
+{% set cur_tab = 'dowail' %}
+{% include "calc2/tabs.html" %}
+{% include "dowail/_subtabs.html" %}
+
+<form method="get" action="{{ url_for('dowail.page') }}" class="dw-gatebar dw-filterbar">
+  <input type="hidden" name="tab" value="totals">
+  <label>مصدر الإجمالي<select name="dist"><option value="">الحالي — فترة كل نسخة</option>{% for save in saves %}<option value="{{ save.id }}" {{ 'selected' if archive_save and archive_save.id == save.id }}>{{ save.label or ('توزيعة ' ~ save.id) }}</option>{% endfor %}</select></label>
+  <label>عرض خط<select name="line"><option value="">كل الخطوط</option>{% for line in lines %}<option value="{{ line.id }}" {{ 'selected' if line.id == sel_line_id }}>{{ line.name }}</option>{% endfor %}</select></label>
+  <button class="rt-btn gold small" type="submit">تطبيق</button>
+</form>
+
+<div class="panel">
+  <div class="panel-head"><h3>الملخص العام للخطوط</h3><span class="panel-hint">{% if archive_save %}توزيعة محفوظة: {{ archive_save.label }}{% else %}كل خط حالي محسوب بفترة نسخته المحددة{% endif %}</span></div>
+  {% if matrix and matrix.lines %}
+  <div class="table-wrap"><table class="rt-table dw-summary"><thead><tr><th>م</th><th>الخط</th><th>فترة الصرف</th><th>النقاط النشطة / الكل</th><th>القوة</th><th>كل الحصص</th></tr></thead><tbody>
+  {% for item in matrix.lines %}<tr class="{{ 'dw-sel' if sel_line_id and item.line.id == sel_line_id }}"><td class="num">{{ loop.index | aindic }}</td><td><b>{{ item.line.name }}</b></td><td class="num">{{ item.date_from | aindic }}–{{ item.date_to | aindic }} <small>({{ item.issue_days | aindic }} يوم)</small></td><td class="num">{{ item.line.active | aindic }} / {{ item.line.count | aindic }}</td><td class="num"><b>{{ item.force | aindic }}</b></td><td class="num"><b>{{ (item.line_total.values() | sum) | qty3 }}</b></td></tr>{% endfor %}
+  <tr class="dw-grand"><td>—</td><td>الإجمالي العام</td><td>فترات مستقلة</td><td class="num">{{ (matrix.lines | map(attribute='line.active') | sum) | aindic }} / {{ (matrix.lines | map(attribute='line.count') | sum) | aindic }}</td><td class="num">{{ matrix.grand_force | aindic }}</td><td class="num">{{ (matrix.items_total.values() | sum) | qty3 }}</td></tr>
+  </tbody></table></div>
+  {% else %}<div class="dw-empty-state">لا توجد خطوط ذات فترة محددة في هذا العرض.</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h3>التفاصيل بالأصناف والنقاط</h3><span class="panel-hint">الحساب يستخدم المعدل الفعلي والتخصيص الأسبوعي/الفعلي داخل فترة كل خط</span></div>
+  {% if matrix and matrix.lines %}
+  <div class="table-wrap"><table class="rt-table dw-matrix"><thead><tr><th>الخط / النقطة</th><th>القوة</th>{% for rate in matrix.rates %}<th>{{ rate.name }}<br><small>{{ rate.unit }}</small></th>{% endfor %}</tr></thead><tbody>
+  {% for item in matrix.lines %}
+    <tr class="dw-linehead"><td><b>{{ item.line.name }}</b><small> — {{ item.date_from | aindic }}–{{ item.date_to | aindic }} ({{ item.issue_days | aindic }} يوم)</small></td><td class="num"><b>{{ item.force | aindic }}</b></td>{% for rate in matrix.rates %}<td></td>{% endfor %}</tr>
+    {% for point in item.points %}<tr class="{{ 'dw-off' if not point.point.force }}"><td>　{{ point.point.name }}</td><td class="num">{{ point.point.force | aindic }}</td>{% for rate in matrix.rates %}<td class="num">{{ point.cells.get(rate.name, 0) | qty3 }}</td>{% endfor %}</tr>{% endfor %}
+    <tr class="dw-linenum"><td><b>إجمالي {{ item.line.name }}</b></td><td class="num"><b>{{ item.force | aindic }}</b></td>{% for rate in matrix.rates %}<td class="num"><b>{{ item.line_total.get(rate.name, 0) | qty3 }}</b></td>{% endfor %}</tr>
+  {% endfor %}
+  <tr class="dw-grand"><td><b>الإجمالي العام</b></td><td class="num"><b>{{ matrix.grand_force | aindic }}</b></td>{% for rate in matrix.rates %}<td class="num"><b>{{ matrix.items_total.get(rate.name, 0) | qty3 }}</b></td>{% endfor %}</tr>
+  </tbody></table></div>
+  {% else %}<div class="dw-empty-state">لا توجد بيانات إجمالية قابلة للعرض.</div>{% endif %}
+</div>
+{% endblock %}

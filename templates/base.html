@@ -2,7 +2,7 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}وزارة الداخلية — منظومة التعيينات{% endblock %}</title>
-<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">
+{% if app_logo %}<link rel="icon" href="{{ url_for('settings.identity_logo', v=app_logo.v) }}">{% else %}<link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}">{% endif %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}?v={{ static_ver }}">
@@ -11,7 +11,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
 {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pagehead.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dates.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}?v={{ static_ver }}">
 </head><body class="{% block body_class %}{% endblock %}" data-sid="{{ sid }}" data-year="{{ ctx_year }}" data-month="{{ ctx_month }}" data-desktop="{{ '1' if desktop_mode else '0' }}">
 {% include 'partials/windowbar.html' %}
@@ -20,7 +23,7 @@
 {% if request.args.get('err') %}<div class="toast err" role="alert"><span>{{ request.args.get('err') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
 {% if request.args.get('warn') %}<div class="toast warn" role="status"><span>{{ request.args.get('warn') }}</span><button type="button" class="toast-x" aria-label="إغلاق الرسالة" title="إغلاق">✕</button></div>{% endif %}
 <div class="app"><aside class="sidebar" id="sidebar">
-  <div class="brand"><div class="brand-logo"><img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار وزارة الداخلية"></div><div><div class="brand-name">وزارة الداخلية</div><div class="brand-sub">قطاع الأمن المركزى</div><div class="brand-sub">منطقة وسط وجنوب سيناء</div><div class="brand-sub">قطاع وسط سيناء</div><div class="brand-sub brand-sub2">قسم التعيينات</div></div></div>
+  <div class="brand"><div class="brand-logo">{% if app_logo %}<img src="{{ url_for('settings.identity_logo', v=app_logo.v) }}" alt="شعار المنظمة">{% else %}<img src="{{ url_for('static', filename='img/mark.svg') }}?v={{ static_ver }}" alt="شعار وزارة الداخلية">{% endif %}</div><div><div class="brand-name">وزارة الداخلية</div><div class="brand-sub">قطاع الأمن المركزى</div><div class="brand-sub">منطقة وسط وجنوب سيناء</div><div class="brand-sub">قطاع وسط سيناء</div><div class="brand-sub brand-sub2">قسم التعيينات</div></div></div>
   <nav class="nav" aria-label="التنقل الرئيسي"><div class="nav-title">مساحة العمل</div>
     <a href="{{ url_for('dashboard', year=ctx_year, month=ctx_month) }}" class="nav-link {{ 'active' if request.path == '/dashboard' }}">{{ icon('dashboard') }}الرئيسية</a>
     <div class="nav-title">الأقسام الشهرية</div>
@@ -61,6 +64,19 @@
     <button id="delYearBtn" class="ctx-del" title="حذف السنة المحددة نهائيًا" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6m4-6v6"/></svg></button>
   </div>
 </header>
+{% if current_user and (notes_unread.to_me or notes_unread.for_me) %}
+<!-- إشعار الملاحظات: يظهر عند فتح البرنامج، ويظل ظاهرًا حتى يرد المستخدم (توجيه ١٠/١٠) -->
+<div class="notes-banner no-print" id="notesBanner">
+  <span class="nb-ico">🗒️</span>
+  <span class="nb-text">
+    {% if notes_unread.to_me %}لديك <b>{{ notes_unread.to_me | aindic }} ملحوظة غير مقروءة</b>{% endif %}
+    {% if notes_unread.to_me and notes_unread.for_me %} · {% endif %}
+    {% if notes_unread.for_me %}<b>تم الرد عليك</b> في {{ notes_unread.for_me | aindic }} ملحوظة{% endif %}
+  </span>
+  <a class="nb-link" href="{{ url_for('settings.page', sub='notes') }}">افتح الملاحظات والرد ‹</a>
+  <button type="button" class="nb-x" title="إخفاء في هذه الصفحة" onclick="document.getElementById('notesBanner').remove()">✕</button>
+</div>
+{% endif %}
 <main class="content">
   {% block official_print_head %}
     {% if current_user %}<div class="app-print-head" aria-hidden="true">{% include "partials/official_print_head.html" %}<div class="pd-title">{% block print_doc_title %}{% endblock %}</div></div>{% endif %}
@@ -92,9 +108,11 @@
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/dates.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/date-picker.js') }}?v={{ static_ver }}"></script>
+<script src="{{ url_for('static', filename='js/sticky.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/session.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/context.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/desktop.js') }}?v={{ static_ver }}"></script>
 {% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/tables.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_ver }}"></script>
 </body></html>

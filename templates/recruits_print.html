@@ -35,7 +35,18 @@
     <div class="pd-title">{{ title }}</div>
   </div>
 
-  {% if print_kind == 'permit' %}
+  {% if print_kind == 'permit' and permit_recruits %}
+  <div class="rc-permit">
+    <p>صرّحت وحدة التعيينات للمجندين التاليين بإجازة اعتيادية:</p>
+    {% for r in permit_recruits %}<p>{{ loop.index | aindic }}. المجند / <b>{{ r.name }}</b> — رقم عسكري / <b>{{ r.mil_no | aindic }}</b> — محافظة / {{ r.governorate or '—' }} — المدينة / {{ r.city or '—' }}</p>{% endfor %}
+    <p>بإجازة اعتيادية من تاريخ <b>{{ period_text(year, month, from_day) }}</b>
+       وحتى تاريخ <b>{{ period_text(year, month, to_day) }}</b> (مدة {{ (to_day - from_day + 1) | aindic }} يومًا).</p>
+    <p>وعلى المذكورون العودة إلى وحدة التعيينات فور انتهاء الإجازة،</p>
+    <p>وقد حُرِّر لهم هذا التصريح لتقديمه لمن يهمه الأمر.</p>
+    <p class="dim">حُرِّر في {{ date_text(today_date) }} — {{ today_weekday }}</p>
+  </div>
+
+  {% elif print_kind == 'permit' %}
   <div class="rc-permit">
     <p>صرّحت وحدة التعيينات للمجند / <b>{{ recruit.name }}</b></p>
     <p>رقم عسكري / <b>{{ recruit.mil_no | aindic }}</b> —

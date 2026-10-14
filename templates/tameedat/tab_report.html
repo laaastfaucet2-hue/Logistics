@@ -3,7 +3,7 @@
 <!-- زرّا فتح المجلد/الملف باسميه — قاعدة أزرار الملفات الملزمة (قاعدة 21) -->
 <div class="tm-openbar">
   <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_folder', tab='report') }}"
-    title="يفتح فولدر التبويب على جهازك من نسخة سطح المكتب (الربط المحل)">📂 فتح مجلد «طباعة التقرير الشامل»</a>
+    title="يفتح مجلد التبويب على جهازك من نسخة سطح المكتب (الربط المحلي)">📂 فتح مجلد «طباعة التقرير الشامل»</a>
   <a class="tm-openbtn" href="{{ url_for('tameedat.open_tab_file', tab='report') }}"
     title="يفتح الملف المحلي للتبويب على جهازك">📗 فتح ملف «التقرير الشامل.xlsx»</a>
   {% include "partials/print_btn.html" %}
@@ -15,9 +15,9 @@
     <p>يُبنى التقرير من بيانات الشهر النشط لحظة الطلب، ويحتوي: <b>التفصيل اليومي</b> لكل تأميدة بملحقاتها،
        و<b>الملخص الشهري</b> للجهات المومدة (كل جهة مستقلة) مع إجمالي القوة وأيام التميد —
        على دباجة «منطقة وسط وجنوب للأمن المركزي — قطاع وسط سيناء - قسم التميينات»
-       واللوجو والتوقيعات الرسمية المعتمدة لهذا الشهر.</p>
+       والشعار والتوقيعات الرسمية المعتمدة لهذا الشهر.</p>
     <ul>
-      <li>📗 <b>Excel</b>: ملف حقيقي بالدباجة واللوجو داخل الخلايا (شيت التفصيل اليومي + شيت الملخص الشهري).</li>
+      <li>📗 <b>Excel</b>: ملف حقيقي بالدباجة والشعار داخل الخلايا (ورقة عمل التفصيل اليومي + ورقة عمل الملخص الشهري).</li>
       <li>📘 <b>Word</b>: نفس المحتوى بصيغة مستند رسمي قابل للتعديل.</li>
       <li>🖨️ <b>PDF</b>: من نسخة الطباعة — اختر «حفظ PDF» في نافذة الطباعة.</li>
     </ul>
@@ -28,7 +28,7 @@
   <div class="tm-report-actions">
     <a class="rt-btn gold" href="{{ url_for('tameedat.report_build', fmt='xlsx') }}">
       <svg viewBox="0 0 24 24"><path d="M14 3H5v18h14V8Z M14 3v5h5"/><path d="m9 12 6 6m0-6-6 6"/></svg>
-      بناء Excel بالدباجة واللوجو وتنزيله</a>
+      بناء Excel بالدباجة والشعار وتنزيله</a>
     <a class="rt-btn navy tm-word" href="{{ url_for('tameedat.report_build', fmt='docx') }}">
       <svg viewBox="0 0 24 24"><path d="M14 3H5v18h14V8Z M14 3v5h5M8 12h8M8 16h6"/></svg>
       بناء Word وتنزيله</a>
@@ -36,13 +36,13 @@
       <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       نسخة الطباعة (PDF)</a>
     {% if can_open %}
-    <a class="rt-btn dim" href="{{ url_for('tameedat.report_open_folder') }}">📂 فتح فولدر التقرير محليًا</a>
+    <a class="rt-btn dim" href="{{ url_for('tameedat.report_open_folder') }}">📂 فتح مجلد التقرير محليًا</a>
     {% endif %}
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h3>📂 الملفات المحفوظة في فولدر «طباعة التقرير الشامل»</h3>
+  <div class="panel-head"><h3>📂 الملفات المحفوظة في مجلد «طباعة التقرير الشامل»</h3>
     <span class="panel-hint">محلية بالكامل — تتحدث عند كل بناء جديد</span></div>
   <div class="table-wrap">
     <table class="rt-table tm-table">

@@ -1,0 +1,187 @@
+/* «الإعدادات» — الشريط الثابت للملاحظات + تابات الإعدادات (توجيه ١٠/١٠) */
+
+/* ===== شريط إشعارات الملاحظات (يثبت أول ما يفتح البرنامج لحد ما يرد) ===== */
+.notes-banner {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 18px 0; padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(212, 168, 74, .18), rgba(212, 168, 74, .07));
+  border: 1px solid rgba(212, 168, 74, .55); border-radius: 12px;
+  animation: nb-in .35s ease;
+}
+@keyframes nb-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; } }
+.nb-ico { font-size: 1.25rem; }
+.nb-text { font-weight: 700; line-height: 1.6; }
+.nb-link {
+  margin-inline-start: auto; white-space: nowrap; font-weight: 800; font-size: .85rem;
+  color: #d4a84a; text-decoration: none; padding: 6px 12px;
+  border: 1px solid rgba(212, 168, 74, .5); border-radius: 9px;
+}
+.nb-link:hover { background: rgba(212, 168, 74, .15); }
+.nb-x { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: .9rem; opacity: .7; }
+.nb-x:hover { opacity: 1; }
+
+/* ===== تابات الإعدادات ===== */
+.sg-newrow {
+  display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap;
+}
+.sg-newrow label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: .85rem; }
+.sg-newrow input, .sg-newrow select {
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 9px; padding: 9px 12px; color: inherit; font: inherit; min-width: 180px;
+}
+.sg-textgrow input { min-width: 340px; flex: 1; }
+
+.sg-role { padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 800; }
+.sg-role.admin { background: rgba(212, 168, 74, .2); color: #e8c169; border: 1px solid rgba(212, 168, 74, .4); }
+.sg-role.storekeeper { background: rgba(120, 140, 180, .16); color: #aab8d4; border: 1px solid rgba(120, 140, 180, .35); }
+.sg-state { padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 800; }
+.sg-state.on { background: rgba(70, 160, 90, .18); color: #7fd39a; }
+.sg-state.off { background: rgba(200, 80, 80, .16); color: #e09090; }
+tr.sg-off td { opacity: .55; }
+
+/* ===== شجرة الصلاحيات ===== */
+.sg-permpanel .panel-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+.sg-tree { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.sg-branch { border: 1px solid rgba(255, 255, 255, .14); border-radius: 12px; padding: 12px 14px; background: rgba(255, 255, 255, .03); }
+.sg-master { display: flex; align-items: center; gap: 9px; font-size: .95rem; cursor: pointer; }
+.sg-master input { width: 17px; height: 17px; accent-color: #d4a84a; cursor: pointer; }
+.sg-subs { margin: 10px 0 0 26px; display: flex; flex-direction: column; gap: 7px; }
+.sg-sub { display: flex; align-items: center; gap: 8px; font-size: .85rem; cursor: pointer; }
+.sg-sub input { width: 15px; height: 15px; accent-color: #7fa8d4; cursor: pointer; }
+.sg-sub span { color: #c7d2e8; }
+
+/* ===== إحصائيات السجلات ===== */
+.sg-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.sg-stat {
+  border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px; padding: 14px 18px;
+  background: rgba(255, 255, 255, .03); display: flex; flex-direction: column; gap: 4px;
+}
+.sg-stat small { color: #8fa3c8; font-weight: 800; }
+.sg-stat b { font-size: 1.35rem; color: #e8c169; }
+.sg-stat .dim { font-size: .78rem; line-height: 1.6; }
+
+/* ===== الملاحظات ===== */
+.sg-unread { margin-inline-start: auto; display: flex; gap: 12px; }
+.sg-unread b { color: #e8c169; }
+.sg-status { padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.sg-status.open { background: rgba(200, 120, 60, .2); color: #f0a878; border: 1px solid rgba(200, 120, 60, .4); }
+.sg-status.replied { background: rgba(70, 160, 200, .18); color: #8fd3f0; border: 1px solid rgba(70, 160, 200, .4); }
+.sg-status.closed { background: rgba(120, 140, 180, .16); color: #aab8d4; border: 1px solid rgba(120, 140, 180, .35); }
+
+.sg-noteitem { border: 1px solid rgba(255, 255, 255, .12); border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; background: rgba(255, 255, 255, .02); }
+.sg-noteitem.open { border-inline-start: 4px solid #d4a84a; }
+.sg-noteitem.replied { border-inline-start: 4px solid #46a0c8; }
+.sg-noteitem.closed { border-inline-start: 4px solid #5a6a88; opacity: .8; }
+.sg-notehead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.sg-notehead .sg-status { margin-inline-start: auto; }
+.sg-noteitem p { margin: 6px 0 8px; line-height: 1.8; font-size: .92rem; }
+.sg-noteops { display: flex; gap: 8px; }
+
+.sg-thread { border: 1px solid rgba(212, 168, 74, .45); }
+.sg-notecard { border: 1px solid rgba(255, 255, 255, .12); border-radius: 10px; padding: 10px 14px; margin: 10px 0; background: rgba(255, 255, 255, .03); }
+.sg-notecard.sg-reply { margin-inline-start: 34px; background: rgba(70, 160, 200, .06); }
+.sg-who { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.sg-who small { font-size: .72rem; }
+.sg-notecard p { margin: 0; line-height: 1.8; }
+.sg-thread .sg-newrow { margin-top: 10px; }
+
+/* ===== دفتر سجل المراقبة (شكل الأسكرين شوت — توجيه ١١/١٠) ===== */
+.sg-mon { border: 1px solid rgba(255, 255, 255, .14); }
+.sg-mon-head {
+  display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+  padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+.sg-mon-title { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 280px; }
+.sg-lock-ico {
+  width: 34px; height: 34px; flex: none; color: #d4a84a; margin-top: 4px;
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.sg-mon-title h3 { margin: 0 0 4px; font-size: 1.05rem; color: #e8c169; }
+.sg-mon-title p { margin: 0; font-size: .78rem; line-height: 1.7; color: #8fa3c8; }
+.sg-mon-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.sg-logsearch {
+  flex: 1; min-width: 240px;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 9px; padding: 9px 14px; color: inherit; font: inherit; font-size: .85rem;
+}
+.sg-count {
+  font-size: .8rem; font-weight: 700; color: #8fa3c8; white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; padding: 6px 14px;
+  background: rgba(255, 255, 255, .03);
+}
+.sg-count b { color: #e8c169; }
+.sg-ledger td { vertical-align: middle; }
+.sg-ts { white-space: nowrap; font-size: .85rem; color: #aab8d4; }
+.sg-op { white-space: nowrap; }
+.sg-opname {
+  display: inline-block; font-weight: 800; font-size: .85rem;
+  background: rgba(120, 140, 180, .16); border: 1px solid rgba(120, 140, 180, .35);
+  border-radius: 8px; padding: 3px 10px;
+}
+.sg-act { font-weight: 800; color: #e8c169; min-width: 170px; }
+.sg-actdet {
+  display: none; margin-top: 3px; font-weight: 400;
+  font-size: .76rem; color: #8fa3c8; line-height: 1.6;
+}
+/* الموبايل: التفاصيل جوه عمود الإجراء (عمود التفاصيل الرابع بيتخفى — الشاشة ضيقة) */
+@media (max-width: 860px) {
+  .sg-ledger .sg-det { display: none; }
+  .sg-actdet { display: block; }
+  .sg-ledger td.sg-ts { font-size: .75rem; }
+}
+.sg-det { font-size: .88rem; line-height: 1.7; }
+.sg-ledger-note { padding: 10px 4px 0; }
+
+/* ══ بوابة الأقسام المحمية (الرمز الرئيسي 7799) + إغلاق وحماية — توجيه ١١/١٠ ══ */
+.sg-lock { display: grid; place-items: center; padding: 44px 16px; }
+.sg-lock-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px;
+  padding: 38px 42px; max-width: 480px; width: 100%; text-align: center; box-shadow: var(--shadow); }
+.sg-lock-ico { width: 54px; height: 54px; color: var(--brand-gold); margin-bottom: 16px; }
+.sg-lock-card h3 { margin: 0 0 10px; font-size: 1.3rem; font-weight: 800; }
+.sg-lock-card > p { margin: 0 0 22px; color: var(--muted); font-size: .9rem; line-height: 1.9; }
+.sg-lock-form { display: flex; flex-direction: column; gap: 12px; }
+.sg-lock-form input[type="password"] { width: 100%; padding: 14px 15px; border-radius: 10px; text-align: center;
+  font-size: 1.15rem; letter-spacing: .35em; font-family: var(--font-ui);
+  background: var(--surface-soft); border: 1px solid var(--card-border); color: inherit; }
+.sg-lock-form input[type="password"]:focus { outline: none; border-color: var(--brand-gold); }
+.sg-lock-note { margin-top: 18px; font-size: .78rem !important; }
+.sg-inline-lock { display: inline-flex; margin: 0; }
+.ctx-strip .sg-inline-lock.sg-push-lock { margin-inline-start: auto; }
+.sg-inline-lock button { white-space: nowrap; }
+
+/* ===== لوحة العمل النشطة (تعديل/صلاحيات) — أعلى الصفحة وبارزة (توجيه ١١/١٠) ===== */
+.sg-workpanel {
+  border: 2px solid rgba(var(--gold-rgb), .55);
+  background: linear-gradient(135deg, rgba(var(--gold-rgb), .09), var(--card) 45%);
+  box-shadow: 0 0 0 4px rgba(var(--gold-rgb), .07);
+}
+.sg-workpanel .panel-head { margin-bottom: 14px; }
+.sg-worktitle { font-size: 1.12rem; font-weight: 800; color: var(--gold-light); }
+.sg-permhint { margin: 0 0 12px; }
+/* شارة الحالة النشطة في شريط الصفحة */
+.sg-activechip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 999px; font-size: .85rem; font-weight: 700;
+  color: var(--on-gold); background: var(--brand-gold); text-decoration: none;
+  box-shadow: 0 3px 10px rgba(var(--gold-rgb), .35);
+}
+.sg-activechip:hover { background: var(--brand-gold-hover); }
+/* تمييز صف الحساب المختار */
+tr.sg-sel td { background: rgba(var(--gold-rgb), .10); }
+tr.sg-sel td:first-child { box-shadow: inset 4px 0 0 var(--brand-gold); }
+/* زرار «الصلاحيات» — واضح في صف الحساب */
+.sg-permbtn { display: inline-flex; align-items: center; gap: 6px; }
+.sg-permbtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.sg-permbtn.on { box-shadow: inset 0 0 0 2px var(--gold); }
+/* شريط «القسم مفتوح في الجلسة» + زرار القفل (قرار ١٤/١٠: الرمز مرة واحدة) */
+.sg-gatebar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 14px; margin-bottom: 12px; border: 1px solid var(--gold-border);
+  border-radius: 10px; background: rgba(var(--gold-rgb), .06); flex-wrap: wrap; }
+.sg-gatebar form { margin: 0; }
+.sg-lockbtn { border: 1px solid var(--card-border); background: var(--card); color: var(--text);
+  font: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
+  cursor: pointer; transition: .15s; }
+.sg-lockbtn:hover { border-color: var(--danger-border); color: var(--red); }

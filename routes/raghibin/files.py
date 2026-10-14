@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
-"""فتح ملفات قسم «الراغبين» المحلية على جهاز المستخدم (الربط المحل).
+"""فتح ملفات قسم «الراغبين» المحلية على جهاز المستخدم (الربط المحلي).
 
 توجيه المستخدم ٠٦/١٠/٢٠٢٦:
-  - «فتح مجلد الراغبين» يفتح فولدر **اليوم المفتوح** نفسه (لو اليوم ٧ ⇒ مجلد يوم ٧).
+  - «فتح مجلد الراغبين» يفتح مجلد **اليوم المفتوح** نفسه (لو اليوم ٧ ⇒ مجلد يوم ٧).
   - بجوار كل جهة مسجلة زر «فتح إكسل راغبين» يفتح ملف إكسل تلك الجهة في يومها.
 
 في نسخة الويب (بلا واجهة رسومية) لا يتظاهر البرنامج بالنجاح: يعلن التعذر
@@ -54,7 +54,7 @@ def _day_number(year, month):
 @raghibin_bp.route("/open-folder")
 @login_required
 def open_day_folder():
-    """«📂 فتح مجلد الراغبين» — فولدر اليوم المفتوح بالضبط (يوم ٧ ⇒ مجلد يوم ٧)."""
+    """«📂 فتح مجلد الراغبين» — مجلد اليوم المفتوح بالضبط (يوم ٧ ⇒ مجلد يوم ٧)."""
     year, month = _ctx()
     day = _day_number(year, month)
     folder = day_files.day_dir(year, month, day)
@@ -81,13 +81,13 @@ def open_entity_excel():
     day = _day_number(year, month)
     entity = _selected_entity(year, month)
     if not entity:
-        return _rb(tab="daily", d=day, err="مفيش جهات في قاموس الشهر لسه — سجّل تأميدة أولًا")
+        return _rb(tab="daily", d=day, err="لا توجد جهات في قاموس الشهر بعد — سجّل تأميدة أولًا")
     folder = day_files.write_day_file(year, month, day, entity["id"], entity["name"])
     day_txt = arnum.to_arabic_indic(str(day))
     if _open_path(folder):
         return _rb(tab="daily", d=day, ok=(
-            f"تم فتح فولدر ملفات «{entity['name']}» ليوم {day_txt} — "
-            f"داخله «ض — الضباط.xlsx» و«أ — الأفراد والصف.xlsx» 📗"))
+            f"تم فتح مجلد ملفات «{entity['name']}» ليوم {day_txt} — "
+            f"داخله «ضابط — الضباط.xlsx» و«فرد — الأفراد والصف.xlsx» 📗"))
     from flask import url_for
     return _rb(tab="daily", d=day, err=(
         f"ملفا إكسل «{entity['name']}» ليوم {day_txt} اتبنوا محليًا ويمكن تنزيلهما الآن "

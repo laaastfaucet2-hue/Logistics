@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block body_class %}own-letterhead{% endblock %}
+{% block official_print_head %}{% endblock %}
+{% block official_print_foot %}{% endblock %}
+{% block title %}طباعة الإحصائيات والتتبع — {{ cycle_name }} • {{ print_period }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}?v={{ static_ver }}">
+{% endblock %}
+{% block content %}
+<div class="ctx-strip no-print">
+  <span>🖨️ تقرير {{ cycle_name }} — {{ print_period }} جاهز للطباعة بالدباجة والتوقيعات</span>
+  <span class="sep">•</span>
+  <span class="dim">للحصول على PDF اختر «حفظ PDF» من نافذة الطباعة</span>
+</div>
+<div class="panel rt-toolbar no-print">
+  <div class="rt-actions">
+    <button class="icon-btn print" type="button" onclick="window.print()" title="طباعة التقرير">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+    <a class="rt-btn dim" href="{{ url_for('stats.page', cycle=cycle, scope=scope, tab=st_tab,
+         f_item=filters.item, f_supplier=filters.supplier, f_producer=filters.producer, f_entity=filters.entity) }}">↩ عودة للإحصائيات</a>
+  </div>
+</div>
+
+<div class="panel rc-doc tm-doc">
+  <div class="print-doc">
+    <div class="pd-head">
+      <div class="pd-lh">{% for i in range(4) %}<div class="l{{ i + 1 }}">{{ lh[i] }}</div>{% endfor %}</div>
+      {% if has_logo %}<img class="pd-logo" src="{{ url_for('letterhead.logo_view') }}" alt="">{% endif %}
+    </div>
+    <div class="pd-title">تقرير الإحصائيات والتتبع — دورة {{ cycle_name }}{% if st_tab != 'track' %} — {{ st_tab_name }}{% endif %} — {{ print_period }}</div>
+    <div class="tm-stamp">حُرِّر بتوقيت القاهرة: {{ now_stamp }}</div>
+    {% if any_filter %}
+    <div class="st-print-filters">
+      الفلاتر المطبقة:
+      {% if filters.item %}الصنف: <b>{{ filters.item }}</b> •{% endif %}
+      {% if filters.supplier %}المورّد: <b>{{ filters.supplier }}</b> •{% endif %}
+      {% if filters.producer %}المنتج: <b>{{ filters.producer }}</b> •{% endif %}
+      {% if filters.entity %}الجهة: <b>{{ filters.entity }}</b>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if st_tab == 'track' %}
+    <!-- الملخص -->
+    <table class="st-print-cards">
+      <tr>
+        <td>أذون التوريد: <b>{{ summary.sup_count | aindic }}</b></td>
+        <td>أذون الصرف: <b>{{ summary.permit_count | aindic }}</b></td>
+        <td>كمية المتلقاة: <b>{{ summary.sup_qty | qty }}</b></td>
+        <td>كمية الصَّرف: <b>{{ summary.iss_qty | qty }}</b></td>
+        <td>الجهات: <b>{{ summary.entity_count | aindic }}</b></td>
+        <td>الأصناف المتحركة: <b>{{ summary.item_count | aindic }}</b></td>
+      </tr>
+    </table>
+
+    <!-- أولًا: التوريد -->
+    <h4 class="tm-part">أولًا: التوريد — ١ مخازن</h4>
+    <table class="rt-table rc-print-table st-table">
+      <thead>
+        <tr>
+          {% if scope == 'year' %}<th>الشهر</th>{% endif %}
+          <th>التاريخ</th><th>الرسالة</th><th>الصنف</th><th>الكمية</th>
+          <th>الشركة الموردة</th><th>الشركة المنتجة</th><th>إنتاج</th><th>الصلاحية</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in supply %}
+        <tr>
+          {% if scope == 'year' %}<td class="num">{{ r.month | aindic }}</td>{% endif %}
+          <td class="num">{{ r.date_label or (r.day | aindic) }}</td>
+          <td class="num">{{ r.serial | aindic }}</td>
+          <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
+          <td class="num"><b class="st-in">{{ r.qty_handle | qty }}</b> {{ r.unit }}</td>
+          <td>{{ r.supplier_name or '—' }}</td>
+          <td>{{ r.producer or '—' }}</td>
+          <td class="num">{{ r.prod_date or '—' }}</td>
+          <td class="num">{{ r.exp_date or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 9 if scope == 'month' else 10 }}">(لا توجد توريدات في هذه الفترة)</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td colspan="{{ 4 if scope == 'month' else 3 }}">الإجمالي</td>
+        <td class="num"><b>{{ summary.sup_qty | qty }}</b></td>
+        <td colspan="{{ 4 if scope == 'month' else 5 }}"></td></tr></tfoot>
+    </table>
+
+    <!-- ثانيًا: الصرف بالتتبع -->
+    <h4 class="tm-part">ثانيًا: الصرف بالتتبع — ٢ مخازن (الدفعة الفعلية FEFO)</h4>
+    <table class="rt-table rc-print-table st-table">
+      <thead>
+        <tr>
+          {% if scope == 'year' %}<th>الشهر</th>{% endif %}
+          <th>الإذن</th><th>الجهة</th><th>الصنف</th><th>المتصرف</th>
+          <th>الكمية</th><th>الشركة الموردة</th><th>المنتج</th><th>صلاحية الدفعة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in issue %}
+        <tr>
+          {% if scope == 'year' %}<td class="num">{{ r.month | aindic }}</td>{% endif %}
+          <td class="num">{{ r.permit_no | aindic }}</td>
+          <td>{% for n in split_entities(r.entity) %}{% set ec = color('entity', n) %}{% if ec %}<span class="ent-chip" style="--ec:{{ ec }}">{{ n }}</span>{% else %}{{ n }}{% endif %}{% endfor %}</td>
+          <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
+          <td><span class="st-out">{{ r.issued_label or '—' }}</span></td>
+          <td class="num"><b class="st-out">{{ r.qty | qty }}</b> {{ r.unit }}</td>
+          <td>{{ r.supplier or '—' }}</td>
+          <td>{{ r.producer or '—' }}</td>
+          <td class="num">{{ r.expiry or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 8 if scope == 'month' else 9 }}">(لا يوجد صرف في هذه الفترة)</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td colspan="{{ 5 if scope == 'month' else 4 }}">الإجمالي</td>
+        <td class="num"><b>{{ summary.iss_qty | qty }}</b></td>
+        <td colspan="{{ 3 if scope == 'month' else 4 }}"></td></tr></tfoot>
+    </table>
+
+    <!-- ثالثًا: متوسط الاستهلاك -->
+    <h4 class="tm-part">ثالثًا: متوسط الاستهلاك{% if scope == 'month' %} — (إجمالي الصرف ÷ {{ days | aindic }} يومًا){% endif %}</h4>
+    <table class="rt-table rc-print-table st-table">
+      <thead>
+        <tr>
+          <th>الصنف</th><th>التوريد</th><th>الصرف</th><th>المتوسط اليومي</th><th>الرصيد الحالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in avg %}
+        <tr>
+          <td>{% set ic = color('item', r.item) %}{% if ic %}<span class="col-dot" style="background:{{ ic }}"></span>{% endif %}{{ r.item }}</td>
+          <td class="num">{{ r.supplied | qty }} {{ r.unit }}</td>
+          <td class="num">{{ r.issued | qty }} {{ r.unit }}</td>
+          <td class="num"><b>{{ r.avg | qty }}</b> {{ r.unit }}/يوم</td>
+          <td class="num">{{ r.balance | qty }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">(لا توجد أصناف متحركة في هذه الفترة)</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <!-- تبويب القسم المختار -->
+    <h4 class="tm-part">{{ section.icon }} {{ section.title }}{% if section.hint %} — {{ section.hint }}{% endif %}</h4>
+    <div class="st-print-cards">
+      <tr>
+        {% for c in section.cards %}
+        <td>{{ c.label }}: <b>{{ c.value }}</b>{% if c.sub %} <span class="dim">({{ c.sub }})</span>{% endif %}</td>
+        {% endfor %}
+      </tr>
+    </div>
+    {% if section.rows %}
+    <table class="rt-table rc-print-table st-table">
+      <thead><tr>{% for h in section.head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in section.rows %}
+        <tr>{% for c in row %}<td class="{{ c.c }}">{{ c.t }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% endif %}
+
+    <div class="st-print-sigs">
+      <div>أمين المخازن<br><br><br>{{ sig_right[1] or '................' }}</div>
+      <div>مدير التموين<br><br><br>{{ sig_left[1] or '................' }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

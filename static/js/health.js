@@ -48,8 +48,8 @@
     if (!input || input.dataset.acBound) return;
     input.dataset.acBound = "1";
 
-    /* المطابقة: كل كلمة من اللي كتبته تكون موجودة في الاسم،
-       والبادئة الأول أقوى — والحاضرين اليوم بينزلوا الأول دايمًا */
+    /* المطابقة: كل كلمة مما كتبته تكون موجودة في الاسم،
+       والبادئة الأول أقوى — والحاضرين اليوم بينزلوا الأول دائمًا */
     function pick(q) {
       var toks = norm(q).split(" ").filter(Boolean);
       var out = [];
@@ -103,11 +103,11 @@
     function refresh() {
       var q = input.value.trim();
       if (!q) {
-        /* المربع فاضي: أظهر الحاضرين اليوم الأول وبعدين الباقي */
+        /* المربع فارغ: أظهر الحاضرين اليوم الأول وبعدين الباقي */
         var all = RECRUITS.slice(0).sort(function (a, b) {
           return (b.present ? 1 : 0) - (a.present ? 1 : 0);
         }).slice(0, 9);
-        openMenu(all, "✅ الحاضرون اليوم الأول — اختار أو كمّل كتابة");
+        openMenu(all, "✅ الحاضرون اليوم الأول — اختر أو واصل الكتابة");
         return;
       }
       rid.value = "";                         // كتابة يدوية تلغي الربط
@@ -158,7 +158,7 @@
       r.remove(); renderNames();
     });
   });
-  if (boxesRoot() && !rows().length) addRow("", "");  // أول مربع فاضي
+  if (boxesRoot() && !rows().length) addRow("", "");  // أول مربع فارغ
 
   /* ================== بث حي: حقل ← ورق ================== */
   function bindLive() {
@@ -177,10 +177,11 @@
   }
   bindLive();
 
-  /* ================== خط الورقة = خط ملف الوورد بالظبط ================== */
+  /* ================== خط الورقة = خط ملف الوورد تمامًا ================== */
   var paper = document.getElementById("hl-paper");
   if (paper) paper.style.fontFamily =
     '"Cairo", "Segoe UI", Tahoma, Arial, sans-serif';
+
 
   renderNames();
 })();

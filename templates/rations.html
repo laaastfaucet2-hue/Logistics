@@ -6,9 +6,9 @@
 {% endblock %}
 
 {% macro num(v) -%}
-{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qty3 }}{%- endif -%}
+{%- if v is none or v == 0 -%}—{%- else -%}{{ v | qtyx }}{%- endif -%}
 {%- endmacro %}
-{% set MEAL_LABEL = {'breakfast':'فطار','lunch':'غداء','dinner':'عشاء'} %}
+{% set MEAL_LABEL = {'breakfast':'إفطار','lunch':'غداء','dinner':'عشاء'} %}
 
 {% block content %}
 <div class="ctx-strip">
@@ -47,7 +47,7 @@
       {% endif %}
     {% endfor %}
     {% if can_open %}
-    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح شيت الإكسل مباشرة على هذا الجهاز">📗 فتح الإكسل</a>
+    <a class="rt-btn navy" href="{{ url_for('rations.open_excel', section=section) }}" title="فتح ورقة عمل الإكسل مباشرة على هذا الجهاز">📗 فتح الإكسل</a>
     <a class="rt-btn navy" href="{{ url_for('rations.open_folder', section=section) }}" title="فتح مجلد القسم على هذا الجهاز">📂 فتح المجلد</a>
     {% endif %}
     <a class="rt-btn navy" href="{{ url_for('rations.download_excel', section=section) }}" title="تنزيل ملف الإكسل مباشرة على جهازك"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>تنزيل الإكسل مباشرة</a>
@@ -84,19 +84,19 @@
       <datalist id="unitsList">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
     </div>
     <div class="fld">
-      <label>فطار</label>
+      <label>إفطار</label>
       <input name="breakfast" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.breakfast|oval if edit_item else '' }}">
+             value="{{ edit_item.breakfast|ovalx if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>غداء</label>
       <input name="lunch" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.lunch|oval if edit_item else '' }}">
+             value="{{ edit_item.lunch|ovalx if edit_item else '' }}">
     </div>
     <div class="fld">
       <label>عشاء</label>
       <input name="dinner" inputmode="decimal" placeholder="٠"
-             value="{{ edit_item.dinner|oval if edit_item else '' }}">
+             value="{{ edit_item.dinner|ovalx if edit_item else '' }}">
     </div>
     <div class="fld btns">
       <button class="rt-btn gold" type="submit">{% if edit_item %}💾 حفظ التعديل{% else %}➕ إضافة{% endif %}</button>
@@ -126,7 +126,7 @@
   <div class="table-wrap">
     <table class="rt-table">
       <thead>
-        <tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>فطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th><th class="ops">إجراءات</th></tr>
+        <tr><th>مسلسل</th><th>اسم الصنف</th><th>الوحدة</th><th>إفطار</th><th>غداء</th><th>عشاء</th><th>المقرر المخصص</th><th class="ops">إجراءات</th></tr>
       </thead>
       <tbody>
         {% for it in items %}
@@ -176,9 +176,9 @@
       <h3>🗓️ مقرر مخصص: <span id="customItemName"></span></h3>
       <button class="modal-x" type="button" id="customClose">✕</button>
     </div>
-    <p class="modal-hint">الرقم في جدول الصنف (فطار/غداء/عشاء) من غير تخصيص = <b>يوميًا لكل أيام الأسبوع</b>.
-      لو حطّيت هناك صفر وكتبت الكميات هنا = يُصرف <b>في الأيام المملوءة فقط</b> — وهذا ما ستستخدمه آلة 2 مخازن.
-      الخانة الفاضية هنا = لا يُصرف ذلك اليوم.</p>
+    <p class="modal-hint">الرقم في جدول الصنف (إفطار/غداء/عشاء) دون تخصيص = <b>يوميًا لكل أيام الأسبوع</b>.
+      إذا وضعت صفرًا هناك وكتبت الكميات هنا، فسيُصرف الصنف <b>في الأيام المملوءة فقط</b> — وهذا ما ستستخدمه آلة ٢ مخازن.
+      الخانة الفارغة هنا = لا يُصرف ذلك اليوم.</p>
     <form method="post" id="customForm" autocomplete="off" action="{{ url_for('rations.custom_save', section=section, item_id=0) }}"
           data-template="{{ url_for('rations.custom_save', section=section, item_id=0) }}">
       <input type="hidden" name="kind" value="{{ kind }}">

@@ -38,7 +38,11 @@ def _sheet_text(ws, max_row=None, max_col=12):
     """
     last = max_row or min(getattr(ws, "max_row", 1) or 1, 5000)
     parts = []
-    for row in ws.iter_rows(min_row=1, max_row=last, max_col=max_col, values_only=True):
+    # ٤٠ عمودًا كحد أقصى: دفاتر 4 مخازن اليومى واسعة (٣٥ عمودًا)
+    # والتوقيع الشمال في آخرها — كان ١٢ فيُبلَّغ خطأً بنقصه (١٠/١٠/٢٠٢٦)
+    scan_col = max(max_col, min(getattr(ws, "max_column", 1) or 1, 40))
+    for row in ws.iter_rows(min_row=1, max_row=last, max_col=scan_col,
+                           values_only=True):
         parts.extend(str(cell) for cell in row if cell not in (None, ""))
     return _norm(" ".join(parts))
 
@@ -66,7 +70,7 @@ def audit_workbook(path, year=None, month=None):
         if word not in text:
             missing.append(f"الدباجة: «{word}»")
     if not any(_has_logo(ws) for ws in book.worksheets):
-        missing.append("اللوجو المضمّن")
+        missing.append("الشعار المضمّن")
     signatures = _signatures_text(year, month)
     for label in signatures:
         if label and label not in text:

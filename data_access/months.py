@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS entity_item_days (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     entity_item_id INTEGER NOT NULL REFERENCES entity_items(id) ON DELETE CASCADE,
     weekday INTEGER NOT NULL,       -- وجود أي يوم = المقرر مخصص لتلك الأيام فقط
-    qty REAL                        -- مقرر هذا اليوم تحديدًا؛ الفارغ = قيمة الوجبات العامة
+    meal TEXT,                      -- ١٤/١٠: breakfast/lunch/dinner؛ NULL = صف إرثي (مجموع اليوم)
+    qty REAL                        -- مقرر هذا اليوم (والوجبة لو meal)؛ الفارغ = القيمة العامة
 );
 """
 
@@ -69,6 +70,10 @@ def _migrate(conn):
         cols = {r[1] for r in conn.execute("PRAGMA table_info(entity_item_days)")}
         if cols and "qty" not in cols:
             conn.execute("ALTER TABLE entity_item_days ADD COLUMN qty REAL")
+            conn.commit()
+        if cols and "meal" not in cols:
+            # ١٤/١٠: تخصيص اليوم بوجباته الثلاث (فطار/غداء/عشاء)
+            conn.execute("ALTER TABLE entity_item_days ADD COLUMN meal TEXT")
             conn.commit()
     except Exception:
         pass
@@ -100,3 +105,61 @@ def init_month(year, month):
     conn.executescript(SCHEMA)
     conn.commit()
     conn.close()
+
+
+# ======================================================================
+# كاش قراءة لقاعدة الشهر (تصحيح ١٤/١٠ لبطء فتح المستودعات وحفظ الأذون):
+# الدوال القرائة كانت بتتكرر مئات المرات في نفس الصفحة/الحفظ (N+1:
+# list_items → item_balances → issue_rows → fefo_actual_map + permits_book).
+# القيمة تبقى صالحة لحد أي كتابة في قاعدة الشهر (تغيير المارك تايم
+# للملف الرئيسي أو الـ WAL) — أي حفظ في أي قسم يطفش الكاش تلقائيًا.
+# ======================================================================
+import copy as _copy
+import functools as _functools
+import threading as _threading
+
+_read_cache = {}
+_read_cache_lock = _threading.Lock()
+_CACHE_MAX = 512
+
+
+def db_signature(year, month):
+    """بصمة حالة قاعدة الشهر (الملف الرئيسي + WAL + SHM)."""
+    p = month_db_path(year, month)
+    sig = 0
+    for name in ("", "-wal", "-shm"):
+        try:
+            sig = sig * 1000003 + p.with_name(p.name + name).stat().st_mtime_ns
+        except OSError:
+            pass
+    return sig
+
+
+def memo(fn):
+    """يخزّن نتيجة دالة قراءة نقية (year, month, ...) لحد تعديل قاعدة الشهر.
+
+    القيمة المحفوظة مش بتتسلّم أبدًا — كل استدعاء بيرجع نسخة عميقة، فأي
+    تعديل على النتيجة من أي مستدعي لا يلوّث الكاش.
+    """
+    @_functools.wraps(fn)
+    def wrap(*args, **kwargs):
+        year, month = int(args[0]), int(args[1])
+        key = (fn.__name__, args, tuple(sorted(kwargs.items())),
+               db_signature(year, month))
+        with _read_cache_lock:
+            hit = _read_cache.get(key)
+        if hit is not None:
+            return _copy.deepcopy(hit)
+        val = fn(*args, **kwargs)
+        with _read_cache_lock:
+            if len(_read_cache) >= _CACHE_MAX:
+                _read_cache.clear()
+            _read_cache[key] = val
+        return _copy.deepcopy(val)   # حتى أول استدعاء: المحفوظ لا يُسلَّم أبدًا
+    return wrap
+
+
+def bust_cache():
+    """يطفّش كاش القراءة (يُستدعى بعد أي عملية كتابة شاذة أو بذر)."""
+    with _read_cache_lock:
+        _read_cache.clear()

@@ -20,7 +20,7 @@ from services import sheet_columns
 from documents.official_xlsx import add_letterhead, TITLE_ROW, TABLE_ROW, DATA_ROW, EXPORT_VERSION
 from services import tameedat_fs
 
-NAVY, GOLD, GOLD_L, WHITE = "0A1230", "BDD7EE", "BDD7EE", "132638"
+NAVY, GOLD, GOLD_L, WHITE = "0A1230", "E9F1F9", "E9F1F9", "000000"
 SUBTOTAL = "E9EDF7"
 CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True, readingOrder=2)
 _BORDER = Border(*[Side(style="thin", color="9AA6C7")] * 4)
@@ -40,8 +40,8 @@ def xlsx_path(year, month):
 def _title(ws, text, ncols):
     ws.merge_cells(start_row=TITLE_ROW, start_column=1, end_row=TITLE_ROW, end_column=ncols)
     cell = ws.cell(TITLE_ROW, 1, text)
-    cell.font = Font(bold=True, size=15, color=GOLD_L, name="Cairo")
-    cell.fill = PatternFill("solid", fgColor=NAVY)
+    cell.font = Font(bold=True, size=15, color="000000", name="Cairo")
+    cell.fill = PatternFill("solid", fgColor="E9F1F9")
     cell.alignment = CENTER
     ws.row_dimensions[TITLE_ROW].height = 34
 
@@ -136,7 +136,7 @@ def _daily_sheet(wb, year, month, records):
 
 
 def day_count_cell(rec, month, year):
-    """تاريخ اليوم كاملًا dd/mm/yyyy عربي داخل خلية الإكسل."""
+    """تاريخ اليوم كاملًا yyyy/mm/dd عربي داخل خلية الإكسل."""
     return dates.format_date(f"{year:04d}-{month:02d}-{rec['day']:02d}")
 
 

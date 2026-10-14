@@ -1,4 +1,4 @@
-{# تاب الشركات الموردة — نموذج تعريفي شامل — منفصلة تمامًا عن الشركات المنتجة بفواتير المتعهد #}
+{# تبويب الشركات الموردة — نموذج تعريفي شامل — منفصلة تمامًا عن الشركات المنتجة بفواتير المتعهد #}
 <button type="button" class="wh-newbtn no-print" id="whSupplierToggle"
         aria-expanded="false" aria-controls="whSupplierForm">
   <span class="wh-newbtn-plus">＋</span>
@@ -13,10 +13,10 @@
   <h3 class="wh-form-title">{% if editing %}تعديل بيانات شركة موردة{% else %}تسجيل شركة موردة جديدة{% endif %}</h3>
   <div class="wh-grid">
     <label class="wh-f">اسم الشركة <i>*</i>
-      <input name="name" required autocomplete="off" value="{{ editing.name if editing else '' }}"
+      <input name="name" data-combo="whSupNames" required autocomplete="off" value="{{ editing.name if editing else '' }}"
              placeholder="الشركة العامة للصناعات الغذائية"></label>
     <label class="wh-f">اسم المورد
-      <input name="contact" autocomplete="off" value="{{ editing.contact if editing else '' }}"
+      <input name="contact" data-combo="whContacts" autocomplete="off" value="{{ editing.contact if editing else '' }}"
              placeholder="الاسم الكامل لمسؤول التوريد"></label>
     <label class="wh-f">تليفون المورد
       <input name="phone" inputmode="tel" autocomplete="off" value="{{ editing.phone if editing else '' }}"
@@ -85,3 +85,6 @@
   </table>
   </div>
 </div>
+
+<datalist id="whSupNames">{% for sp in suppliers %}{% if sp.name %}<option value="{{ sp.name }}">{% endif %}{% endfor %}</datalist>
+<datalist id="whContacts">{% for sp in suppliers %}{% if sp.contact %}<option value="{{ sp.contact }}">{% endif %}{% endfor %}</datalist>
