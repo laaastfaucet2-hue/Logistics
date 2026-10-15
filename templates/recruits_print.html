@@ -63,12 +63,15 @@
     {% for st, n in counts.items() %}<span class="rc-chip st-{{ st }}">{{ st }} <b>{{ n | aindic }}</b></span>{% endfor %}
   </div>
   <table class="rt-table rc-print-table">
-    <thead><tr><th>م</th><th>اسم المجند</th><th>الرقم العسكري</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+    <thead><tr><th>م</th><th>اسم المجند</th><th>الرقم العسكري</th><th>الحالة</th><th>من</th><th>إلى</th><th>ملاحظة</th></tr></thead>
     <tbody>
-      {% for r, st in rows %}<tr>
+      {% for r, st in rows %}{% set per = periods.get(r.id, {}) %}<tr>
         <td class="num">{{ loop.index | aindic }}</td><td>{{ r.name }}</td>
-        <td class="num">{{ r.mil_no | aindic }}</td><td><b>{{ st.status }}</b></td><td>{{ st.note or '—' }}</td>
-      </tr>{% else %}<tr><td colspan="5" style="text-align:center">لا يومية مسجلة لهذا اليوم</td></tr>{% endfor %}
+        <td class="num">{{ r.mil_no | aindic }}</td><td><b>{{ st.status }}</b></td>
+        <td class="num">{{ date_text(per.get('from')) if per.get('from') else '—' }}</td>
+        <td class="num">{{ date_text(per.get('to')) if per.get('to') else 'مفتوح' }}</td>
+        <td>{{ st.note or '—' }}</td>
+      </tr>{% else %}<tr><td colspan="7" style="text-align:center">لا يومية مسجلة لهذا اليوم</td></tr>{% endfor %}
     </tbody>
   </table>
 

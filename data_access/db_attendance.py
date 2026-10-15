@@ -4,7 +4,12 @@
 
 القاعدة الذهبية: يومية اليوم تُرحَّل لليوم التالي **مرة واحدة فقط** ومن يومٍ **مُثبَّت** —
 فلا تنتقل ليومٍ ثالث أبدًا. واليوم المُثبَّت يُقفل ولا يُعدَّل إلا بتأكيد قوي.
+
+مدة الحالة (توجيه ١٥/١٠): كل سطر بيحمل p_from/p_to (ISO) — «إلى» الفاضية = مفتوحة
+وتترحّل يوم بيوم، و«إلى» اللي خلصت ما بتترحّلش (المجند يظهر فاضي ويتنبّه عليه).
 """
+from datetime import date
+
 from data_access import months
 
 STATUSES = ["حضور", "إجازة", "غياب", "مأمورية", "مستشفى", "أخرى", "سجن", "محكمة", "جزاء"]
@@ -54,6 +59,15 @@ def ensure_tables(conn):
     if "condition" not in cols:
         conn.execute("ALTER TABLE attendance ADD COLUMN condition TEXT DEFAULT ''")
         conn.commit()
+    # ترحيلة آمنة: مدة الحالة «من/إلى» (توجيه ١٥/١٠) — السطور القديمة فاضية
+    for col in ("p_from", "p_to"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE attendance ADD COLUMN {col} TEXT DEFAULT ''")
+            conn.commit()
+
+
+def day_iso(year, month, day):
+    return date(year, month, day).isoformat()
 
 
 # ==================== قراءة يوم ====================
@@ -62,10 +76,28 @@ def get_day_map(year, month, day):
     conn = months.get_db(year, month)
     ensure_tables(conn)
     rows = conn.execute(
-        "SELECT recruit_id, status, note, condition FROM attendance WHERE day=?", (day,)).fetchall()
+        "SELECT recruit_id, status, note, condition, p_from, p_to FROM attendance WHERE day=?",
+        (day,)).fetchall()
     conn.close()
     return {r["recruit_id"]: {"status": r["status"], "note": r["note"],
-                              "condition": r["condition"] or ""} for r in rows}
+                              "condition": r["condition"] or "",
+                              "p_from": r["p_from"] or "", "p_to": r["p_to"] or ""}
+            for r in rows}
+
+
+def month_rows(year, month):
+    """{رقم المجند: {يوم: {status, note, p_from, p_to}}} — الشهر كله باستعلام واحد."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute(
+        "SELECT recruit_id, day, status, note, p_from, p_to FROM attendance ORDER BY day").fetchall()
+    conn.close()
+    out = {}
+    for r in rows:
+        out.setdefault(r["recruit_id"], {})[r["day"]] = {
+            "status": r["status"], "note": r["note"] or "",
+            "p_from": r["p_from"] or "", "p_to": r["p_to"] or ""}
+    return out
 
 
 def get_meta(year, month, day):
@@ -79,24 +111,39 @@ def get_meta(year, month, day):
 
 # ==================== كتابة يوم كامل (تثبيت) ====================
 def save_day(year, month, day, entries, lock=True, source_day=0):
-    """entries = [(recruit_id, status, note)] — يستبدل محتوى اليوم ذرّيًا
+    """entries = [(recruit_id, status, note[, p_from, p_to])] — يستبدل محتوى اليوم ذرّيًا
     (الحالة الصحية لأيام المستشفى محفوظة — ما تُمسحش عند إعادة التثبيت)."""
     conn = months.get_db(year, month)
     ensure_tables(conn)
     old_cond = {r[0]: (r[1] or "") for r in conn.execute(
         "SELECT recruit_id, condition FROM attendance WHERE day=?", (day,)).fetchall()}
+    rows = []
+    for entry in entries:
+        rid, st, note = entry[:3]
+        p_from, p_to = (tuple(entry[3:5]) + ("", ""))[:2]
+        if st in STATUSES:
+            rows.append((day, rid, st, note, old_cond.get(rid, "") if st == "مستشفى" else "",
+                         p_from or "", p_to or ""))
     with conn:
         conn.execute("DELETE FROM attendance WHERE day=?", (day,))
         conn.executemany(
-            "INSERT INTO attendance (day, recruit_id, status, note, condition) VALUES (?,?,?,?,?)",
-            [(day, rid, st, note, old_cond.get(rid, "") if st == "مستشفى" else "")
-             for rid, st, note in entries if st in STATUSES])
+            "INSERT INTO attendance (day, recruit_id, status, note, condition, p_from, p_to)"
+            " VALUES (?,?,?,?,?,?,?)", rows)
         if lock:
             conn.execute(
                 "INSERT INTO journal_meta (day, locked, done_at, source_day) VALUES (?,1,datetime('now'),?)"
                 " ON CONFLICT(day) DO UPDATE SET locked=1, done_at=datetime('now'), source_day=?",
                 (day, source_day, source_day))
     conn.close()
+
+
+def locked_days(year, month):
+    """الأيام اللي يوميتها مثبتة ومقفولة."""
+    conn = months.get_db(year, month)
+    ensure_tables(conn)
+    rows = conn.execute("SELECT day FROM journal_meta WHERE locked=1").fetchall()
+    conn.close()
+    return {r["day"] for r in rows}
 
 
 def unlock_day(year, month, day):
@@ -108,7 +155,9 @@ def unlock_day(year, month, day):
 
 
 # ==================== إسناد بمدى (من يوم إلى يوم) ====================
-def set_range(year, month, recruit_id, status, from_day, to_day, note=""):
+def set_range(year, month, recruit_id, status, from_day, to_day, note="",
+              p_from="", p_to=""):
+    """الحالة على كل الأيام من→إلى (p_from/p_to = مدة الحالة نفسها، ISO)."""
     if status not in STATUSES or from_day < 1 or to_day < from_day:
         return 0
     conn = months.get_db(year, month)
@@ -116,10 +165,11 @@ def set_range(year, month, recruit_id, status, from_day, to_day, note=""):
     with conn:
         for d in range(from_day, to_day + 1):
             conn.execute(
-                "INSERT INTO attendance (day, recruit_id, status, note, condition) VALUES (?,?,?,?,?)"
+                "INSERT INTO attendance (day, recruit_id, status, note, condition, p_from, p_to)"
+                " VALUES (?,?,?,?,?,?,?)"
                 " ON CONFLICT(day, recruit_id) DO UPDATE SET status=excluded.status,"
-                " note=excluded.note, condition=''",
-                (d, recruit_id, status, note, ""))
+                " note=excluded.note, condition='', p_from=excluded.p_from, p_to=excluded.p_to",
+                (d, recruit_id, status, note, "", p_from or "", p_to or ""))
     conn.close()
     return to_day - from_day + 1
 
@@ -263,13 +313,14 @@ def delete_status_range(year, month, recruit_id, from_day, to_day, status):
 
 # ==================== الترحيل لليوم التالي (مرة واحدة ومن يوم مُثبَّت) ====================
 def carry_over_if_needed(year, month, day):
-    """لو اليوم فارغ واليوم السابق مُثبَّت → انسخه كمسودة. يرجع (رُحِّلت?, من يوم)."""
+    """لو اليوم لسه ما اتفتحش (ملوش سجل يومية) واليوم السابق مُثبَّت → انسخ حالاته كمسودة
+    لكل مجند ملوش سطر في اليوم ده — الأيام المسجّلة مقدمًا بـ«إلى» ما بتمنعش ترحيل الباقي،
+    والحالة اللي «إلى» بتاعتها خلصت ما بتترحّلش. يرجع (رُحِّلت?, من يوم)."""
     if day <= 1:
         return False, 0
     conn = months.get_db(year, month)
     ensure_tables(conn)
-    has = conn.execute("SELECT 1 FROM attendance WHERE day=? LIMIT 1", (day,)).fetchone()
-    if has:
+    if conn.execute("SELECT 1 FROM journal_meta WHERE day=?", (day,)).fetchone():
         conn.close()
         return False, 0
     prev_meta = conn.execute(
@@ -277,12 +328,16 @@ def carry_over_if_needed(year, month, day):
     if not (prev_meta and prev_meta["locked"]):
         conn.close()
         return False, 0                   # ← لا ترحيل إلا من يوم مُثبَّت (لا تروح ليوم ٣)
+    today_iso = day_iso(year, month, day)
     prev = conn.execute(
-        "SELECT recruit_id, status, note FROM attendance WHERE day=?", (day - 1,)).fetchall()
+        "SELECT recruit_id, status, note, p_from, p_to FROM attendance WHERE day=?",
+        (day - 1,)).fetchall()
     with conn:
         conn.executemany(
-            "INSERT OR IGNORE INTO attendance (day, recruit_id, status, note) VALUES (?,?,?,?)",
-            [(day, r["recruit_id"], r["status"], r["note"]) for r in prev])
+            "INSERT OR IGNORE INTO attendance (day, recruit_id, status, note, p_from, p_to)"
+            " VALUES (?,?,?,?,?,?)",
+            [(day, r["recruit_id"], r["status"], r["note"], r["p_from"] or "", r["p_to"] or "")
+             for r in prev if not (r["p_to"] and r["p_to"] < today_iso)])
         conn.execute(
             "INSERT OR IGNORE INTO journal_meta (day, locked, done_at, source_day) VALUES (?,0,'',?)",
             (day, day - 1))

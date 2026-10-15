@@ -12,5 +12,17 @@
   </button>
 </div>
 {%- endmacro %}
+{# حقل تاريخ مدموج لخلايا الجداول (بلا عنوان) — نفس التقويم العربي #}
+{% macro date_input(name, label, value='', disabled=False, placeholder='سنة/شهر/يوم') -%}
+<div class="date-field rc-date-cell">
+  <input type="text" name="{{ name }}" data-date data-date-label="{{ label }}"
+         inputmode="numeric" autocomplete="off" maxlength="16" dir="ltr" lang="ar"
+         placeholder="{{ placeholder }}" title="{{ label }}" value="{{ value | dateinput }}"{% if disabled %} disabled{% endif %}>
+  <button class="icon-btn date-trigger" type="button" title="اختيار {{ label }} من التقويم"
+          aria-label="اختيار {{ label }} من التقويم" aria-haspopup="dialog" aria-expanded="false" hidden>
+    {{ icon('calendar') }}
+  </button>
+</div>
+{%- endmacro %}
 {% macro date_text(value) -%}<bdi dir="ltr" class="date-display">{{ value | datefmt }}</bdi>{%- endmacro %}
 {% macro period_text(year, month, day) -%}<bdi dir="ltr" class="date-display">{{ period_date(year, month, day) }}</bdi>{%- endmacro %}

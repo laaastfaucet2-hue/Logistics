@@ -5,7 +5,6 @@
 سجل المجندين واليومية والدباجة معزولة داخل قاعدة الشهر.
 """
 import re
-from datetime import date
 from urllib.parse import quote
 
 from core.downloads import attachment
@@ -17,7 +16,6 @@ from data_access import database as db
 from services import recruits_fs
 from data_access import dataguard
 from data_access import db_attendance as da
-from data_access import db_punishments as dpk
 from data_access import db_recruits as dr
 from data_access import db_health
 from documents import docx_recruits, docx_milfile
@@ -27,6 +25,9 @@ from data_access import storage, db_letterhead as lh
 from services import legacy_months, recruit_dates
 from services import recruit_file
 from core.auth_core import current_context, current_session, login_required
+from services import recruit_periods as rp
+from routes.recruits_lists import (cert_badge as _cert_badge, days_box, lists_view,
+                                   prison_view, today_info as _today_info)
 
 recruits_bp = Blueprint("recruits", __name__, url_prefix="/recruits")
 
@@ -60,15 +61,6 @@ def _files_dir():
     return storage.recruits_dir(*_ctx())
 
 
-def _today_info(year, month, day):
-    """حقائق «اليوم الحقيقي» بتوقيت القاهرة داخل شهر السياق."""
-    t = egtime.today()
-    is_real_month = (t.year == year and t.month == month)
-    return {"today": t, "real_day": t.day if is_real_month else None,
-            "is_real_month": is_real_month, "cur_day": day,
-            "cur_weekday": egtime.weekday_ar(date(year, month, day))}
-
-
 def _base_vars(tab):
     year, month = _ctx()
     today = egtime.today()
@@ -83,12 +75,6 @@ def _base_vars(tab):
         "places_by_gov": dr.places_by_gov(*_ctx()),
         **_lh_vars(),
     }
-
-
-def _cert_badge(r, today):
-    st = dr.cert_state(r, today)
-    return {"ok": ("🟢", "سارية"), "soon": ("🟠", "تنتهي قريبًا"),
-            "expired": ("🔴", "منتهية!"), "none": ("⚪", "لا توجد")}[st]
 
 
 # ======================================================================
@@ -107,13 +93,13 @@ def page():
     if tab == "journal":
         return _journal(v)
     if tab in ("present", "leaves", "absent", "other"):
-        return _lists(v)
+        return lists_view(v)
     if tab == "stats":
         return _stats(v)
     if tab == "file":
         return _file(v)
     if tab == "prison":
-        return _prison(v)
+        return prison_view(v)
     return _registry(v)
 
 
@@ -129,45 +115,6 @@ def milfile_report(year, month, rid):
     if not path:
         abort(404)
     return attachment(path, fallback="milfile" + path.suffix)
-
-
-# ==================== تبويب السجن والمحكمات والجزاءات (المراحل ٥ + ٠) ====================
-def _prison(v):
-    """٣ تبويبات فرعية (سجن/المحكمات/الجزاءات) — المدد مشتقة من اليومية العامة.
-
-    التسجيل من «اليومية العامة» بحالة المجند (سجن/محكمة/جزاء) — مش من التاب.
-    المدة = الأيام المتتالية للحالة · لو الحالة تغيّرت بتقفل · لو فارغة تبقى مفتوحة.
-    """
-    year, month = _ctx()
-    pkind = request.args.get("pkind") or "prison"
-    if pkind not in dpk.VALID_KINDS:
-        pkind = "prison"
-    meta = dpk.KIND_META[pkind]
-    info = _today_info(year, month, 1)
-    rd = info["real_day"]
-    by_id = {r["id"]: r for r in v["recruits"]}
-    rows = []
-    for rid, f, t in dpk.month_spans(year, month, pkind):
-        r = by_id.get(rid)
-        if not r:
-            continue
-        rows.append((r, f, t, dpk.span_state(f, t, rd)))
-    rows.sort(key=lambda x: (x[1], x[0]["name"]))
-    v["prison_rows"] = rows
-    v["pkind"] = pkind
-    v["pkind_meta"] = meta
-    v["pkinds"] = dpk.PUNISH_KINDS
-    v["real_day"] = rd
-    v["is_real_month"] = info["is_real_month"]
-    v["prison_status"] = meta["status"]
-    # تذكير اليوم وغدًا — نفس نص الجرس حرفيًا (المصدر المشترك)
-    alerts = []
-    if rd:
-        _leaves, events = notifications._event_entries(
-            year, month, da.month_matrix(year, month), by_id, rd, v["eom"], "")
-        alerts = [e["text"] for e in events if "tab=prison" in e.get("href", "")]
-    v["prison_alerts"] = alerts
-    return render_template("recruits_prison.html", **v)
 
 
 def _file(v):
@@ -309,33 +256,31 @@ def _journal(v):
     carried, src = da.carry_over_if_needed(year, month, day)
     meta = da.get_meta(year, month, day)
     matrix = da.month_matrix(year, month)
+    mrows = da.month_rows(year, month)
     by_id = {r["id"]: r for r in v["recruits"]}
     v.update({
         "day": day, "info": _today_info(year, month, day),
         "day_map": da.get_day_map(year, month, day), "meta": meta,
         "carried": carried, "carried_from": src,
         "missing": set(da.days_without_journal(year, month, min(day, v["eom"]))),
-        "locked_days": _locked_days(year, month),
+        # «من/إلى» لكل سطر (توجيه ١٥/١٠) + اللي مدتهم خلصت امبارح
+        "periods": rp.day_periods(year, month, day, mrows),
+        "day_iso": rp.iso(year, month, day),
+        "ended": rp.ended_yesterday(year, month, day, by_id, mrows),
         # بنرات التذكير: أحداث اليوم + معاينة غدًا (نفس مصدر الجرس)
         "day_events": notifications.day_events(year, month, matrix, day, by_id),
         "next_events": (notifications.day_events(year, month, matrix, day + 1, by_id)
                         if day < v["eom"] else []),
     })
+    days_box(v, "journal", day, allow_all=False)
     return render_template("recruits_journal.html", **v)
-
-
-def _locked_days(year, month):
-    from data_access import months
-    conn = months.get_db(year, month)
-    da.ensure_tables(conn)
-    rows = conn.execute("SELECT day FROM journal_meta WHERE locked=1").fetchall()
-    conn.close()
-    return {r["day"] for r in rows}
 
 
 @recruits_bp.route("/journal/save", methods=["POST"])
 @login_required
 def journal_save():
+    """تثبيت اليومية: لكل مجند الحالة + «من/إلى» (إلى فاضية = مفتوحة) — المدة بتتسجل
+    على أيامها قبل/بعد اليوم بنفس حماية الأيام المثبتة (توجيه ١٥/١٠)."""
     year, month = _ctx()
     day = arnum.parse_int(request.form.get("day"))
     if not day or not (1 <= day <= egtime.days_in_month(year, month)):
@@ -345,18 +290,37 @@ def journal_save():
         return _rb(err="يومية يوم {} مُثبَّتة ومغلقة — اطلب «تعديلً رغم التثبيت» أولًا".format(arnum.to_arabic_indic(day)),
                    tab="journal", day=day)
     entries = []
+    cur_map, per_now = da.get_day_map(year, month, day), rp.day_periods(year, month, day)
     for r in dr.list_recruits(*_ctx()):
         st = request.form.get("st_{}".format(r["id"]))
         note = (request.form.get("note_{}".format(r["id"])) or "").strip()
-        if st in da.STATUSES:
-            entries.append((r["id"], st, note if st == "أخرى" else note))
+        if st not in da.STATUSES:
+            continue
+        raw_from = request.form.get("from_{}".format(r["id"]))
+        raw_to = request.form.get("to_{}".format(r["id"]))
+        if (cur_map.get(r["id"]) or {}).get("status") == st:   # نفس الحالة المكمّلة
+            per = per_now.get(r["id"], {})
+            raw_from = raw_from if (raw_from or "").strip() else per.get("from", "")
+            raw_to = per.get("to", "") if raw_to is None else raw_to
+        try:
+            p_from, p_to = rp.parse_period(year, month, day, raw_from, raw_to)
+        except ValueError as exc:
+            return _rb(err="{}: {}".format(r["name"], exc), tab="journal", day=day)
+        entries.append((r["id"], st, note, p_from, p_to))
     if not entries:
         return _rb(err="لم تُسجَّل أي حالة — اختر حالة مجند واحد على الأقل", tab="journal", day=day)
+    try:
+        writes, deletes, clipped = rp.plan_journal(year, month, day, entries,
+                                                   da.locked_days(year, month))
+    except ValueError as exc:
+        return _rb(err=str(exc), tab="journal", day=day)
     da.save_day(year, month, day, entries, lock=True,
                 source_day=arnum.parse_int(request.form.get("source_day")) or 0)
+    rp.apply_plan(year, month, writes, deletes)
     _after_attendance_change(year, month)
-    return _rb(ok="ثُبِّتت يومية يوم {} وقُفلت ✔ (مسجَّل {} مجندًا)".format(
-                   arnum.to_arabic_indic(day), arnum.to_arabic_indic(str(len(entries)))),
+    return _rb(ok="ثُبِّتت يومية يوم {} وقُفلت ✔ (مسجَّل {} مجندًا){}".format(
+                   arnum.to_arabic_indic(day), arnum.to_arabic_indic(str(len(entries))),
+                   " — سُجّلت المدة حتى آخر الشهر" if clipped else ""),
                tab="journal", day=day)
 
 
@@ -368,32 +332,6 @@ def journal_unlock():
     da.unlock_day(year, month, day)
     _after_attendance_change(year, month)
     return _rb(ok="فُتحت يومية يوم {} للتعديل (بتأكيدك الصريح)".format(arnum.to_arabic_indic(day)), tab="journal", day=day)
-
-
-@recruits_bp.route("/journal/range", methods=["POST"])
-@login_required
-def journal_range():
-    year, month = _ctx()
-    ref = (request.form.get("recruit_ref") or "").strip()
-    status = (request.form.get("status") or "").strip()
-    note = (request.form.get("note") or "").strip()
-    from_d = arnum.parse_int(request.form.get("from_day"))
-    to_d = arnum.parse_int(request.form.get("to_day"))
-    recruit = _resolve_recruit(ref)
-    if not recruit:
-        return _rb(err="لم يُعرف المجند «{}» — اكتب الاسم كما في أصل القوة".format(ref), tab="journal")
-    if status not in da.STATUSES:
-        return _rb(err="اختر حالة صحيحة", tab="journal")
-    if not from_d or not to_d or not (1 <= from_d <= to_d <= egtime.days_in_month(year, month)):
-        return _rb(err="مدى الأيام غير صالح", tab="journal")
-    locked = _locked_days(year, month) & set(range(from_d, to_d + 1))
-    if locked:
-        return _rb(err="يوم {} داخل المدى مُثبَّت ومقفول — افتحه أولًا إن أردت تعديله".format(min(locked)),
-                   tab="journal", day=min(locked))
-    n = da.set_range(year, month, recruit["id"], status, from_d, to_d, note)
-    _after_attendance_change(year, month)
-    return _rb(ok="سُجِّلت «{}» لـ {} من يوم {} إلى {} ({} يومًا)".format(
-        status, recruit["name"], from_d, to_d, n), tab="journal", day=to_d)
 
 
 def _resolve_recruit(ref):
@@ -436,14 +374,15 @@ def journal_confirm_leaves():
             arnum.to_arabic_indic(day)), tab="journal", day=day)
     by_id = {r["id"]: r for r in dr.list_recruits(year, month)}
     names = [by_id[rid]["name"] for rid, _f, _t in targets if rid in by_id]
-    locked = _locked_days(year, month)
+    locked = da.locked_days(year, month)
     for rid, f, t in targets:
         hit = [d for d in range(f, t + 1) if d in locked]
         if hit:
             return _rb(err="يومية يوم {} (ضمن مدة الإجازة) مثبتة ومقفولة — افتحها أولًا".format(
                 arnum.to_arabic_indic(min(hit))), tab="journal", day=min(hit))
     for rid, f, t in targets:
-        da.set_range(year, month, rid, "إجازة", f, t)
+        da.set_range(year, month, rid, "إجازة", f, t, "",
+                     rp.iso(year, month, f), rp.iso(year, month, t))
     _after_attendance_change(year, month)
     return _rb(ok="اتأكّد: {} — اتحطوا «إجازة» في اليومية من يوم {} لآخر مدة التصريح ✔".format(
         "، ".join(names), arnum.to_arabic_indic(day)), tab="journal", day=day)
@@ -461,100 +400,6 @@ def _after_attendance_change(year, month):
     except Exception as exc:  # noqa: BLE001 — الوورد لا يُسقط الحفظ
         print("⚠️ تعذّر تحديث كشوف الوورد:", exc)
     dataguard.auto_backup("write", min_minutes=20)
-
-
-# ======================================================================
-# تبويبات القوائم: الحضور / الإجازات / الغياب / أخرى
-# ======================================================================
-def _lists(v):
-    tab, year, month = v["tab"], v["year"], v["month"]
-    today = egtime.today()
-    by_id = {r["id"]: r for r in v["recruits"]}
-    # صفوف يومية/تصاريح «عاوية» (مجندها اتحذف) — بتنسى من الشوفات عشان ما تقصعش الصفحة
-    v["matrix"] = {rid: days for rid, days in da.month_matrix(year, month).items() if rid in by_id}
-    v["by_id"] = by_id
-    v["info"] = _today_info(year, month, 1)
-    v["badges"] = {r["id"]: _cert_badge(r, today) for r in v["recruits"]}
-    if tab == "present":
-        day = arnum.parse_int(request.args.get("day")) or v["info"]["real_day"] or 1
-        dmap = da.get_day_map(year, month, day)
-        v["day"] = day
-        # «إجازة مجمّعة» من الحضور (قرار ١٤/١٠): النافذة كلها بتلف حول اليوم الحقيقي
-        v["jl_today"] = v["info"]["real_day"] or 1
-        v["rows"] = [(v["by_id"][rid], st) for rid, st in dmap.items()
-                     if rid in v["by_id"] and st["status"] == "حضور"]
-        # «حضور من يوم كام + المدة + آخر إجازة»
-        v["runs"] = da.attendance_runs(year, month, v["matrix"], day)
-        past_leaves = da.leave_ranges(year, month, v["matrix"], 1, max(1, day - 1))
-        v["last_leave"] = {
-            rid: max(t for _f, t in rs)
-            for rid, rs in past_leaves.items()
-            if rid in v["runs"] and max(t for _f, t in rs) < v["runs"][rid][0]
-        }
-    elif tab == "leaves":
-        v["ranges"] = da.leave_ranges(year, month, v["matrix"], 1, v["eom"])
-        # تصاريح الشهر الصادرة — علامة «✓ تصريح» جنب كل صف اتعملت له تصريح
-        v["permits"] = da.month_leave_permits(year, month)
-        # قطوع الشهر — «🔪 قطع» جنب الإجازة المتقطعة: الصف المختصر يطابق
-        # المدة الأصلية (بداية نفسها ونهاية الأصل ≥ نهاية الصف)
-        cut_rows = da.month_leave_cuts(year, month)
-        v["row_cut"] = {}
-        for rid, rs in v["ranges"].items():
-            for f, t in rs:
-                for c in cut_rows.get(rid, []):
-                    if c["period_from"] == f and c["period_to"] >= t:
-                        v["row_cut"][(rid, f, t)] = c
-                        break
-        rd = v["info"]["real_day"] or 1
-        # مرتقب مجمّع: {يوم البداية: «محمد وأحمد»} — «نازلين إجازة يوم ٥»
-        # (فترات الشهر الكاملة — التقطيع على نافذة قصيرة كان بيعمل بدايات مزيفة)
-        upcoming = {}
-        if v["info"]["is_real_month"]:
-            for rid, rs in da.leave_ranges(year, month, v["matrix"], 1, v["eom"]).items():
-                if rid not in v["by_id"]:
-                    continue
-                for f, _t in rs:
-                    if rd <= f <= rd + 2:
-                        upcoming.setdefault(f, []).append(v["by_id"][rid]["name"])
-        v["upcoming"] = {f: {"names": notifications.and_join(names), "n": len(names)}
-                        for f, names in upcoming.items()}
-        # «قادم الإجازات»: فترات بتخلص خلال ٧ أيام (اللي هيرجعوا قريب)
-        v["leaving_soon"] = []
-        if v["info"]["is_real_month"] and v["info"]["real_day"]:
-            rd2 = v["info"]["real_day"]
-            for rid, rs in v["ranges"].items():
-                if rid not in v["by_id"]:
-                    continue
-                for f, t in rs:
-                    if rd2 <= t <= rd2 + 7:
-                        v["leaving_soon"].append((v["by_id"][rid], f, t))
-            v["leaving_soon"].sort(key=lambda x: (x[2], x[0]["name"]))
-    elif tab == "absent":
-        rd = v["info"]["real_day"] or 1
-        v["streaks"] = da.absence_streak(year, month, v["matrix"],
-                                         max(1, rd - 1)) if v["info"]["is_real_month"] else {}
-        # سجل الغياب = فترات (من → إلى + المدة) مش أيام متفرقة
-        eps = []
-        for rid, rs in da.absence_episodes(year, month, v["matrix"], 1, v["eom"]).items():
-            if rid in v["by_id"]:
-                for f, t in rs:
-                    eps.append((v["by_id"][rid], f, t))
-        eps.sort(key=lambda x: (x[1], x[0]["name"]))
-        v["episodes"] = eps
-    else:
-        v["groups"] = [
-            ("مأمورية", [(v["by_id"][rid], d) for rid, days in v["matrix"].items()
-                         for d, st in sorted(days.items()) if st == "مأمورية" and rid in v["by_id"]]),
-            ("مستشفى", [(v["by_id"][rid], d) for rid, days in v["matrix"].items()
-                        for d, st in sorted(days.items()) if st == "مستشفى" and rid in v["by_id"]]),
-            ("أخرى", [(v["by_id"][rid], d, da.get_day_map(year, month, d)[rid]["note"])
-                      for rid, days in v["matrix"].items()
-                      for d, st in sorted(days.items()) if st == "أخرى" and rid in v["by_id"]]),
-        ]
-        # لوحة المستشفى: يوم بيوم + الحالة الصحية + ملاحظة (قرار ١٢/١٠)
-        v["hospital"] = da.hospital_rows(year, month)
-        v["hospital_locked"] = _locked_days(year, month)
-    return render_template("recruits_lists.html", **v)
 
 
 # ======================================================================
@@ -643,51 +488,59 @@ def stats_read_all():
 @recruits_bp.route("/send-leaves", methods=["POST"])
 @login_required
 def send_leaves():
+    """الإجازة المجمّعة/الطارئة من تاب الحضور — على اليوم المفتوح في المربعات (توجيه ١٥/١٠):
+    «اليوم» = النزول في اليوم ده نفسه، «غدًا» = اليوم اللي بعده (التسجيل بضغطة من اليومية)."""
     year, month = _ctx()
     rids = [x for x in (arnum.parse_int(v) for v in request.form.getlist("rid")) if x]
     start = request.form.get("start") or "today"
     t_present = (request.form.get("t_present") or "").strip()
     t_left = (request.form.get("t_left") or "").strip()
     info = _today_info(year, month, 1)
-    real_day = info["real_day"] or 1
     eom = egtime.days_in_month(year, month)
-    f = real_day if start == "today" else real_day + 1
+    base = arnum.parse_int(request.form.get("day")) or info["real_day"] or 1
+    base = max(1, min(eom, base))
+    f = base if start == "today" else base + 1
     # «حتى يوم» اختياري: سيبتها فارغة = إجازة يوم واحد (نفس يوم النزول)
     t = arnum.parse_int(request.form.get("to")) or f
     if not rids:
-        return _rb(err="حدد واحد على الأقل من المجندين (مربع الاختيار في جدول اليومية)", tab="journal", day=real_day)
+        return _rb(err="حدد واحد على الأقل من المجندين", tab="present", day=base)
     if not t or not (f <= t <= eom):
         return _rb(err="حدد «حتى يوم» صحيح (من يوم {} لآخر الشهر)".format(arnum.to_arabic_indic(f)),
-                   tab="journal", day=real_day)
+                   tab="present", day=base)
     by_id = {r["id"]: r for r in dr.list_recruits(year, month)}
     chosen = [by_id[i] for i in rids if i in by_id]
     if not chosen:
-        return _rb(err="لم يُعرف أي من المجندين المختارين", tab="journal", day=real_day)
+        return _rb(err="لم يُعرف أي من المجندين المختارين", tab="present", day=base)
     matrix = da.month_matrix(year, month)
     bad = [c["name"] for c in chosen
            if any(matrix.get(c["id"], {}).get(d) == "إجازة" for d in range(f, t + 1))]
     if bad:
         return _rb(err="هؤلاء في إجازة بالفعل داخل المدة: {} — شيلهم من الاختيار".format("، ".join(bad)),
-                   tab="journal", day=f)
-    locked = _locked_days(year, month) & set(range(f, t + 1))
+                   tab="present", day=base)
+    locked = da.locked_days(year, month) & set(range(f, t + 1))
     if locked:
         return _rb(err="يومية يوم {} مثبتة ومغلقة — افتحها أولًا («تعديل رغم التثبيت»)".format(
             arnum.to_arabic_indic(min(locked))), tab="journal", day=min(locked))
     # «حضروا لحد الساعة … ونزلوا الساعة …» — ليوم البداية لو النزول اليوم
     head_note = ""
-    if f == real_day:
+    if start == "today":
+        one = len(chosen) == 1
+        came, went = ("حضر", "ونزل") if one else ("حضروا", "ونزلوا")
         if t_present and t_left:
-            head_note = "حضروا لحد الساعة {} ونزلوا الإجازة الساعة {}".format(t_present, t_left)
+            head_note = "{} لحد الساعة {} {} الإجازة الساعة {}".format(came, t_present, went, t_left)
+        elif t_present:
+            head_note = "{} لحد الساعة {}".format(came, t_present)
         elif t_left:
-            head_note = "نزلوا الإجازة الساعة {}".format(t_left)
+            head_note = "{} الإجازة الساعة {}".format(went[1:], t_left)
     # نزول «غدًا» (قرار ١٤/١٠): التصريح يتعمل حالًا والتسجيل مُرجأ لضغطة واحدة
     # من بانر اليومية («سجّلهم في اليومية») — عشان الترحيل التلقائي لباقي المجندين
     # ليوم غدًا يشتغل عادي ما دام اليوم لسه فارغ.
     if start == "today":
+        p_from, p_to = rp.iso(year, month, f), rp.iso(year, month, t)
         for c in chosen:
             if f < t:
-                da.set_range(year, month, c["id"], "إجازة", f + 1, t)
-            da.set_range(year, month, c["id"], "إجازة", f, f, head_note)
+                da.set_range(year, month, c["id"], "إجازة", f + 1, t, "", p_from, p_to)
+            da.set_range(year, month, c["id"], "إجازة", f, f, head_note, p_from, p_to)
     _after_attendance_change(year, month)
     if len(chosen) >= 2:
         docx_recruits.build_joint_leave_permit(chosen, f, t, year, month)
@@ -730,7 +583,7 @@ def leaves_cut():
                    tab="leaves")
     if mode == "now":
         fut = list(range(real_day + 1, t + 1))
-        locked = _locked_days(year, month) & set(fut)
+        locked = da.locked_days(year, month) & set(fut)
         if locked:
             return _rb(err="يومية يوم {} مثبتة ومغلقة — افتحها أولًا لقطع الإجازة".format(
                 arnum.to_arabic_indic(min(locked))), tab="leaves")
@@ -805,7 +658,7 @@ def leaves_cancel():
     matrix = da.month_matrix(year, month)
     if not all(matrix.get(rid, {}).get(d) == "إجازة" for d in range(f, t + 1)):
         return _rb(err="هذه الإجازة غير مسجلة في اليومية طوال المدة", tab="leaves")
-    locked = sorted(_locked_days(year, month) & set(range(f, t + 1)))
+    locked = sorted(da.locked_days(year, month) & set(range(f, t + 1)))
     for d in locked:
         da.unlock_day(year, month, d)
     da.delete_status_range(year, month, rid, f, t, "إجازة")
@@ -828,7 +681,7 @@ def other_save_hospital():
     days = [arnum.parse_int(x) for x in request.form.getlist("hc_day")]
     conds = request.form.getlist("hc_cond")
     notes = request.form.getlist("hc_note")
-    locked = _locked_days(year, month)
+    locked = da.locked_days(year, month)
     saved, blocked = 0, set()
     for i, rid in enumerate(rids):
         d = days[i] if i < len(days) else 0
@@ -902,6 +755,7 @@ def print_doc(what):
         v["counts"] = {st: sum(1 for x in dmap.values() if x["status"] == st) for st in da.STATUSES}
         if not 1 <= day <= egtime.days_in_month(year, month):
             abort(400)
+        v["periods"] = rp.day_periods(year, month, day)      # «من/إلى» زي الشاشة
         v["title"] = "كشف اليومية العامة — " + dates.period_date(year, month, day)
     elif what == "month-leaves":
         v["ranges"] = da.leave_ranges(year, month, matrix, 1, v["eom"])

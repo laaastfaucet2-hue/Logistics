@@ -43,6 +43,14 @@
 .rc-lock { position: absolute; bottom: 2px; inset-inline-end: 3px; }
 .rc-lock svg { width: 9px; height: 9px; stroke: var(--green); fill: none; stroke-width: 2.4; }
 @keyframes rc-pulse { 50% { box-shadow: 0 0 0 2.5px rgba(var(--danger-rgb),.16); } }
+/* «الشهر كله» فوق المربعات + نقطة التنبيه على مربع اليوم (توجيه ١٥/١٠) */
+.rc-allbox { display: block; text-align: center; margin-bottom: 8px; padding: 6px 0; border-radius: 8px;
+  border: 1px solid var(--card-border); background: var(--card); color: var(--muted);
+  text-decoration: none; font-weight: 600; font-size: .84rem; transition: .15s; }
+.rc-allbox:hover { border-color: rgba(var(--gold-rgb),.55); color: var(--text); }
+.rc-allbox.on { background: var(--surface-gold); border-color: var(--brand-gold); color: var(--gold-light); }
+.rc-mark { position: absolute; top: 3px; inset-inline-start: 3px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--orange); }
 .rc-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
 .rc-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 3px; margin-inline-end: 6px; }
 
@@ -61,6 +69,16 @@
 .rc-jempty h4 { margin: 0 0 8px; font-size: 1.05rem; }
 .rc-jempty p { margin: 0 auto 16px; max-width: 460px; color: var(--muted); font-size: .86rem; line-height: 1.7; }
 .dot.today { background: var(--brand-gold); } .dot.locked { background: var(--green); } .dot.missing { background: var(--red); }
+.dot.mark { background: var(--orange); border-radius: 50%; }
+
+/* «من/إلى» في جدول اليومية — حقول تاريخ مدموجة بنفس التقويم */
+.rc-jtable td.rc-pcell { width: 120px; min-width: 120px; }
+.rc-jtable td.rc-pname { min-width: 150px; }
+.rc-jtable input.rc-status { width: 112px; min-width: 112px; }
+.rc-jtable input[name^="note_"] { width: 100%; min-width: 70px; }
+.rc-date-cell input[data-date] { direction: ltr; text-align: right; padding-left: 36px; min-width: 0;
+  width: 100%; font-variant-numeric: tabular-nums; }
+.rc-date-cell .date-trigger { width: 26px; min-width: 26px; height: 28px; left: 4px; }
 
 /* ======== اللافتات ======== */
 .rc-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 16px;

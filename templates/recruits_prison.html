@@ -2,7 +2,7 @@
 {% block body_class %}rc-page{% endblock %}
 {% from "partials/dates.html" import date_text, period_text %}
 {% block title %}المجندين — {{ pkind_meta.label }} • منظومة التعيينات{% endblock %}
-{% block print_doc_title %}سجل {{ pkind_meta.label }} — {{ month_name }} {{ year | aindic }}{% endblock %}
+{% block print_doc_title %}{% if sel_day != 'all' %}{{ pkind_meta.label }} — يوم {{ period_text(year, month, sel_day) }}{% else %}سجل {{ pkind_meta.label }} — {{ month_name }} {{ year | aindic }}{% endif %}{% endblock %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/rations.css') }}?v={{ static_ver }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/recruits.css') }}?v={{ static_ver }}">
@@ -18,6 +18,10 @@
   {% endfor %}
 </div>
 
+<div class="rc-journal">
+  {% include "recruits/_days.html" %}
+  <div class="rc-day-editor">
+
 <!-- ==================== تذكير اليوم وغدًا ==================== -->
 {% if prison_alerts %}
 <div class="panel">
@@ -31,7 +35,7 @@
 <!-- ==================== سجل الشهر ==================== -->
 <div class="panel">
   <div class="panel-head">
-    <h3>{{ pkind_meta.icon }} سجل {{ pkind_meta.label }} — شهر {{ month_name }} <span class="panel-hint">{{ prison_rows | length | aindic }} مدة</span></h3>
+    <h3>{{ pkind_meta.icon }} {% if sel_day != 'all' %}{{ pkind_meta.label }} — يوم {{ period_text(year, month, sel_day) }}{% else %}سجل {{ pkind_meta.label }} — شهر {{ month_name }}{% endif %} <span class="panel-hint">{{ prison_rows | length | aindic }} مدة</span></h3>
     <div class="rt-actions">{% include "partials/print_btn.html" %}</div>
   </div>
   <p class="panel-hint">التسجيل من <b>«اليومية العامة»</b>: ضع حالة المجند على «{{ pkind_meta.status }}» ليوم البداية — المدة = الأيام التي تكون عليها الحالة.
@@ -61,5 +65,7 @@
     لا توجد مدد «{{ pkind_meta.status }}» هذا الشهر — التسجيل من «اليومية العامة» بحالة «{{ pkind_meta.status }}».
   </p>
   {% endif %}
+</div>
+  </div>
 </div>
 {% endblock %}
