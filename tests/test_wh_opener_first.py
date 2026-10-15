@@ -112,6 +112,11 @@ def test_pack_in_other_unit_converts_to_item_unit(app):
                        date_iso="2031-09-01", stores=[(store["id"], "مخزن 1", 120)], **pk)
     assert round(op["qty"], 6) == 109.68
     assert dw.opener_stores(YEAR, MONTH, "supply")[op["item"]["id"]][0]["qty"] == 109.68
+    # تعديل أول المدة باللتر (لقطة المستخدم ١٥/١٠): نفس التحويل — مش ١٢٠ كجم
+    dw.update_opener(YEAR, MONTH, "supply", op["item"]["id"], 120, 1, exp_iso="2032-01-01",
+                     date_iso="2031-09-01", stores=[(store["id"], "مخزن 1", 120)], **pk)
+    assert round(dw.item_card(YEAR, MONTH, op["item"]["id"])["opener_row"]["added"], 6) == 109.68
+    assert dw.opener_stores(YEAR, MONTH, "supply")[op["item"]["id"]][0]["qty"] == 109.68
     try:
         dw.add_receipt(YEAR, MONTH, "supply", 1, "خل", 0, receipt_no=2, **pk)
         raise AssertionError("لازم يطلب الوزن النوعي")
