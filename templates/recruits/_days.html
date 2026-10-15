@@ -1,0 +1,26 @@
+{# مربعات أيام الشهر — مشتركة بين اليومية العامة وكل تابات المجندين (توجيه ١٥/١٠).
+   days_box = {tab, day (رقم أو 'all'), marks (أيام عليها تنبيه), allow_all, extra} #}
+{% set box = days_box %}
+{% set base_href = url_for('recruits.page') ~ '&tab=' ~ box.tab ~ box.extra %}
+<aside class="panel rc-daysbox">
+  <div class="panel-head"><h3>📅 أيام {{ month_name }}</h3></div>
+  {% if box.allow_all %}
+  <a class="rc-allbox {{ 'on' if box.day == 'all' }}" href="{{ base_href }}&day=all">الشهر كله</a>
+  {% endif %}
+  <div class="rc-days">
+    {% for d in range(1, eom + 1) %}
+    <a class="rc-daybox {{ 'locked' if d in locked_days }} {{ 'today' if d == info.real_day }} {{ 'missing' if info.real_day and d < info.real_day and d not in locked_days }} {{ 'on' if d == box.day }}"
+       href="{{ base_href }}&day={{ d }}"
+       title="{% if d in box.marks %}فيه تنبيه — {% endif %}{% if d in locked_days %}مثبتة ✔{% elif info.real_day and d < info.real_day %}بلا يومية!{% else %}افتح {{ period_date(year, month, d) }}{% endif %}">
+      {{ d | aindic }}{% if d in locked_days %}<span class="rc-lock">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>{% endif %}{% if d in box.marks %}<span class="rc-mark"></span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <div class="rc-legend">
+    <span><i class="dot today"></i> اليوم الحالي</span>
+    <span><i class="dot locked"></i> مثبتة ✔</span>
+    <span><i class="dot missing"></i> بلا يومية</span>
+    {% if box.marks %}<span><i class="dot mark"></i> تنبيه</span>{% endif %}
+  </div>
+</aside>

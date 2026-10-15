@@ -4,6 +4,7 @@
 
 كل النسخ داخل database/backups/ — محلية فقط ولا تُرفع على GitHub أبدًا (قاعدة ١٣).
 """
+import logging
 from core import dates, egtime, arabic_numbers as arnum
 from urllib.parse import quote
 
@@ -91,6 +92,11 @@ def download(name):
 def restore(name):
     try:
         restored, pre = dataguard.restore_backup(name)
+        try:  # نسخة قديمة فيها «غير موزع» ⇒ تدخل على «مخزن 1» (١٤/١٠)
+            from data_access import db_warehouses_stores as dws
+            dws.assign_unassigned()
+        except Exception:      # noqa: BLE001 — الاسترجاع نفسه نجح
+            logging.exception("assigning unassigned store quantities after restore failed")
         return _rb(ok="تم استرجاع {} ملفًا من النسخة المختارة، مع حفظ نسخة أمان للبيانات السابقة".format(
             arnum.to_arabic_indic(restored)))
     except (ValueError, FileNotFoundError, IOError) as exc:

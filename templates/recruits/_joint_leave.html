@@ -1,23 +1,25 @@
-{# نافذة «إجازة مجمّعة + تصريح» — بتُفتح من الزر الثابت في تبويب الحضور (توجيه ١٤/١٠).
+{# نافذة «إجازة مجمّعة / طارئة + تصريح» — بتُفتح من الزر الثابت في تبويب الحضور (توجيه ١٤/١٠)
+   وبتشتغل على اليوم المفتوح في مربعات الأيام (توجيه ١٥/١٠).
    قائمة واحدة بكل المجندين وعلامة حضور اليوم عليها: تبويب «حاضرو اليوم» بيفلترها
    والاختيار يظل محفوظ وانت بتتنقل بين التبويبين (لا يوجد مربعين لنفس المجند). #}
 {% from "partials/dates.html" import period_text %}
 <div class="rc-jl" id="rcJointModal" hidden>
   <div class="rc-jl-box" role="dialog" aria-modal="true" aria-labelledby="rcJlTitle">
     <div class="rc-jl-head">
-      <h3 id="rcJlTitle">إجازة مجمّعة + تصريح <span class="panel-hint">{{ month_name }} {{ year | aindic }}</span></h3>
+      <h3 id="rcJlTitle">إجازة مجمّعة / طارئة + تصريح <span class="panel-hint">{{ month_name }} {{ year | aindic }}</span></h3>
       <button type="button" class="rc-jl-x" id="rcJlClose" aria-label="إغلاق">✕</button>
     </div>
 
     <form method="post" action="{{ url_for('recruits.send_leaves') }}" id="rcJlForm" autocomplete="off"
-          data-today="{{ jl_today }}" data-eom="{{ eom }}" data-year="{{ year }}" data-month="{{ month }}">
+          data-today="{{ jl_day }}" data-eom="{{ eom }}" data-year="{{ year }}" data-month="{{ month }}">
+      <input type="hidden" name="day" value="{{ jl_day }}">
       <div class="rc-jl-row">
         <span class="dim">نزول الإجازة</span>
         <label class="rc-slr"><input type="radio" name="start" value="today" checked>
-          اليوم (طارئة) — <b>{{ period_text(year, month, jl_today) }}</b></label>
-        <label class="rc-slr" {% if jl_today >= eom %}style="opacity:.45" title="آخر يوم في الشهر"{% endif %}>
-          <input type="radio" name="start" value="tomorrow" {% if jl_today >= eom %}disabled{% endif %}>
-          غدًا — <b>{{ period_text(year, month, jl_today + 1) }}</b></label>
+          طارئة (نفس اليوم) — <b>{{ period_text(year, month, jl_day) }}</b></label>
+        <label class="rc-slr" {% if jl_day >= eom %}style="opacity:.45" title="آخر يوم في الشهر"{% endif %}>
+          <input type="radio" name="start" value="tomorrow" {% if jl_day >= eom %}disabled{% endif %}>
+          غدًا — <b>{{ period_text(year, month, jl_day + 1) }}</b></label>
       </div>
 
       <div class="rc-jl-tabs" role="tablist">
@@ -30,7 +32,7 @@
 
       <div class="rc-jl-list only-present" id="rcJlList">
         {% for r in recruits %}
-        {% set st = matrix.get(r.id, {}).get(jl_today) %}
+        {% set st = matrix.get(r.id, {}).get(jl_day) %}
         <label class="rc-jl-p" data-present="{{ '1' if st == 'حضور' else '0' }}"
                data-search="{{ r.name }} {{ r.mil_no }}">
           <input type="checkbox" name="rid" value="{{ r.id }}">
@@ -53,7 +55,7 @@
           <span class="dim">ونزلوا الساعة</span><input name="t_left" placeholder="١:٣٠" style="width:88px">
         </span>
         <span class="dim">حتى يوم</span>
-        <input name="to" id="rcJlTo" inputmode="numeric" placeholder="{{ jl_today | aindic }}" style="width:88px"
+        <input name="to" id="rcJlTo" inputmode="numeric" placeholder="{{ jl_day | aindic }}" style="width:88px"
                title="آخر يوم الإجازة — تركها فارغة يعني أن الإجازة ليوم واحد">
         <button class="rt-btn gold" type="submit" id="rcJlGo">تأكيد + عمل التصريح</button>
         <div class="rc-jl-prev" id="rcJlPrev"></div>

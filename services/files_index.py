@@ -22,17 +22,21 @@ from core.config import SECTIONS
 SECTIONS_INDEX = {
     "tameedat": "tameedat",
     "raghibin": "raghebeen",
+    "stats_stores": "statistics",
 }
 
 SECTION_TITLES = {
     "tameedat": "التاميدات",
     "raghibin": "قسم الراغبين",
+    "stats_stores": "إحصائيات المخازن والثلاجات",
+    "stats_stores_year": "إحصائيات المخازن والثلاجات — السنوي",
 }
 
 # ترويسة كل قسم كما هي في فولدرات database/ (تُعرض أعلى الشجرة)
 SECTION_HEADERS = {
     "tameedat": "قطاع وسط سيناء - قسم التميينات",
     "raghibin": "قطاع وسط سيناء - قسم الراغبين",
+    "stats_stores": "09-الاحصائيات - المخازن والثلاجات",
 }
 
 
@@ -43,13 +47,20 @@ def _section_position(key):
     raise KeyError(key)
 
 
-def section_root(section, year, month):
-    """فولدر ملفات القسم داخل فولدر الشهر (يُنشأ إن لم يوجد — القراءة لا تفشل)."""
+def section_root(section, year, month, scope="month"):
+    """فولدر ملفات القسم داخل فولدر الشهر (يُنشأ إن لم يوجد — القراءة لا تفشل).
+
+    «إحصائيات المخازن» جذرها مجلد «المخازن والثلاجات» داخل الإحصائيات — وفي السنوي
+    نفس المجلد داخل 00-السنوي."""
     key = SECTIONS_INDEX.get(section)
     if not key:
         raise KeyError(section)
     from data_access import storage
-    path = storage.section_files_path(year, month, _section_position(key))
+    if section == "stats_stores":
+        from services.stats_stores import files as stats_files
+        path = stats_files.root(year, None if scope == "year" else month)
+    else:
+        path = storage.section_files_path(year, month, _section_position(key))
     try:
         path.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -139,9 +150,9 @@ def _walk(path, root, fresh_seconds, now):
     return node
 
 
-def build_tree(section, year, month, fresh_seconds=25):
+def build_tree(section, year, month, fresh_seconds=25, scope="month"):
     """شجرة القسم كاملة — تُقرأ من القرص مباشرة (حصر حقيقي لا تخمين)."""
-    root = section_root(section, year, month)
+    root = section_root(section, year, month, scope)
     now = time.time()
     children = []
     try:
@@ -167,6 +178,7 @@ def build_tree(section, year, month, fresh_seconds=25):
         "root_name": root.name,
         "year": year,
         "month": month,
+        "scope": scope,
         "files": files,
         "folders": folders,
         "bytes": sum(item["size"] for item in children),

@@ -663,7 +663,7 @@ def build_store_folders(base, rep, units, year=2026, month=9):
             arnum.to_arabic_indic(str(row.get("permit_no") or ""))
 
     def _move_lines(target):
-        """كل حركات المخزن (داخل أولًا في نفس اليوم) — نفس ترتيب تاب السجل.
+        """كل حركات المخزن (أول المدة أولًا، وداخل قبل خارج في نفس اليوم) — نفس ترتيب تاب السجل.
         🆕 (١٢/١٠) أعمدة البرنامج القديم: المورد/المنتج + الجهة/المندوب +
         الكمية بعمودين (تغليف/وحدة) + رصيد المخزن بعد كل سطر."""
         rows = []
@@ -671,8 +671,9 @@ def build_store_folders(base, rep, units, year=2026, month=9):
             rows.append(("in", row))
         for row in target["out"]:
             rows.append(("out", row))
-        rows.sort(key=lambda p: (p[1]["date_iso"] or "",
-                                 0 if p[0] == "in" else 1))
+        # رصيد أول المدة أول سطر دايمًا (١٥/١٠) — نفس ترتيب الشاشة
+        rows.sort(key=lambda p: (0 if p[0] == "in" and p[1].get("serial") == 0 else 1,
+                                 p[1]["date_iso"] or "", 0 if p[0] == "in" else 1))
         out = []
         for i, (direction, row) in enumerate(rows, 1):
             _in = direction == "in"
@@ -788,7 +789,8 @@ def build_store_folders(base, rep, units, year=2026, month=9):
                 pass
 
     live = {"سجل المخازن"}
-    for target in rep["stores"] + [rep["unassigned"]]:
+    # مجلد لكل مخزن بس — مفيش «غير موزع على مخازن» (١٤/١٠)، ومجلده القديم بيتمسح تحت
+    for target in rep["stores"]:
         _store_book(target, target["store"]["name"])
         live.add(_safe_file(target["store"]["name"]))
     # 🧹 فولدرات مخازن اتبسمت أو اتحذفت — الفولدر بيتبسم مع اسم المخزن

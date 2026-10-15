@@ -19,7 +19,7 @@
   والحاسبة دايمًا كجم (لو المقرر باللتر بيتحول) — القاعدة دي ما اتغيرتش.
 """
 
-from core.config import unit_base
+from core.config import unit_base, MEASURE_UNITS
 
 # أسماء أصناف الزيت المعروفة في البرنامج (تُضاف هنا لو اتزود صنف زيت)
 # «زيت طعام» بدون «ال» = الاسم المسجل فعلًا في مقررات/مخازن المستخدم (داتا حقيقية)
@@ -152,3 +152,77 @@ def calc_to_handle_factor(name, ration_unit, handle_unit, specific_weight=None):
         if han_base == "كجم":
             return grams / (1000.0 * (han_f or 1.0))
     return 1.0
+
+
+def measure_factor(from_unit, to_unit, name="", specific_weight=None):
+    """معامل تحويل كمية من وحدة قياس لوحدة تانية (١٥/١٠): نفس العائلة بنسبة
+    unit_base (٥٠٠ مل = ٠٫٥ لتر)، ولتر↔كجم بالوزن النوعي المحفوظ للصنف أو
+    كثافة الزيت ٩١٤ جم/لتر. None = مفيش تحويل معروف."""
+    fb, ff = unit_base((from_unit or "").strip())
+    tb, tf = unit_base((to_unit or "").strip())
+    if fb == tb:
+        return ff / tf
+    if {fb, tb} != {"كجم", "لتر"}:
+        return None
+    try:
+        sw = float(specific_weight or 0)
+    except (TypeError, ValueError):
+        sw = 0.0
+    if sw <= 0:
+        sw = OIL_DENSITY_G_PER_L if is_oil(name) else 0.0
+    if sw <= 0:
+        return None
+    kg_per_l = sw / 1000.0
+    return ff * (kg_per_l if fb == "لتر" else 1.0 / kg_per_l) / tf
+
+
+def pack_to_item_unit(item, inner_unit, capacity, inner_capacity, loose, loose_unit):
+    """تغليف بوحدة قياس غير وحدة الصنف (زجاجة ١ لتر وصنف بالكيلو — ١٥/١٠):
+    المقاسات بتتحول لوحدة الصنف بالوزن النوعي، فالكمية والرصيد بالتغليف بوحدته.
+    يرجع (وحدة المعيار، وزن العبوة، وزن المعيار، السائب، المعامل)."""
+    han = (item.get("handle_unit") or "").strip()
+    iu = (inner_unit or "").strip()
+    if not iu or iu == han or iu not in MEASURE_UNITS or han not in MEASURE_UNITS:
+        return inner_unit, capacity, inner_capacity, loose, 1.0
+    f = measure_factor(iu, han, item.get("name"), item.get("specific_weight"))
+    if f is None:
+        raise ValueError(f"التغليف بـ«{iu}» والصنف بـ«{han}» — اكتب الوزن النوعي "
+                         f"للصنف في كارته (جم/لتر)")
+    lu = (loose_unit or "").strip()
+    lf = f if lu in ("", iu) else (
+        measure_factor(lu, han, item.get("name"), item.get("specific_weight")) or 1.0
+        if lu in MEASURE_UNITS else 1.0)
+    return (han, round(float(capacity or 0) * f, 6), round(float(inner_capacity or 0) * f, 6),
+            round(float(loose or 0) * lf, 6), f)
+
+
+def follow_pack_unit(item, inner_unit, only_movement):
+    """صنف مالوش حركة غير السطر ده ⇒ وحدته من معيار التغليف زي الصنف الجديد في ١ مخازن
+    (١٥/١٠ «الرصيد هيضاف باللتر ويتحول الى كجم»): بين كجم↔لتر وبوزن نوعي معروف بس.
+    يرجع (الصنف بوحدته الجديدة، الوحدة القديمة) — أو (الصنف، "") لو مفيش تغيير:
+    الصنف اللي عليه حركة تانية وحدته مُثبَّتة والتغليف بيتحول لها بالوزن النوعي."""
+    han = (item.get("handle_unit") or "").strip()
+    iu = (inner_unit or "").strip()
+    if (not only_movement or iu not in MEASURE_UNITS or han not in MEASURE_UNITS
+            or unit_base(iu)[0] == unit_base(han)[0]
+            or measure_factor(iu, han, item.get("name"), item.get("specific_weight")) is None):
+        return item, ""
+    return dict(item, handle_unit=iu, base_unit=unit_base(iu)[0]), han
+
+
+def save_note(item, old_unit, total, conv, from_unit):
+    """رسالة الحفظ (١٥/١٠): «وحدة الصنف: كجم ← لتر (١٢٠ لتر = ١٠٩٫٦٨ كجم في ٣ مخازن)»
+    لو الوحدة اتغيرت، أو «١٢٠ لتر = ١٠٩٫٦٨ كجم» لو التغليف اتحول لوحدة الصنف."""
+    from core import arabic_numbers as arnum
+    unit = (item.get("handle_unit") or "").strip()
+    if old_unit:
+        book, f = ledger_unit(item.get("name"), item.get("ration_unit"), unit,
+                              item.get("specific_weight"))
+        tail = (f" ({arnum.fmt_qty_trim(total)} {unit} = "
+                f"{arnum.fmt_qty_trim(round(total * f, 6))} {book} في ٣ مخازن)"
+                if book != unit and total > 0 else "")
+        return f"وحدة الصنف: {old_unit} ← {unit}{tail}"
+    if abs(conv - 1.0) < 1e-12 or total <= 0:
+        return ""
+    return (f"{arnum.fmt_qty_trim(round(total / conv, 6))} {from_unit} = "
+            f"{arnum.fmt_qty_trim(total)} {unit}")

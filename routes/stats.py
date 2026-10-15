@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ⚠️ قاعدة إلزامية: لا يزيد أي ملف عن 1000 سطر — الترتيب المعماري موثّق في CONTRIBUTING.md
 """التاب الرئيسي ٠٩ — الإحصائيات والتتبع: ٣ دورات منفصلة × نطاق شهر/سنة × ٤ فلاتر ذكية."""
-from flask import Blueprint, render_template, request, g
+from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
 
 from core import egtime, dates
 from core.config import MONTH_NAMES
@@ -72,7 +72,7 @@ def _build(cycle, scope, tab, year, month, filters):
         "cycles": sm.CYCLES,
         "stabs": sm.section_defs(cycle), "st_tab": tab, "st_tab_name": tab_name,
         "section": (sm.section_detail(cycle, year, month, tab)
-                    if tab != "track" else None),
+                    if tab not in ("track", "stores") else None),
         "scope": scope, "year": year, "month": month,
         "month_name": MONTH_NAMES[month - 1],
         "year_months": sm.months_of_year(year),
@@ -95,6 +95,12 @@ def _build(cycle, scope, tab, year, month, filters):
 def page():
     cycle, scope, tab, year, month, filters = _cycle_params()
     ctx = _build(cycle, scope, tab, year, month, filters)
+    if tab == "stores":
+        # 🏬 المخازن والثلاجات: ٩ تبويبات فرعية بملفاتها الشهرية والسنوية (services/stats_stores)
+        from services import stats_stores
+        ctx["ss"] = stats_stores.page_context(
+            year, month, scope, request.args.get("sub", ""), request.args,
+            background=not current_app.config.get("TESTING"))
     return render_template("stats_master.html", **ctx)
 
 
@@ -102,6 +108,10 @@ def page():
 @login_required
 def print_view():
     cycle, scope, tab, year, month, filters = _cycle_params()
+    if tab == "stores":
+        # طباعة تبويبات المخازن من صفحتها نفسها (زر الطباعة الرسمي بالدباجة والتوقيعين)
+        args = {k: v for k, v in request.args.items() if k not in ("year", "month")}
+        return redirect(url_for("stats.page", **args))
     ctx = _build(cycle, scope, tab, year, month, filters)
     ctx["print_period"] = (
         "{} {}".format(ctx["month_name"], year)

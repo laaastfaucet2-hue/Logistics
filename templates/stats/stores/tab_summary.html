@@ -1,0 +1,5 @@
+{# 📊 الملخص العام — الكروت ثم المؤشرات وموقف المخازن وأعلى الأصناف وأهم التنبيهات #}
+{% include "stats/stores/_cards.html" %}
+{% for table in ss.view.tables %}
+{% with t = table, ss_open = true %}{% include "stats/stores/_section.html" %}{% endwith %}
+{% endfor %}

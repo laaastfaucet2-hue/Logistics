@@ -14,8 +14,9 @@ def import_database(source, destination):
         raise ValueError("المجلد لا يحتوي system.db؛ اختر مجلد database نفسه")
     if destination.exists() and any(destination.iterdir()):
         raise ValueError("مجلد الوجهة ليس فارغًا؛ لن نستبدل بياناتك الحالية")
+    # ~$ = ملفات قفل Excel/Word المؤقتة (تظهر لو ملف مفتوح) — ليست بيانات
     files = [p for p in source.rglob("*") if p.is_file() and not p.name.endswith(("-wal", "-shm"))
-             and ".tmp" not in p.name and ".corrupt-" not in p.name]
+             and ".tmp" not in p.name and ".corrupt-" not in p.name and not p.name.startswith("~$")]
     if any(p.is_symlink() for p in source.rglob("*")):
         raise ValueError("المصدر يحتوي روابط ملفات؛ استخدم نسخة محلية كاملة")
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -25,6 +26,10 @@ def import_database(source, destination):
     try:
         for path in files:
             target = stage / path.relative_to(source)
+            if dataguard.MIRRORS_DIR in path.relative_to(source).parts:
+                # مرايا «الإعدادات» مشفرة (ليست ZIP) — تُنسخ كما هي، وخارج الفحص مثل data_files()
+                dataguard.atomic_save(lambda tmp, path=path: shutil.copyfile(path, tmp), target, zip_check=False)
+                continue
             ok, error = dataguard.verify_file(path)
             if not ok:
                 raise ValueError(f"ملف المصدر غير سليم: {path.name} — {error}")

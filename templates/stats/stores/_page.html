@@ -1,0 +1,12 @@
+{# 🏬 إحصائيات المخازن والثلاجات — الهيدر الثابت + بيانات التبويب الفرعي المختار فقط #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats_stores.css') }}?v={{ static_ver }}">
+{% include "stats/stores/_header.html" %}
+<div class="ss-body" id="ssBody" data-sub="{{ ss.sub }}" data-scope="{{ ss.scope }}">
+  {% if ss.filter_text %}
+  <div class="ss-filtered no-print">معروض بفلتر: {{ ss.filter_text }}</div>
+  <div class="ss-filtered ss-print-only">مطبوع بفلتر: {{ ss.filter_text }}</div>
+  {% endif %}
+  {% include "stats/stores/tab_" ~ ss.sub ~ ".html" %}
+</div>
+{% with ft_section = 'stats_stores', ft_scope = ss.scope, ft_note = false %}{% include "partials/files_tree.html" %}{% endwith %}
+<script src="{{ url_for('static', filename='js/stats_stores.js') }}?v={{ static_ver }}"></script>

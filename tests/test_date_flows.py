@@ -87,7 +87,7 @@ def test_daily_and_leave_reports_use_complete_dates(client, monkeypatch):
     assert permit.status_code==200
     for text in ('٢٠٣١/٠٩/٠٣','٢٠٣١/٠٩/٠٥','٢٠٣١/٠٩/٢٢'):
         assert text in permit.text
-    assert '٢٠٣١/٠٩/٠٣' in client.get('/recruits/?year=2031&month=9&tab=leaves').text
+    assert '٢٠٣١/٠٩/٠٣' in client.get('/recruits/?year=2031&month=9&tab=leaves&day=all').text
     assert '٢٠٣١/٠٩/٠٣' in client.get('/recruits/print/day?year=2031&month=9&day=3').text
     assert client.get(f'/recruits/print/permit?year=2031&month=9&rid={rid}&from=3&to=31').status_code==404
     _, leaves=docx_recruits.rebuild_month(2031,9)

@@ -46,6 +46,8 @@
           <label class="wh-f">الصنف <i>*</i>
             <input name="item_name" required data-combo="whMissingList" autocomplete="off"
                    placeholder="اكتب أو اختر صنفًا من المقرر"></label>
+          <label class="wh-f">وحدة التعامل
+            <input class="js-unit" name="handle_unit" data-combo="whUnitsList" autocomplete="off" placeholder="كجم، لتر، شكارة..."></label>
           <label class="wh-f">الكمية <i>*</i>
             <input name="qty" inputmode="decimal" autocomplete="off" placeholder="٠٫٠٠٠"></label>
           <label class="wh-f">اليوم
@@ -197,8 +199,9 @@
           <div class="wh-eq-total js-eq-total">—</div>
         </div>
         <div class="wh-pack-row wh-pack-weights">
-          <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وزن المعيار الواحد (وزن العلبة مثلًا)</span> <small>(بيحوّل العدّ لكجم — وبيحسب السائب بالعلب)</small>
-            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢"></label>
+          <label class="wh-f js-innercap-cell"><span class="js-inner-cap-lbl">وحدة المعيار الواحد (وزن العلبة مثلًا)</span> <small>(وحته هي وحدة الإجمالي — وبيحسب السائب بالعلب)</small>
+            <input name="pack_inner_capacity" class="js-pack-inner-capacity" inputmode="decimal" autocomplete="off" placeholder="٢">
+            <input name="pack_inner_unit" class="js-pack-inner-unit" data-combo="whInnerUnitsList" autocomplete="off" placeholder="لتر، كجم..."></label>
           <label class="wh-f"><span class="js-cap-lbl">وزن العبوة الواحدة (إذا وزنتها بنفسك)</span> <small>(اختياري)</small>
             <input name="pack_capacity" class="js-pack-capacity" inputmode="decimal" autocomplete="off" placeholder="١٢"></label>
         </div>
@@ -328,9 +331,9 @@
           <td><bdi dir="ltr" class="date-display">{{ card.opener_row.date_iso | datefmt }}</bdi></td>
           <td class="num">—</td>
           <td>رصيد أول المدة</td>
-          <td class="num">٠٫٠٠</td>
+          <td class="num">{{ card.opener_row.open_d | qty3 }}</td>
           <td class="num"><span class="mv-in">{{ card.opener_row.added_d | qty3 }}</span></td>
-          <td class="num">٠٫٠٠</td>
+          <td class="num">{{ card.opener_row.issued_d | qty3 }}</td>
           <td class="num"><b>{{ card.opener_row.balance_d | qty3 }}</b> {{ card.unit_disp }}</td>
           <td class="notes-cell">
             <form method="post" action="/warehouses/wh3/row-note" class="wh-note-form">

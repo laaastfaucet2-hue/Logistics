@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block body_class %}rc-page{% endblock %}
-{% from "partials/dates.html" import date_text, period_text %}
+{% from "partials/dates.html" import date_text, period_text, date_input %}
 {% block title %}المجندين — اليومية العامة • منظومة منظومة التعيينات{% endblock %}
 {% block print_doc_title %}يومية يوم {{ period_text(year, month, day) }} — {{ month_name }} {{ year | aindic }}{% endblock %}
 {% block head_extra %}
@@ -10,26 +10,9 @@
 {% block content %}
 {% include "recruits_tabs.html" %}
 
-<!-- مربع أيام الشهر (يمين) -->
+<!-- مربع أيام الشهر (يمين) — مشترك مع كل التابات -->
 <div class="rc-journal">
-  <aside class="panel rc-daysbox">
-    <div class="panel-head"><h3>📅 أيام {{ month_name }}</h3></div>
-    <div class="rc-days">
-      {% for d in range(1, eom + 1) %}
-      <a class="rc-daybox {{ 'locked' if d in locked_days }} {{ 'today' if d == info.real_day }} {{ 'missing' if info.real_day and d < info.real_day and d not in locked_days }} {{ 'on' if d == day }}"
-         href="{{ url_for('recruits.page') }}&tab=journal&day={{ d }}"
-         title="{% if d in locked_days %}مثبتة ✔{% elif info.real_day and d < info.real_day %}بلا يومية!{% else %}افتح {{ period_date(year, month, d) }}{% endif %}">
-        {{ d | aindic }}{% if d in locked_days %}<span class="rc-lock">
-          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>{% endif %}
-      </a>
-      {% endfor %}
-    </div>
-    <div class="rc-legend">
-      <span><i class="dot today"></i> اليوم الحالي</span>
-      <span><i class="dot locked"></i> مثبتة ✔</span>
-      <span><i class="dot missing"></i> بلا يومية</span>
-    </div>
-  </aside>
+  {% include "recruits/_days.html" %}
 
   <!-- محرر اليوم -->
   <div class="rc-day-editor">
@@ -44,6 +27,10 @@
       </form>
     </div>
     {% endif %}
+
+    {% for st, names in ended %}
+    <div class="rc-banner warn">⏱️ <b>انتهت مدة «{{ st }}» أمس: {{ names | andjoin }}</b> — حدّد حالتهم.</div>
+    {% endfor %}
 
     <!-- بنرات التذكير: أحداث اليوم + غدًا (نفس محرك الجرس) -->
     {% for ev in day_events %}
@@ -139,20 +126,20 @@
       </div>
 
       {% if recruits %}
-      <div class="panel-hint" style="margin:0 0 10px">التسجيل من هنا: اختر حالة كل مجند من خانة «الحالة» (تفتحها لتختار من القائمة)، والملاحظات في الخانة بجوارها — ثم اضغط «ثبّت اليومية» في آخر الجدول.</div>
-      <form method="post" action="{{ url_for('recruits.journal_save') }}">
+      <form method="post" action="{{ url_for('recruits.journal_save') }}" class="rc-jform" data-day-iso="{{ day_iso }}">
         <input type="hidden" name="day" value="{{ day }}">
         <input type="hidden" name="source_day" value="{{ meta.source_day or carried_from | default(0) }}">
+        <datalist id="rcStList">{% for st in statuses %}<option value="{{ st }}">{% endfor %}</datalist>
         <div class="table-wrap rc-stickwrap">
           <table class="rt-table rc-jtable">
-            <thead><tr><th class="mid" title="حدد للنزول في الإجازة المجمّعة (اللوحة تحت الجدول)"></th><th class="num">م</th><th>المجند</th><th>الحالة</th><th>ملاحظة (لحالة أخرى)</th></tr></thead>
+            <thead><tr><th class="num">م</th><th>المجند</th><th>الحالة</th><th class="num">من</th><th class="num">إلى</th><th>ملاحظة</th></tr></thead>
             <tbody>
               {% for r in recruits %}
               {% set cur = day_map.get(r.id) %}
+              {% set per = periods.get(r.id, {}) %}
               <tr>
-                <td class="mid"><input type="checkbox" class="rc-jchk" data-rid="{{ r.id }}" title="حدد للنزول في الإجازة المجمّعة"></td>
                 <td class="num">{{ loop.index | aindic }}</td>
-                <td>
+                <td class="rc-pname">
                   <div class="rc-person">
                     {% if r.photo %}<img class="rc-avatar" src="{{ url_for('recruits.file_view', name=r.photo) }}" alt="">{% endif %}
                     <div><b>{{ r.name }}</b><div class="dim rc-mini">{{ r.mil_no | aindic }}</div></div>
@@ -164,6 +151,8 @@
                           data-combo="rcStList" placeholder="— غير مسجل —"
                           value="{{ cur.status if cur else '' }}">
                 </td>
+                <td class="rc-pcell">{{ date_input('from_' ~ r.id, 'من', per.get('from', ''), meta.locked) }}</td>
+                <td class="rc-pcell">{{ date_input('to_' ~ r.id, 'إلى', per.get('to', ''), meta.locked, 'مفتوح') }}</td>
                 <td><input name="note_{{ r.id }}" value="{{ cur.note if cur else '' }}"
                       {% if meta.locked %}disabled{% endif %} placeholder="…"></td>
               </tr>
@@ -189,94 +178,10 @@
       {% endif %}
     </div>
 
-    <!-- الإجازة المجمّعة من اليومية (قرار ١٢/١٠) -->
-    {% if recruits %}
-    <div class="panel">
-      <div class="panel-head"><h3>🏖️ إجازة مجمّعة + تصريح <span class="panel-hint">حدد مربعات المجندين في جدول اليومية فوق → يُسجّل التأكيد «إجازة» في اليومية لكامل المدة، ويُنشئ التصريح، ثم يفتح شاشة الطباعة</span></h3></div>
-      <form method="post" action="{{ url_for('recruits.send_leaves') }}" id="rgSendLeaves" autocomplete="off" class="rc-range"
-            data-today="{{ info.real_day or 1 }}" data-eom="{{ eom }}">
-        <label class="rc-slr"><input type="radio" name="start" value="today" checked> نزول <b>الآن</b> (يوم {{ period_text(year, month, info.real_day or 1) }})</label>
-        <label class="rc-slr" {% if (info.real_day or 1) >= eom %}style="opacity:.45" title="آخر يوم في الشهر"{% endif %}>
-          <input type="radio" name="start" value="tomorrow" {% if (info.real_day or 1) >= eom %}disabled{% endif %}> نزول <b>غدًا</b> (يوم {{ period_text(year, month, (info.real_day or 1) + 1) }})
-        </label>
-        <span class="dim">حتى يوم</span>
-        <input name="to" inputmode="numeric" required placeholder="{{ info.real_day or 1 }}" class="rc-num" title="آخر يوم الإجازة">
-        <span class="sl-times">
-          <span class="dim">حضروا حتى الساعة</span><input name="t_present" placeholder="١:٠٠" title="ساعة آخر حضور قبل النزول">
-          <span class="dim">ونزلوا الساعة</span><input name="t_left" placeholder="١:٣٠" title="ساعة نزول الإجازة">
-        </span>
-        <button class="rt-btn gold" type="submit">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          تأكيد: نزولهم الإجازة + عمل التصريح
-        </button>
-      </form>
-      <div class="panel-hint" style="margin-top:8px">إذا كان النزول اليوم، فاكتب «حضروا حتى الساعة … وغادروا الساعة …» وستُضاف العبارة إلى اليومية العامة (وتظهر في كشف اليومية المطبوع). وإذا كان النزول <b>غدًا</b>: يُنشأ التصريح فورًا والتسجيل يتم بضغطة «سجّلهم في اليومية» من تنبيه الغد داخل اليومية. إن وقع يومٌ مثبت داخل المدة يُرفض التسجيل حتى تفتحه.</div>
-    </div>
-    {% endif %}
-
-    <!-- إسناد حالة بمدى — يظهر بس لما يكون في مجندين -->
-    {% if recruits %}
-    <div class="panel">
-      <div class="panel-head"><h3>📆 تسجيل سريع: حالة لمدة <span class="panel-hint">مثال: إجازة من يوم ٣ إلى ٧ — تُسجَّل دفعة واحدة</span></h3></div>
-      <form method="post" action="{{ url_for('recruits.journal_range') }}" autocomplete="off" class="rc-range">
-        <input name="recruit_ref" data-combo="rcList" autocomplete="off" required
-               placeholder="اكتب اسم المجند أو رقمه العسكري..." class="rc-ref">
-        <datalist id="rcList">{% for r in recruits %}<option value="{{ r.name }} — {{ r.mil_no }}">{% endfor %}</datalist>
-        <datalist id="rcStList">{% for st in statuses %}<option value="{{ st }}">{% endfor %}</datalist>
-        <input name="status" required data-combo="rcStList" placeholder="اختر الحالة" autocomplete="off">
-        <span class="dim">من يوم</span><input name="from_day" inputmode="numeric" required placeholder="١" class="rc-num">
-        <span class="dim">إلى</span><input name="to_day" inputmode="numeric" required placeholder="٧" class="rc-num">
-        <input name="note" placeholder="ملاحظة (اختياري)">
-        <button class="rt-btn navy" type="submit">
-          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-          تسجيل المدى
-        </button>
-      </form>
-      <div class="panel-hint" style="margin-top:8px">إن وقع يومٌ مثبت داخل المدى يُرفض التسجيل حتى تفتحه — حماية للأيام المقفولة.</div>
-    </div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/combo.js') }}?v={{ static_ver }}"></script>
 <script src="{{ url_for('static', filename='js/recruits.js') }}?v={{ static_ver }}"></script>
-<script>
-// الإجازة المجمّعة من اليومية: «الآن/غدًا» + الأوقات + اختيار من جدول اليومية
-(function () {
-  "use strict";
-  var form = document.getElementById("rgSendLeaves");
-  if (!form) return;
-  var to = form.querySelector('input[name="to"]');
-  var times = form.querySelector(".sl-times");
-  var today = parseInt(form.dataset.today || "1", 10);
-  function syncStart() {
-    var val = form.querySelector('input[name="start"]:checked').value;
-    var startDay = today + (val === "tomorrow" ? 1 : 0);
-    to.value = "";
-    to.placeholder = String(startDay);
-    to.min = startDay;
-    if (times) times.style.display = (val === "today") ? "" : "none";
-  }
-  Array.prototype.forEach.call(form.querySelectorAll('input[name="start"]'), function (r) {
-    r.addEventListener("change", syncStart);
-  });
-  syncStart();
-  form.addEventListener("submit", function (e) {
-    var checked = Array.prototype.slice.call(document.querySelectorAll(".rc-jchk"))
-      .filter(function (b) { return b.checked; });
-    if (!checked.length) {
-      e.preventDefault();
-      alert("حدد واحد على الأقل من المجندين (مربع الاختيار في جدول اليومية)");
-      return;
-    }
-    Array.prototype.forEach.call(form.querySelectorAll('input[name="rid"]'), function (i) { i.remove(); });
-    checked.forEach(function (b) {
-      var i = document.createElement("input");
-      i.type = "hidden"; i.name = "rid"; i.value = b.getAttribute("data-rid");
-      form.appendChild(i);
-    });
-  });
-})();
-</script>
 {% endblock %}

@@ -1,0 +1,5 @@
+{# 🔄 حركة الوارد والمنصرف — بالمخزن · بالصنف · باليوم (بالشهر في السنوي) · بالمورد والمنتج #}
+{% include "stats/stores/_cards.html" %}
+{% for table in ss.view.tables %}
+{% with t = table, ss_open = true %}{% include "stats/stores/_section.html" %}{% endwith %}
+{% endfor %}

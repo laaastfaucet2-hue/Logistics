@@ -44,6 +44,31 @@
     paint();
   });
 
+  // اليومية: تغيير الحالة ⇒ «من» = يوم اليومية و«إلى» فاضية (مفتوحة) — والرجوع
+  // للحالة الأصلية يرجّع تواريخها (توجيه ١٥/١٠)
+  var jform = document.querySelector(".rc-jform");
+  if (jform) {
+    var D = window.LogisticsDates;
+    var dayIso = jform.getAttribute("data-day-iso") || "";
+    var dayText = D && dayIso ? D.format(dayIso) : dayIso;
+    jform.querySelectorAll(".rc-status").forEach(function (inp) {
+      var row = inp.closest("tr");
+      var from = row ? row.querySelector('input[name^="from_"]') : null;
+      var to = row ? row.querySelector('input[name^="to_"]') : null;
+      if (!from || !to) return;
+      var orig = { st: inp.value, from: from.value, to: to.value };
+      inp.addEventListener("change", function () {
+        if (inp.value === orig.st) {
+          from.value = orig.from;
+          to.value = orig.to;
+        } else {
+          from.value = inp.value ? dayText : "";
+          to.value = "";
+        }
+      });
+    });
+  }
+
   // مدينة/قرية حسب المحافظة المختارة — مع الإبقاء على الكتابة اليدوية لأي اسم ناقص
   var govInp = document.getElementById("rcGov");
   var cityList = document.getElementById("cityList");

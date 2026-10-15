@@ -1,4 +1,5 @@
 """Application factory and route wiring only. See CONTRIBUTING.md."""
+import logging
 import mimetypes
 import os
 import secrets
@@ -162,6 +163,27 @@ def create_app():
         db_users.log_activity(user["id"], "action", tab, detail)
         return resp
 
+    @app.after_request
+    def _stats_stores_refresh(resp):
+        """بعد أي حفظ ناجح يأثر على المخازن: تحديث ملفات إحصائيات المخازن في الخلفية
+        (نقطة واحدة بدل تعديل كل الروات — الحفظات المتتالية تتجمع في تحديث واحد)."""
+        from flask import g, request
+        user = getattr(g, "user", None)
+        if not user or request.method != "POST":
+            return resp
+        if resp.status_code >= 400 or "err=" in resp.headers.get("Location", ""):
+            return resp
+        try:
+            from core.auth_core import current_context
+            from services import stats_stores
+            if request.path.startswith(stats_stores.REFRESH_PREFIXES):
+                year, month = current_context(user["id"])
+                stats_stores.after_save(request.path, request.form, year, month,
+                                        background=not app.config.get("TESTING"))
+        except Exception:  # noqa: BLE001 — طلب التحديث لا يُسقط الحفظ نفسه أبدًا
+            logging.getLogger(__name__).exception("stats stores refresh request failed")
+        return resp
+
     from core import web
     from routes import main
     from routes.rations import rations_bp
@@ -181,6 +203,7 @@ def create_app():
     from routes.tarfea import tarfea_bp
     from routes.raghibin import raghibin_bp
     from routes.stats import stats_bp
+    from routes.stats_stores import stats_stores_bp
     from routes.assistant import assistant_bp
     from routes.files_tree import files_tree_bp
     from routes.occasions import occasions_bp
@@ -190,8 +213,8 @@ def create_app():
     main.register(app)
     for bp in (rations_bp, letterhead_bp, backups_bp, recruits_bp, tameedat_bp, calc2_bp,
                calc2_free_bp, dowail_bp, warehouses_bp, wh4_bp, stores_bp, health_bp,
-               tarfea_bp, raghibin_bp, stats_bp, assistant_bp, files_tree_bp, occasions_bp,
-               inv6_bp, settings_bp):
+               tarfea_bp, raghibin_bp, stats_bp, stats_stores_bp, assistant_bp, files_tree_bp,
+               occasions_bp, inv6_bp, settings_bp):
         app.register_blueprint(bp)
     app.add_url_rule("/health", "health", lambda: {"status": "ready", "version": APP_VERSION})
 

@@ -1,0 +1,13 @@
+{# كروت التبويب — من ناتج التبويب نفسه (ss.view.cards) #}
+{% if ss.view.cards %}
+<div class="st-cards ss-cards">
+  {% for c in ss.view.cards %}
+  <div class="st-card {{ c.cls }}">
+    {% if c.icon %}<span class="st-card-ico" aria-hidden="true">{{ c.icon }}</span>{% endif %}
+    <b class="st-card-num">{{ c.value }}</b>
+    <small>{{ c.label }}</small>
+    {% if c.sub %}<span class="st-card-sub">{{ c.sub }}</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

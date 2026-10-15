@@ -5,11 +5,26 @@
 تحتاج من db_warehouses استيراد مؤجل جوه الدالة (تجنّب الدوران)."""
 from core import arabic_numbers as arnum
 from data_access import months
-from data_access.packaging import pack_breakdown, pack_split, parse_pack_label, PackLedger
+from data_access.packaging import pack_breakdown, pack_split, opener_pack_fields, PackLedger
 
 # ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
 UNASSIGNED = "غير موزع على مخازن"
 NO_EXPIRY = "9999-12-31"
+
+
+def _note_bit(notes, prefix):
+    """قيمة بتة تلقائية من ملاحظات رصيد أول المدة («منتج: …» / «مورد: …»)."""
+    for seg in (notes or "").split(" — "):
+        if seg.strip().startswith(prefix):
+            return seg.strip()[len(prefix):].strip()
+    return ""
+
+
+def move_key(row, is_in=True):
+    """ترتيب حركة المخزن: رصيد أول المدة (وارد بلا رقم إذن) أول سطر دايمًا مهما كان
+    يومه — زي كارت ٣ مخازن (١٥/١٠) — وبعده بالتاريخ، والوارد قبل المنصرف في نفس اليوم."""
+    return (0 if is_in and row.get("serial") == 0 else 1,
+            row.get("date_iso") or row.get("date") or "", 0 if is_in else 1)
 
 
 def receipt_groups(year, month, cycle):
@@ -43,9 +58,6 @@ def _batch_pool(year, month, cycle):
     conn.close()
     opener_parts = _dw.opener_stores(year, month, cycle)
     pool = []
-    def _opener_producer(o):
-        _n = o.get("notes") or ""
-        return _n.split("منتج: ")[-1].split(" — ")[0] if "منتج: " in _n else ""
     for r in sorted(_dw.list_receipts(year, month, cycle), key=lambda x: x["id"]):
         item = items.get(r["item_id"])
         if not item:
@@ -74,21 +86,23 @@ def _batch_pool(year, month, cycle):
         if not item:
             continue
         parts = opener_parts.get(o["item_id"]) or [{"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
-        # ملخص أول المدة بنفس صيغة pack_summary — يُفكَّك لحقول تغليف (١٤/١٠)
-        # علشان الرصيد الافتتاحى يدخل حالة العبوات زي أي إضافة
-        _oc, _ok, _ocap, _oloose = parse_pack_label(o.get("pack_label"))
+        # تغليف أول المدة من خاناته زي إذن ١ مخازن بالظبط (١٥/١٠) — والسطر
+        # القديم (جملة بس) بيتفكّ من الجملة كاملة بالعلب اللي جوه العبوة
+        pf = opener_pack_fields(o)
         for part in parts:
             pool.append({
                 "item": item, "qty": float(part["qty"]),
                 "remaining": float(part["qty"]),
                 "expiry": o["exp_date"] or NO_EXPIRY,
-                "order": f"{o['date_iso']}-00000",
+                "order": "0000-00-00-00000",   # أول المدة أقدم دفعة دايمًا (١٥/١٠)
                 "serial": 0, "pack_label": o["pack_label"] or "",
-                "pack_kind": _ok, "pack_count": _oc,
-                "pack_capacity": _ocap, "pack_loose": _oloose,
-                "pack_inner_count": 0, "pack_inner_capacity": 0,
-                "pack_inner_kind": "", "pack_loose_unit": "",
-                "producer": _opener_producer(o),
+                "pack_kind": pf["pack_kind"], "pack_count": pf["pack_count"],
+                "pack_capacity": pf["pack_capacity"], "pack_loose": pf["pack_loose"],
+                "pack_inner_count": pf["pack_inner_count"],
+                "pack_inner_capacity": pf["pack_inner_capacity"],
+                "pack_inner_kind": pf["pack_inner_kind"],
+                "pack_loose_unit": pf["pack_loose_unit"],
+                "producer": _note_bit(o.get("notes"), "منتج:"),
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,
             })
@@ -232,6 +246,35 @@ def tafreeda_rows(year, month, cycle):
 
 
 @months.memo
+def remaining_batches(year, month, cycle):
+    """دفعات الدورة بالباقي الفعلي بعد التفريدة — نفس المحرك (الأقرب صلاحية أولًا).
+
+    الباقي = كمية الدفعة − ما سحبته التفريدة منها فعلًا: دفعتان ١٠٠ + ١٠٠ وصرف ١٢٠
+    ⇒ الأولى صفر والثانية ٨٠. مصدر الصلاحيات وأقرب صلاحية في الإحصائيات.
+    """
+    taken = {}
+    for row in tafreeda_rows(year, month, cycle):
+        key = (row["item"], row["store_id"], row["receipt_serial"], row["expiry"] or "")
+        taken[key] = round(taken.get(key, 0.0) + float(row["qty"] or 0), 6)
+    out = []
+    for batch in _batch_pool(year, month, cycle):
+        expiry = "" if batch["expiry"] == NO_EXPIRY else (batch["expiry"] or "")
+        key = (batch["item"]["name"], batch["store_id"], batch["serial"], expiry)
+        used = min(taken.get(key, 0.0), batch["qty"])
+        if used > 0:
+            taken[key] = round(taken[key] - used, 6)
+        out.append({
+            "item": batch["item"]["name"], "item_id": batch["item"]["id"],
+            "unit": batch["item"]["handle_unit"], "store_id": batch["store_id"],
+            "store_name": batch["store_name"], "serial": batch["serial"],
+            "expiry": expiry, "qty": batch["qty"],
+            "remaining": round(batch["qty"] - used, 6),
+            "producer": batch.get("producer") or "", "order": batch["order"],
+        })
+    return out
+
+
+@months.memo
 def fefo_actual_map(year, month, cycle):
     """المنصرف الفعلي (FEFO) لكل (permit_no, item) — نفس ما استهلكه المخزن
     الفيزيائي من كل إذن. يُستخدم في دفتر ٣ مخازن عشان الدفتر يسجل الأفعال
@@ -282,6 +325,9 @@ def stores_report(year, month):
                     "item": item["name"], "unit": item["handle_unit"],
                     "qty": qty, "pack_label": o["pack_label"] or "",
                     "serial": 0, "expiry": o["exp_date"] or "",
+                    # الشركة المنتجة/الموردة زي إذن ١ مخازن (١٥/١٠)
+                    "producer": _note_bit(o.get("notes"), "منتج:"),
+                    "supplier": _note_bit(o.get("notes"), "مورد:"),
                 })
                 target["balances"][item["name"]] = \
                     target["balances"].get(item["name"], 0.0) + qty
@@ -335,13 +381,13 @@ def stores_report(year, month):
                  for k, v in _groups.items()}
     _final_state = {}
     for target in all_targets:
-        target["inn"].sort(key=lambda x: (x["date_iso"], x.get("serial") or 0))
+        target["inn"].sort(key=lambda x: (move_key(x), x.get("serial") or 0))
         target["out"].sort(key=lambda x: (x["date_iso"], x.get("permit_no") or 0))
         target["balances"] = {k: round(v, 6) for k, v in target["balances"].items()
                               if abs(v) > 1e-9}
         target["total"] = round(sum(target["balances"].values()), 6)
     # 🆕 (١٢/١٠) «رصيد المخزن (بعد)» لكل سطر + تسميات التغليف المختصرة —
-    # الرصيد التراكمي للصنف في المخزن بترتيب التواريخ (الوارد قبل المنصرف في نفس اليوم)
+    # الرصيد التراكمي للصنف في المخزن بترتيب move_key (أول المدة أولًا ثم التواريخ)
     def _spec_of(name):
         entry = specs.get(name) or {}
         if not entry:
@@ -354,7 +400,7 @@ def stores_report(year, month):
     for target in all_targets:
         seq = ([(r["date_iso"] or "", 0, r) for r in target["inn"]] +
                [(r["date_iso"] or "", 1, r) for r in target["out"]])
-        seq.sort(key=lambda t: (t[0], t[1]))
+        seq.sort(key=lambda t: move_key(t[2], t[1] == 0))
         run = {}
         in_tot, out_tot = {}, {}
         _tid = (target.get("store") or {}).get("id")
@@ -444,6 +490,7 @@ def item_day_rows(inn_rows, out_rows, item_name, unit=""):
         if r["item"] != item_name:
             continue
         moves.append({"dir": "in", "date": r.get("date_iso") or "",
+                      "opener": r.get("serial") == 0,
                       "qty": float(r.get("qty") or 0),
                       "supplier": (r.get("supplier") or "").strip(),
                       "producer": (r.get("producer") or "").strip(),
@@ -457,7 +504,7 @@ def item_day_rows(inn_rows, out_rows, item_name, unit=""):
                       "supplier": "", "producer": "",
                       "pack": r.get("pack_label") or r.get("pack_short") or "",
                       "rem_qty": r.get("rem_qty")})
-    moves.sort(key=lambda m: (m["date"], m["dir"]))
+    moves.sort(key=lambda m: (0 if m.get("opener") else 1, m["date"], m["dir"]))
     days = {}
     def _plain(q):
         return f"{arnum.fmt_qty_trim(float(q or 0))} {unit or ''}".strip()
@@ -466,8 +513,8 @@ def item_day_rows(inn_rows, out_rows, item_name, unit=""):
             return cell
         return (cell + " + " + pack).strip(" +") if cell else pack
     for m in moves:
-        key = m["date"]
-        d = days.setdefault(key, {"date": key, "in": 0.0, "out": 0.0,
+        key = "opener" if m.get("opener") else m["date"]   # أول المدة سطر لوحده أولًا
+        d = days.setdefault(key, {"date": m["date"], "in": 0.0, "out": 0.0,
                                   "in_pack": "", "out_pack": "",
                                   "supplier": "", "producer": "",
                                   "balance": 0.0})
@@ -527,3 +574,66 @@ def stores_general_report(year, month):
         })
     out.sort(key=lambda r: (-r["balance"], r["name"]))
     return out
+
+
+# ========== «مخزن 1»: مفيش «غير موزع» (قرار المستخدم ١٤/١٠) ==========
+# أي كمية من غير توزيع — أو على مخزن مش في السجل — بتدخل على «مخزن 1» = أول مخزن في
+# سجل المخازن. دورتا الإمداد والمتعهد بس (الترفية ليها مخزنها الخاص)، ولو السجل
+# فاضي الكمية بتستنى لحد ما يتضاف أول مخزن.
+STORE_CYCLES = ("supply", "contractor")
+
+
+def default_store_parts(cycle, qty, parts):
+    """توزيع إذن/رصيد أول مدة قبل الحفظ: الفاضي أو المخزن المجهول ⇒ «مخزن 1»."""
+    from data_access import db_stores
+    if cycle not in STORE_CYCLES:
+        return parts
+    stores = db_stores.list_stores()
+    if not stores:
+        return parts
+    first, known = stores[0], {s["id"] for s in stores}
+    if not parts:
+        qty = float(qty or 0)
+        return [(first["id"], first["name"], qty)] if qty > 0 else parts
+    return [(sid, name, q) if sid in known else (first["id"], first["name"], q)
+            for sid, name, q in parts]
+
+
+def assign_unassigned():
+    """ينقل أي كمية غير موزعة في كل الشهور إلى «مخزن 1» — يرجّع عدد السطور اللي اتعدلت."""
+    import logging
+    from data_access import db_stores
+    from data_access import db_warehouses as _dw
+    stores = db_stores.list_stores()
+    if not stores:
+        return 0
+    first = (stores[0]["id"], stores[0]["name"])
+    ids = tuple(s["id"] for s in stores)
+    known = f"store_id IS NOT NULL AND store_id IN ({','.join('?' * len(ids))})"
+    cycles = "('supply','contractor')"
+    changed = 0
+    for _y, _m, conn in _dw._iter_month_conns():
+        with conn:
+            changed += conn.execute(
+                "INSERT INTO wh_receipt_stores (receipt_id,store_id,store_name,qty)"
+                f" SELECT id,?,?,qty_handle FROM wh_receipts WHERE cycle IN {cycles}"
+                " AND qty_handle>0 AND id NOT IN (SELECT receipt_id FROM wh_receipt_stores)",
+                first).rowcount
+            changed += conn.execute(
+                f"UPDATE wh_receipt_stores SET store_id=?, store_name=? WHERE NOT ({known})"
+                f" AND receipt_id IN (SELECT id FROM wh_receipts WHERE cycle IN {cycles})",
+                first + ids).rowcount
+            changed += conn.execute(
+                "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
+                " SELECT l.cycle,l.item_id,?,?,l.added FROM wh_ledger l WHERE l.kind='opener'"
+                f" AND l.cycle IN {cycles} AND l.added>0 AND NOT EXISTS (SELECT 1 FROM"
+                " wh_opener_stores o WHERE o.cycle=l.cycle AND o.item_id=l.item_id)",
+                first).rowcount
+            changed += conn.execute(
+                f"UPDATE wh_opener_stores SET store_id=?, store_name=? WHERE cycle IN {cycles}"
+                f" AND NOT ({known})", first + ids).rowcount
+    if changed:
+        months.bust_cache()
+        logging.getLogger(__name__).info("assigned %s unassigned store rows to «%s»",
+                                         changed, first[1])
+    return changed

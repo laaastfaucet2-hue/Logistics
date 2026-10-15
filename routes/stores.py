@@ -106,6 +106,7 @@ def _enrich(target):
         it["in"] += float(row["qty"] or 0)
         it["moves"].append({
             "dir": "in", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "opener": row.get("serial") == 0,
             "cycle": row.get("cycle") or "",
             "producer": row.get("producer") or "",
             "supplier": row.get("supplier") or "",
@@ -143,7 +144,9 @@ def _enrich(target):
         it["in_pack"] = (target.get("in_packs") or {}).get(name) or ""
         # ١٤/١٠: إجمالي خارج بالتغليف (المزدوجة: بالوحدة + بالتغليف)
         it["out_pack"] = (target.get("out_packs") or {}).get(name) or ""
-        it["moves"].sort(key=lambda m: (m["date"] or "", m["dir"]))
+        # رصيد أول المدة أول سطر دايمًا (١٥/١٠) — نفس ترتيب «رصيد المخزن (بعد)»
+        it["moves"].sort(key=lambda m: (0 if m.get("opener") else 1,
+                                        m["date"] or "", m["dir"]))
         # ١٤/١٠: تبويب فرعي لكل صنف — سطر لكل يوم نشط (نفس مصدر الإكسل)
         it["days"] = dws.item_day_rows(target["inn"], target["out"], name,
                                        it.get("unit") or "")
@@ -153,7 +156,7 @@ def _enrich(target):
     for name, it in target["items"].items():
         for m in it["moves"]:
             all_moves.append(dict(m, item=name, unit=it["unit"]))
-    all_moves.sort(key=lambda m: (m["date"] or "", m["dir"]))
+    all_moves.sort(key=lambda m: (0 if m.get("opener") else 1, m["date"] or "", m["dir"]))
     target["all_moves"] = all_moves
     # تبويبات فرعية لكل صنف في سجل الحركة (١٤/١٠): الإجماليات فوق + تبويب لكل صنف
     target["mv_items"] = [(name, it) for name, it in target["items"].items() if it["moves"]]
@@ -187,14 +190,14 @@ def page():
                       for e in report["stores"]]
         raw = arnum.parse_int(request.args.get("store"))
         pool = {e["store"]["id"]: e for e in report["stores"]}
-        if raw == 0 or (raw is None and not store_tabs):
-            store_sel, target = 0, report["unassigned"]
-        elif raw in pool:
+        # مفيش تبويب «غير موزع» (١٤/١٠): أي كمية من غير توزيع بقت على «مخزن 1»
+        if raw in pool:
             store_sel, target = raw, pool[raw]
-        else:
+        elif store_tabs:
             target = report["stores"][0]
             store_sel = target["store"]["id"]
-        target = _enrich(target)
+        if target:
+            target = _enrich(target)
     # 🆕 (١٢/١٠) «كافة الأصناف (كشف عام)» — كشف مجمّع بكل المخازن (زي البرنامج القديم)
     general = dw.stores_general_report(year, month)
     return render_template(
@@ -228,6 +231,8 @@ def save():
         message = f"عُدّلت مواصفات مخزن «{name.strip()}» — وتسجيلها في البيانات المحلية"
     else:
         db_stores.add_store(name, location, capacity, fans, extractors, equipment, notes)
+        # أول مخزن في السجل = «مخزن 1»: أي كمية مستنية من غير توزيع تدخل عليه (١٤/١٠)
+        dw.assign_unassigned()
         # توجيه ٠٨/١٠: أول ما المخزن يتعمل مجلده يتعمل (3 مجلدات داخله)
         sf.create_store_folder(year, month, name.strip())
         message = f"أُضيف مخزن «{name.strip()}» بمواصفاته ومجلده المحلي — وتسجيلها في البيانات المحلية"
@@ -306,9 +311,7 @@ _STORE_SUBS = {"movement": sf.SUB_MOVEMENT, "items": sf.SUB_ITEMS,
 
 
 def _store_name_or_404(store_id):
-    if store_id <= 0:
-        return dw.UNASSIGNED   # «غير موزع على مخازن» — نفس اسم المجلد
-    store = db_stores.get_store(store_id)
+    store = db_stores.get_store(store_id) if store_id > 0 else None
     if not store:
         abort(404)
     return store["name"]

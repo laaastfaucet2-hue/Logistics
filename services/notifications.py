@@ -54,6 +54,12 @@ def and_join(names):
     return "، ".join(names[:-1]) + " و" + names[-1]
 
 
+def _open_period(mrows, rid, day):
+    """حالة اتسجلت بـ«من» من غير «إلى» = مفتوحة (بتترحّل يوم بيوم)."""
+    row = mrows.get(rid, {}).get(day) or {}
+    return bool(row.get("p_from")) and not row.get("p_to")
+
+
 def day_events(year, month, matrix, day, by_id=None):
     """كل أحداث يوم محدد من الشهر — مصدر الحقيقة الوحيد للجرس وبنرات اليومية:
 
@@ -70,6 +76,7 @@ def day_events(year, month, matrix, day, by_id=None):
     out = []
     ranges = da.leave_ranges(year, month, matrix, 1, eom)
     permits = da.month_leave_permits(year, month)
+    mrows = da.month_rows(year, month)
     starting, returning = [], []
     for rid, rs in ranges.items():
         if rid not in by_id:
@@ -78,7 +85,8 @@ def day_events(year, month, matrix, day, by_id=None):
             if f == day:
                 starting.append((rid, f, t))
             # elif ممنوع: إجازة يوم واحد (٥–٥) حدث بداية وحدث رجوع بنفس اليوم
-            if t == day and t + 1 <= eom:
+            # الإجازة المفتوحة («إلى» فاضية — توجيه ١٥/١٠) مالهاش رجوع لحد ما تتقفل
+            if t == day and t + 1 <= eom and not _open_period(mrows, rid, t):
                 returning.append(rid)
     if starting:
         starting.sort(key=lambda x: by_id[x[0]]["name"])
@@ -124,7 +132,8 @@ def day_events(year, month, matrix, day, by_id=None):
         for st in ("مأمورية", "مستشفى"):
             ending_by_status[st] = {rid for rid, days in matrix.items()
                                     if rid in by_id and days.get(day) == st
-                                    and days.get(day + 1) != st}
+                                    and days.get(day + 1) != st
+                                    and not _open_period(mrows, rid, day)}
     dmap = da.get_day_map(year, month, day)
     groups = {}
     for rid, info in dmap.items():

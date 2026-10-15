@@ -18,6 +18,7 @@ from pathlib import Path
 from zipfile import BadZipFile
 
 from data_access import db_letterhead as lhdb
+from core import arabic_numbers as arnum
 from core.config import MONTH_NAMES
 
 # كلمات مطلوبة في كل ملف محلي (القواعد الذهبية)
@@ -57,8 +58,11 @@ def _has_logo(ws):
     return "لوجو" in _sheet_text(ws) or "شعار" in _sheet_text(ws)
 
 
-def audit_workbook(path, year=None, month=None):
-    """فحص ملف إكسل واحد — يرجّع قائمة النواقص (فارغة ⇒ الملف سليم)."""
+def audit_workbook(path, year=None, month=None, yearly=False):
+    """فحص ملف إكسل واحد — يرجّع قائمة النواقص (فارغة ⇒ الملف سليم).
+
+    yearly: ملف سنة كاملة (00-السنوي) — «سنة ٢٠٢٦» مكان اسم الشهر، والتوقيعان من
+    مستوى المنظومة نفسه (واحدان لكل الشهور)."""
     from openpyxl import load_workbook
     missing = []
     try:
@@ -71,11 +75,15 @@ def audit_workbook(path, year=None, month=None):
             missing.append(f"الدباجة: «{word}»")
     if not any(_has_logo(ws) for ws in book.worksheets):
         missing.append("الشعار المضمّن")
-    signatures = _signatures_text(year, month)
+    signatures = _system_signatures() if yearly else _signatures_text(year, month)
     for label in signatures:
         if label and label not in text:
             missing.append(f"التوقيع: «{label}»")
-    if year and month:
+    if yearly and year:
+        stamp = f"سنة {arnum.to_arabic_indic(year)}"
+        if stamp not in text:
+            missing.append(f"السنة «{stamp}»")
+    elif year and month:
         stamp = f"{MONTH_NAMES[int(month) - 1]}"
         if stamp not in text:
             missing.append(f"اسم الشهر «{stamp}»")
@@ -92,6 +100,13 @@ def _signatures_text(year, month):
         if value and "..." not in value:
             out.append(value)
     return tuple(out)
+
+
+def _system_signatures():
+    """التوقيعان على مستوى المنظومة (system.db) — لملفات السنة."""
+    values = lhdb.get_signatures()
+    return tuple(_norm(values[key]) for key in SIGNATURE_KEYS
+                 if values.get(key) and "..." not in values[key])
 
 
 def audit_json(path):
@@ -123,12 +138,12 @@ def audit_docx(path, year=None, month=None):
     return missing
 
 
-def audit_path(path, year=None, month=None):
+def audit_path(path, year=None, month=None, yearly=False):
     """يفحص ملفًا واحدًا بنوعه — يرجّع [] لغير المدعوم (لا فشل زائف)."""
     path = Path(path)
     suffix = path.suffix.lower()
     if suffix == ".xlsx":
-        return audit_workbook(path, year, month)
+        return audit_workbook(path, year, month, yearly)
     if suffix == ".json":
         return audit_json(path)
     if suffix == ".docx":
@@ -136,7 +151,7 @@ def audit_path(path, year=None, month=None):
     return []
 
 
-def audit_tree(root, year=None, month=None, limit=None):
+def audit_tree(root, year=None, month=None, limit=None, yearly=False):
     """فحص كل الملفات تحت فولدر — تقرير كامل مرتّب بالمشاكل أولًا."""
     root = Path(root)
     report = {"root": str(root), "checked": 0, "ok": 0, "problems": [], "by_dir": {}}
@@ -145,7 +160,7 @@ def audit_tree(root, year=None, month=None, limit=None):
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.name.startswith("~$"):
             continue
-        missing = audit_path(path, year, month)
+        missing = audit_path(path, year, month, yearly)
         report["checked"] += 1
         rel = str(path.relative_to(root))
         if missing:
@@ -166,12 +181,16 @@ def audit_month(year, month, sections=("tameedat", "raghibin")):
     out = {"year": year, "month": month, "checked": 0, "ok": 0,
            "problems": [], "sections": {}}
     for section in sections:
-        root = files_index.section_root(section, year, month)
-        part = audit_tree(root, year, month)
-        out["sections"][section] = {"checked": part["checked"], "ok": part["ok"],
-                                    "problems": len(part["problems"]),
-                                    "folder": str(root)}
-        out["checked"] += part["checked"]
-        out["ok"] += part["ok"]
-        out["problems"].extend([{**p, "section": section} for p in part["problems"]])
+        parts = [(section, files_index.section_root(section, year, month), False)]
+        if section == "stats_stores":       # ملفات الشهر + ملفات السنة (00-السنوي)
+            parts.append(("stats_stores_year",
+                          files_index.section_root(section, year, month, "year"), True))
+        for name, root, yearly in parts:
+            part = audit_tree(root, year, None if yearly else month, yearly=yearly)
+            out["sections"][name] = {"checked": part["checked"], "ok": part["ok"],
+                                     "problems": len(part["problems"]),
+                                     "folder": str(root)}
+            out["checked"] += part["checked"]
+            out["ok"] += part["ok"]
+            out["problems"].extend([{**p, "section": name} for p in part["problems"]])
     return out

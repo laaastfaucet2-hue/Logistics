@@ -505,7 +505,7 @@ def test_stores_page_tabs_and_unified_cycles(client):
     assert "سجل حركة المخزن" in page and 'data-st-mainpanel="moves"' in page
     assert "٤٠٫٠٠٠" in page and "٢٥٫٠٠٠" in page
     # تابات لكل مخزن: المخزن المختار لوحده — مش المخازن على بعض (توجيه ٢٧/٠٩)
-    assert "wh-subtabs" in page and "غير موزع" in page
+    assert "wh-subtabs" in page and "غير موزع" not in page      # مفيش «غير موزع» (١٤/١٠)
     assert page.count('<section class="panel wh-store-card">'
 ) == 1  # كارت واحد للمخزن المختار — مش المخازن على بعض
     assert "whStoreToggle" in page and "dataset.wired" in page
