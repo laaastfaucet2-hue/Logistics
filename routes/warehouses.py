@@ -757,7 +757,7 @@ def wh1_add():
         return _rb(cycle, "wh1", err=str(exc))
     snap_ok = _snapshot(cycle)
     first = saved[0]
-    items_word = " + ".join(r["item"]["name"] for r in saved)
+    items_word = " + ".join(r["item"]["name"] + (f" ({r['conv_note']})" if r.get("conv_note") else "") for r in saved)
     conv = ""
     if len(saved) == 1 and first["factor"] and first["factor"] != 1:
         conv = (f" — {arnum.fmt_qty(first['qty_handle'])} {first['item']['handle_unit']}"
@@ -781,7 +781,7 @@ def wh1_edit(serial):
         return _rb(cycle, "wh1", err=str(exc), wh1edit=serial)
     snap_ok = _snapshot(cycle)
     first = saved[0]
-    items_word = " + ".join(r["item"]["name"] for r in saved)
+    items_word = " + ".join(r["item"]["name"] + (f" ({r['conv_note']})" if r.get("conv_note") else "") for r in saved)
     ok = (f"عُدّل إذن إضافة ١ مخازن رقم {arnum.to_arabic_indic(first['serial'])} — "
           f"{arnum.to_arabic_indic(str(len(saved)))} أصناف: {items_word} — "
           f"وأعيد احتساب الأرصدة والبطاقات والدفاتر") + (
@@ -844,7 +844,7 @@ def wh3_opener():
     old_note = _opener_pack_note(old_card, old_specs)
     try:
         if is_edit:
-            dw.update_opener(year, month, cycle, item["id"], qty, day,
+            res = dw.update_opener(year, month, cycle, item["id"], qty, day,
                              producer=request.form.get("producer"),
                              supplier_id=supplier_id, supplier_name=supplier_name,
                              notes=request.form.get("notes"),
@@ -858,7 +858,7 @@ def wh3_opener():
                              pack_inner_unit=pack_inner_unit,
                              prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
         else:
-            dw.add_opener(year, month, cycle, item["name"], qty, day,
+            res = dw.add_opener(year, month, cycle, item["name"], qty, day,
                           handle_unit_hint=(request.form.get("handle_unit") or "").strip(),
                           producer=request.form.get("producer"),
                           supplier_id=supplier_id, supplier_name=supplier_name,
@@ -884,10 +884,10 @@ def wh3_opener():
             new_card, dw.pack_specs_map(year, month, cycle))
         ok_open = _opener_report(item["name"], item["handle_unit"],
                                  old_card, new_card, old_taf, new_taf,
-                                 old_note, new_note) + warn_tail
+                                 old_note, new_note) + (f" — {res['conv_note']}" if res.get("conv_note") else "") + warn_tail
     else:
-        ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته"
-                   " — وتسجيلها في البيانات المحلية") + warn_tail
+        ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته" + (f" ({res['conv_note']})" if res.get("conv_note") else "")
+                   + " — وتسجيلها في البيانات المحلية") + warn_tail
     return _rb(cycle, "wh3", item=item_id, ok=ok_open)
 
 
@@ -900,15 +900,13 @@ def _opener_report(name, unit, old_card, new_card, old_taf, new_taf, old_note, n
         parts.append(f"الكمية: {arnum.fmt_qty(o['added'])} ← {arnum.fmt_qty(n['added'])} {unit}")
     if (o.get("pack_label") or "—") != (n.get("pack_label") or "—"):
         parts.append(f"تغليف الدفعة: {o.get('pack_label') or '—'} ← {n.get('pack_label') or '—'}")
-    if int(o["day"] or 0) != int(n["day"] or 0):
-        parts.append("اليوم: %s ← %s (ونُقل سطر أول المدة في ترتيب الجدول)"
-                     % (arnum.to_arabic_indic(str(o["day"])), arnum.to_arabic_indic(str(n["day"]))))
-        parts.append("أُعيد احتساب كل سطور الجدول بعد النقل")
-    else:
-        changed = sum(1 for a, b in zip(old_card["rows"], new_card["rows"])
-                      if abs(float(a["balance"]) - float(b["balance"])) > 0.000001)
-        if changed:
-            parts.append(f"أُعيد احتساب الرصيد في {arnum.to_arabic_indic(str(changed))} سطر من الجدول")
+    if int(o["day"] or 0) != int(n["day"] or 0):   # أول المدة أول سطر دايمًا (١٥/١٠)
+        parts.append("اليوم: %s ← %s" % (arnum.to_arabic_indic(str(o["day"])),
+                                          arnum.to_arabic_indic(str(n["day"]))))
+    changed = sum(1 for a, b in zip(old_card["rows"], new_card["rows"])
+                  if abs(float(a["balance"]) - float(b["balance"])) > 0.000001)
+    if changed:
+        parts.append(f"أُعيد احتساب الرصيد في {arnum.to_arabic_indic(str(changed))} سطر من الجدول")
     if abs(float(old_card["balance"]) - float(new_card["balance"])) > 0.000001:
         parts.append(f"الرصيد الختامى: {arnum.fmt_qty(old_card['balance'])} ← "
                      f"{arnum.fmt_qty(new_card['balance'])} {unit}")

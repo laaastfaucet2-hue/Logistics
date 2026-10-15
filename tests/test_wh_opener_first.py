@@ -82,13 +82,47 @@ def test_wh3_page_opener_row_and_forms_like_wh1(client):
     form = page[page.find('id="whOpenerForm"'):]
     form = form[:form.find("</form>")]
     assert 'name="pack_inner_unit"' in form
-    # نفس التغليف ⇒ نفس التسمية في أول المدة و١ مخازن (حتى لو وحدة الصنف كجم والمعيار لتر)
+    # نفس التغليف ⇒ نفس التسمية في أول المدة و١ مخازن (زيت بالكيلو وزجاجات باللتر)
     pk = dict(pack_kind="كرتونة", pack_count=10, pack_capacity=12, pack_inner_count=12,
               pack_inner_capacity=1, pack_inner_kind="زجاجة", pack_inner_unit="لتر")
-    dw.add_opener(YEAR, MONTH, "supply", "عدس", 0, 1, exp_iso="2032-01-01",
+    oil = dw.resolve_item(YEAR, MONTH, "supply", "زيت طعام", "كجم")[0]
+    dw.add_opener(YEAR, MONTH, "supply", "زيت طعام", 0, 1, exp_iso="2032-01-01",
                   date_iso="2031-09-01", **pk)
-    dw.add_receipt(YEAR, MONTH, "supply", 2, "عدس", 0, receipt_no=14,
+    dw.add_receipt(YEAR, MONTH, "supply", 2, "زيت طعام", 0, receipt_no=14,
                    date_iso="2031-09-02", exp_iso="2032-01-01", **pk)
-    opener = dw.item_card(YEAR, MONTH, lentil["id"])["opener_row"]
+    opener = dw.item_card(YEAR, MONTH, oil["id"])["opener_row"]
     receipt = [r for r in dw.list_receipts(YEAR, MONTH, "supply") if r["serial"] == 14][0]
-    assert receipt["pack_label"] == opener["pack_label"] and opener["pack_label"].endswith("١٢٠ لتر")
+    assert receipt["pack_label"] == opener["pack_label"] and opener["pack_label"].endswith("١٠٩٫٦٨ كجم")
+
+
+def test_pack_in_other_unit_converts_to_item_unit(app):
+    """تغليف بوحدة غير وحدة الصنف (١٥/١٠): زجاجة لتر وصنف بالكيلو ⇒ بالوزن النوعي
+    (٩١٤ للزيت أو المحفوظ في الكارت) — نفس الكلام في ١ مخازن ورصيد أول المدة."""
+    months.init_month(YEAR, MONTH)
+    db_stores.add_store("مخزن 1")
+    store = db_stores.list_stores()[0]
+    for name in ("زيت طعام", "زيت ذرة", "خل"):
+        dw.resolve_item(YEAR, MONTH, "supply", name, "كجم")
+    pk = dict(pack_kind="كرتونة", pack_count=10, pack_capacity=12, pack_inner_count=12,
+              pack_inner_capacity=1, pack_inner_kind="زجاجة", pack_inner_unit="لتر")
+    rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "زيت طعام", 0, receipt_no=1,
+                         date_iso="2031-09-01", exp_iso="2032-01-01", **pk)
+    assert round(rec["qty_handle"], 6) == 109.68 and rec["conv_note"] == "١٢٠ لتر = ١٠٩٫٦٨ كجم"
+    op = dw.add_opener(YEAR, MONTH, "supply", "زيت ذرة", 0, 1, exp_iso="2032-01-01",
+                       date_iso="2031-09-01", stores=[(store["id"], "مخزن 1", 120)], **pk)
+    assert round(op["qty"], 6) == 109.68
+    assert dw.opener_stores(YEAR, MONTH, "supply")[op["item"]["id"]][0]["qty"] == 109.68
+    try:
+        dw.add_receipt(YEAR, MONTH, "supply", 1, "خل", 0, receipt_no=2, **pk)
+        raise AssertionError("لازم يطلب الوزن النوعي")
+    except ValueError as exc:
+        assert "الوزن النوعي" in str(exc)
+    vinegar = dw.resolve_item(YEAR, MONTH, "supply", "خل")[0]
+    dw.set_specific_weight(YEAR, MONTH, vinegar["id"], 1010)
+    rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "خل", 0, receipt_no=2, **pk)
+    assert round(rec["qty_handle"], 6) == 121.2
+    juice = dict(pack_kind="كرتونة", pack_count=10, pack_inner_count=12,
+                 pack_inner_capacity=500, pack_inner_kind="زجاجة", pack_inner_unit="مل")
+    dw.resolve_item(YEAR, MONTH, "supply", "عصير", "لتر")
+    rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "عصير", 0, receipt_no=3, **juice)
+    assert round(rec["qty_handle"], 6) == 60.0

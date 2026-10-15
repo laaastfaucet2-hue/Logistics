@@ -306,6 +306,14 @@ def pack_specs_map(year, month, cycle):
     return out
 
 
+def _conv_note(total, conv, from_unit, to_unit):
+    """«١٢٠ لتر = ١٠٩٫٦٨ كجم» لما التغليف يتحول لوحدة الصنف (١٥/١٠)."""
+    if abs(conv - 1.0) < 1e-12 or total <= 0:
+        return ""
+    return (f"{arnum.fmt_qty_trim(round(total / conv, 6))} {from_unit} = "
+            f"{arnum.fmt_qty_trim(total)} {to_unit}")
+
+
 def add_receipt(year, month, cycle, day, item_name, qty_handle,
                 handle_unit_hint="", producer="", supplier_id=None,
                 supplier_name="", prod_iso="", exp_iso="", notes="",
@@ -318,7 +326,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     from core import egtime
     pack_kind = (pack_kind or "").strip(); pack_inner_kind = (pack_inner_kind or "").strip()
     inner_unit = (pack_inner_unit or "").strip()
-    pack_total = 0.0; pack_label_text = ""; extras = []
+    pack_total = 0.0; pack_label_text = ""; extras = []; conv = 1.0; conv_note = ""
     if pack_kind and pack_kind != "بدون تغليف":
         # وحدة المعيار الداخلي (توجيه ١٠/١٠): لو اتحددت فهي الحاكمة لوحدة الإجمالي
         # ووحدة الصنف الجديد — «١٠ كرتونة × ١٢ زجاجة × ٢ لتر = ٢٤٠ لتر» مش كجم.
@@ -328,6 +336,10 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
         elif pack_inner_kind and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
             handle_unit_hint = pack_inner_kind
         item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
+        # تغليف بوحدة غير وحدة الصنف ⇒ يتحول لوحدته بالوزن النوعي (١٥/١٠)
+        _iu0 = inner_unit
+        inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
+            item_probe, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
         if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item_probe["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
             raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
         calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item_probe["handle_unit"]
@@ -337,6 +349,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                              "لا يمكن إذن إضافة بكمية صفر")
         qty_handle = pack_total
         pack_label_text = pack_label_probe
+        conv_note = _conv_note(pack_total, conv, _iu0, item_probe["handle_unit"])
     # التغليف له عموده الخاص (توجيه ٢٦/٠٩) — لا يُخلط في الملاحظات
     elif pack_kind:
         pack_kind = ""
@@ -358,7 +371,8 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     if supplier_id and not supplier_name:
         sup = get_supplier(year, month, supplier_id)
         supplier_name = sup["name"] if sup else ""
-    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or []) if q and float(q) > 0]
+    parts = [(int(sid), (sname or "").strip(), round(float(q) * conv, 6))   # التوزيع بوحدة الفورم
+             for sid, sname, q in (stores or []) if q and float(q) > 0]
     parts = default_store_parts(cycle, qty_handle, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty_handle - sum(q for _s, _n, q in parts), 6)
@@ -415,7 +429,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
     return {
         "receipt_id": receipt_id, "serial": serial, "item": item, "created": created,
         "qty_handle": qty_handle, "qty_base": qty_base, "base_unit": base_unit,
-        "factor": factor, "pack_label": pack_label_text,
+        "factor": factor, "pack_label": pack_label_text, "conv_note": conv_note,
     }
 
 
@@ -485,6 +499,9 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     if has_opener(year, month, item["id"]):
         raise ValueError(
             f"رصيد أول المدة مسجّل بالفعل لصنف «{item['name']}» — لا يُسجل مرتين")
+    _iu0 = inner_unit   # تغليف بوحدة غير وحدة الصنف ⇒ يتحول بالوزن النوعي (١٥/١٠)
+    inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
+        item, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
     pack_kind = (pack_kind or "").strip()
     if ((pack_loose_unit or "").strip().startswith("علب") and float(pack_loose or 0) > 0 and not (float(pack_inner_capacity or 0) > 0) and (is_measure_unit(item["handle_unit"]) or is_measure_unit((pack_inner_kind or "").strip()))):
         raise ValueError("السائب بالعلب محتاج وزن العلبة — اكتبه أو حوّل السائب للكجم")
@@ -493,14 +510,15 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
+    conv_note = _conv_note(pack_total, conv, _iu0, item["handle_unit"])
     prod_iso = (prod_iso or "").strip()
     exp_iso = (exp_iso or "").strip()
     if not exp_iso:
         raise ValueError("تاريخ الصلاحية إلزامي لرصيد أول المدة — زي أي صنف بالظبط")
     if prod_iso and exp_iso and exp_iso < prod_iso:
         raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
-    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
-             if q and float(q) > 0]
+    parts = [(int(sid), (sname or "").strip(), round(float(q) * (conv if pack_total > 0 else 1.0), 6))
+             for sid, sname, q in (stores or []) if q and float(q) > 0]
     parts = default_store_parts(cycle, qty, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty - sum(q for _s, _n, q in parts), 6)
@@ -538,7 +556,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
                        pack_inner_count, pack_inner_capacity, pack_inner_kind,
                        inner_unit)
     conn.close()
-    return {"item": item, "qty": qty, "created": created}
+    return {"item": item, "qty": qty, "created": created, "conv_note": conv_note}
 
 
 def update_opener(year, month, cycle, item_id, qty, day,
@@ -562,7 +580,10 @@ def update_opener(year, month, cycle, item_id, qty, day,
     pack_kind = (pack_kind or "").strip()
     if pack_kind == "بدون تغليف":
         pack_kind = ""
-    inner_unit = (pack_inner_unit or "").strip()
+    _iu0 = inner_unit = (pack_inner_unit or "").strip()
+    # تغليف بوحدة غير وحدة الصنف ⇒ يتحول لوحدته بالوزن النوعي (١٥/١٠)
+    inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
+        item, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
     calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item["handle_unit"]
     label_pack, pack_total = pack_summary(pack_kind, pack_count, pack_capacity, pack_loose,
                                           calc_unit, pack_inner_count,
@@ -570,14 +591,15 @@ def update_opener(year, month, cycle, item_id, qty, day,
     qty = pack_total if pack_total > 0 else float(qty or 0)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
+    conv_note = _conv_note(pack_total, conv, _iu0, item["handle_unit"])
     prod_iso = (prod_iso or "").strip()
     exp_iso = (exp_iso or "").strip()
     if not exp_iso:
         raise ValueError("تاريخ الصلاحية إلزامي لرصيد أول المدة — زي أي صنف بالظبط")
     if prod_iso and exp_iso and exp_iso < prod_iso:
         raise ValueError("تاريخ الصلاحية قبل تاريخ الإنتاج — صحّح التواريخ")
-    parts = [(int(sid), (sname or "").strip(), float(q)) for sid, sname, q in (stores or [])
-             if q and float(q) > 0]
+    parts = [(int(sid), (sname or "").strip(), round(float(q) * (conv if pack_total > 0 else 1.0), 6))
+             for sid, sname, q in (stores or []) if q and float(q) > 0]
     parts = default_store_parts(cycle, qty, parts)   # مفيش «غير موزع» (١٤/١٠)
     if parts:
         diff = round(qty - sum(q for _s, _n, q in parts), 6)
@@ -619,7 +641,7 @@ def update_opener(year, month, cycle, item_id, qty, day,
                        pack_inner_count, pack_inner_capacity, pack_inner_kind,
                        inner_unit)
     conn.close()
-    return {"item": item, "qty": qty, "created": False}
+    return {"item": item, "qty": qty, "created": False, "conv_note": conv_note}
 
 
 def opener_stores(year, month, cycle):
