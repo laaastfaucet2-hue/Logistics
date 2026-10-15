@@ -424,7 +424,8 @@ def taf3_pack_rows(year, month, cycle, item_id):
         # رصيد افتتاح السطر (قبل حركته) — بالتغليف
         _open_qty = round(float(r["balance"] or 0) - float(r["added"] or 0)
                           + float(r["issued"] or 0), 6)
-        open_pack = _brk(_open_qty, fb, "سائب") if count_pack else led.label()
+        open_pack = ("—" if abs(_open_qty) < 1e-9 else   # افتتاح صفر = — (أول المدة)
+                     _brk(_open_qty, fb, "سائب") if count_pack else led.label())
         added_pack = r.get("pack_label") or (f"{arnum.fmt_qty(r['added'])} {unit}" if r["added"] else "—")
         if r["kind"] != "issue2":
             cnt, kind, cap, loose = packaging.parse_pack_label(added_pack)

@@ -159,8 +159,9 @@ def monthly_ledger(year, month, cycle, item_name):
                        f"استهلاك {MONTH_NAMES[month - 1]}",
                        0.0, 0.0, consumed_total, consumed_total))
 
-    # الدمج والزمن + الرصيد المتتالي + القيمة
-    events.sort(key=lambda e: (e[0], e[1], e[2]))
+    # الدمج والزمن + الرصيد المتتالي + القيمة — رصيد أول المدة أول سطر
+    # دايمًا مهما كان يومه (نفس ترتيب كارت ٣ مخازن — ١٥/١٠)
+    events.sort(key=lambda e: (0 if e[2] == "opener" else 1, e[0], e[1], e[2]))
     running = 0.0
     rows = []
     for iso, _seq, kind, pn, label, added, other, real_delta, real_cum in events:

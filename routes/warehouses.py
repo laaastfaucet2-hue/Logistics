@@ -859,6 +859,7 @@ def wh3_opener():
                              prod_iso=prod_iso, exp_iso=exp_iso, stores=stores_parts)
         else:
             dw.add_opener(year, month, cycle, item["name"], qty, day,
+                          handle_unit_hint=(request.form.get("handle_unit") or "").strip(),
                           producer=request.form.get("producer"),
                           supplier_id=supplier_id, supplier_name=supplier_name,
                           notes=request.form.get("notes"),

@@ -106,6 +106,7 @@ def _enrich(target):
         it["in"] += float(row["qty"] or 0)
         it["moves"].append({
             "dir": "in", "date": row["date_iso"], "qty": float(row["qty"] or 0),
+            "opener": row.get("serial") == 0,
             "cycle": row.get("cycle") or "",
             "producer": row.get("producer") or "",
             "supplier": row.get("supplier") or "",
@@ -143,7 +144,9 @@ def _enrich(target):
         it["in_pack"] = (target.get("in_packs") or {}).get(name) or ""
         # ١٤/١٠: إجمالي خارج بالتغليف (المزدوجة: بالوحدة + بالتغليف)
         it["out_pack"] = (target.get("out_packs") or {}).get(name) or ""
-        it["moves"].sort(key=lambda m: (m["date"] or "", m["dir"]))
+        # رصيد أول المدة أول سطر دايمًا (١٥/١٠) — نفس ترتيب «رصيد المخزن (بعد)»
+        it["moves"].sort(key=lambda m: (0 if m.get("opener") else 1,
+                                        m["date"] or "", m["dir"]))
         # ١٤/١٠: تبويب فرعي لكل صنف — سطر لكل يوم نشط (نفس مصدر الإكسل)
         it["days"] = dws.item_day_rows(target["inn"], target["out"], name,
                                        it.get("unit") or "")
@@ -153,7 +156,7 @@ def _enrich(target):
     for name, it in target["items"].items():
         for m in it["moves"]:
             all_moves.append(dict(m, item=name, unit=it["unit"]))
-    all_moves.sort(key=lambda m: (m["date"] or "", m["dir"]))
+    all_moves.sort(key=lambda m: (0 if m.get("opener") else 1, m["date"] or "", m["dir"]))
     target["all_moves"] = all_moves
     # تبويبات فرعية لكل صنف في سجل الحركة (١٤/١٠): الإجماليات فوق + تبويب لكل صنف
     target["mv_items"] = [(name, it) for name, it in target["items"].items() if it["moves"]]

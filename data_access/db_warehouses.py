@@ -47,12 +47,14 @@ def _migrate_tables(conn):
         conn.commit()
     # توحيد تسميات التغليف القديمة (قبل قاعدة «الصحيح صحيح والكسر بكسره»)
     rows = conn.execute(
-        "SELECT id, unit, pack_kind, pack_count, pack_capacity, pack_loose, "
+        "SELECT id, unit, pack_kind, pack_count, pack_capacity, pack_loose, pack_inner_unit, "
         "pack_inner_count, pack_inner_capacity, pack_loose_unit, pack_inner_kind, pack_label "
         "FROM wh_receipts WHERE pack_kind != ''").fetchall()
     for r in rows:
-        label, _total = pack_summary(r["pack_kind"], r["pack_count"],
-                                     r["pack_capacity"], r["pack_loose"], r["unit"],
+        # نفس وحدة الحسبة وقت الحفظ (add_receipt/add_opener): وحدة المعيار لو قياس (١٥/١٠)
+        _iu = (r["pack_inner_unit"] or "").strip()
+        label, _total = pack_summary(r["pack_kind"], r["pack_count"], r["pack_capacity"],
+                                     r["pack_loose"], _iu if is_measure_unit(_iu) else r["unit"],
                                      r["pack_inner_count"], r["pack_inner_capacity"],
                                      r["pack_loose_unit"], r["pack_inner_kind"])
         if label and label != r["pack_label"]:
@@ -836,9 +838,10 @@ def item_card(year, month, item_id):
         r["added_d"] = arnum.round3(float(r["added"] or 0) * uf)
         r["issued_d"] = arnum.round3(float(r["issued"] or 0) * uf)
 
-    def sort_key(r):   # الترتيب الزمني باليوم (الإضافات قبل المنصرف في نفس اليوم) —
+    def sort_key(r):   # رصيد أول المدة أول سطر دايمًا مهما كان يومه (١٥/١٠) — وبعده
+        # الترتيب الزمني باليوم (الإضافات قبل المنصرف في نفس اليوم)؛
         # day هو المرجع الدقيق؛ date_iso ممكن يكون فاضي في استلامات ١ مخازن
-        return (int(r.get("day") or 0),
+        return (0 if r["kind"] == "opener" else 1, int(r.get("day") or 0),
                 {"opener": 0, "add1": 1}.get(r["kind"], 2), r.get("permit_no") or 0)
     rows.sort(key=sort_key)
     running = 0.0
