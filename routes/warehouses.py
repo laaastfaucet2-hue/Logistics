@@ -150,21 +150,13 @@ def prepare_card(card, year, month, cycle, packs_map):
     card["moved"] = dw.item_has_movement(year, month, cycle, card["item"]["id"])
     # الحالة الكلية للصنف: الرصيد والمضاف والمنصرف والتغليف المتبقي (توجيه ٢٧/٠٩)
     card["pack_note"] = _opener_pack_note(card, packs_map)
-    # تعديل رصيد أول المدة (توجيه ٠٨/١٠): نموذج مُعبّى بكل بيانات السطر —
-    # الكمية والتغليف من pack_label + معاير الصنف محفوظة في wh_pack_specs
+    # تعديل رصيد أول المدة (توجيه ٠٨/١٠): نموذج مُعبّى بكل بيانات السطر
     opener_edit = None
     if card["has_opener"]:
-        _specs = packs_map.get(card["item"]["name"], {})
         _orow = card["opener_row"]
         _producer, _supplier, _unotes = _opener_bits(_orow.get("raw_notes") or "")
-        _cnt, _pkind, _pcap, _loose = packaging.parse_pack_label(_orow.get("pack_label") or "")
-        _lsp = _specs.get(list(_specs)[-1], {}) if _specs else {}
-        if not _pkind:
-            _pkind = list(_specs)[-1] if _specs else ""
-        if _pcap <= 0:
-            _pcap = _lsp.get("capacity") or 0
-        if not _cnt and (_pcap or 0) > 0:
-            _cnt = round(float(_orow["added"]) / _pcap)
+        # التغليف من خانات أول المدة نفسه زي ١ مخازن (١٥/١٠) — مش من آخر مواصفات الصنف
+        _pf = packaging.opener_pack_fields(_orow)
         opener_edit = {
             "item_id": card["item"]["id"],
             "qty": float(_orow["added"]),
@@ -174,15 +166,7 @@ def prepare_card(card, year, month, cycle, packs_map):
             "notes": _unotes,
             "prod_date": _orow.get("prod_date") or "",
             "exp_date": _orow.get("exp_date") or "",
-            "pack_kind": _pkind or "",
-            "pack_count": _cnt or 0,
-            "pack_capacity": _pcap or 0,
-            "pack_inner_count": _lsp.get("inner_count") or 0,
-            "pack_inner_capacity": _lsp.get("inner_capacity") or 0,
-            "pack_inner_kind": _lsp.get("inner_kind") or "",
-            "pack_inner_unit": _lsp.get("inner_unit") or "",
-            "pack_loose": _loose or 0,
-            "pack_loose_unit": card["item"]["handle_unit"] if (_loose or 0) > 0 else "",
+            **_pf,
             "split": [{"name": s["store_name"], "qty": s["qty"]}
                       for s in dw.opener_stores(year, month, cycle).get(card["item"]["id"], [])],
         }

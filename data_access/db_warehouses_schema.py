@@ -123,6 +123,16 @@ NEW_LEDGER_COLUMNS = (
     ("prod_date", "TEXT DEFAULT ''"),
     ("exp_date", "TEXT DEFAULT ''"),
     ("pack_label", "TEXT DEFAULT ''"),
+    # تغليف رصيد أول المدة بنفس خانات إذن ١ مخازن (١٥/١٠) — بدل الجملة بس
+    ("pack_kind", "TEXT DEFAULT ''"),
+    ("pack_count", "REAL DEFAULT 0"),
+    ("pack_capacity", "REAL DEFAULT 0"),
+    ("pack_loose", "REAL DEFAULT 0"),
+    ("pack_inner_count", "REAL DEFAULT 0"),
+    ("pack_inner_capacity", "REAL DEFAULT 0"),
+    ("pack_inner_kind", "TEXT DEFAULT ''"),
+    ("pack_loose_unit", "TEXT DEFAULT ''"),
+    ("pack_inner_unit", "TEXT DEFAULT ''"),
 )
 
 NEW_ITEM_COLUMNS = (

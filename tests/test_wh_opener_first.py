@@ -126,3 +126,41 @@ def test_pack_in_other_unit_converts_to_item_unit(app):
     dw.resolve_item(YEAR, MONTH, "supply", "عصير", "لتر")
     rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "عصير", 0, receipt_no=3, **juice)
     assert round(rec["qty_handle"], 6) == 60.0
+
+
+def test_opener_pack_saved_like_wh1(app):
+    """تغليف أول المدة بخانات ١ مخازن (١٥/١٠): كرتونة بداخلها علب + سائب بالعلب
+    ⇒ نفس الدفعة ونفس رصيد المخزن بالتغليف ونفس الصرف — والسطر القديم اللي
+    اتحفظ جملة بس بيطلع نفس النتيجة."""
+    months.init_month(YEAR, MONTH)
+    db_stores.add_store("مخزن 1")
+    pk = dict(pack_kind="كرتونة", pack_count=5, pack_inner_kind="علبة", pack_inner_count=6,
+              pack_inner_capacity=2, pack_inner_unit="كجم", pack_loose=3, pack_loose_unit="علب")
+    for name in ("صنف أ", "صنف ب"):
+        dw.resolve_item(YEAR, MONTH, "supply", name, "كجم")
+    dw.add_receipt(YEAR, MONTH, "supply", 1, "صنف أ", 0, receipt_no=1,
+                   date_iso="2031-09-01", exp_iso="2032-01-01", **pk)
+    dw.add_opener(YEAR, MONTH, "supply", "صنف ب", 0, 1, date_iso="2031-09-01",
+                  exp_iso="2032-01-01", **pk)
+    keys = ("qty", "pack_kind", "pack_count", "pack_capacity", "pack_loose", "pack_inner_count",
+            "pack_inner_capacity", "pack_inner_kind", "pack_loose_unit")
+
+    def snap():
+        pool = {b["item"]["name"]: b for b in dws._batch_pool(YEAR, MONTH, "supply")}
+        rep = dw.stores_report(YEAR, MONTH)["stores"][0]
+        after = {r["item"]: r.get("rem_after") for r in rep["inn"]}
+        return [{k: pool[n][k] for k in keys} for n in ("صنف أ", "صنف ب")], after
+
+    (a, b), after = snap()
+    assert a == b and after["صنف أ"] == after["صنف ب"] == "٥ كرتونة + ٣ علبة"
+    item_b = dw.resolve_item(YEAR, MONTH, "supply", "صنف ب")[0]
+    edit = dw.item_card(YEAR, MONTH, item_b["id"])["opener_row"]
+    assert dws.opener_pack_fields(edit)["pack_inner_count"] == 6
+    conn = dw._conn(YEAR, MONTH)   # السطر القديم: الجملة بس من غير الخانات
+    with conn:
+        conn.execute("UPDATE wh_ledger SET pack_kind='', pack_count=0, pack_inner_count=0, "
+                     "pack_inner_capacity=0, pack_loose=0, pack_loose_unit='' WHERE kind='opener'")
+    conn.close()
+    months.bust_cache()
+    (a2, b2), after2 = snap()
+    assert b2 == a and after2 == after

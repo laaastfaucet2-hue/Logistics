@@ -306,6 +306,19 @@ def pack_specs_map(year, month, cycle):
     return out
 
 
+_PACK_COLS = ("pack_kind,pack_count,pack_capacity,pack_loose,pack_inner_count,"
+              "pack_inner_capacity,pack_inner_kind,pack_loose_unit,pack_inner_unit")
+
+
+def _pack_vals(kind, count, capacity, loose, inner_count, inner_capacity,
+               inner_kind, loose_unit, inner_unit):
+    """قيم خانات تغليف رصيد أول المدة — نفس خانات إذن ١ مخازن (١٥/١٠)."""
+    kind = (kind or "").strip()
+    return ("" if kind == "بدون تغليف" else kind, float(count or 0), float(capacity or 0),
+            float(loose or 0), float(inner_count or 0), float(inner_capacity or 0),
+            (inner_kind or "").strip(), (loose_unit or "").strip(), (inner_unit or "").strip())
+
+
 def _conv_note(total, conv, from_unit, to_unit):
     """«١٢٠ لتر = ١٠٩٫٦٨ كجم» لما التغليف يتحول لوحدة الصنف (١٥/١٠)."""
     if abs(conv - 1.0) < 1e-12 or total <= 0:
@@ -543,11 +556,13 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     with conn:
         conn.execute(
             "INSERT INTO wh_ledger (cycle,item_id,day,date_iso,kind,permit_no,label,"
-            "added,issued,balance,notes,created_at,prod_date,exp_date,pack_label) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "added,issued,balance,notes,created_at,prod_date,exp_date,pack_label,"
+            + _PACK_COLS + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (cycle, item["id"], day, date_iso, "opener", 0, "رصيد أول المدة",
              qty, 0.0, qty + running_balance(conn, cycle, item["id"]),
-             " — ".join(bits), stamp, prod_iso, exp_iso, label_pack))
+             " — ".join(bits), stamp, prod_iso, exp_iso, label_pack)
+            + _pack_vals(pack_kind, pack_count, pack_capacity, pack_loose, pack_inner_count,
+                         pack_inner_capacity, pack_inner_kind, pack_loose_unit, inner_unit))
         for sid, sname, q in parts:
             conn.execute(
                 "INSERT INTO wh_opener_stores (cycle,item_id,store_id,store_name,qty)"
@@ -625,12 +640,16 @@ def update_opener(year, month, cycle, item_id, qty, day,
             (cycle, item_id)).fetchone()
         conn.execute(
             "UPDATE wh_ledger SET day=?, date_iso=?, added=?, balance=?, notes=?, "
-            "prod_date=?, exp_date=?, pack_label=? "
-            "WHERE cycle=? AND item_id=? AND kind='opener'",
+            "prod_date=?, exp_date=?, pack_label=?, "
+            + ", ".join(c + "=?" for c in _PACK_COLS.split(","))
+            + " WHERE cycle=? AND item_id=? AND kind='opener'",
             (day, date_iso, qty,
              qty + running_balance(conn, cycle, item_id,
                                    exclude_id=_op_id["id"] if _op_id else None),
-             " — ".join(bits), prod_iso, exp_iso, label_pack, cycle, item_id))
+             " — ".join(bits), prod_iso, exp_iso, label_pack)
+            + _pack_vals(pack_kind, pack_count, pack_capacity, pack_loose, pack_inner_count,
+                         pack_inner_capacity, pack_inner_kind, pack_loose_unit, inner_unit)
+            + (cycle, item_id))
         conn.execute("DELETE FROM wh_opener_stores WHERE cycle=? AND item_id=?",
                      (cycle, item_id))
         for sid, sname, q in parts:

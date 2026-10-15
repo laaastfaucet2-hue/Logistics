@@ -5,7 +5,7 @@
 تحتاج من db_warehouses استيراد مؤجل جوه الدالة (تجنّب الدوران)."""
 from core import arabic_numbers as arnum
 from data_access import months
-from data_access.packaging import pack_breakdown, pack_split, parse_pack_label, PackLedger
+from data_access.packaging import pack_breakdown, pack_split, opener_pack_fields, PackLedger
 
 # ========== المخازن الفيزيائية: التفريدة التلقائية (الأقرب صلاحية أولًا) وحركة المخازن ==========
 UNASSIGNED = "غير موزع على مخازن"
@@ -86,9 +86,9 @@ def _batch_pool(year, month, cycle):
         if not item:
             continue
         parts = opener_parts.get(o["item_id"]) or [{"store_id": None, "store_name": UNASSIGNED, "qty": float(o["added"] or 0)}]
-        # ملخص أول المدة بنفس صيغة pack_summary — يُفكَّك لحقول تغليف (١٤/١٠)
-        # علشان الرصيد الافتتاحى يدخل حالة العبوات زي أي إضافة
-        _oc, _ok, _ocap, _oloose = parse_pack_label(o.get("pack_label"))
+        # تغليف أول المدة من خاناته زي إذن ١ مخازن بالظبط (١٥/١٠) — والسطر
+        # القديم (جملة بس) بيتفكّ من الجملة كاملة بالعلب اللي جوه العبوة
+        pf = opener_pack_fields(o)
         for part in parts:
             pool.append({
                 "item": item, "qty": float(part["qty"]),
@@ -96,10 +96,12 @@ def _batch_pool(year, month, cycle):
                 "expiry": o["exp_date"] or NO_EXPIRY,
                 "order": "0000-00-00-00000",   # أول المدة أقدم دفعة دايمًا (١٥/١٠)
                 "serial": 0, "pack_label": o["pack_label"] or "",
-                "pack_kind": _ok, "pack_count": _oc,
-                "pack_capacity": _ocap, "pack_loose": _oloose,
-                "pack_inner_count": 0, "pack_inner_capacity": 0,
-                "pack_inner_kind": "", "pack_loose_unit": "",
+                "pack_kind": pf["pack_kind"], "pack_count": pf["pack_count"],
+                "pack_capacity": pf["pack_capacity"], "pack_loose": pf["pack_loose"],
+                "pack_inner_count": pf["pack_inner_count"],
+                "pack_inner_capacity": pf["pack_inner_capacity"],
+                "pack_inner_kind": pf["pack_inner_kind"],
+                "pack_loose_unit": pf["pack_loose_unit"],
                 "producer": _note_bit(o.get("notes"), "منتج:"),
                 "store_id": part["store_id"],
                 "store_name": part["store_name"] or UNASSIGNED,

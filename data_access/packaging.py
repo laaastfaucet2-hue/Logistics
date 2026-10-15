@@ -273,6 +273,77 @@ def parse_pack_label(label):
     return cnt, kind, cap, loose
 
 
+# حقول التغليف بنفس أسماء أعمدة إذن ١ مخازن (wh_receipts) — رصيد أول المدة بقى
+# بيحفظها في سطره (wh_ledger) زي ١ مخازن بالظبط بدل الجملة بس (١٥/١٠)
+PACK_FIELDS = ("pack_kind", "pack_count", "pack_capacity", "pack_loose",
+               "pack_inner_count", "pack_inner_capacity", "pack_inner_kind",
+               "pack_loose_unit", "pack_inner_unit")
+_TEXT_FIELDS = ("pack_kind", "pack_inner_kind", "pack_loose_unit", "pack_inner_unit")
+_N = r"([\d٠-٩]+(?:[\.٫][\d٠-٩]+)?)"
+_W = r"([^\s×=+()]+)"
+
+
+def _f(txt):
+    return float(arnum.parse_float(txt) or 0.0)
+
+
+def pack_fields_from_label(label):
+    """عكس pack_summary: حقول التغليف كاملة من الجملة — لسطور أول المدة
+    القديمة اللي اتحفظت جملة بس قبل حقولها (١٥/١٠)."""
+    from core.config import is_measure_unit
+    out = {k: ("" if k in _TEXT_FIELDS else 0.0) for k in PACK_FIELDS}
+    label = (label or "").strip()
+    if not label or label == "—":
+        return out
+    parts = label.split(" + ")
+    main, loose = parts[0], (parts[1] if len(parts) > 1 else "")
+    if not loose and main.endswith("سائب"):
+        main, loose = "", main
+    loose = re.sub(r"(سائب)\s*=\s*" + _N + r"\s+\S+$", r"\1", loose)   # « = الإجمالي»
+    unit = ""
+    m = (re.match(rf"^{_N} {_W} × وزن ال\S+ {_N} (\S+)(?: \(بداخلها {_N} {_W}"
+                  rf"(?: × {_N} \S+)?\))? = ", main))
+    if m:
+        out.update(pack_count=_f(m.group(1)), pack_kind=m.group(2),
+                   pack_capacity=_f(m.group(3)), pack_inner_count=_f(m.group(5)),
+                   pack_inner_kind=m.group(6) or "", pack_inner_capacity=_f(m.group(7)))
+        unit = m.group(4)
+    else:
+        m = re.match(rf"^{_N} {_W} بداخلها {_N} {_W}(?: × وزن ال\S+ {_N} (\S+))? = ", main)
+        if m:
+            out.update(pack_count=_f(m.group(1)), pack_kind=m.group(2),
+                       pack_inner_count=_f(m.group(3)), pack_inner_kind=m.group(4),
+                       pack_inner_capacity=_f(m.group(5)))
+            unit = m.group(6) or ""
+        else:
+            m = re.match(rf"^{_N} {_W}$", main)
+            if m:
+                out.update(pack_count=_f(m.group(1)), pack_kind=m.group(2))
+    if out["pack_inner_kind"] == "علب":   # جمع اسم العلبة الافتراضي (٣–١٠ علب)
+        out["pack_inner_kind"] = ""
+    out["pack_inner_unit"] = unit if is_measure_unit(unit) else ""
+    m = re.match(rf"^{_N} {_W} × {_N} \S+ = {_N} \S+ سائب$", loose)
+    if m:   # سائب بالعلب × وزن العلبة
+        out.update(pack_loose=_f(m.group(1)), pack_loose_unit="علب")
+        if not out["pack_inner_capacity"]:
+            out["pack_inner_capacity"] = _f(m.group(3))
+    else:
+        m = re.match(rf"^{_N} {_W} سائب$", loose)
+        if m:   # «٣ علب سائب» بالعلب — وغير كده بوحدة الحسبة (كجم/لتر/باكت)
+            boxes = (m.group(2) in ("علب", "علبة") and not out["pack_inner_kind"]
+                     and not out["pack_inner_capacity"])
+            out.update(pack_loose=_f(m.group(1)), pack_loose_unit="علب" if boxes else "")
+    return out
+
+
+def opener_pack_fields(row):
+    """تغليف سطر رصيد أول المدة بنفس حقول ١ مخازن (١٥/١٠) — والسطر القديم
+    (اتحفظ جملة بس) من الجملة نفسها."""
+    if (row.get("pack_kind") or "").strip():
+        return {k: (row.get(k) or ("" if k in _TEXT_FIELDS else 0.0)) for k in PACK_FIELDS}
+    return pack_fields_from_label(row.get("pack_label"))
+
+
 class PackLedger:
     """رصيد عبوات الصنف (توجيه ٢٧/٠٩ مساءً): الكاملة ما تتحولش سائب —
     الصرف يسحب من السائب أولًا، ثم من المفتوحة، ثم يفتح عبوة كاملة."""
