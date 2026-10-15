@@ -866,8 +866,7 @@ def wh3_opener():
         new_taf = wf.taf3_pack_rows(year, month, cycle, item["id"])
         new_note = _opener_pack_note(
             new_card, dw.pack_specs_map(year, month, cycle))
-        ok_open = _opener_report(item["name"], item["handle_unit"],
-                                 old_card, new_card, old_taf, new_taf,
+        ok_open = _opener_report(item["name"], old_card, new_card, old_taf, new_taf,
                                  old_note, new_note) + (f" — {res['conv_note']}" if res.get("conv_note") else "") + warn_tail
     else:
         ok_open = (f"سُجّل رصيد أول المدة لصنف «{item['name']}» بكل بياناته" + (f" ({res['conv_note']})" if res.get("conv_note") else "")
@@ -875,28 +874,31 @@ def wh3_opener():
     return _rb(cycle, "wh3", item=item_id, ok=ok_open)
 
 
-def _opener_report(name, unit, old_card, new_card, old_taf, new_taf, old_note, new_note):
+def _opener_report(name, old_card, new_card, old_taf, new_taf, old_note, new_note):
     """تقرير ما تغيّر في جدول الصنف بعد تعديل رصيد أول المدة (توجيه ٠٨/١٠) —
-    «لو غيرتوا يدينى تقرير عن كل اللي هيتغير في الجدول»."""
+    «لو غيرتوا يدينى تقرير عن كل اللي هيتغير في الجدول». الأرصدة بوحدة الدفتر زي
+    الجدول، ووحدة الصنف لو اتغيرت (أول المدة حركته الوحيدة — ١٥/١٠) جنب كل طرف."""
     o, n = old_card["opener_row"], new_card["opener_row"]
+    ou_, nu = old_card["item"]["handle_unit"], new_card["item"]["handle_unit"]
+    bu_, bn = old_card["unit_disp"], new_card["unit_disp"]
+
+    def pair(a, b, ua, ub):
+        return f"{arnum.fmt_qty(a)}{' ' + ua if ua != ub else ''} ← {arnum.fmt_qty(b)} {ub}"
     parts = []
-    if abs(float(o["added"]) - float(n["added"])) > 0.000001:
-        parts.append(f"الكمية: {arnum.fmt_qty(o['added'])} ← {arnum.fmt_qty(n['added'])} {unit}")
+    if abs(float(o["added"]) - float(n["added"])) > 0.000001 or ou_ != nu:
+        parts.append("الكمية: " + pair(o["added"], n["added"], ou_, nu))
     if (o.get("pack_label") or "—") != (n.get("pack_label") or "—"):
         parts.append(f"تغليف الدفعة: {o.get('pack_label') or '—'} ← {n.get('pack_label') or '—'}")
     if int(o["day"] or 0) != int(n["day"] or 0):   # أول المدة أول سطر دايمًا (١٥/١٠)
         parts.append("اليوم: %s ← %s" % (arnum.to_arabic_indic(str(o["day"])),
                                           arnum.to_arabic_indic(str(n["day"]))))
     changed = sum(1 for a, b in zip(old_card["rows"], new_card["rows"])
-                  if abs(float(a["balance"]) - float(b["balance"])) > 0.000001)
+                  if abs(float(a["balance_d"]) - float(b["balance_d"])) > 0.000001)
     if changed:
         parts.append(f"أُعيد احتساب الرصيد في {arnum.to_arabic_indic(str(changed))} سطر من الجدول")
-    if abs(float(old_card["balance"]) - float(new_card["balance"])) > 0.000001:
-        parts.append(f"الرصيد الختامى: {arnum.fmt_qty(old_card['balance'])} ← "
-                     f"{arnum.fmt_qty(new_card['balance'])} {unit}")
-    if abs(float(old_card["total_added"]) - float(new_card["total_added"])) > 0.000001:
-        parts.append(f"إجمالي المضاف: {arnum.fmt_qty(old_card['total_added'])} ← "
-                     f"{arnum.fmt_qty(new_card['total_added'])} {unit}")
+    for label, key in (("الرصيد الختامى", "balance_d"), ("إجمالي المضاف", "total_added_d")):
+        if abs(float(old_card[key]) - float(new_card[key])) > 0.000001:
+            parts.append(f"{label}: " + pair(old_card[key], new_card[key], bu_, bn))
     if (old_note or "—") != (new_note or "—"):
         parts.append(f"التغليف المتبقي: {old_note or '—'} ← {new_note or '—'}")
     if old_taf and new_taf and (old_taf["balance_pack"] or "—") != (new_taf["balance_pack"] or "—"):

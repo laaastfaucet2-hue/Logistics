@@ -319,12 +319,18 @@ def _pack_vals(kind, count, capacity, loose, inner_count, inner_capacity,
             (inner_kind or "").strip(), (loose_unit or "").strip(), (inner_unit or "").strip())
 
 
-def _conv_note(total, conv, from_unit, to_unit):
-    """«١٢٠ لتر = ١٠٩٫٦٨ كجم» لما التغليف يتحول لوحدة الصنف (١٥/١٠)."""
-    if abs(conv - 1.0) < 1e-12 or total <= 0:
-        return ""
-    return (f"{arnum.fmt_qty_trim(round(total / conv, 6))} {from_unit} = "
-            f"{arnum.fmt_qty_trim(total)} {to_unit}")
+def _own_unit(year, month, cycle, item, created, inner_unit, kind, count, cap, icount, icap,
+              except_opener=False):
+    """صنف مالوش حركة غير السطر ده وتغليفه بمقاس (عدد × وزن) ⇒ وحدته من معيار التغليف
+    زي الصنف الجديد (١٥/١٠). الإضافة بتثبّتها فورًا (الصنف لسه من غير حركة)، وتعديل
+    أول المدة (except_opener) بيثبّتها في نفس حفظ سطره. يرجع (الصنف، الوحدة القديمة أو "")."""
+    measured = (float(cap or 0) > 0 or float(icap or 0) > 0) and pack_summary(
+        kind, count, cap, 0, inner_unit, icount, icap)[1] > 0
+    item, old_unit = ou.follow_pack_unit(item, inner_unit, measured and not created and not
+                                         item_has_movement(year, month, cycle, item["id"], except_opener))
+    if old_unit and not except_opener:
+        set_handle_unit(year, month, item["id"], item["handle_unit"])
+    return item, old_unit
 
 
 def add_receipt(year, month, cycle, day, item_name, qty_handle,
@@ -348,8 +354,10 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
             handle_unit_hint = inner_unit
         elif pack_inner_kind and not is_measure_unit(pack_inner_kind) and not (handle_unit_hint or "").strip():
             handle_unit_hint = pack_inner_kind
-        item_probe, _ = resolve_item(year, month, cycle, item_name, handle_unit_hint)
-        # تغليف بوحدة غير وحدة الصنف ⇒ يتحول لوحدته بالوزن النوعي (١٥/١٠)
+        item_probe, _new = resolve_item(year, month, cycle, item_name, handle_unit_hint)
+        # صنف مالوش حركة ⇒ وحدة التغليف زي الجديد؛ غير كده بيتحول بالوزن النوعي (١٥/١٠)
+        item_probe, old_unit = _own_unit(year, month, cycle, item_probe, _new, inner_unit, pack_kind,
+                                         pack_count, pack_capacity, pack_inner_count, pack_inner_capacity)
         _iu0 = inner_unit
         inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
             item_probe, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
@@ -362,7 +370,7 @@ def add_receipt(year, month, cycle, day, item_name, qty_handle,
                              "لا يمكن إذن إضافة بكمية صفر")
         qty_handle = pack_total
         pack_label_text = pack_label_probe
-        conv_note = _conv_note(pack_total, conv, _iu0, item_probe["handle_unit"])
+        conv_note = ou.save_note(item_probe, old_unit, pack_total, conv, _iu0)
     # التغليف له عموده الخاص (توجيه ٢٦/٠٩) — لا يُخلط في الملاحظات
     elif pack_kind:
         pack_kind = ""
@@ -512,7 +520,10 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     if has_opener(year, month, item["id"]):
         raise ValueError(
             f"رصيد أول المدة مسجّل بالفعل لصنف «{item['name']}» — لا يُسجل مرتين")
-    _iu0 = inner_unit   # تغليف بوحدة غير وحدة الصنف ⇒ يتحول بالوزن النوعي (١٥/١٠)
+    # صنف مالوش حركة ⇒ وحدة التغليف زي الجديد؛ غير كده بيتحول بالوزن النوعي (١٥/١٠)
+    item, old_unit = _own_unit(year, month, cycle, item, created, inner_unit, pack_kind,
+                               pack_count, pack_capacity, pack_inner_count, pack_inner_capacity)
+    _iu0 = inner_unit
     inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
         item, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
     pack_kind = (pack_kind or "").strip()
@@ -523,7 +534,7 @@ def add_opener(year, month, cycle, item_name, qty, day, handle_unit_hint="",
     qty = pack_total if pack_total > 0 else float(qty)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
-    conv_note = _conv_note(pack_total, conv, _iu0, item["handle_unit"])
+    conv_note = ou.save_note(item, old_unit, pack_total, conv, _iu0)
     prod_iso = (prod_iso or "").strip()
     exp_iso = (exp_iso or "").strip()
     if not exp_iso:
@@ -596,7 +607,10 @@ def update_opener(year, month, cycle, item_id, qty, day,
     if pack_kind == "بدون تغليف":
         pack_kind = ""
     _iu0 = inner_unit = (pack_inner_unit or "").strip()
-    # تغليف بوحدة غير وحدة الصنف ⇒ يتحول لوحدته بالوزن النوعي (١٥/١٠)
+    # أول المدة حركة الصنف الوحيدة ⇒ وحدة التغليف زي الصنف الجديد (١٥/١٠ «الرصيد هيضاف
+    # باللتر»)؛ غير كده الوحدة مُثبَّتة والتغليف بيتحول لها بالوزن النوعي
+    item, old_unit = _own_unit(year, month, cycle, item, False, inner_unit, pack_kind, pack_count,
+                               pack_capacity, pack_inner_count, pack_inner_capacity, except_opener=True)
     inner_unit, pack_capacity, pack_inner_capacity, pack_loose, conv = ou.pack_to_item_unit(
         item, inner_unit, pack_capacity, pack_inner_capacity, pack_loose, pack_loose_unit)
     calc_unit = inner_unit if (inner_unit and is_measure_unit(inner_unit)) else item["handle_unit"]
@@ -606,7 +620,7 @@ def update_opener(year, month, cycle, item_id, qty, day,
     qty = pack_total if pack_total > 0 else float(qty or 0)
     if qty <= 0:
         raise ValueError("اكتب كمية رصيد أول المدة أو بيانات التغليف")
-    conv_note = _conv_note(pack_total, conv, _iu0, item["handle_unit"])
+    conv_note = ou.save_note(item, old_unit, pack_total, conv, _iu0)
     prod_iso = (prod_iso or "").strip()
     exp_iso = (exp_iso or "").strip()
     if not exp_iso:
@@ -638,6 +652,9 @@ def update_opener(year, month, cycle, item_id, qty, day,
         _op_id = conn.execute(
             "SELECT id FROM wh_ledger WHERE cycle=? AND item_id=? AND kind='opener'",
             (cycle, item_id)).fetchone()
+        if old_unit:   # في نفس الحفظ — مفيش صنف بوحدة وسطره بوحدة تانية
+            conn.execute("UPDATE wh_items SET handle_unit=?, base_unit=? WHERE id=?",
+                         (item["handle_unit"], item["base_unit"], item_id))
         conn.execute(
             "UPDATE wh_ledger SET day=?, date_iso=?, added=?, balance=?, notes=?, "
             "prod_date=?, exp_date=?, pack_label=?, "
@@ -700,12 +717,12 @@ def store_has_movement(store_id):
     return False
 
 
-def item_has_movement(year, month, cycle, item_id):
-    """هل للصنف أي حركة (إذن إضافة أو رصيد أول المدة أو صرف)؟"""
+def item_has_movement(year, month, cycle, item_id, except_opener=False):
+    """هل للصنف أي حركة (إذن إضافة أو رصيد أول المدة أو صرف)؟ — except_opener: غير أول المدة."""
     conn = _conn(year, month)
     row = conn.execute("SELECT 1 FROM wh_receipts WHERE cycle=? AND item_id=? LIMIT 1", (cycle, item_id)).fetchone()
     if not row:
-        row = conn.execute("SELECT 1 FROM wh_ledger WHERE cycle=? AND item_id=? LIMIT 1", (cycle, item_id)).fetchone()
+        row = conn.execute("SELECT 1 FROM wh_ledger WHERE cycle=? AND item_id=?" + (" AND kind<>'opener'" if except_opener else "") + " LIMIT 1", (cycle, item_id)).fetchone()
     conn.close()
     return bool(row)
 

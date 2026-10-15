@@ -82,10 +82,12 @@ def test_wh3_page_opener_row_and_forms_like_wh1(client):
     form = page[page.find('id="whOpenerForm"'):]
     form = form[:form.find("</form>")]
     assert 'name="pack_inner_unit"' in form
-    # نفس التغليف ⇒ نفس التسمية في أول المدة و١ مخازن (زيت بالكيلو وزجاجات باللتر)
+    # نفس التغليف ⇒ نفس التسمية في أول المدة و١ مخازن (زيت عليه حركة بالكيلو وزجاجات باللتر)
     pk = dict(pack_kind="كرتونة", pack_count=10, pack_capacity=12, pack_inner_count=12,
               pack_inner_capacity=1, pack_inner_kind="زجاجة", pack_inner_unit="لتر")
-    oil = dw.resolve_item(YEAR, MONTH, "supply", "زيت طعام", "كجم")[0]
+    dw.add_receipt(YEAR, MONTH, "supply", 1, "زيت طعام", 1, "كجم", receipt_no=15,
+                   date_iso="2031-09-01", exp_iso="2032-01-01")
+    oil = dw.resolve_item(YEAR, MONTH, "supply", "زيت طعام")[0]
     dw.add_opener(YEAR, MONTH, "supply", "زيت طعام", 0, 1, exp_iso="2032-01-01",
                   date_iso="2031-09-01", **pk)
     dw.add_receipt(YEAR, MONTH, "supply", 2, "زيت طعام", 0, receipt_no=14,
@@ -96,13 +98,14 @@ def test_wh3_page_opener_row_and_forms_like_wh1(client):
 
 
 def test_pack_in_other_unit_converts_to_item_unit(app):
-    """تغليف بوحدة غير وحدة الصنف (١٥/١٠): زجاجة لتر وصنف بالكيلو ⇒ بالوزن النوعي
-    (٩١٤ للزيت أو المحفوظ في الكارت) — نفس الكلام في ١ مخازن ورصيد أول المدة."""
+    """تغليف بوحدة غير وحدة الصنف (١٥/١٠): زجاجة لتر وصنف بالكيلو عليه حركة ⇒ بالوزن
+    النوعي (٩١٤ للزيت أو المحفوظ في الكارت) — نفس الكلام في ١ مخازن ورصيد أول المدة."""
     months.init_month(YEAR, MONTH)
     db_stores.add_store("مخزن 1")
     store = db_stores.list_stores()[0]
-    for name in ("زيت طعام", "زيت ذرة", "خل"):
-        dw.resolve_item(YEAR, MONTH, "supply", name, "كجم")
+    for n, name in enumerate(("زيت طعام", "زيت ذرة", "خل"), 20):   # حركة بالكيلو ⇒ الوحدة مُثبَّتة
+        dw.add_receipt(YEAR, MONTH, "supply", 1, name, 1, "كجم", receipt_no=n,
+                       date_iso="2031-09-01", exp_iso="2032-01-01")
     pk = dict(pack_kind="كرتونة", pack_count=10, pack_capacity=12, pack_inner_count=12,
               pack_inner_capacity=1, pack_inner_kind="زجاجة", pack_inner_unit="لتر")
     rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "زيت طعام", 0, receipt_no=1,
@@ -112,7 +115,7 @@ def test_pack_in_other_unit_converts_to_item_unit(app):
                        date_iso="2031-09-01", stores=[(store["id"], "مخزن 1", 120)], **pk)
     assert round(op["qty"], 6) == 109.68
     assert dw.opener_stores(YEAR, MONTH, "supply")[op["item"]["id"]][0]["qty"] == 109.68
-    # تعديل أول المدة باللتر (لقطة المستخدم ١٥/١٠): نفس التحويل — مش ١٢٠ كجم
+    # تعديل أول المدة باللتر لصنف عليه حركة تانية: نفس التحويل — مش ١٢٠ كجم
     dw.update_opener(YEAR, MONTH, "supply", op["item"]["id"], 120, 1, exp_iso="2032-01-01",
                      date_iso="2031-09-01", stores=[(store["id"], "مخزن 1", 120)], **pk)
     assert round(dw.item_card(YEAR, MONTH, op["item"]["id"])["opener_row"]["added"], 6) == 109.68
@@ -125,12 +128,49 @@ def test_pack_in_other_unit_converts_to_item_unit(app):
     vinegar = dw.resolve_item(YEAR, MONTH, "supply", "خل")[0]
     dw.set_specific_weight(YEAR, MONTH, vinegar["id"], 1010)
     rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "خل", 0, receipt_no=2, **pk)
-    assert round(rec["qty_handle"], 6) == 121.2
+    assert round(rec["qty_handle"], 6) == 121.2 and rec["item"]["handle_unit"] == "كجم"
     juice = dict(pack_kind="كرتونة", pack_count=10, pack_inner_count=12,
                  pack_inner_capacity=500, pack_inner_kind="زجاجة", pack_inner_unit="مل")
     dw.resolve_item(YEAR, MONTH, "supply", "عصير", "لتر")
     rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "عصير", 0, receipt_no=3, **juice)
     assert round(rec["qty_handle"], 6) == 60.0
+
+
+def test_opener_only_movement_follows_liters(client):
+    """لقطة المستخدم ١٥/١٠: «زيت طعام» اتفتح بالكيلو من أول المدة، والتعديل باللتر ⇒
+    الصنف يبقى باللتر (١٢٠ لتر) ويتحول ١٠٩٫٦٨ كجم في ٣ مخازن — زي الجديد في ١ مخازن.
+    من غير تغليف بمقاس (وحدة معيار فاضلة في الفورم) الوحدة ما تتغيرش."""
+    months.init_month(YEAR, MONTH)
+    db_stores.add_store("مخزن 1")
+    store = db_stores.list_stores()[0]
+    op = dw.add_opener(YEAR, MONTH, "supply", "زيت طعام", 120, 1, handle_unit_hint="كجم",
+                       exp_iso="2032-01-01", date_iso="2031-09-01")
+    oid = op["item"]["id"]
+    assert op["item"]["handle_unit"] == "كجم"
+    dw.update_opener(YEAR, MONTH, "supply", oid, 120, 1, exp_iso="2032-01-01",
+                     date_iso="2031-09-01", pack_kind="بدون تغليف", pack_inner_unit="لتر")
+    assert dw.get_item(YEAR, MONTH, oid)["handle_unit"] == "كجم"
+    data = {"cycle": "supply", "item_id": str(oid), "qty": "١٢٠", "day": "١",
+            "exp_date": "2032/01/01", "pack_kind": "كرتونة", "pack_count": "١٠",
+            "pack_capacity": "١٢", "pack_inner_count": "١٢", "pack_inner_capacity": "١",
+            "pack_inner_kind": "زجاجة", "pack_inner_unit": "لتر",
+            "store_id": str(store["id"]), "store_qty": "١٢٠"}
+    page = client.post("/warehouses/wh3/opener?cycle=supply", data=data,
+                       follow_redirects=True).data.decode()
+    assert "وحدة الصنف: كجم ← لتر (١٢٠ لتر = ١٠٩٫٦٨ كجم في ٣ مخازن)" in page
+    card = dw.item_card(YEAR, MONTH, oid)
+    assert card["item"]["handle_unit"] == "لتر" and card["opener_row"]["added"] == 120
+    assert card["unit_disp"] == "كجم" and card["total_added_d"] == 109.68
+    assert dw.opener_stores(YEAR, MONTH, "supply")[oid][0]["qty"] == 120
+    assert dws.opener_pack_fields(card["opener_row"])["pack_inner_unit"] == "لتر"
+    # نفس القاعدة في تعديل إذن ١ مخازن هو حركة الصنف الوحيدة (مسح + حفظ بنفس الرقم)
+    dw.add_receipt(YEAR, MONTH, "supply", 1, "زيت عباد", 5, "كجم", receipt_no=7, exp_iso="2032-01-01")
+    dw.delete_receipt(YEAR, MONTH, "supply", 7)
+    pk = dict(pack_kind="كرتونة", pack_count=10, pack_capacity=12, pack_inner_count=12,
+              pack_inner_capacity=1, pack_inner_kind="زجاجة", pack_inner_unit="لتر")
+    rec = dw.add_receipt(YEAR, MONTH, "supply", 1, "زيت عباد", 0, receipt_no=7, exp_iso="2032-01-01",
+                         allow_same_serial=True, **pk)
+    assert rec["item"]["handle_unit"] == "لتر" and rec["qty_handle"] == 120
 
 
 def test_opener_pack_saved_like_wh1(app):

@@ -194,3 +194,35 @@ def pack_to_item_unit(item, inner_unit, capacity, inner_capacity, loose, loose_u
         if lu in MEASURE_UNITS else 1.0)
     return (han, round(float(capacity or 0) * f, 6), round(float(inner_capacity or 0) * f, 6),
             round(float(loose or 0) * lf, 6), f)
+
+
+def follow_pack_unit(item, inner_unit, only_movement):
+    """صنف مالوش حركة غير السطر ده ⇒ وحدته من معيار التغليف زي الصنف الجديد في ١ مخازن
+    (١٥/١٠ «الرصيد هيضاف باللتر ويتحول الى كجم»): بين كجم↔لتر وبوزن نوعي معروف بس.
+    يرجع (الصنف بوحدته الجديدة، الوحدة القديمة) — أو (الصنف، "") لو مفيش تغيير:
+    الصنف اللي عليه حركة تانية وحدته مُثبَّتة والتغليف بيتحول لها بالوزن النوعي."""
+    han = (item.get("handle_unit") or "").strip()
+    iu = (inner_unit or "").strip()
+    if (not only_movement or iu not in MEASURE_UNITS or han not in MEASURE_UNITS
+            or unit_base(iu)[0] == unit_base(han)[0]
+            or measure_factor(iu, han, item.get("name"), item.get("specific_weight")) is None):
+        return item, ""
+    return dict(item, handle_unit=iu, base_unit=unit_base(iu)[0]), han
+
+
+def save_note(item, old_unit, total, conv, from_unit):
+    """رسالة الحفظ (١٥/١٠): «وحدة الصنف: كجم ← لتر (١٢٠ لتر = ١٠٩٫٦٨ كجم في ٣ مخازن)»
+    لو الوحدة اتغيرت، أو «١٢٠ لتر = ١٠٩٫٦٨ كجم» لو التغليف اتحول لوحدة الصنف."""
+    from core import arabic_numbers as arnum
+    unit = (item.get("handle_unit") or "").strip()
+    if old_unit:
+        book, f = ledger_unit(item.get("name"), item.get("ration_unit"), unit,
+                              item.get("specific_weight"))
+        tail = (f" ({arnum.fmt_qty_trim(total)} {unit} = "
+                f"{arnum.fmt_qty_trim(round(total * f, 6))} {book} في ٣ مخازن)"
+                if book != unit and total > 0 else "")
+        return f"وحدة الصنف: {old_unit} ← {unit}{tail}"
+    if abs(conv - 1.0) < 1e-12 or total <= 0:
+        return ""
+    return (f"{arnum.fmt_qty_trim(round(total / conv, 6))} {from_unit} = "
+            f"{arnum.fmt_qty_trim(total)} {unit}")
